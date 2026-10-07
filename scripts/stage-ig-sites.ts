@@ -54,7 +54,7 @@ import { IG_CHROME_SCOPE, type IgFooterData } from "./ig-footer.ts";
 import { execFileSync } from "node:child_process";
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { basename, join, relative, resolve, sep } from "node:path";
-import { instanceRootsIn, readDeclaration } from "../../cat-harness/schemas/cat-harness.js";
+import { declarationPathIn, instanceRootsIn, readDeclaration } from "../../cat-harness/schemas/cat-harness.js";
 import { instanceThemes } from "../../cat-harness/schemas/theme-by-ref.js";
 import { composeIgSite, describeStage, stageIgSite, type IgMenu, type IndexedArtifact, type SitePalette, type StageOptions } from "./build-ig-site";
 import { IgReleasesSchema, type IgReleases } from "../schemas/ig-releases.ts";
@@ -265,7 +265,37 @@ export function releasesFor(root: string): IgReleases | undefined {
   return existsSync(at) ? IgReleasesSchema.parse(JSON.parse(readFileSync(at, "utf-8"))) : undefined;
 }
 
-/** Every instance whose IG menu records a cloneable sushi-config source. */
+/**
+ * The upstream git source an instance's own declaration records, if any
+ * (bean `bamf`, owner ruling 2026-10-07: declare the IG source in the
+ * instance declaration, `source: { kind: "git", repository, ref }`).
+ *
+ * Read from the declaration's raw JSON rather than through
+ * `readDeclaration`, and narrowed here: this layer must stay usable against
+ * a cat-harness whose declaration schema does not (yet) carry `source`, and
+ * an absent or malformed `source` simply means "not declared", never an
+ * error — the menu's own record is then the answer, as before.
+ */
+export function declaredSource(root: string): { repository: string; ref: string } | undefined {
+  const at = declarationPathIn(root);
+  if (at === undefined) return undefined;
+  let raw: unknown;
+  try {
+    raw = JSON.parse(readFileSync(at, "utf-8"));
+  } catch {
+    return undefined;
+  }
+  const s = (raw as { source?: unknown } | null)?.source as { kind?: unknown; repository?: unknown; ref?: unknown } | undefined;
+  if (s?.kind !== "git" || typeof s.repository !== "string" || typeof s.ref !== "string") return undefined;
+  if (s.repository.length === 0 || s.ref.length === 0) return undefined;
+  return { repository: s.repository, ref: s.ref };
+}
+
+/**
+ * Every instance with an IG menu whose source is recorded: in its own
+ * declaration (`source`, preferred — bean `bamf`) or, failing that, in the
+ * menu's sushi-config record.
+ */
 export function igsToBuild(repoRoot: string): { build: IgToBuild[]; skipped: string[] } {
   const build: IgToBuild[] = [];
   const skipped: string[] = [];
@@ -274,11 +304,15 @@ export function igsToBuild(repoRoot: string): { build: IgToBuild[]; skipped: str
     if (!existsSync(menuPath)) continue;
     const m = JSON.parse(readFileSync(menuPath, "utf-8")) as MenuFile;
     const instance = basename(root);
-    if (m.source?.kind !== "sushi-config" || !m.source.of || !m.source.ref) {
-      skipped.push(`${instance}: menu.json records no sushi-config source repository and commit`);
+    const declaredAs = readDeclaration(root)?.name ?? instance;
+    const declared = declaredSource(root);
+    const fromMenu = m.source?.kind === "sushi-config" && m.source.of && m.source.ref ? { repository: m.source.of, ref: m.source.ref } : undefined;
+    const source = declared ?? fromMenu;
+    if (source === undefined) {
+      skipped.push(`${instance}: neither the instance declaration nor menu.json records a source repository and commit`);
       continue;
     }
-    build.push({ instance, root, menuPath, repo: m.source.of, ref: m.source.ref, declaredAs: readDeclaration(root)?.name ?? instance });
+    build.push({ instance, root, menuPath, repo: source.repository, ref: source.ref, declaredAs });
   }
   return { build, skipped };
 }
