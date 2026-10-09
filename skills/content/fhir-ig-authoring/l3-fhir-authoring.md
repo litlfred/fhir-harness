@@ -35,7 +35,7 @@ to say, in its own process: that process maps its model and then CALLS
 ready". Neither this skill nor that pipeline names the model, because
 `fhir-harness` may not (`fhir-harness/AGENTS.md`). The mapping step lived in
 `l3-fhir-pipeline.bpmn` itself until 2026-10-09 (bean `veiu`). Until stage D of the smart-* separation (#1767)
-the input was `l2Source` and the skill `dependsOn` `l2-dak-authoring`.
+the input was `l2Source` and the skill depended on an overlay's authoring skill.
 
 CQL — clinical decision logic — is part of this skill, not a separate one; the
 input schema already carries `cql` among its artefact types.
@@ -55,14 +55,13 @@ step **was not run** — never that it passed.
 
 ## Deriving rather than retyping
 
-`smart-base` carries the transforms in the render direction — `bpmn2fsh` turns
-an authored business process into FSH; `dmn2html` renders decision tables. Use
-them rather than hand-writing what a transform already emits, and read
-`smart-base-tools` first for the two behaviours that surprise people: one BPMN
-can emit hundreds of files, and **paths collide across inputs** (measured on
-`smart-dak-immz`: 313 emitted files landing at 201 distinct paths). A collision
-is either a duplicate input to remove or two processes legitimately
-contributing the same actor — decide, do not let it overwrite silently.
+When the layer above carries transforms in the render direction — from its own
+model to FSH, or to rendered tables — use them rather than hand-writing what a
+transform already emits, and read that layer's own tooling skill for how they
+behave. Whatever they emit is still FSH this skill owns: a collision between
+two emitted files is a finding to decide (a duplicate input, or two sources
+legitimately contributing the same thing), never one to let overwrite
+silently.
 
 ## Validate before you publish
 

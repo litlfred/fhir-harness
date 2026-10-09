@@ -6,8 +6,8 @@ output: schemas/skills/terminology-management/output.schema.json
 # terminology-management
 
 > Skill id: `terminology-management` · Package: `fhir-ig-authoring` ·
-> Named by `l2-dak-authoring.bpmn` step **Terminology bindings**, in the
-> `Terminologist` lane.
+> Named by the calling layer's authoring process, in its `Terminologist`
+> lane.
 
 Bind a DAK's data elements to standard terminologies, and manage the value sets
 and concept maps that result.
@@ -33,8 +33,8 @@ clinical SME see where the DAK is asserting a local meaning.
 
 ## Why this has its own lane
 
-`l2-dak-authoring.bpmn` gives the terminologist a lane of their own rather than
-folding binding into authoring, and the reason is that a wrong binding is
+The authoring process that names this skill gives the terminologist a lane of
+their own rather than folding binding into authoring, and the reason is that a wrong binding is
 invisible downstream. A data element bound to a plausible-but-wrong code
 compiles, validates, publishes, and is wrong in every derived artefact. The
 separation exists so that the person who chooses codes is not the person under
@@ -53,10 +53,10 @@ unrecoverable once downstream systems have consumed them.
 
 ## Tooling
 
-`smart-base` carries `generate_jsonld_vocabularies` and the `generate_*_schemas`
-family; the L2 data dictionary is read by `dd_extractor`. Load a checkout
-rather than vendoring — `smart-base-tools`, which also states that an absent
-`SMART_BASE_HOME` degrades the skill to `skip` rather than reporting a clean
-run over a toolchain that was never present.
+The extractors and generators that read a source dictionary and write
+vocabularies and schemas belong to the layer whose model they read, and its
+own tooling skill says how to load them. Whatever they are, an absent toolchain
+degrades this skill to `skip` — never a clean run over a toolchain that was
+never present.
 
 Validation of the resulting artefacts is `fhir-validation`, not this skill.

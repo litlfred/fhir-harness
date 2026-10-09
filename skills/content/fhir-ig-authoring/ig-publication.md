@@ -59,11 +59,10 @@ for serving the built site locally.
 
 ## The render-IG phase — what the Publisher run actually accomplishes
 
-The Publisher is **one step** in the WHO build, between six pre-processing
-invocations and eight post-processing ones
-(`dak-preprocessing` (smart-base),
-`dak-postprocessing` (smart-base)). It is easy to credit it with
-what the phases around it do, so this is what the run itself produces:
+The Publisher is **one step** in an IG's build. An overlay may wrap it in
+pre- and post-processing of its own, which that overlay's skills describe;
+this layer names none of them. It is easy to credit the Publisher with what
+the phases around it do, so this is what the run itself produces:
 
 | it produces | notes |
 |---|---|
@@ -79,7 +78,7 @@ what the phases around it do, so this is what the run itself produces:
 **And it accomplishes two things no post-processing step can.** It *validates*
 every resource against its profiles and the declared FHIR version, and it
 *resolves* the dependency closure — `hl7.terminology`, `hl7.fhir.uv.cql`,
-`hl7.fhir.uv.cpg`, `hl7.fhir.uv.crmi`, `hl7.fhir.uv.sdc` for smart-base — with
+`hl7.fhir.uv.cpg`, `hl7.fhir.uv.crmi`, `hl7.fhir.uv.sdc` for a clinical-reasoning IG — with
 version pinning and terminology expansion against `tx`. That resolution is the
 part a cache cannot fake, and it is why the phased transition keeps the
 Publisher for the AST and QA rather than removing it.

@@ -58,9 +58,8 @@ ignored its Turtle" stay distinguishable.
 
 Derive the navigation from them. Do not hand-author a nav file, and do not write
 entries back into `sushi-config.yaml` to make them visible — that is what
-`update_sushi_config.py` does and it is a round trip through the tool being
-removed ([`dak-preprocessing`](https://github.com/litlfred/folio-assistant/blob/main/smart-base/skills/content/authoring-who-smart-guidelines/dak-preprocessing.md)
-§"What 'get it into the IG index' meant").
+an overlay's pre-processing may do, and it is a round trip through the tool
+being removed.
 
 When the config names a page that does not exist, that is a finding, not a
 reason to create a placeholder.
