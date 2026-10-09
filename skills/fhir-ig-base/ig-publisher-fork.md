@@ -191,8 +191,8 @@ And the fork itself must satisfy:
   written to consume it says so — see
   [`ig-publisher-reduction`](ig-publisher-reduction.md) §P3.
 - **Do not vendor either repository into this one.** The fork lives at its own
-  remote. `toolchain-ownership`'s cutover rule is the general form: after a
-  move, exactly one repository runs a thing.
+  remote. The general cutover rule: after a move, exactly one repository
+  runs a thing.
 - **Do not add WHO, DAK or SMART concepts to the fork.** The AST is a property
   of a FHIR IG. A DAK-shaped field in it makes the fork unofferable upstream
   and re-imports the layering violation `fhir-harness` exists to prevent.
