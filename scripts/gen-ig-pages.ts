@@ -701,7 +701,8 @@ function yamlScalar(v: string): string {
 
 function repLinks(a: FhirArtifact): string {
   const out: string[] = [];
-  for (const k of ["json", "xml", "ttl", "html"] as const) {
+  // JSON and HTML only -- no XML or TTL (owner, 2026-10-09).
+  for (const k of ["json", "html"] as const) {
     const r: Representation | undefined = a.published[k];
     if (r) out.push(`<a href="${esc(r.url)}">${k}</a>`);
   }

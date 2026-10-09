@@ -51,16 +51,14 @@ export interface JsonViewData {
 
 /**
  * @param packagePath the package's instance-relative path (`fhir-artifact-index/package.tgz`)
- * @param extraTabs   tabs after TTL, in the Publisher's order (a DAK overlay's views)
+ * @param extraTabs   tabs after JSON, in the Publisher's order (a DAK overlay's views)
  */
 export function jsonViewData(a: FhirArtifact, packagePath: string, extraTabs: Tab[] = []): JsonViewData {
   const stem = artifactPageName(a);
-  const pub = (k: "xml" | "json" | "ttl") => a.published?.[k]?.url;
+  const pub = (k: "json") => a.published?.[k]?.url;
   const tabs: Tab[] = [
     { label: "Narrative Content", href: `${stem}.html`, active: false },
-    ...(pub("xml") ? [{ label: "XML", href: pub("xml")!, active: false }] : []),
     { label: "JSON", href: `${stem}.json.html`, active: true },
-    ...(pub("ttl") ? [{ label: "TTL", href: pub("ttl")!, active: false }] : []),
     ...extraTabs,
   ];
   return {
@@ -143,10 +141,18 @@ export interface TabPageData {
   sections: Array<{ heading?: string; text: string }>;
 }
 
-/** The Publisher's tab bar for a resource's pages, with `active` the current one (or none). */
+/**
+ * The Publisher's tab bar for a resource's pages, with `active` the current one (or none).
+ *
+ * No XML or TTL tab (owner, 2026-10-09: *"i dont want links to *.xml / *.ttl,
+ * only the json(ld)+schema and .html"*). The Publisher wrote both; this site
+ * renders neither, so each was an absolute link to a file the site root does
+ * not hold -- 4,288 of them on smart-trust's gh-pages, measured 2026-10-09.
+ * JSON-LD and the JSON Schema arrive as `extraTabs` from the IG API views.
+ */
 export function resourceTabs(a: FhirArtifact, extraTabs: Tab[], jsonLocal: boolean, active?: string): Tab[] {
   const stem = artifactPageName(a);
-  const pub = (k: "xml" | "json" | "ttl") => a.published?.[k]?.url;
+  const pub = (k: "json") => a.published?.[k]?.url;
   if (a.resourceType === "StructureDefinition") {
     // The SD family's own bar: Content, Detailed Descriptions, Mappings, then
     // the representations. The two table tabs are the Publisher's pages.
@@ -155,17 +161,13 @@ export function resourceTabs(a: FhirArtifact, extraTabs: Tab[], jsonLocal: boole
       { label: "Content", href: `${stem}.html`, active: active === "Content" },
       { label: "Detailed Descriptions", href: `${site}${stem}-definitions.html`, active: false },
       { label: "Mappings", href: jsonLocal ? `${stem}-mappings.html` : `${site}${stem}-mappings.html`, active: active === "Mappings" },
-      ...(pub("xml") ? [{ label: "XML", href: pub("xml")!, active: false }] : []),
-      ...(pub("json") ? [{ label: "JSON", href: jsonLocal ? `${stem}.profile.json.html` : pub("json")!, active: active === "JSON" }] : []),
-      ...(pub("ttl") ? [{ label: "TTL", href: pub("ttl")!, active: false }] : []),
-      ...extraTabs,
+        ...(pub("json") ? [{ label: "JSON", href: jsonLocal ? `${stem}.profile.json.html` : pub("json")!, active: active === "JSON" }] : []),
+        ...extraTabs,
     ];
   }
   return [
     { label: "Narrative Content", href: `${stem}.html`, active: false },
-    ...(pub("xml") ? [{ label: "XML", href: pub("xml")!, active: false }] : []),
     ...(pub("json") ? [{ label: "JSON", href: jsonLocal && hasJsonView(a) ? `${stem}.json.html` : pub("json")!, active: active === "JSON" }] : []),
-    ...(pub("ttl") ? [{ label: "TTL", href: pub("ttl")!, active: false }] : []),
     ...extraTabs,
   ];
 }

@@ -67,9 +67,8 @@ export const IG_API_VIEW_SCRIPT = "assets/ig-api-view.js";
 
 /**
  * Everything one view page shows. Tabs follow the Publisher's order: the
- * artefact's narrative, its XML / JSON / TTL (the Publisher's copies — under
- * P2 this site renders none of them), then each DAK view, the current one
- * active.
+ * artefact's narrative, its JSON, then each DAK view, the current one
+ * active. No XML or TTL (owner, 2026-10-09).
  */
 /**
  * @param servedFrom the page's path to the instance root's served data — `../`
@@ -79,8 +78,9 @@ export const IG_API_VIEW_SCRIPT = "assets/ig-api-view.js";
 export function igApiViewData(a: FhirArtifact, view: IgApiView, servedFrom = "../", jsonViews = false): IgApiViewData {
   const page = `${artifactPageName(a)}.html`;
   // JSON is this site's own view where the Publisher writes one
-  // (`resource-views.ts`); XML and Turtle stay the Publisher's (P2).
-  const reps = (["xml", "json", "ttl"] as const).flatMap((k) => {
+  // (`resource-views.ts`). No XML or Turtle tab: the site links JSON, JSON-LD,
+  // the schema and HTML only (owner, 2026-10-09).
+  const reps = (["json"] as const).flatMap((k) => {
     const url = a.published?.[k]?.url;
     if (!url) return [];
     // Only when this site WRITES the JSON view (`jsonViews`: the IG's package

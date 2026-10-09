@@ -32,9 +32,9 @@ describe("JSON views", () => {
     expect(d.script).toBe(`../${JSON_VIEW_SCRIPT}`);
   });
 
-  it("tabs in the Publisher's order, JSON active, extra tabs after TTL", () => {
+  it("tabs: narrative, JSON active, extra tabs after it -- no XML or TTL", () => {
     const d = jsonViewData(vs, "p.tgz", [{ label: "JSON Schema", href: "x.html", active: false }]);
-    expect(d.tabs.map((t) => `${t.label}${t.active ? "*" : ""}`)).toEqual(["Narrative Content", "XML", "JSON*", "TTL", "JSON Schema"]);
+    expect(d.tabs.map((t) => `${t.label}${t.active ? "*" : ""}`)).toEqual(["Narrative Content", "JSON*", "JSON Schema"]);
     // The heading drops the Publisher's leading ": " (an empty type label in its template).
     expect(d.heading).toBe("Actors - JSON Representation");
   });

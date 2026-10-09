@@ -29,9 +29,9 @@ describe("dak views", () => {
     expect(igApiViews(byRef)).toEqual([]);
   });
 
-  it("tabs: narrative, the Publisher's representations, then the IG API views with this one active", () => {
+  it("tabs: narrative, JSON (no XML or TTL), then the IG API views with this one active", () => {
     const d = igApiViewData(a, igApiViews(a)[1]!);
-    expect(d.tabs.map((t) => `${t.label}${t.active ? "*" : ""}`)).toEqual(["Narrative Content", "XML", "JSON", "JSON Schema", "JSON-LD*"]);
+    expect(d.tabs.map((t) => `${t.label}${t.active ? "*" : ""}`)).toEqual(["Narrative Content", "JSON", "JSON Schema", "JSON-LD*"]);
     expect(d.tabs[0]!.href).toBe("ValueSet-Actors.html");
     expect(d.label).toBe("JSON-LD");
     expect(d.script).toBe(`../${IG_API_VIEW_SCRIPT}`);
