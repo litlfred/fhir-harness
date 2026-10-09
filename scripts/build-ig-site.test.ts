@@ -987,3 +987,100 @@ describe("input/data -> _data (bean yy4u): the IG's own site.data, and every ove
     expect(qa.families["data-overwrite"]!.count).toBe(0);
   });
 });
+
+describe("the FHIR AST's resources as site.data (system-actors rendered EMPTY without them)", () => {
+  // smart-trust's system-actors.md, the loop that rendered no actor at all on
+  // gh-pages 63303eb because neither site.data.canonicals nor site.data[stub]
+  // existed. The include is reduced to the one field it prints.
+  const LOOP = [
+    "{% assign canonicals = site.data.canonicals | where: 'type' , 'ActorDefinition' %}",
+    "{% for canonical in canonicals %}{% assign stub = canonical.type | append: \"-\" | append: canonical.id %}" +
+      "{% assign actordefinition = site.data[stub] %}[{{ actordefinition.title }}]{% endfor %}",
+  ].join("\n");
+  const ast = (dir: string) => {
+    mkdirSync(dir, { recursive: true });
+    const res = [
+      { key: "http://x/ActorDefinition/holder|1", canonical: "http://x/ActorDefinition/holder", version: "1", resourceType: "ActorDefinition", id: "holder", name: "Holder", file: "ActorDefinition-holder.json", source: null },
+      { key: "http://x/ActorDefinition/issuer|1", canonical: "http://x/ActorDefinition/issuer", version: "1", resourceType: "ActorDefinition", id: "issuer", name: "Issuer", file: "ActorDefinition-issuer.json", source: null },
+      { key: "Patient/p1", canonical: null, version: null, resourceType: "Patient", id: "p1", file: "Patient-p1.json", source: null },
+      { key: "http://x/ImplementationGuide/x|1", canonical: "http://x/ImplementationGuide/x", version: "1", resourceType: "ImplementationGuide", id: "x", file: "ImplementationGuide-x.json", source: null },
+    ];
+    writeFileSync(join(dir, "manifest.json"), JSON.stringify({ $schema: "ig-ast/v1", authority: "cache", provisional: [], resources: res }));
+    writeFileSync(join(dir, "dependencies.json"), JSON.stringify({ $schema: "ig-ast-dependencies/v1", dependencies: [] }));
+    writeFileSync(join(dir, "ActorDefinition-holder.json"), JSON.stringify({ resourceType: "ActorDefinition", id: "holder", title: "Holder" }));
+    writeFileSync(join(dir, "ActorDefinition-issuer.json"), JSON.stringify({ resourceType: "ActorDefinition", id: "issuer", title: "Issuer" }));
+    writeFileSync(join(dir, "Patient-p1.json"), JSON.stringify({ resourceType: "Patient", id: "p1" }));
+    writeFileSync(join(dir, "ImplementationGuide-x.json"), JSON.stringify({ resourceType: "ImplementationGuide", id: "x", url: "http://x/ImplementationGuide/x", packageId: "x.ig", version: "1" }));
+  };
+  const siteData = (dataDir: string): Record<string, unknown> => {
+    const out: Record<string, unknown> = {};
+    for (const f of require("node:fs").readdirSync(dataDir) as string[]) {
+      if (f.endsWith(".json")) out[f.replace(/\.json$/, "")] = JSON.parse(readFileSync(join(dataDir, f), "utf-8"));
+    }
+    return out;
+  };
+
+  test("canonicals and one <Type>-<id> per resource are written, and the loop lists every actor", async () => {
+    const d = mkdtempSync(join(tmpdir(), "ig-ast-data-"));
+    const src = join(d, "src");
+    mkdirSync(join(src, "input", "pagecontent"), { recursive: true });
+    writeFileSync(join(src, "sushi-config.yaml"), "id: x.ig\ntitle: X IG\n");
+    writeFileSync(join(src, "input", "pagecontent", "system-actors.md"), LOOP + "\n");
+    ast(join(src, "output-ast"));
+    const staged = join(d, "site");
+    const r = stageIgSite(src, staged, {});
+    expect(r.astData).toEqual({ canonicals: 3, resources: 4 });
+    const canon = JSON.parse(readFileSync(join(staged, "_data", "canonicals.json"), "utf-8"));
+    expect(canon.map((c: { type: string; id: string }) => `${c.type}/${c.id}`)).toEqual(["ActorDefinition/holder", "ActorDefinition/issuer", "ImplementationGuide/x"]);
+    expect(existsSync(join(staged, "_data", "Patient-p1.json"))).toBe(true);
+    expect(describeStage(r)).toContain("site.data.canonicals (3)");
+    const { Liquid } = await import("liquidjs");
+    const liquid = new Liquid();
+    const data = siteData(join(staged, "_data"));
+    expect((await liquid.parseAndRender(LOOP, { site: { data } })).trim()).toBe("[Holder][Issuer]");
+
+    // Composed into a host, the computed-key lookup follows the data to site.data.ig["x"].
+    const host = join(d, "host");
+    mkdirSync(host, { recursive: true });
+    expect(composeIgSite(staged, host, "x", { atRoot: true }).collisions).toEqual([]);
+    const page = readFileSync(join(host, "system-actors.md"), "utf-8");
+    expect(page).toContain('site.data.ig["x"][stub]');
+    expect(page).toContain('site.data.ig["x"].canonicals');
+    // Only the loop: the composed page also carries the chrome includes, which need the host.
+    const body = page.slice(page.indexOf("{% assign canonicals"), page.indexOf("{% endfor %}") + "{% endfor %}".length);
+    const composed = { ig: { x: siteData(join(host, "_data", "ig", "x")) } };
+    expect((await liquid.parseAndRender(body, { site: { data: composed } })).trim()).toContain("[Holder][Issuer]");
+    rmSync(d, { recursive: true, force: true });
+  });
+
+  test("no AST: nothing written, and the stage log says what that costs", () => {
+    const d = mkdtempSync(join(tmpdir(), "ig-ast-none-"));
+    const src = join(d, "src");
+    mkdirSync(join(src, "input", "pagecontent"), { recursive: true });
+    writeFileSync(join(src, "sushi-config.yaml"), "id: x.ig\ntitle: X IG\n");
+    writeFileSync(join(src, "input", "pagecontent", "index.md"), "x\n");
+    const r = stageIgSite(src, join(d, "site"), {});
+    expect(r.astData).toBeUndefined();
+    expect(existsSync(join(d, "site", "_data", "canonicals.json"))).toBe(false);
+    expect(describeStage(r)).toContain("renders EMPTY");
+    rmSync(d, { recursive: true, force: true });
+  });
+});
+
+describe("dependency-table.xhtml is written from the IG's declaration, not left a marker (bean 4475)", () => {
+  test("the include and its data are written, and the stage log says where the rows came from", () => {
+    const d = mkdtempSync(join(tmpdir(), "ig-deps-"));
+    const src = join(d, "src");
+    mkdirSync(join(src, "input", "pagecontent"), { recursive: true });
+    writeFileSync(join(src, "sushi-config.yaml"), "id: x.ig\ntitle: X IG\ndependencies:\n  a.b: 1.0.0\n");
+    writeFileSync(join(src, "input", "pagecontent", "dependencies.md"), "{% include dependency-table.xhtml %}\n\n{% include dependency-table-short.xhtml %}\n");
+    const out = join(d, "site");
+    const r = stageIgSite(src, out, { packageCache: join(d, "no-cache") });
+    expect(r.dependencyTables).toEqual(["dependency-table-short.xhtml", "dependency-table.xhtml"]);
+    expect(r.notRendered).not.toContain("dependency-table.xhtml");
+    expect(readFileSync(join(out, "_includes", "dependency-table.xhtml"), "utf-8")).toContain('form="full"');
+    expect(JSON.parse(readFileSync(join(out, "_data", "fhir.json"), "utf-8")).dependencies).toEqual([{ packageId: "a.b", version: "1.0.0", depth: 0, resolved: false }]);
+    expect(describeStage(r)).toContain("from sushi-config.yaml (dependencies): 1 row(s); NOT in the package cache");
+    rmSync(d, { recursive: true, force: true });
+  });
+});

@@ -43,7 +43,9 @@ import { copyFileSync, cpSync, existsSync, mkdirSync, readdirSync, readFileSync,
 import type { QaResult } from "../../cat-harness/scripts/qa-results.ts";
 import { basename, dirname, extname, join, relative, resolve } from "node:path";
 import { parse as parseYaml } from "yaml";
-import { describeSiteData, igSiteData, type IgSiteDataResult } from "./ig-site-data";
+import { astImplementationGuide, describeSiteData, igSiteData, type IgSiteDataResult } from "./ig-site-data";
+import { defaultPackageCache, DEPENDENCY_FRAGMENTS, dependencyRows, fromImplementationGuide, fromSushiConfig, type DependencyRow } from "./ig-dependencies.ts";
+import { readAst } from "./ig-ast.ts";
 import { artifactPageName } from "../schemas/fhir-artifact-index.js";
 import { wrapRaw } from "../../cat-harness/scripts/lib/liquid-raw.ts";
 import type { IgReleases } from "../schemas/ig-releases.ts";
@@ -151,6 +153,10 @@ export interface StageResult {
   listed: string[];
   /** Included files the source does not hold and nothing rendered: a marker stands in. */
   notRendered: string[];
+  /** The Publisher's dependency tables (`dependency-table*.xhtml`) a page includes, written from `site.data.fhir.dependencies` (bean `4475`). */
+  dependencyTables: string[];
+  /** Where the dependency rows came from, how many, and how many packages the cache did not hold. */
+  dependencies?: { from: string; rows: number; unresolved: string[] };
   /** `input/images` data files (`.json`, `.jsonld`) that do not parse: not published, with the parser's reason. */
   unparseable: string[];
   /** Links the IG's source writes to an artefact's flat Publisher page (`ValueSet-X.html`), pointed at this site's artefact page instead. */
@@ -160,6 +166,8 @@ export interface StageResult {
   /** The colour scheme written from the instance's palette; undefined when none was declared. */
   scheme: ColourScheme | undefined;
   siteData: IgSiteDataResult;
+  /** The AST's resources as `site.data.canonicals` and `site.data["<Type>-<id>"]`; undefined when there is no AST. */
+  astData?: { canonicals: number; resources: number } | { why: string };
   /** `input/data/*` staged into `_data/`, and every `site.data` key two sources defined (bean `yy4u`). */
   data: { staged: string[]; overwrites: DataOverwrite[] };
 }
@@ -577,7 +585,10 @@ export function composeIgSite(
   const dataRef = dataKeys.length ? new RegExp(`site\\.data\\.(${dataKeys.map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})\\b`, "g") : undefined;
   const rewrite = (text: string): string => {
     const t = text.replace(/(\{%-?\s*include\s+)([^\s%}]+)/g, (whole, pre: string, name: string) => (incNames.has(name) ? `${pre}ig/${instance}/${name}` : whole));
-    return dataRef ? t.replace(dataRef, (_w, key: string) => `site.data.ig[${JSON.stringify(instance)}].${key}`) : t;
+    const named = dataRef ? t.replace(dataRef, (_w, key: string) => `site.data.ig[${JSON.stringify(instance)}].${key}`) : t;
+    // A lookup by COMPUTED key (`site.data[stub]`) reads the IG's own data
+    // too, so it moves with it; left alone it would read the host's top level.
+    return named.replace(/site\.data\[/g, `site.data.ig[${JSON.stringify(instance)}][`);
   };
   const put = (to: string, body: string | Buffer): void => {
     if (existsSync(to)) {
@@ -651,6 +662,48 @@ export function composeIgSite(
 
 const files = (dir: string) => (existsSync(dir) ? readdirSync(dir).filter((f) => statSync(join(dir, f)).isFile()) : []);
 const entries = (dir: string) => (existsSync(dir) ? readdirSync(dir).sort() : []);
+
+/**
+ * The resources of the IG's FHIR AST as the IG Publisher's Jekyll sees them:
+ * `_data/canonicals.json` (every resource with a canonical URL: `id`, `type`,
+ * `url`, `version`, `name`) and one `_data/<Type>-<id>.json` per resource,
+ * its JSON verbatim.
+ *
+ * Why: an IG's own pages read them. smart-trust's `system-actors.md` loops
+ * `site.data.canonicals | where: 'type', 'ActorDefinition'` and reads each one
+ * as `site.data[<Type>-<id>]`; with neither supplied, the loop rendered its
+ * actor list EMPTY with no word anywhere (measured on its gh-pages 63303eb,
+ * 2026-10-09, against the Publisher's c6e0e45, which listed Holder, Issuer, …).
+ *
+ * No AST, nothing written and `undefined` back. An AST that cannot be read is
+ * a reason, not a silent empty list.
+ */
+export function astResourceData(astDir: string, dataDir: string): { canonicals: number; resources: number } | { why: string } | undefined {
+  if (!existsSync(join(astDir, "manifest.json"))) return undefined;
+  let manifest;
+  try {
+    manifest = readAst(astDir).manifest;
+  } catch (e) {
+    return { why: (e as Error).message };
+  }
+  const canonicals: Array<Record<string, string>> = [];
+  let resources = 0;
+  mkdirSync(dataDir, { recursive: true });
+  for (const r of manifest.resources) {
+    const file = join(astDir, r.file);
+    if (!existsSync(file)) continue;
+    copyFileSync(file, join(dataDir, `${r.resourceType}-${r.id}.json`));
+    resources++;
+    if (r.canonical) {
+      const c: Record<string, string> = { id: r.id, type: r.resourceType, url: r.canonical };
+      if (r.version) c.version = r.version;
+      if (r.name) c.name = r.name;
+      canonicals.push(c);
+    }
+  }
+  writeFileSync(join(dataDir, "canonicals.json"), JSON.stringify(canonicals, null, 2) + "\n");
+  return { canonicals: canonicals.length, resources };
+}
 
 /** The extensions Jekyll reads from `_data/`, each file becoming `site.data.<stem>`. */
 const JEKYLL_DATA = /\.(ya?ml|json|csv|tsv)$/i;
@@ -809,6 +862,9 @@ export function artifactListInclude(name: string): { resourceType: string; simpl
 
 /** The include every `list-*.xhtml` this build writes calls: prefixed, so it cannot collide with one the IG's source holds. */
 export const ARTIFACT_LIST_INCLUDE = "fa-ig-artifact-list.html";
+/** The include every `dependency-table*.xhtml` this build writes calls: prefixed, so it cannot collide with one the IG's source holds. */
+export const DEPENDENCY_TABLE_INCLUDE = "fa-ig-dependency-table.html";
+export const DEPENDENCY_TABLE_TEMPLATE_PATH = resolve(import.meta.dir, "templates/ig-site/dependency-table.liquid");
 
 /** What stands in for a diagram nothing rendered: visible, never an empty include. */
 export const notRenderedMarker = (name: string, from: string) =>
@@ -866,6 +922,10 @@ export interface StageOptions {
    * absent, it is unstyled rather than given a hand-typed palette.
    */
   footer?: { facts?: IgFooterData; scope?: string; stylesheets?: string[] };
+  /** The IG's FHIR AST; default `<src>/output-ast`. Its resources become `site.data` (see {@link astResourceData}). */
+  ast?: string;
+  /** The FHIR package cache the dependency table reads; default `FHIR_PACKAGE_CACHE` or `~/.fhir/packages`. */
+  packageCache?: string;
 }
 
 /** The fields of a `folio-fhir-artifact/v1` entry this build reads. */
@@ -1340,6 +1400,7 @@ export function stageIgSite(igSrc: string, out: string, opts: StageOptions = {})
   const rendered: string[] = [];
   const listed: string[] = [];
   const notRendered: string[] = [];
+  const dependencyTables: string[] = [];
   const imagesSource = join(src, "input", "images-source");
   const wanted = new Set(pages.flatMap((f) => includeTargets(readFileSync(join(out, f), "utf-8"))));
   for (const name of [...wanted].sort()) {
@@ -1366,6 +1427,14 @@ export function stageIgSite(igSrc: string, out: string, opts: StageOptions = {})
       writeFileSync(join(out, "_includes", name), `{% include ${ARTIFACT_LIST_INCLUDE} type="${listOf.resourceType}"${listOf.simple ? ' simple="simple"' : ""} %}\n`);
       writeFileSync(join(out, "_includes", ARTIFACT_LIST_INCLUDE), readFileSync(ARTIFACT_LIST_TEMPLATE_PATH, "utf-8"));
       listed.push(name);
+      continue;
+    }
+    // The Publisher's package dependency table, from site.data.fhir.dependencies (bean `4475`).
+    const depForm = DEPENDENCY_FRAGMENTS[name];
+    if (depForm) {
+      writeFileSync(join(out, "_includes", name), `{% include ${DEPENDENCY_TABLE_INCLUDE} form="${depForm}" %}\n`);
+      writeFileSync(join(out, "_includes", DEPENDENCY_TABLE_INCLUDE), readFileSync(DEPENDENCY_TABLE_TEMPLATE_PATH, "utf-8"));
+      dependencyTables.push(name);
       continue;
     }
     writeFileSync(join(out, "_includes", name), notRenderedMarker(name, existsSync(puml) ? `input/images-source/${basename(puml)}` : "a source this build does not hold"));
@@ -1399,7 +1468,17 @@ export function stageIgSite(igSrc: string, out: string, opts: StageOptions = {})
   // The per-artefact variables ride in the same `site.data.fhir` the IG's
   // metadata does (bean `4tts`), written in THIS build, read by THIS build.
   const lifted = opts.artifacts ? artifactVariables(opts.artifacts.list, opts.artifacts.pagesHref) : undefined;
-  writeFileSync(join(out, "_data", "fhir.json"), JSON.stringify({ ...siteData.data, ...(lifted?.vars ?? {}), footer }, null, 2) + "\n");
+  // The IG's package dependencies: the AST's ImplementationGuide first, sushi-config where there is none.
+  const astIg = astImplementationGuide(opts.ast ?? join(src, "output-ast"));
+  const declared = astIg && "resource" in astIg ? fromImplementationGuide(astIg.resource) : fromSushiConfig(sushi);
+  const depRows: DependencyRow[] = dependencyRows(declared, opts.packageCache ?? defaultPackageCache());
+  const dependencies = {
+    from: astIg && "resource" in astIg ? `output-ast/${astIg.file} (dependsOn)` : "sushi-config.yaml (dependencies)",
+    rows: depRows.length,
+    unresolved: depRows.filter((r) => !r.resolved && !r.repeat).map((r) => `${r.packageId}#${r.version}`),
+  };
+  writeFileSync(join(out, "_data", "fhir.json"), JSON.stringify({ ...siteData.data, ...(lifted?.vars ?? {}), footer, dependencies: depRows }, null, 2) + "\n");
+  const astData = astResourceData(opts.ast ?? join(src, "output-ast"), join(out, "_data"));
   // After every file this build writes to `_data/`, so a clash is seen (bean `yy4u`).
   const data = stageIgData(join(src, "input", "data"), join(out, "_data"));
   const title = typeof sushi.title === "string" ? sushi.title : String(sushi.id ?? "IG");
@@ -1439,7 +1518,7 @@ export function stageIgSite(igSrc: string, out: string, opts: StageOptions = {})
     ].join("\n"),
   );
   const fillsResult = opts.fills?.length ? { filled, unused: opts.fills.map((x) => x.marker).filter((m) => !usedMarkers.has(m)) } : undefined;
-  return { pages: pages.sort(), generated, fills: fillsResult, variables: lifted ? { artifacts: Object.keys(lifted.vars.artifacts).length, notSourced: lifted.notSourced } : undefined, unlisted: unlisted.sort(), menuMissing, includes, images, rendered, listed, notRendered, unparseable, relinked, deadLinks: [...dead].sort(), scheme, siteData, data };
+  return { pages: pages.sort(), generated, fills: fillsResult, variables: lifted ? { artifacts: Object.keys(lifted.vars.artifacts).length, notSourced: lifted.notSourced } : undefined, unlisted: unlisted.sort(), menuMissing, includes, images, rendered, listed, notRendered, unparseable, relinked, deadLinks: [...dead].sort(), scheme, siteData, data, astData, dependencyTables, dependencies };
 }
 
 /**
@@ -1496,6 +1575,15 @@ export function describeStage(r: StageResult): string {
     ...(r.listed.length ? [`artefact lists written from the artefact index (the Publisher generates these): ${r.listed.join(", ")}`] : []),
     ...(r.notRendered.length ? [`NOT RENDERED (a visible marker stands in): ${r.notRendered.join(", ")}`] : []),
     ...(r.unparseable.length ? [`NOT PUBLISHED (not valid JSON in the IG source): ${r.unparseable.join("; ")}`] : []),
+    ...(r.astData === undefined
+      ? ["no FHIR AST: site.data.canonicals and site.data[\"<Type>-<id>\"] not written — a page that loops them renders EMPTY"]
+      : "why" in r.astData
+        ? [`FHIR AST unreadable, site.data.canonicals not written: ${r.astData.why}`]
+        : [`FHIR AST → site.data.canonicals (${r.astData.canonicals}) and site.data["<Type>-<id>"] (${r.astData.resources} resources)`]),
+    ...(r.dependencyTables.length && r.dependencies
+      ? [`dependency table(s) ${r.dependencyTables.join(", ")} from ${r.dependencies.from}: ${r.dependencies.rows} row(s)` +
+          (r.dependencies.unresolved.length ? `; NOT in the package cache, so their own dependencies are not shown: ${r.dependencies.unresolved.join(", ")}` : "")]
+      : []),
     ...(r.data.staged.length ? [`IG data staged into _data/ (site.data.*): ${r.data.staged.join(", ")}`] : []),
     ...r.data.overwrites.map((o) => `QA FINDING data-overwrite: site.data.${o.key} — kept ${o.kept}, DROPPED ${o.dropped}`),
     r.scheme
