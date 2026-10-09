@@ -22,6 +22,13 @@
  * IG it is.
  *
  *   bun run fhir-harness/scripts/p2-refusals.ts --instance <dir> [--check]
+ *   bun run fhir-harness/scripts/p2-refusals.ts --combine <dir> <dir> [...] --out <file> [--check]
+ *
+ * `--combine` is P2's combined view (bean `ntyj`): two or more IGs in ONE
+ * record, each refusal tagged with the IG it belongs to, and a `by-ig` family
+ * stating each IG's counts — so one IG's 678 refusals cannot hide another's 0.
+ * Each IG is recomputed from its own index, never read back from a sidecar
+ * that may be stale.
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
@@ -80,7 +87,97 @@ export function refusals(ix: FhirArtifactIndex, script: string): QaResult {
   };
 }
 
-if (import.meta.main) {
+/** One IG's record within a combined view: the package it names, and its per-IG record. */
+export interface IgRefusals {
+  ig: string;
+  record: QaResult;
+}
+
+/**
+ * P2's combined view across IGs (bean `ntyj`): each family's entries tagged
+ * with `ig`, and a `by-ig` family carrying each IG's counts. Refuses fewer
+ * than two IGs or one IG twice -- a "combined" record of one IG, or one that
+ * counts an IG twice, would claim a coverage it does not have.
+ */
+export function combinedRefusals(igs: IgRefusals[], script: string): QaResult {
+  if (igs.length < 2) throw new Error(`a combined view needs at least two IGs, got ${igs.length}`);
+  const seen = new Set<string>();
+  for (const g of igs) {
+    if (seen.has(g.ig)) throw new Error(`${g.ig} appears twice`);
+    seen.add(g.ig);
+  }
+  const fam = (name: "xml" | "ttl" | "not-published") => {
+    const entries = igs.flatMap((g) => (g.record.families[name]?.entries ?? []).map((e) => ({ ig: g.ig, ...(e as Record<string, unknown>) })));
+    return { summary: `${igs[0]!.record.families[name]!.summary} — across ${igs.map((g) => g.ig).join(", ")}`, count: entries.length, entries };
+  };
+  const xml = fam("xml");
+  const ttl = fam("ttl");
+  return {
+    $schema: "qa-results/v1",
+    producer: { script, script_hash: sourceHashOf(join(REPO, script)) },
+    subject: { kind: "fhir-ig-set", id: igs.map((g) => g.ig).join("+") },
+    families: {
+      "by-ig": {
+        summary: "Each IG's counts, so the combined totals cannot hide one IG behind another",
+        count: igs.length,
+        entries: igs.map((g) => ({
+          ig: g.ig,
+          xml: g.record.families.xml!.count,
+          ttl: g.record.families.ttl!.count,
+          notPublished: g.record.families["not-published"]!.count,
+        })),
+      },
+      xml,
+      ttl,
+      "not-published": fam("not-published"),
+    },
+    total: xml.count + ttl.count,
+  };
+}
+
+function writeOrCheck(out: string, text: string, check: boolean, done: string): void {
+  if (check) {
+    if (!existsSync(out) || readFileSync(out, "utf8") !== text) {
+      console.error(`✗ ${relative(REPO, out)} is stale — run without --check and commit it`);
+      process.exit(1);
+    }
+    console.log(`✓ ${relative(REPO, out)} is current`);
+    return;
+  }
+  mkdirSync(dirname(out), { recursive: true });
+  writeFileSync(out, text);
+  console.log(done);
+}
+
+function readIndex(inst: string): FhirArtifactIndex {
+  const indexPath = join(resolve(process.cwd(), inst), "fhir-artifact-index", "index.json");
+  if (!existsSync(indexPath)) {
+    console.error(`${relative(REPO, indexPath)} does not exist — no IG, so nothing to refuse (not a pass)`);
+    process.exit(1);
+  }
+  return JSON.parse(readFileSync(indexPath, "utf8")) as FhirArtifactIndex;
+}
+
+if (import.meta.main && process.argv.includes("--combine")) {
+  const args = process.argv.slice(process.argv.indexOf("--combine") + 1);
+  const end = args.findIndex((a) => a.startsWith("--"));
+  const dirs = end < 0 ? args : args.slice(0, end);
+  const o = process.argv.indexOf("--out");
+  const out = o >= 0 ? process.argv[o + 1] : undefined;
+  if (dirs.length < 2 || !out) {
+    console.error("usage: p2-refusals.ts --combine <dir> <dir> [...] --out <file> [--check]");
+    process.exit(2);
+  }
+  const script = relative(REPO, join(import.meta.dir, "p2-refusals.ts"));
+  const igs = dirs.map((d) => {
+    const ix = readIndex(d);
+    return { ig: ix.packageId ?? ix.id, record: refusals(ix, script) };
+  });
+  const record = combinedRefusals(igs, script);
+  const by = record.families["by-ig"]!.entries as Array<{ ig: string; xml: number; ttl: number; notPublished: number }>;
+  writeOrCheck(resolve(out), `${JSON.stringify(record, null, 2)}\n`, process.argv.includes("--check"),
+    `${out}: ${record.total} refused across ${by.length} IGs — ${by.map((b) => `${b.ig} ${b.xml} XML + ${b.ttl} Turtle, ${b.notPublished} not published`).join("; ")}`);
+} else if (import.meta.main) {
   const i = process.argv.indexOf("--instance");
   const inst = i >= 0 ? process.argv[i + 1] : undefined;
   if (!inst) {
