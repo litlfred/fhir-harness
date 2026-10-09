@@ -86,8 +86,11 @@ Still open, and not decided by these approvals: `transform_dmn.py`'s HTML, the
 
 **The metadata half now exists (bean `bamf`, 2026-09-30):** the `ig-site-data`
 tool writes `site.data.fhir` (`ig.*` from the ImplementationGuide resource,
-`packageId`, `canonical`) for one IG from `sushi-config.yaml` or a published
-IG's `fhir-artifact-index`, lists every field it cannot source instead of
+`packageId`, `canonical`) for one IG — **from the FHIR AST first** (the
+ImplementationGuide resource in `output-ast/`; owner, 2026-10-09, bean
+`jut3`), then `sushi-config.yaml` or a published IG's `fhir-artifact-index`
+for what the AST lacks, reporting a field the AST and sushi-config state
+differently — lists every field it cannot source instead of
 writing an empty string, and refuses a source describing another package.
 fhir-harness declares `site.data` as a **pass-through Liquid prefix**, so the
 platform's value resolver leaves `{{ site.data.fhir.… }}` for Jekyll and the

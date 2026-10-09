@@ -70,6 +70,15 @@ jobs:
             --link-root "$MAIN_SITE" --title "$LABEL" \
             --out "$RUNNER_TEMP/docs/_includes/generated/navbar-footer.html"
 
+      - name: Restore the IG's FHIR AST, the source of site.data.fhir
+        run: |
+          # `ig-cache.sh restore` puts the AST at ./output-ast, where
+          # ig-site-data reads the ImplementationGuide resource first (bean
+          # jut3). Exit 1 is a cache MISS, not a failure: site.data.fhir then
+          # comes from sushi-config.yaml, and the stage log says which.
+          bash folio-assistant/fhir-harness/scripts/ig-cache.sh restore --ig-root . \
+            || echo "no FHIR AST restored (exit $?): site.data.fhir from sushi-config.yaml"
+
       - name: Compose this IG at the site root
         working-directory: folio-assistant
         run: |
