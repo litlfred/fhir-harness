@@ -5,7 +5,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: l3-fhir-pipeline\n"
-"POT-Creation-Date: 2026-10-09T18:55:09.115Z\n"
+"POT-Creation-Date: 2026-10-09T19:21:09.754Z\n"
 "PO-Revision-Date: \n"
 "Last-Translator: \n"
 "Language: es\n"
@@ -14,182 +14,182 @@ msgstr ""
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
 
-#: processes/content/l3-fhir-pipeline.bpmn:117
+#: ../fhir-harness/processes/content/l3-fhir-pipeline.bpmn:117
 #. Diagram element documentation
 msgid "Answered by the QC gates. `no` files the findings as beans; `yes` goes on to the IG Publisher build."
 msgstr ""
 
-#: processes/content/l3-fhir-pipeline.bpmn:103
+#: ../fhir-harness/processes/content/l3-fhir-pipeline.bpmn:103
 #. Diagram element documentation
 msgid "Answered by validating the resources against their profiles. `no` returns to FSH authoring; `yes` goes on to the QC gates."
 msgstr ""
 
-#: processes/content/l3-fhir-pipeline.bpmn:76
+#: ../fhir-harness/processes/content/l3-fhir-pipeline.bpmn:76
 #. Diagram label
 msgid "Author FSH profiles [l3-fhir-authoring]"
 msgstr ""
 
-#: processes/content/l3-fhir-pipeline.bpmn:51
+#: ../fhir-harness/processes/content/l3-fhir-pipeline.bpmn:51
 #. Diagram label
 msgid "Build pipeline — SUSHI · validator · IG Publisher"
 msgstr ""
 
-#: processes/content/l3-fhir-pipeline.bpmn:87
+#: ../fhir-harness/processes/content/l3-fhir-pipeline.bpmn:87
 #. Diagram element documentation
 msgid "Compile the FSH to FHIR JSON with SUSHI. Compiling is not conformance: a green SUSHI result goes on to validation and never stands in for it."
 msgstr ""
 
-#: processes/content/l3-fhir-pipeline.bpmn:24
+#: ../fhir-harness/processes/content/l3-fhir-pipeline.bpmn:24
 #. Diagram label
 msgid "FHIR IG — source model to published IG"
 msgstr ""
 
-#: processes/content/l3-fhir-pipeline.bpmn:40
+#: ../fhir-harness/processes/content/l3-fhir-pipeline.bpmn:40
 #. Diagram label
 msgid "FHIR modeller"
 msgstr ""
 
-#: processes/content/l3-fhir-pipeline.bpmn:102
+#: ../fhir-harness/processes/content/l3-fhir-pipeline.bpmn:102
 #. Diagram label
 msgid "FHIR valid?"
 msgstr ""
 
-#: processes/content/l3-fhir-pipeline.bpmn:122
+#: ../fhir-harness/processes/content/l3-fhir-pipeline.bpmn:122
 #. Diagram label
 msgid "File QC findings as beans [todo-manager]"
 msgstr ""
 
-#: processes/content/l3-fhir-pipeline.bpmn:27
+#: ../fhir-harness/processes/content/l3-fhir-pipeline.bpmn:27
 #. Diagram element documentation
 msgid "How an L3 FHIR Implementation Guide is authored in FSH, built with SUSHI, the validator and the IG Publisher, reviewed and published, starting from a source model that is ready. Generic: what produces the source model is the layer above's own process, which maps its model and then calls Process_L3Fhir. This one names no such model. folio-assistant — the generic L3 FHIR IG pipeline. Source of truth: this file. Open it in bpmn.io, Camunda Modeler, or any other BPMN 2.0 tool. The SVG under docs/assets/img/workflows/ is generated from it by `bun run cat render:bpmn` — never hand-edit the SVG. The <bootstrap.processes:skill> extension on an activity names the folio-assistant skill that implements it; <cat-harness.processes:bean> marks a step that reads or writes the shared work plan in beans/."
 msgstr ""
 
-#: processes/content/l3-fhir-pipeline.bpmn:131
+#: ../fhir-harness/processes/content/l3-fhir-pipeline.bpmn:131
 #. Diagram label
 msgid "IG Publisher build [ig-publication]"
 msgstr ""
 
-#: processes/content/l3-fhir-pipeline.bpmn:26
+#: ../fhir-harness/processes/content/l3-fhir-pipeline.bpmn:26
 #. Diagram label
 msgid "L3 FHIR IG pipeline"
 msgstr ""
 
-#: processes/content/l3-fhir-pipeline.bpmn:156
+#: ../fhir-harness/processes/content/l3-fhir-pipeline.bpmn:156
 #. Diagram label
 msgid "no"
 msgstr ""
 
-#: processes/content/l3-fhir-pipeline.bpmn:65
+#: ../fhir-harness/processes/content/l3-fhir-pipeline.bpmn:65
 #. Diagram label
 msgid "Publication manager"
 msgstr ""
 
-#: processes/content/l3-fhir-pipeline.bpmn:139
+#: ../fhir-harness/processes/content/l3-fhir-pipeline.bpmn:139
 #. Diagram label
 msgid "Publish the IG site [content-publish]"
 msgstr ""
 
-#: processes/content/l3-fhir-pipeline.bpmn:149
+#: ../fhir-harness/processes/content/l3-fhir-pipeline.bpmn:149
 #. Diagram label
 msgid "Published IG site"
 msgstr ""
 
-#: processes/content/l3-fhir-pipeline.bpmn:116
+#: ../fhir-harness/processes/content/l3-fhir-pipeline.bpmn:116
 #. Diagram label
 msgid "QC clean?"
 msgstr ""
 
-#: processes/content/l3-fhir-pipeline.bpmn:123
+#: ../fhir-harness/processes/content/l3-fhir-pipeline.bpmn:123
 #. Diagram element documentation
 msgid "QC findings do not stay in a report nobody re-reads — each becomes a bean the modeller and the agents both see."
 msgstr ""
 
-#: processes/content/l3-fhir-pipeline.bpmn:108
+#: ../fhir-harness/processes/content/l3-fhir-pipeline.bpmn:108
 #. Diagram label
 msgid "QC gates [quality-control]"
 msgstr ""
 
-#: processes/content/l3-fhir-pipeline.bpmn:59
+#: ../fhir-harness/processes/content/l3-fhir-pipeline.bpmn:59
 #. Diagram label
 msgid "QC reviewer"
 msgstr ""
 
-#: processes/content/l3-fhir-pipeline.bpmn:140
+#: ../fhir-harness/processes/content/l3-fhir-pipeline.bpmn:140
 #. Diagram element documentation
 msgid "Release authorisation and review follow draft-to-publication.bpmn."
 msgstr ""
 
-#: processes/content/l3-fhir-pipeline.bpmn:132
+#: ../fhir-harness/processes/content/l3-fhir-pipeline.bpmn:132
 #. Diagram element documentation
 msgid "Run the IG Publisher: it renders output/, writes each resource's JSON, the package, canonicals and qa.json, and does the two things no cache can — validates every resource against its profiles and resolves the dependency closure with terminology expansion."
 msgstr ""
 
-#: processes/content/l3-fhir-pipeline.bpmn:72
+#: ../fhir-harness/processes/content/l3-fhir-pipeline.bpmn:72
 #. Diagram label
 msgid "Source model ready"
 msgstr ""
 
-#: processes/content/l3-fhir-pipeline.bpmn:86
+#: ../fhir-harness/processes/content/l3-fhir-pipeline.bpmn:86
 #. Diagram label
 msgid "SUSHI compile → FHIR JSON [l3-fhir-authoring]"
 msgstr ""
 
-#: processes/content/l3-fhir-pipeline.bpmn:41
+#: ../fhir-harness/processes/content/l3-fhir-pipeline.bpmn:41
 #. Diagram element documentation
 msgid "Task_AuthorFsh is the single re-entry point for both failure paths in this diagram — an invalid-FHIR loop from Gateway_Valid with no record left behind, and a QC failure that arrives only after Task_QcBeans has filed it — so the lane has to be able to tell a mechanical re-run from a finding that needs to be read, and the diagram gives it no other signal than which edge fired."
 msgstr ""
 
-#: processes/content/l3-fhir-pipeline.bpmn:73
+#: ../fhir-harness/processes/content/l3-fhir-pipeline.bpmn:73
 #. Diagram element documentation
 msgid "The IG's source model is ready: l3-fhir-authoring's required sourceModel. Which model, and how it was produced, is the calling process's to say — this pipeline names none, because L3 is derived and the layer above owns what it is derived from."
 msgstr ""
 
-#: processes/content/l3-fhir-pipeline.bpmn:66
+#: ../fhir-harness/processes/content/l3-fhir-pipeline.bpmn:66
 #. Diagram element documentation
 msgid "The last lane and the only one with no path back into the loop — reaching it means Task_IgPublisher already succeeded on Lane_Qc's clean verdict. It does not itself decide whether the release is authorised: that call is draft-to-publication.bpmn's, and Task_PublishIg only executes what that separate process has already cleared."
 msgstr ""
 
-#: processes/content/l3-fhir-pipeline.bpmn:47
+#: ../fhir-harness/processes/content/l3-fhir-pipeline.bpmn:47
 #. Diagram element documentation
 msgid "The only failure this diagram writes down: an invalid-FHIR loop at Gateway_Valid sends the modeller straight back with nothing recorded, but a QC finding always passes through here first, becoming a bean before Task_AuthorFsh sees it again — so a QC failure is discoverable outside the session that produced it and an invalid-FHIR one is not."
 msgstr ""
 
-#: processes/content/l3-fhir-pipeline.bpmn:109
+#: ../fhir-harness/processes/content/l3-fhir-pipeline.bpmn:109
 #. Diagram element documentation
 msgid "The QC reviewer rules on the aggregate QA against the publication gates. Emitting the QA report is mechanical; ruling on it is a decision, which is why it sits in the reviewer's lane rather than the build's."
 msgstr ""
 
-#: processes/content/l3-fhir-pipeline.bpmn:60
+#: ../fhir-harness/processes/content/l3-fhir-pipeline.bpmn:60
 #. Diagram element documentation
 msgid "The single gate between a syntactically valid FHIR JSON and the full IG Publisher build — Task_IgPublisher runs only once this lane says clean, so a QC finding here is what keeps a compiling-but-wrong profile from ever reaching a publishable IG rather than being caught only after the whole site is built."
 msgstr ""
 
-#: processes/content/l3-fhir-pipeline.bpmn:52
+#: ../fhir-harness/processes/content/l3-fhir-pipeline.bpmn:52
 #. Diagram element documentation
 msgid "Two different jobs share this lane rather than one continuous run. Task_Sushi and Task_Validate turn FSH into validated FHIR JSON and loop straight back to the modeller lane on failure with no bean filed — re-running compile-and-validate is cheap enough that a durable finding would be noise. Task_IgPublisher is the other job, reached only once Lane_Qc has passed, and its output is what Lane_PubMgr actually publishes."
 msgstr ""
 
-#: processes/content/l3-fhir-pipeline.bpmn:94
+#: ../fhir-harness/processes/content/l3-fhir-pipeline.bpmn:94
 #. Diagram label
 msgid "Validate against profiles [fhir-validation]"
 msgstr ""
 
-#: processes/content/l3-fhir-pipeline.bpmn:95
+#: ../fhir-harness/processes/content/l3-fhir-pipeline.bpmn:95
 #. Diagram element documentation
 msgid "Validate the compiled resources against their profiles and the packages they constrain. A validator that could not start is could-not-determine, never a pass with an empty findings list. Failures return to authoring."
 msgstr ""
 
-#: processes/content/l3-fhir-pipeline.bpmn:46
+#: ../fhir-harness/processes/content/l3-fhir-pipeline.bpmn:46
 #. Diagram label
 msgid "Work plan — beans (shared by humans and agents)"
 msgstr ""
 
-#: processes/content/l3-fhir-pipeline.bpmn:77
+#: ../fhir-harness/processes/content/l3-fhir-pipeline.bpmn:77
 #. Diagram element documentation
 msgid "Write the FSH profiles, value sets and definitions the source model calls for. This is the stage where profiles, slicing and invariants belong — a decision that can only be expressed in FHIR comes here, not back into the source model."
 msgstr ""
 
-#: processes/content/l3-fhir-pipeline.bpmn:157
+#: ../fhir-harness/processes/content/l3-fhir-pipeline.bpmn:157
 #. Diagram label
 msgid "yes"
 msgstr ""
