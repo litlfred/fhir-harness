@@ -370,12 +370,14 @@ describe("copyDocsInto: a front-matter-only page declares something ABOUT a gene
 });
 
 // Synthetic instances in a temp "repository", so this layer tests the
-// mechanism without naming an instance above it. The same two properties over
-// the REAL smart-* instances live in `test/build-ig-site-checkout.test.ts`
-// (bean `7zz1`): standing alone, fhir-harness has none of them.
+// mechanism without naming an instance above it: `plain` and `mid` are the
+// instances that hold no IG site, which is all "an instance with no IG has no
+// IG docs" asserts. The same two properties over REAL IGs are facts about
+// those IGs, and are tested by the instances that hold them -- above this
+// layer, so never here, and never named here.
 //
-// `leaf` → `mid` → `base` is the shape smart-trust → smart-ig → smart-base
-// has: two hops, the middle one declaring no theme.
+// `leaf` → `mid` → `base`: two hops, the middle one declaring no theme, so
+// the palette is found THROUGH an instance that has none.
 const THEME_TS = join(import.meta.dir, "..", "..", "cat-harness", "schemas", "theme.ts");
 const BASE_THEME = `import { ResolvedThemeSchema } from ${JSON.stringify(THEME_TS)};
 export const INSTANCE_THEMES = [ResolvedThemeSchema.parse({
