@@ -20,6 +20,7 @@
  * | `input/images-source/*.plantuml` | `_includes/<name>.svg` | the Publisher RENDERS these; rendered here with `--plantuml-jar`, otherwise a visible "not rendered" marker, reported |
  * | the artefact index (`--artifacts`) | `_includes/list-(simple-)?<types>.xhtml` | the Publisher GENERATES these lists of an IG's artefacts of one type; written here as Liquid over `site.data.fhir.artifact_lists`, so any IG with an index gets them (bean `9hfi`) |
  * | `ig-site-data` over the source | `_data/fhir.json` | `site.data.fhir.*`, only what is sourced |
+ * | `input/data/*` (`.yml`/`.yaml`/`.json`/`.csv`/`.tsv`, and directories) | `_data/` | the Publisher's Jekyll reads them as `site.data.<stem>`; a key two sources define keeps the harness's and is a QA finding (bean `yy4u`) |
  * | — | `_config.yml` | just-the-docs, one site |
  * | the instance's declared `webpage` theme | `_sass/color_schemes/ig.scss` | just-the-docs' own colour-scheme mechanism, so the IG wears its palette with the machinery unchanged (bean `u3cd`) |
  *
@@ -38,7 +39,8 @@
 
 import { EDIT_LINKS_RUNTIME } from "../../cat-harness/src/core/edit-links.js";
 import { execFileSync } from "node:child_process";
-import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { copyFileSync, cpSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import type { QaResult } from "../../cat-harness/scripts/qa-results.ts";
 import { basename, dirname, extname, join, relative, resolve } from "node:path";
 import { parse as parseYaml } from "yaml";
 import { describeSiteData, igSiteData, type IgSiteDataResult } from "./ig-site-data";
@@ -158,6 +160,8 @@ export interface StageResult {
   /** The colour scheme written from the instance's palette; undefined when none was declared. */
   scheme: ColourScheme | undefined;
   siteData: IgSiteDataResult;
+  /** `input/data/*` staged into `_data/`, and every `site.data` key two sources defined (bean `yy4u`). */
+  data: { staged: string[]; overwrites: DataOverwrite[] };
 }
 
 /**
@@ -565,11 +569,16 @@ export function composeIgSite(
   const dataDest = join(docsRoot, "_data", "ig", instance);
   const collisions: string[] = [];
   const incNames = new Set(files(join(staged, "_includes")));
-  const rewrite = (text: string): string =>
-    text
-      .replace(/(\{%-?\s*include\s+)([^\s%}]+)/g, (whole, pre: string, name: string) => (incNames.has(name) ? `${pre}ig/${instance}/${name}` : whole))
-      .replace(/site\.data\.fhir\b/g, `site.data.ig[${JSON.stringify(instance)}].fhir`)
-      .replace(/site\.data\.ig_releases\b/g, `site.data.ig[${JSON.stringify(instance)}].ig_releases`);
+  // Every key the staged `_data/` defines moves under `site.data.ig["<instance>"]`
+  // -- the harness's own (`fhir`, `ig_releases`) and the IG's `input/data/`
+  // files alike (bean `yy4u`), so an IG's `site.data.features` is namespaced
+  // the same way its `site.data.fhir` is.
+  const dataKeys = [...new Set(entries(join(staged, "_data")).map(dataStem))].sort((a, b) => b.length - a.length);
+  const dataRef = dataKeys.length ? new RegExp(`site\\.data\\.(${dataKeys.map((k) => k.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).join("|")})\\b`, "g") : undefined;
+  const rewrite = (text: string): string => {
+    const t = text.replace(/(\{%-?\s*include\s+)([^\s%}]+)/g, (whole, pre: string, name: string) => (incNames.has(name) ? `${pre}ig/${instance}/${name}` : whole));
+    return dataRef ? t.replace(dataRef, (_w, key: string) => `site.data.ig[${JSON.stringify(instance)}].${key}`) : t;
+  };
   const put = (to: string, body: string | Buffer): void => {
     if (existsSync(to)) {
       collisions.push(relative(docsRoot, to));
@@ -583,7 +592,13 @@ export function composeIgSite(
     put(join(incDest, f), rewrite(readFileSync(join(staged, "_includes", f), "utf-8")));
     includes++;
   }
-  for (const f of files(join(staged, "_data"))) put(join(dataDest, f), readFileSync(join(staged, "_data", f)));
+  for (const f of entries(join(staged, "_data"))) {
+    const from = join(staged, "_data", f);
+    if (statSync(from).isDirectory()) {
+      if (existsSync(join(dataDest, f))) collisions.push(relative(docsRoot, join(dataDest, f)));
+      else cpSync(from, join(dataDest, f), { recursive: true });
+    } else put(join(dataDest, f), readFileSync(from));
+  }
   const topBar = /<div class="ig-topbar"[\s\S]*?<\/div>(?=\n|$)/.exec(existsSync(join(staged, "_layouts", "default.html")) ? readFileSync(join(staged, "_layouts", "default.html"), "utf-8") : "")?.[0] ?? "";
   const chrome = igChromeIncludes(topBar);
   put(join(incDest, "_top.html"), chrome.top);
@@ -635,6 +650,82 @@ export function composeIgSite(
 }
 
 const files = (dir: string) => (existsSync(dir) ? readdirSync(dir).filter((f) => statSync(join(dir, f)).isFile()) : []);
+const entries = (dir: string) => (existsSync(dir) ? readdirSync(dir).sort() : []);
+
+/** The extensions Jekyll reads from `_data/`, each file becoming `site.data.<stem>`. */
+const JEKYLL_DATA = /\.(ya?ml|json|csv|tsv)$/i;
+/** The `site.data` key a `_data/` entry defines: its file stem, or a directory's name. */
+const dataStem = (f: string): string => f.replace(JEKYLL_DATA, "");
+
+/** One `site.data` key that two sources defined, and which one the site kept. */
+export interface DataOverwrite {
+  key: string;
+  /** The source whose content the site carries. */
+  kept: string;
+  /** The source that lost — its content is NOT in the site. */
+  dropped: string;
+}
+
+/**
+ * The IG's own Jekyll data — `input/data/*` — into the site's `_data/`
+ * (bean `yy4u`, owner 2026-10-09).
+ *
+ * The IG Publisher copies `input/data/` into its Jekyll `_data/`, so an IG's
+ * pages may say `{{ site.data.features.github.repo_owner }}` against its own
+ * `input/data/features.yaml`. Not staged, every such reference rendered as
+ * the empty string — four `raw.githubusercontent.com///main/...` links on
+ * smart-immunizations' `testing.html`, measured 2026-10-09.
+ *
+ * Called AFTER the harness writes its own data (`fhir`, `ig_releases`), and
+ * the harness's file is KEPT on a clash, as the Publisher's own
+ * `_data/fhir.json` wins under the Publisher. Never silent: every key two
+ * sources define -- the harness and the IG, or two IG files with one stem
+ * (`x.yaml` and `x.json`, which Jekyll would resolve by load order) -- is
+ * returned as a {@link DataOverwrite}, and the caller records it as a QA
+ * finding (owner: *"can we have QA flag if overwrite"*).
+ */
+export function stageIgData(srcDir: string, dataDir: string): { staged: string[]; overwrites: DataOverwrite[] } {
+  const owner = new Map<string, string>(entries(dataDir).map((f) => [dataStem(f), `_data/${f} (written by this build)`]));
+  const staged: string[] = [];
+  const overwrites: DataOverwrite[] = [];
+  for (const f of entries(srcDir)) {
+    const abs = join(srcDir, f);
+    const dir = statSync(abs).isDirectory();
+    if (!dir && !JEKYLL_DATA.test(f)) continue;
+    const key = dataStem(f);
+    const kept = owner.get(key);
+    if (kept) {
+      overwrites.push({ key, kept, dropped: `input/data/${f}` });
+      continue;
+    }
+    mkdirSync(dataDir, { recursive: true });
+    cpSync(abs, join(dataDir, f), { recursive: true });
+    owner.set(key, `input/data/${f}`);
+    staged.push(f);
+  }
+  return { staged, overwrites };
+}
+
+/**
+ * The overwrites as a `qa-results/v1` sidecar. Written whether or not there
+ * are any: zero findings from a run that LOOKED is a different fact from no
+ * record at all.
+ */
+export function dataOverwritesQa(subject: string, producer: { script: string; script_hash: string }, overwrites: DataOverwrite[]): QaResult {
+  return {
+    $schema: "qa-results/v1",
+    producer,
+    subject: { kind: "fhir-ig", id: subject },
+    families: {
+      "data-overwrite": {
+        summary: "site.data keys two sources define; the site carries only the kept one, so a page reading the dropped one's fields renders them empty",
+        count: overwrites.length,
+        entries: overwrites.map((o) => ({ ...o })),
+      },
+    },
+    total: overwrites.length,
+  };
+}
 
 /**
  * `{% include x %}` and `{% lang-fragment x %}` target includes, so a missing
@@ -1309,6 +1400,8 @@ export function stageIgSite(igSrc: string, out: string, opts: StageOptions = {})
   // metadata does (bean `4tts`), written in THIS build, read by THIS build.
   const lifted = opts.artifacts ? artifactVariables(opts.artifacts.list, opts.artifacts.pagesHref) : undefined;
   writeFileSync(join(out, "_data", "fhir.json"), JSON.stringify({ ...siteData.data, ...(lifted?.vars ?? {}), footer }, null, 2) + "\n");
+  // After every file this build writes to `_data/`, so a clash is seen (bean `yy4u`).
+  const data = stageIgData(join(src, "input", "data"), join(out, "_data"));
   const title = typeof sushi.title === "string" ? sushi.title : String(sushi.id ?? "IG");
   const scheme = opts.palette ? colourScheme(opts.palette) : undefined;
   if (scheme) {
@@ -1346,7 +1439,7 @@ export function stageIgSite(igSrc: string, out: string, opts: StageOptions = {})
     ].join("\n"),
   );
   const fillsResult = opts.fills?.length ? { filled, unused: opts.fills.map((x) => x.marker).filter((m) => !usedMarkers.has(m)) } : undefined;
-  return { pages: pages.sort(), generated, fills: fillsResult, variables: lifted ? { artifacts: Object.keys(lifted.vars.artifacts).length, notSourced: lifted.notSourced } : undefined, unlisted: unlisted.sort(), menuMissing, includes, images, rendered, listed, notRendered, unparseable, relinked, deadLinks: [...dead].sort(), scheme, siteData };
+  return { pages: pages.sort(), generated, fills: fillsResult, variables: lifted ? { artifacts: Object.keys(lifted.vars.artifacts).length, notSourced: lifted.notSourced } : undefined, unlisted: unlisted.sort(), menuMissing, includes, images, rendered, listed, notRendered, unparseable, relinked, deadLinks: [...dead].sort(), scheme, siteData, data };
 }
 
 /**
@@ -1403,6 +1496,8 @@ export function describeStage(r: StageResult): string {
     ...(r.listed.length ? [`artefact lists written from the artefact index (the Publisher generates these): ${r.listed.join(", ")}`] : []),
     ...(r.notRendered.length ? [`NOT RENDERED (a visible marker stands in): ${r.notRendered.join(", ")}`] : []),
     ...(r.unparseable.length ? [`NOT PUBLISHED (not valid JSON in the IG source): ${r.unparseable.join("; ")}`] : []),
+    ...(r.data.staged.length ? [`IG data staged into _data/ (site.data.*): ${r.data.staged.join(", ")}`] : []),
+    ...r.data.overwrites.map((o) => `QA FINDING data-overwrite: site.data.${o.key} — kept ${o.kept}, DROPPED ${o.dropped}`),
     r.scheme
       ? `colour scheme: from the instance's webpage theme; sidebar text is ${r.scheme.sidebarText}` +
         (r.scheme.sidebarContrast === undefined ? "" : ` (${r.scheme.sidebarContrast.toFixed(2)}:1 on accent)`)

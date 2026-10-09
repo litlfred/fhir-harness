@@ -8,7 +8,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync
 import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
 import { join } from "node:path";
-import { ARTIFACT_LIST_TEMPLATE_PATH, artifactListInclude, publisherPlural, FOOTER_TEMPLATE_PATH, ARTIFACTS_TEMPLATE_PATH,IG_FIGURE_IMAGES_STAMP, artifactVariables, colourScheme, composeIgSite, contrast, dedupeIds, igTocNav, igTopBar, includeTargets, pageNav, relinkArtifacts, relinkOffSite, rubyLiquidStrings, relinkPublisherOutputs, sourceHeadings, RELEASES_TEMPLATE_PATH, releaseVariables, sizeLabel, stageIgSite, tocPage, type StageResult } from "./build-ig-site";
+import { ARTIFACT_LIST_TEMPLATE_PATH, artifactListInclude, publisherPlural, FOOTER_TEMPLATE_PATH, ARTIFACTS_TEMPLATE_PATH,IG_FIGURE_IMAGES_STAMP, artifactVariables, colourScheme, composeIgSite, contrast, dedupeIds, igTocNav, igTopBar, includeTargets, pageNav, relinkArtifacts, relinkOffSite, rubyLiquidStrings, relinkPublisherOutputs, sourceHeadings, dataOverwritesQa, describeStage, RELEASES_TEMPLATE_PATH, releaseVariables, sizeLabel, stageIgSite, tocPage, type StageResult } from "./build-ig-site";
 import { copyDocsInto, igSiteDocs, webpagePalette } from "./stage-ig-sites";
 import type { IgReleases } from "../schemas/ig-releases.ts";
 import { artifactPageName } from "../schemas/fhir-artifact-index.js";
@@ -942,5 +942,48 @@ describe("the Publisher's artefact lists, written from the artefact index (bean 
     const t = readFileSync(ARTIFACT_LIST_TEMPLATE_PATH, "utf-8");
     expect(t.startsWith("{%- comment -%}")).toBe(true);
     expect(t).not.toMatch(/\|\s*(plus|minus|size|replace|sort)\b/);
+  });
+});
+
+describe("input/data -> _data (bean yy4u): the IG's own site.data, and every overwrite flagged", () => {
+  test("staged, namespaced on compose, and a clash with the harness's data is a QA finding", () => {
+    const d = mkdtempSync(join(tmpdir(), "ig-data-"));
+    const src = join(d, "src");
+    mkdirSync(join(src, "input", "pagecontent"), { recursive: true });
+    mkdirSync(join(src, "input", "data"), { recursive: true });
+    writeFileSync(join(src, "sushi-config.yaml"), "id: x.ig\ntitle: X IG\n");
+    writeFileSync(join(src, "input", "pagecontent", "index.md"), "https://raw.githubusercontent.com/{{site.data.features.github.repo_owner}}/x\n");
+    writeFileSync(join(src, "input", "data", "features.yaml"), "github:\n  repo_owner: Someone\n");
+    // Two IG files with one stem, and one with the harness's own key: three sources, two clashes.
+    writeFileSync(join(src, "input", "data", "features.json"), "{}");
+    writeFileSync(join(src, "input", "data", "fhir.yml"), "packageId: shadow\n");
+    writeFileSync(join(src, "input", "data", "notes.txt"), "not Jekyll data");
+    const staged = join(d, "site");
+    const r = stageIgSite(src, staged, {});
+    expect(r.data.staged).toEqual(["features.json"]);
+    expect(r.data.overwrites).toEqual([
+      { key: "features", kept: "input/data/features.json", dropped: "input/data/features.yaml" },
+      { key: "fhir", kept: "_data/fhir.json (written by this build)", dropped: "input/data/fhir.yml" },
+    ]);
+    // The harness's site.data.fhir survives the IG's fhir.yml.
+    expect(JSON.parse(readFileSync(join(staged, "_data", "fhir.json"), "utf-8")).packageId).not.toBe("shadow");
+    expect(existsSync(join(staged, "_data", "notes.txt"))).toBe(false);
+    expect(describeStage(r)).toContain("QA FINDING data-overwrite: site.data.fhir");
+    const qa = dataOverwritesQa("x", { script: "s", script_hash: "h" }, r.data.overwrites);
+    expect(qa.total).toBe(2);
+    expect(qa.families["data-overwrite"]!.count).toBe(2);
+    // Composed, the IG's data key is namespaced exactly as site.data.fhir is.
+    const host = join(d, "host");
+    mkdirSync(host, { recursive: true });
+    expect(composeIgSite(staged, host, "x", { atRoot: true }).collisions).toEqual([]);
+    expect(readFileSync(join(host, "index.md"), "utf-8")).toContain('site.data.ig["x"].features.github.repo_owner');
+    expect(existsSync(join(host, "_data", "ig", "x", "features.json"))).toBe(true);
+    rmSync(d, { recursive: true, force: true });
+  });
+
+  test("no input/data: nothing staged, nothing flagged -- and the record still says it looked", () => {
+    const qa = dataOverwritesQa("x", { script: "s", script_hash: "h" }, []);
+    expect(qa.total).toBe(0);
+    expect(qa.families["data-overwrite"]!.count).toBe(0);
   });
 });

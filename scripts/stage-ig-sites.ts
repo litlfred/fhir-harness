@@ -56,9 +56,10 @@ import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, wri
 import { basename, join, relative, resolve, sep } from "node:path";
 import { declarationPathIn, instanceRootsIn, readDeclaration } from "../../cat-harness/schemas/cat-harness.js";
 import { instanceThemes } from "../../cat-harness/schemas/theme-by-ref.js";
-import { composeIgSite, describeStage, stageIgSite, type IgMenu, type IndexedArtifact, type SitePalette, type StageOptions } from "./build-ig-site";
+import { composeIgSite, dataOverwritesQa, describeStage, stageIgSite, type IgMenu, type IndexedArtifact, type SitePalette, type StageOptions } from "./build-ig-site";
 import { IgReleasesSchema, type IgReleases } from "../schemas/ig-releases.ts";
 import { readChangedFiles, siteFilter } from "../../cat-harness/scripts/staging-cone.ts";
+import { sourceHashOf } from "../../cat-harness/scripts/qa-results.ts";
 
 interface MenuFile extends IgMenu {
   source?: { kind?: string; of?: string; ref?: string };
@@ -389,6 +390,13 @@ if (import.meta.main) {
       fills: [igApiHubFill(ig.root, docs ? "" : "../")].filter((x) => x !== undefined),
     });
     console.error(`${ig.instance} (${ig.repo}@${ig.ref.slice(0, 7)}):\n${describeStage(r)}`);
+    // The `site.data` overwrite record (bean `yy4u`), as a QA sidecar in the
+    // instance's results — beside `p2-refusals`, written even when empty.
+    const qaOut = join(ig.root, "test", "results", "ig-data-overwrites.qa-results.json");
+    const script = join(import.meta.dir, "build-ig-site.ts");
+    mkdirSync(join(ig.root, "test", "results"), { recursive: true });
+    writeFileSync(qaOut, `${JSON.stringify(dataOverwritesQa(ig.instance, { script: relative(resolve(import.meta.dir, "..", ".."), script), script_hash: sourceHashOf(script) }, r.data.overwrites), null, 2)}\n`);
+    if (r.data.overwrites.length) console.error(`${ig.instance}: ${r.data.overwrites.length} site.data overwrite(s) flagged in ${relative(resolve("."), qaOut)}`);
     if (r.siteData.refused.length) process.exit(1);
     if (docs) {
       const c = copyDocsInto(docs, site);
