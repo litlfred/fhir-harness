@@ -4,7 +4,7 @@
  */
 
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
 import { join } from "node:path";
@@ -1014,7 +1014,7 @@ describe("the FHIR AST's resources as site.data (system-actors rendered EMPTY wi
   };
   const siteData = (dataDir: string): Record<string, unknown> => {
     const out: Record<string, unknown> = {};
-    for (const f of require("node:fs").readdirSync(dataDir) as string[]) {
+    for (const f of readdirSync(dataDir)) {
       if (f.endsWith(".json")) out[f.replace(/\.json$/, "")] = JSON.parse(readFileSync(join(dataDir, f), "utf-8"));
     }
     return out;
