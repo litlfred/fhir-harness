@@ -2,6 +2,14 @@
   "name": "@litlfred/fhir-harness",
   "private": true,
   "type": "module",
+  "dependencies": {
+    "liquidjs": "^10.29.0",
+    "yaml": "^2.9.1",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "ajv": "^6.15.0"
+  },
   "checkoutScripts": {
     "check:artifact-index": "bun run fhir-harness/scripts/check-artifact-index.ts",
     "ingest:ig": "bun run fhir-harness/scripts/ingest-ig-artifacts.ts",
