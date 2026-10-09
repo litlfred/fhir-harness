@@ -3,7 +3,7 @@
  * ignored its Turtle" must stay distinguishable (bean `ntyj`).
  */
 import { describe, expect, it } from "bun:test";
-import { publisherViewPage, refusals } from "./p2-refusals.ts";
+import { combinedRefusals, publisherViewPage, refusals } from "./p2-refusals.ts";
 import type { FhirArtifactIndex } from "../schemas/fhir-artifact-index.js";
 
 const ix = {
@@ -34,5 +34,30 @@ describe("P2 refusal record", () => {
     expect(publisherViewPage({ resourceType: "ValueSet", id: "a" }, "xml")).toBe("ValueSet-a.xml.html");
     expect(publisherViewPage({ resourceType: "StructureDefinition", id: "m" }, "xml")).toBe("StructureDefinition-m.profile.xml.html");
     expect(publisherViewPage({ resourceType: "ImplementationGuide", id: "x" }, "ttl")).toBeUndefined();
+  });
+});
+
+describe("P2 combined view across IGs (bean ntyj)", () => {
+  const script = "fhir-harness/scripts/p2-refusals.ts";
+  const other = { id: "y", packageId: "other.ig", artifacts: [{ key: "CodeSystem/c", resourceType: "CodeSystem", id: "c", published: { json: { url: "https://q/CodeSystem-c.json" } } }] } as unknown as FhirArtifactIndex;
+  const c = combinedRefusals([{ ig: "example.ig", record: refusals(ix, script) }, { ig: "other.ig", record: refusals(other, script) }], script);
+
+  it("tags every refusal with its IG and sums them", () => {
+    expect(c.total).toBe(5);
+    expect(c.families.xml!.entries.every((e) => (e as { ig: string }).ig === "example.ig")).toBe(true);
+    expect(c.subject).toEqual({ kind: "fhir-ig-set", id: "example.ig+other.ig" });
+  });
+
+  it("states each IG's counts, so an IG that refuses nothing is visible, not absorbed", () => {
+    expect(c.families["by-ig"]!.entries).toEqual([
+      { ig: "example.ig", xml: 3, ttl: 2, notPublished: 1 },
+      { ig: "other.ig", xml: 0, ttl: 0, notPublished: 1 },
+    ]);
+    expect(c.families["not-published"]!.entries).toContainEqual({ ig: "other.ig", artifact: "CodeSystem/c", missing: ["xml", "ttl"] });
+  });
+
+  it("refuses fewer than two IGs, or one IG twice", () => {
+    expect(() => combinedRefusals([{ ig: "example.ig", record: refusals(ix, script) }], script)).toThrow("at least two");
+    expect(() => combinedRefusals([{ ig: "a", record: refusals(ix, script) }, { ig: "a", record: refusals(ix, script) }], script)).toThrow("twice");
   });
 });
