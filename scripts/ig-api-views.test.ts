@@ -1,5 +1,5 @@
 /**
- * The DAK view pages' data (`ig-api-views.ts`): what the Publisher's
+ * The IG API view pages' data (`ig-api-views.ts`): what the Publisher's
  * `<Name>.schema.json.html` / `.jsonld.html` show, computed for a template.
  */
 import { describe, expect, it } from "bun:test";
@@ -16,13 +16,13 @@ const a = {
   title: "Actors",
   published: { xml: { url: "https://p/ValueSet-Actors.xml" }, json: { url: "https://p/ValueSet-Actors.json" } },
   sidecars: {
-    schema: { url: "https://p/schemas/ValueSet-Actors.schema.json", localPath: "fhir-artifact-index/dak/ValueSet-Actors.schema.json" },
-    jsonld: { url: "https://p/ValueSet-Actors.jsonld", localPath: "fhir-artifact-index/dak/ValueSet-Actors.jsonld" },
-    displays: { url: "https://p/schemas/ValueSet-Actors.displays.json", localPath: "fhir-artifact-index/dak/ValueSet-Actors.displays.json" },
+    schema: { url: "https://p/schemas/ValueSet-Actors.schema.json", localPath: "fhir-artifact-index/sidecars/ValueSet-Actors.schema.json" },
+    jsonld: { url: "https://p/ValueSet-Actors.jsonld", localPath: "fhir-artifact-index/sidecars/ValueSet-Actors.jsonld" },
+    displays: { url: "https://p/schemas/ValueSet-Actors.displays.json", localPath: "fhir-artifact-index/sidecars/ValueSet-Actors.displays.json" },
   },
 } as unknown as FhirArtifact;
 
-describe("dak views", () => {
+describe("IG API views", () => {
   it("has a page for each HELD schema and JSON-LD sidecar, in the Publisher's tab order, and none for displays", () => {
     expect(igApiViews(a).map((v) => v.file)).toEqual(["ValueSet-Actors.schema.json", "ValueSet-Actors.jsonld"]);
     const byRef = { ...a, sidecars: { schema: { url: "https://p/x.schema.json" } } } as unknown as FhirArtifact;
@@ -36,7 +36,7 @@ describe("dak views", () => {
     expect(d.label).toBe("JSON-LD");
     expect(d.script).toBe(`../${IG_API_VIEW_SCRIPT}`);
     // Fetched from the SERVED graph, not from a copy beside the page.
-    expect(d.src).toBe("../fhir-artifact-index/dak/ValueSet-Actors.jsonld");
+    expect(d.src).toBe("../fhir-artifact-index/sidecars/ValueSet-Actors.jsonld");
     // The page carries no file text: the loader fetches it (bean `680p`).
     expect(JSON.stringify(d)).not.toContain("@context");
   });
@@ -57,7 +57,7 @@ describe("dak views", () => {
       '<a href="openapi/index.html">o</a><a href="https://x/y">abs</a><a href="#top">t</a><a href="ValueSet-Actors.html">again</a>';
     expect(igApiHubLinks([a], "https://p/", frag)).toEqual({
       "ValueSet-Actors.html": "artifact/ValueSet-Actors.html",
-      "ValueSet-Actors.schema.json": "fhir-artifact-index/dak/ValueSet-Actors.schema.json",
+      "ValueSet-Actors.schema.json": "fhir-artifact-index/sidecars/ValueSet-Actors.schema.json",
       "openapi/index.html": "https://p/openapi/index.html",
     });
   });
@@ -72,7 +72,7 @@ describe("dak views", () => {
 
 describe("igApiServed finds the declaration by its own name, not the directory's (bean rbz3)", () => {
   it("a separated IG keeps its data under a directory not named after it, and its declaration is still <name>.json", () => {
-    const d = mkdtempSync(join(tmpdir(), "dak-served-"));
+    const d = mkdtempSync(join(tmpdir(), "ig-api-served-"));
     try {
       const root = join(d, "ig-data");
       mkdirSync(root);
@@ -83,11 +83,11 @@ describe("igApiServed finds the declaration by its own name, not the directory's
           { path: "docs/", instanceRoot: true, composed: true },
         ],
       });
-      writeFileSync(join(root, "smart-trust.json"), JSON.stringify(decl("smart-trust")));
+      writeFileSync(join(root, "acme-ig.json"), JSON.stringify(decl("acme-ig")));
       expect(igApiServed(root)).toEqual({ ok: true });
       // A file named after the directory but declaring another name is not a declaration.
-      rmSync(join(root, "smart-trust.json"));
-      writeFileSync(join(root, "ig-data.json"), JSON.stringify(decl("smart-trust")));
+      rmSync(join(root, "acme-ig.json"));
+      writeFileSync(join(root, "ig-data.json"), JSON.stringify(decl("acme-ig")));
       expect(igApiServed(root)).toEqual({ ok: false, why: "ig-data/ holds no instance declaration" });
     } finally {
       rmSync(d, { recursive: true, force: true });

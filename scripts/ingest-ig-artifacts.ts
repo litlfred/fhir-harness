@@ -2,13 +2,13 @@
 /**
  * Reconstruct a published FHIR IG's artefact index.
  *
- * @module folio-assistant-core/scripts/ingest-ig-artifacts
+ * @module fhir-harness/scripts/ingest-ig-artifacts
  *
  * ```sh
- * bun run folio-assistant-core/scripts/ingest-ig-artifacts.ts \
- *   --source /path/to/gh-pages --kind gh-pages --id smart-trust \
- *   --base https://worldhealthorganization.github.io/smart-trust \
- *   --out smart-trust --materialize-sidecars
+ * bun run fhir-harness/scripts/ingest-ig-artifacts.ts \
+ *   --source /path/to/gh-pages --kind gh-pages --id my-ig \
+ *   --base https://example.github.io/my-ig \
+ *   --out my-ig --materialize-sidecars
  * ```
  *
  * `--check` re-runs the ingest and exits non-zero if the committed index
@@ -132,7 +132,7 @@ function main(): void {
   const materializeSidecars = process.argv.includes("--materialize-sidecars");
   // Where materialised sidecars land, under `fhir-artifact-index/`. A flag,
   // because this layer names no publisher's layout; an instance that already
-  // holds them elsewhere (WHO's smart-* use `dak/`) passes its own.
+  // holds them elsewhere passes its own.
   const sidecarDir = arg("sidecar-dir") ?? "sidecars";
   const materializePackage = process.argv.includes("--materialize-package");
   const USAGE =
@@ -302,7 +302,7 @@ function main(): void {
   let apiByteTotal = 0;
   const apiBytes = (): number => apiByteTotal;
 
-  // ── DAK overlay ───────────────────────────────────────────────────────
+  // ── The IG API sidecars ───────────────────────────────────────────────
   //
   // RESOLVED THROUGH THE ENUMERATION, not composed from the artefact's id.
   //
@@ -328,7 +328,7 @@ function main(): void {
   // Anything still unbound is RECORDED in `sidecarsUnbound`, never dropped — the
   // defect above was invisible precisely because nothing recorded it.
   //
-  // `dak/` sits inside the declared graph directory rather than beside it, so
+  // `<sidecar-dir>/` sits inside the declared graph directory rather than beside it, so
   // one declaration covers the index and the bytes it points at.
   interface EnumEntry {
     filename?: string;
@@ -364,7 +364,7 @@ function main(): void {
     // on litlfred/smart-trust gh-pages 9bd9643: all 52 schema, displays and
     // OpenAPI sidecars exist in BOTH places and EVERY pair differs. The root
     // copy is what smart-base's current generator writes (Coding-shaped
-    // values), what the IG's own `dak-api.html`, its artefact pages' Endpoints
+    // values), what the IG's own API hub page, its artefact pages' Endpoints
     // section and its `.schema.json.html` view pages all link, and what a
     // reader of the published IG therefore sees; `schemas/` holds an older
     // format (IRI-string enums) under the same `$id`. An IG that publishes only
@@ -392,7 +392,7 @@ function main(): void {
       (a.sidecars as Record<string, unknown>)[slot] = r;
       if (materializeSidecars) {
         materialized.push([file, basename(file)]);
-        // The copy into `dak/` happens at the end of the run, long after the
+        // The copy into `<sidecar-dir>/` happens at the end of the run, long after the
         // materialization records are built — so fixity is taken from the
         // SOURCE, and this is what maps a recorded `localPath` back to it.
         materializedFrom.set(basename(file), file);
@@ -524,14 +524,13 @@ function main(): void {
   //
   // The page's name, its two markers and the source placeholder are the
   // post-processor's, never this layer's (bean `d313`): flags with generic
-  // defaults, and an IG that publishes a hub under other names (WHO's DAK
-  // overlay: `dak-api.html`, `DAK_API_HUB_START/END`, `DAK_API_CONTENT`)
-  // passes its own.
+  // defaults, and an IG whose post-processing publishes a hub under other
+  // names passes its own, from its own layer's invocation.
   const [HUB_START, HUB_END] = (arg("api-hub-markers") ?? "IG_API_HUB_START,IG_API_HUB_END").split(",").map((m) => `<!-- ${m.trim()} -->`);
   const hubFile = arg("api-hub-page") ?? "ig-api.html";
   const hubPlaceholder = arg("api-placeholder") ?? "IG_API_CONTENT";
-  // Named after the hub page, so WHO's stays `dak-api-hub.json` and a generic
-  // IG's is `ig-api-hub.json`, with no name of either written here.
+  // Named after the hub page — `ig-api-hub.json` by default, `<page>-hub.json`
+  // for a hub page passed in — so no caller's name is written here.
   const hubDataFile = `${hubFile.replace(/\.html$/, "")}-hub.json`;
   let hub: { fragment: string; rep: Representation & { placeholder: string } } | undefined;
   const hubPage = join(source, hubFile);
@@ -558,8 +557,8 @@ function main(): void {
   // ── Canonical base ────────────────────────────────────────────────────
   // Taken from the IG's OWN canonical by stripping the resource segments the
   // publisher appends — never composed from the Pages URL, which is a
-  // different namespace: smart-trust publishes at
-  // worldhealthorganization.github.io and is canonical at smart.who.int.
+  // different namespace: an IG commonly publishes at `<org>.github.io` and is
+  // canonical at its own domain (measured on the first IG ingested, bean `cpmo`).
   const igCanonical = canonicals.find((c) => c.type === "ImplementationGuide")?.url;
   const canonicalBase = igCanonical?.replace(/\/ImplementationGuide\/.*$/, "");
 

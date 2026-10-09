@@ -13,7 +13,7 @@ import {
 function chrome(over: Partial<IgChrome> = {}): IgChrome {
   return {
     $schema: IG_CHROME_SCHEMA_TAG,
-    id: "who.template.root",
+    id: "acme.template.root",
     version: "0.5.0",
     layers: [
       {
@@ -25,7 +25,7 @@ function chrome(over: Partial<IgChrome> = {}): IgChrome {
         readAt: "2026-09-23",
       },
     ],
-    tokens: [{ name: "--navbar-bg-color", value: "#00477d", from: "who.template.root", overrides: [] }],
+    tokens: [{ name: "--navbar-bg-color", value: "#00477d", from: "acme.template.root", overrides: [] }],
     rules: [],
     conflicts: [],
     ...over,
@@ -73,13 +73,13 @@ describe("tokensByPackage", () => {
   test("counts what each layer actually WON, not what it declared", () => {
     const c = chrome({
       tokens: [
-        { name: "--a", value: "1", from: "who.template.root", overrides: [{ package: "fhir.base.template", value: "0" }] },
-        { name: "--b", value: "2", from: "who.template.root", overrides: [] },
+        { name: "--a", value: "1", from: "acme.template.root", overrides: [{ package: "fhir.base.template", value: "0" }] },
+        { name: "--b", value: "2", from: "acme.template.root", overrides: [] },
         { name: "--c", value: "3", from: "fhir.base.template", overrides: [] },
       ],
     });
     // `--a` was declared by BOTH and is counted once, to the winner.
-    expect(tokensByPackage(c)).toEqual({ "who.template.root": 2, "fhir.base.template": 1 });
+    expect(tokensByPackage(c)).toEqual({ "acme.template.root": 2, "fhir.base.template": 1 });
   });
 });
 
@@ -92,7 +92,7 @@ describe("chromeCss", () => {
 
   test("a conflicted token is EMITTED with a note, never dropped", () => {
     const c = chrome({
-      tokens: [{ name: "--toc-box-border", value: "navy", from: "who.template.root", overrides: [] }],
+      tokens: [{ name: "--toc-box-border", value: "navy", from: "acme.template.root", overrides: [] }],
       conflicts: [
         {
           token: "--toc-box-border",
@@ -100,7 +100,7 @@ describe("chromeCss", () => {
           detail: "two shapes",
           sites: [
             { package: "fhir.base.template", value: "1px solid navy" },
-            { package: "who.template.root", value: "navy" },
+            { package: "acme.template.root", value: "navy" },
           ],
         },
       ],
@@ -145,10 +145,10 @@ describe("chromeFileFor", () => {
   test("resolves through the DECLARATION, so a directory that moves moves for every reader", () => {
     const found = chromeFileFor(
       "/repo",
-      "smart-base",
+      "acme-base",
       // The declared directory is `somewhere-else/`, not `fhir-artifact-index/`.
       // A path literal would have missed it — which is the `ylj7` defect.
-      deps(["/repo/sb"], { "/repo/sb": "smart-base" }, { "/repo/sb": ["/repo/sb/somewhere-else"] }, [
+      deps(["/repo/sb"], { "/repo/sb": "acme-base" }, { "/repo/sb": ["/repo/sb/somewhere-else"] }, [
         "/repo/sb/somewhere-else/chrome.json",
       ]),
     );
@@ -158,8 +158,8 @@ describe("chromeFileFor", () => {
   test("ignores an instance with the same DIRECTORY but a different name", () => {
     const found = chromeFileFor(
       "/repo",
-      "smart-base",
-      deps(["/repo/st"], { "/repo/st": "smart-trust" }, { "/repo/st": ["/repo/st/fhir-artifact-index"] }, [
+      "acme-base",
+      deps(["/repo/st"], { "/repo/st": "acme-ig" }, { "/repo/st": ["/repo/st/fhir-artifact-index"] }, [
         "/repo/st/fhir-artifact-index/chrome.json",
       ]),
     );
@@ -169,8 +169,8 @@ describe("chromeFileFor", () => {
   test("a declared directory with no chrome.json yields undefined, not a path that does not exist", () => {
     const found = chromeFileFor(
       "/repo",
-      "smart-base",
-      deps(["/repo/sb"], { "/repo/sb": "smart-base" }, { "/repo/sb": ["/repo/sb/fhir-artifact-index"] }, []),
+      "acme-base",
+      deps(["/repo/sb"], { "/repo/sb": "acme-base" }, { "/repo/sb": ["/repo/sb/fhir-artifact-index"] }, []),
     );
     expect(found).toBeUndefined();
   });

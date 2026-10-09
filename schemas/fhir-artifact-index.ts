@@ -29,7 +29,7 @@
  * > **No IG publishes an artefact-index instance document.**
  *
  * `ValueSets.schema.json` and `LogicalModels.schema.json` sit at the published
- * ROOT — not under `schemas/`, contrary to how `dak-api.html` links them — and
+ * ROOT — not under `schemas/`, contrary to how the IG's API hub page links them — and
  * both are JSON *Schemas* describing the shape of an enumeration response.
  * Each carries an `example` block that happens to hold the real list. There is
  * no `ValueSets.json`. An ingest that went looking for the index would find a
@@ -44,16 +44,16 @@
  * | layer | supplies | present in |
  * |---|---|---|
  * | IG-publisher standard | `package/.index.json`, `canonicals.json`, `artifacts.html`, `package.manifest.json` | **every** IG |
- * | DAK API | `.schema.json`, `.displays.json`, `.openapi.json`, `.jsonld` per artefact, plus JSON-LD contexts | only IGs that publish one |
+ * | IG API | `.schema.json`, `.displays.json`, `.openapi.json`, `.jsonld` per artefact, plus JSON-LD contexts | only IGs that publish one |
  *
- * The standard layer is the SPINE and the DAK API is an {@link SidecarOverlaySchema |
- * overlay}. That ordering is what keeps the type valid for an IG with no DAK
- * API — the overlay is simply absent — and it is why `dak` is optional on an
- * artefact rather than the artefact being optional on a DAK entry.
+ * The standard layer is the SPINE and the IG API is an {@link SidecarOverlaySchema |
+ * overlay}. That ordering is what keeps the type valid for an IG with no IG
+ * API — the overlay is simply absent — and it is why `sidecars` is optional on an
+ * artefact rather than the artefact being optional on a sidecar entry.
  *
  * ## Two traps, recorded so no pipeline re-learns them
  *
- * **`openapi/openapi.json` is not the DAK API.** In smart-trust that path
+ * **`openapi/openapi.json` is not the IG API.** In smart-trust that path
  * holds the *DDCC Gateway* API — a domain API about certificate exchange that
  * merely lives there. A pipeline globbing for `openapi` will file a subject-
  * matter API as an artefact descriptor. {@link SidecarOverlaySchema.openapi} is
@@ -75,7 +75,7 @@
  * that fails validation when it disagrees with the array is the opposite: it
  * is the claim and its check shipped together. The published enumeration
  * schemas require `count` too, so dropping it would make a round-trip to the
- * DAK API's own shape lossy.
+ * IG API's own shape lossy.
  */
 import { z } from "zod";
 import { MaterializationSchema } from "../../folio-assistant-core/schemas/materialization.js";
@@ -133,7 +133,7 @@ export const IndexProvenanceSchema = z
     /** `artifacts.html` — the ONLY source of an artefact's editorial category. */
     artifactsHtml: z.string().min(1).optional(),
     /**
-     * The DAK API enumeration schemas, when present.
+     * The IG API enumeration schemas, when present.
      *
      * Named in the plural and as PATHS because there is one per enumerated
      * type (`ValueSets.schema.json`, `LogicalModels.schema.json`, ...) and
@@ -178,11 +178,11 @@ export const PublishedFormatsSchema = z
 export type PublishedFormats = z.infer<typeof PublishedFormatsSchema>;
 
 /**
- * The DAK API overlay — the JSON Schema / JSON-LD surface, where one exists.
+ * The IG API overlay — the JSON Schema / JSON-LD surface, where one exists.
  *
  * This is the half the request is actually about: "recreate artefact index
- * linking to json/jsonschema". An artefact with no `dak` is not a defect; it
- * is an artefact the DAK API does not cover, and in smart-trust that is 655 of
+ * linking to json/jsonschema". An artefact with no `sidecars` is not a defect; it
+ * is an artefact the IG API does not cover, and in smart-trust that is 655 of
  * 674.
  *
  * `codeCount` and `propertyCount` are the two fields the published enumeration
@@ -274,12 +274,12 @@ export type JsonLdContext = z.infer<typeof JsonLdContextSchema>;
  * The index document — one per published IG.
  *
  * `sidecarApi` is a three-state determination and NOT a boolean derived from
- * whether any artefact carries an overlay. "This IG publishes no DAK API" and
+ * whether any artefact carries an overlay. "This IG publishes no IG API" and
  * "the ingest did not look" are different facts, and only the first is a
  * reason to stop ingesting.
  */
 /**
- * A DAK sidecar the enumeration lists that could not be bound to an artefact.
+ * An IG API sidecar the enumeration lists that could not be bound to an artefact.
  *
  * RECORDED RATHER THAN DROPPED, and that is the whole reason this type exists.
  * smart-immunizations publishes 198 JSON Schemas and the first ingest bound
@@ -329,9 +329,9 @@ export const FhirArtifactIndexSchema = z
     contexts: z.array(JsonLdContextSchema).optional(),
     /**
      * The IG API hub: the region of the IG's hub page between the two markers
-     * its post-processing writes after the Publisher has run (for WHO's DAK
-     * overlay, `dak-api.html` between `DAK_API_HUB_START` and
-     * `DAK_API_HUB_END`, written by smart-base's `generate_dak_api_hub.py`).
+     * its post-processing writes after the Publisher has run (`ig-api.html`
+     * between `IG_API_HUB_START` and `IG_API_HUB_END` by default; an overlay
+     * whose post-processing uses other names passes them to the ingest).
      * `url` is the page it was read from; `localPath` is the fragment, held so
      * a page can fetch it (bean `680p`) rather than retype its prose — as a
      * JSON node (`{ from, between, html }`), because an `.html` fragment
@@ -369,7 +369,7 @@ export const FhirArtifactIndexSchema = z
     path: ["count"],
   })
   .refine((ix) => ix.sidecarApi !== "absent" || ix.artifacts.every((a) => a.sidecars === undefined), {
-    message: "sidecarApi is 'absent' but an artefact carries a DAK overlay",
+    message: "sidecarApi is 'absent' but an artefact carries an IG API overlay",
     path: ["sidecarApi"],
   })
   .refine((ix) => new Set(ix.artifacts.map((a) => a.key)).size === ix.artifacts.length, {
@@ -393,9 +393,9 @@ export function materializationCensus(artifacts: FhirArtifact[]): Record<string,
 }
 
 /**
- * How many artefacts carry each part of the DAK overlay.
+ * How many artefacts carry each part of the IG API overlay.
  *
- * Reported per SIDECAR rather than as one "has DAK" tally, because the four
+ * Reported per SIDECAR rather than as one "has sidecars" tally, because the four
  * are independently published: smart-trust emits `.displays.json` for every
  * ValueSet but for no logical model, and a single count would hide that.
  */

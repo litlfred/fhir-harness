@@ -10,7 +10,7 @@
  * instead of copying 672 resource files (bean `680p`, `visualizer-loading`).
  *
  * Generic: nothing here knows whose IG it is. A caller that renders more tabs
- * (a DAK overlay) passes them in.
+ * (an overlay with views of its own) passes them in.
  */
 import { readFileSync } from "node:fs";
 import { gunzipSync } from "node:zlib";
@@ -51,7 +51,7 @@ export interface JsonViewData {
 
 /**
  * @param packagePath the package's instance-relative path (`fhir-artifact-index/package.tgz`)
- * @param extraTabs   tabs after JSON, in the Publisher's order (a DAK overlay's views)
+ * @param extraTabs   tabs after JSON, in the Publisher's order (an overlay's views)
  */
 export function jsonViewData(a: FhirArtifact, packagePath: string, extraTabs: Tab[] = []): JsonViewData {
   const stem = artifactPageName(a);

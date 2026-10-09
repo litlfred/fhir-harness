@@ -387,15 +387,15 @@ dependencies:
       expect(res.missing).toHaveLength(0);
     });
 
-    test("correctly lists the 4 smart-base packages when they are absent from mirror and npm", async () => {
+    test("correctly lists the 4 HL7 packages an IG depends on when they are absent from mirror and npm", async () => {
       const cacheDir = join(tmp, "cache");
       const mirrorDir = join(tmp, "mirror");
       const missingOut = join(tmp, "missing.txt");
       mkdirSync(cacheDir, { recursive: true });
       mkdirSync(mirrorDir, { recursive: true });
 
-      // Create sushi-config for smart-base
-      const configPath = join(tmp, "smart-base-sushi-config.yaml");
+      // Create sushi-config for an IG with the usual HL7 clinical-reasoning dependencies
+      const configPath = join(tmp, "acme-ig-sushi-config.yaml");
       writeFileSync(
         configPath,
         `

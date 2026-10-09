@@ -266,7 +266,7 @@ const publishNoteFor = (ix: FhirArtifactIndex): string =>
 const SIDECAR_LABEL = arg("--sidecar-label") ?? "IG API";
 /**
  * The hub page's name on this site: the Publisher's own, read from the URL the
- * hub was ingested from (`dak-api` for WHO's DAK overlay), so the replica
+ * hub was ingested from (whatever page its layer named), so the replica
  * keeps the published name without this layer writing any IG's name down.
  */
 const hubPage = (ix: FhirArtifactIndex): string => basename(new URL(ix.igApiHub!.url).pathname).replace(/\.html$/, "");
@@ -1460,7 +1460,7 @@ for (const [label, list] of byCategory(ix.artifacts)) {
 }
 
 // AN IG-SITE INSTANCE'S OWN NAVIGATION IS THE IG'S (bean `mftp`). Its index,
-// toc and artifacts pages, its menu sections and its DAK hub page are written
+// toc and artifacts pages, its menu sections and its IG API hub page are written
 // by `build-ig-site` from the IG's source and menu, so the copies above would
 // be a second index, a second menu and a second hub at the same URLs. Built
 // above and dropped here, rather than not built, so the footer's reading
