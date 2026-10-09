@@ -13,14 +13,13 @@
  * `templates/ig-api-view.js`, as the Publisher's page does — never baked into
  * the page (bean `680p`).
  *
- * **Generic by construction, and named so (bean `d313`).** This was
- * `dak-views.ts`: WHO's DAK post-processing (smart-base) is the publisher of
- * these sidecars today, and every name here said so — which, in a layer whose
- * one rule is that it knows nothing of WHO, put the overlay's name on a
- * surface any IG may publish. What is WHO's is now configuration the WHO
- * instances pass: the label ("DAK API", `--sidecar-label`), the hub page's
- * name and markers (ingest flags), and the source placeholder (recorded on
- * the index's `igApiHub.placeholder`). Rendering is still driven entirely by
+ * **Generic by construction, and named so (bean `d313`).** Every name here
+ * once said which overlay publishes these sidecars today — which, in a layer
+ * whose one rule is that it knows nothing of the layers above it, put one
+ * overlay's name on a surface any IG may publish. What is an overlay's is now
+ * configuration its instances pass: the label (`--sidecar-label`), the hub
+ * page's name and markers (ingest flags), and the source placeholder
+ * (recorded on the index's `igApiHub.placeholder`). Rendering is still driven entirely by
  * `a.sidecars` being present, so an IG that publishes none gets none of it.
  */
 import { readFileSync } from "node:fs";
@@ -67,13 +66,13 @@ export const IG_API_VIEW_SCRIPT = "assets/ig-api-view.js";
 
 /**
  * Everything one view page shows. Tabs follow the Publisher's order: the
- * artefact's narrative, its JSON, then each DAK view, the current one
+ * artefact's narrative, its JSON, then each IG API view, the current one
  * active. No XML or TTL (owner, 2026-10-09).
  */
 /**
  * @param servedFrom the page's path to the instance root's served data — `../`
- *   from `artifact/`, so a `localPath` of `fhir-artifact-index/dak/X` is fetched
- *   at `../fhir-artifact-index/dak/X`.
+ *   from `artifact/`, so a `localPath` of `fhir-artifact-index/sidecars/X` is fetched
+ *   at `../fhir-artifact-index/sidecars/X`.
  */
 export function igApiViewData(a: FhirArtifact, view: IgApiView, servedFrom = "../", jsonViews = false): IgApiViewData {
   const page = `${artifactPageName(a)}.html`;
@@ -104,7 +103,7 @@ export function igApiViewData(a: FhirArtifact, view: IgApiView, servedFrom = "..
 /**
  * Where each link in the hub fragment goes on this site. The Publisher's are
  * relative to its flat root; here an artefact page is under `artifact/` and a
- * DAK file is in the served graph. Anything neither — `openapi/index.html`,
+ * sidecar file is in the served graph. Anything neither — `openapi/index.html`,
  * the enumeration schemas, the two `*-enumeration.html` pages the Publisher
  * never wrote — keeps the Publisher's copy, absolute, so a dead link upstream
  * stays visibly the Publisher's rather than becoming a broken one here.
@@ -127,15 +126,15 @@ export function igApiHubLinks(artifacts: readonly FhirArtifact[], publishedAt: s
 }
 
 /**
- * Whether an instance's DAK files are on the site for a page to fetch: its
+ * Whether an instance's sidecar files are on the site for a page to fetch: its
  * artefact-index directory is declared `served`, and its docs directory is
  * the composed instance root — so a page one level down reaches the served
  * data as `../<path>` (bean `680p`).
  */
 export function igApiServed(instanceRoot: string): { ok: true } | { ok: false; why: string } {
   // Found as the file whose stem equals its own `name`, never as
-  // `<directory>.json`: in a separated IG repository the directory is
-  // `smart-base/` and the declaration is still `smart-trust.json` (bean `rbz3`).
+  // `<directory>.json`: in a separated IG repository the directory may be named
+  // for another instance while the declaration keeps its own name (bean `rbz3`).
   const at = declarationPathIn(instanceRoot);
   if (at === undefined) return { ok: false, why: `${basename(instanceRoot)}/ holds no instance declaration` };
   let d: { directories?: { path?: string; graphTypologies?: string[]; served?: boolean; instanceRoot?: boolean; composed?: boolean; igSite?: boolean }[] };
@@ -163,8 +162,8 @@ export function igApiHubFragment(instanceRoot: string, localPath: string): strin
 /**
  * The placeholder a hub page's source holds when its index records none —
  * the ingest's own default. An IG whose post-processing uses another marker
- * (WHO's DAK overlay: `<!-- DAK_API_CONTENT -->`, from `generate_dak_api_hub.py`'s
- * `comment_marker`) has it recorded on `igApiHub.placeholder` at ingest.
+ * has it recorded on `igApiHub.placeholder` at ingest, from the
+ * `--api-placeholder` its own layer passes.
  */
 export const IG_API_PLACEHOLDER = "<!-- IG_API_CONTENT -->";
 /** The hub's loader, published under the instance's docs root by `gen-ig-pages`. */

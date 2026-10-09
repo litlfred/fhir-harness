@@ -445,19 +445,19 @@ describe("webpagePalette inherits along needs (bean `mftp`)", () => {
 describe("every IG site: the IG's top bar, and its TOC declared for the navbar", () => {
   const menu = { groups: [{ label: "Home", items: [{ label: "Summary", href: "overview.html" }] }, { label: "Indices", items: [{ label: "Artifact Index", href: "artifacts.html" }, { label: "Spec", href: "https://example.org/x" }] }] };
   test("the TOC is a visualiser declaration the navbar reads, rows under each group, hrefs under the baseurl", () => {
-    const decl = igTocNav(menu, "/b/smart-trust", [{ label: "Table of Contents", href: "toc.html" }]);
+    const decl = igTocNav(menu, "/b/acme-ig", [{ label: "Table of Contents", href: "toc.html" }]);
     expect(decl.startsWith('<script type="application/json" data-fa-visualiser-nav>')).toBe(true);
     const rows = JSON.parse(decl.replace(/^<script[^>]*>/, "").replace(/<\/script>$/, ""));
     expect(rows).toEqual([
-      { label: "Home", items: [{ label: "Summary", href: "/b/smart-trust/overview.html" }] },
-      { label: "Indices", items: [{ label: "Artifact Index", href: "/b/smart-trust/artifacts.html" }, { label: "Spec", href: "https://example.org/x" }] },
-      { label: "Table of Contents", href: "/b/smart-trust/toc.html" },
+      { label: "Home", items: [{ label: "Summary", href: "/b/acme-ig/overview.html" }] },
+      { label: "Indices", items: [{ label: "Artifact Index", href: "/b/acme-ig/artifacts.html" }, { label: "Spec", href: "https://example.org/x" }] },
+      { label: "Table of Contents", href: "/b/acme-ig/toc.html" },
     ]);
   });
   test("the top bar is one dropdown per group, and never reads as the folio navbar", () => {
-    const bar = igTopBar(menu, "/b/smart-trust", "WHO SMART Trust");
+    const bar = igTopBar(menu, "/b/acme-ig", "ACME Example IG");
     expect(bar).toContain('<summary>Home</summary>');
-    expect(bar).toContain('href="/b/smart-trust/overview.html"');
+    expect(bar).toContain('href="/b/acme-ig/overview.html"');
     expect(bar).not.toContain("fa-nav");
     expect(bar).not.toContain('id="site-nav"');
   });
