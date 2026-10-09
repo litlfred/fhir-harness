@@ -1066,3 +1066,21 @@ describe("the FHIR AST's resources as site.data (system-actors rendered EMPTY wi
     rmSync(d, { recursive: true, force: true });
   });
 });
+
+describe("dependency-table.xhtml is written from the IG's declaration, not left a marker (bean 4475)", () => {
+  test("the include and its data are written, and the stage log says where the rows came from", () => {
+    const d = mkdtempSync(join(tmpdir(), "ig-deps-"));
+    const src = join(d, "src");
+    mkdirSync(join(src, "input", "pagecontent"), { recursive: true });
+    writeFileSync(join(src, "sushi-config.yaml"), "id: x.ig\ntitle: X IG\ndependencies:\n  a.b: 1.0.0\n");
+    writeFileSync(join(src, "input", "pagecontent", "dependencies.md"), "{% include dependency-table.xhtml %}\n\n{% include dependency-table-short.xhtml %}\n");
+    const out = join(d, "site");
+    const r = stageIgSite(src, out, { packageCache: join(d, "no-cache") });
+    expect(r.dependencyTables).toEqual(["dependency-table-short.xhtml", "dependency-table.xhtml"]);
+    expect(r.notRendered).not.toContain("dependency-table.xhtml");
+    expect(readFileSync(join(out, "_includes", "dependency-table.xhtml"), "utf-8")).toContain('form="full"');
+    expect(JSON.parse(readFileSync(join(out, "_data", "fhir.json"), "utf-8")).dependencies).toEqual([{ packageId: "a.b", version: "1.0.0", depth: 0, resolved: false }]);
+    expect(describeStage(r)).toContain("from sushi-config.yaml (dependencies): 1 row(s); NOT in the package cache");
+    rmSync(d, { recursive: true, force: true });
+  });
+});
