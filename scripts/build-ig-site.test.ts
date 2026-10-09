@@ -8,7 +8,7 @@ import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, 
 import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
 import { join } from "node:path";
-import { ARTIFACT_LIST_TEMPLATE_PATH, artifactListInclude, publisherPlural, FOOTER_TEMPLATE_PATH, ARTIFACTS_TEMPLATE_PATH,IG_FIGURE_IMAGES_STAMP, artifactVariables, colourScheme, composeIgSite, contrast, dedupeIds, igTocNav, igTopBar, includeTargets, pageNav, relinkArtifacts, relinkOffSite, rubyLiquidStrings, relinkPublisherOutputs, sourceHeadings, dataOverwritesQa, describeStage, RELEASES_TEMPLATE_PATH, releaseVariables, sizeLabel, stageIgSite, tocPage, type StageResult } from "./build-ig-site";
+import { ARTIFACT_LIST_TEMPLATE_PATH, artifactListInclude, publisherPlural, FOOTER_TEMPLATE_PATH, ARTIFACTS_TEMPLATE_PATH,IG_FIGURE_IMAGES_STAMP, artifactVariables, colourScheme, composeIgSite, contrast, dedupeIds, igTocNav, igTopBar, includeTargets, localTemplateIncludes, pageNav, relinkArtifacts, relinkTemplatedArtifacts, relinkOffSite, rubyLiquidStrings, relinkPublisherOutputs, sourceHeadings, dataOverwritesQa, describeStage, RELEASES_TEMPLATE_PATH, releaseVariables, sizeLabel, stageIgSite, tocPage, type StageResult } from "./build-ig-site";
 import { copyDocsInto, igSiteDocs, webpagePalette } from "./stage-ig-sites";
 import type { IgReleases } from "../schemas/ig-releases.ts";
 import { artifactPageName } from "../schemas/fhir-artifact-index.js";
@@ -312,6 +312,64 @@ describe("the releases page: pointers to release binaries, never the bytes (bean
       const none = stageIgSite(src, join(d, "without"), {});
       expect(none.generated).not.toContain("releases.md");
       expect(existsSync(join(d, "without", "_data", "ig_releases.json"))).toBe(false);
+    } finally {
+      rmSync(d, { recursive: true, force: true });
+    }
+  });
+});
+
+// A local IG Publisher template (`ig.ini` `template = #<dir>`) holds includes a
+// page uses: smart-trust's system-actors loop, 2026-10-09.
+describe("the local template's includes", () => {
+  const ig = (ini: string, withDir = true) => {
+    const d = mkdtempSync(join(tmpdir(), "ig-tpl-"));
+    writeFileSync(join(d, "ig.ini"), ini);
+    if (withDir) mkdirSync(join(d, "local-template", "includes"), { recursive: true });
+    return d;
+  };
+
+  test("found from ig.ini's #<dir>, and not from a commented line, a package template or a path", () => {
+    const cases: [string, boolean, string | undefined][] = [
+      ["[IG]\ntemplate = #local-template\n#template = acme.template.root#current\n", true, "local-template/includes"],
+      ["[IG]\n#template = #local-template\ntemplate = acme.template.root#current\n", true, undefined],
+      ["[IG]\ntemplate = #../elsewhere\n", true, undefined],
+      ["[IG]\ntemplate = #local-template\n", false, undefined],
+    ];
+    for (const [ini, withDir, want] of cases) {
+      const d = ig(ini, withDir);
+      try {
+        expect(localTemplateIncludes(d)).toBe(want === undefined ? undefined : join(d, want));
+      } finally {
+        rmSync(d, { recursive: true, force: true });
+      }
+    }
+  });
+
+  test("a templated link to an artefact page is pointed at this site's copy, for a type with pages only", () => {
+    const src = '<a href="Requirements-{{r.id}}.html">x</a> [c](CapabilityStatement-{{c.id}}.html) <a href="Other-{{o.id}}.html">o</a> <a href="Requirements-R1.html">r</a>';
+    const r = relinkTemplatedArtifacts(src, new Set(["Requirements", "CapabilityStatement"]), "artifact/");
+    expect(r.count).toBe(2);
+    expect(r.text).toBe('<a href="artifact/Requirements-{{r.id}}.html">x</a> [c](artifact/CapabilityStatement-{{c.id}}.html) <a href="Other-{{o.id}}.html">o</a> <a href="Requirements-R1.html">r</a>');
+  });
+
+  test("staged into _includes under the IG's own, relinked, and no longer a marker", () => {
+    const d = ig("[IG]\ntemplate = #local-template\n");
+    try {
+      const src = d;
+      mkdirSync(join(src, "input", "pagecontent"), { recursive: true });
+      mkdirSync(join(src, "input", "includes"), { recursive: true });
+      writeFileSync(join(src, "sushi-config.yaml"), "id: x\ncanonical: http://x\nname: X\nversion: 0.1.0\nfhirVersion: 4.0.1\npages:\n  index.md:\n    title: Home\n");
+      writeFileSync(join(src, "input", "pagecontent", "index.md"), "# Home\n\n{% include summary.liquid %}\n{% include both.liquid %}\n");
+      writeFileSync(join(src, "local-template", "includes", "summary.liquid"), '<a href="Requirements-{{r.id}}.html">{{r.title}}</a>\n');
+      writeFileSync(join(src, "local-template", "includes", "both.liquid"), "from the template\n");
+      writeFileSync(join(src, "input", "includes", "both.liquid"), "from the IG\n");
+      const out = join(d, "out");
+      const res = stageIgSite(src, out, { artifacts: { list: [{ resourceType: "Requirements", id: "R1" }], pagesHref: "artifact/" } });
+      expect(res.templateIncludes).toEqual({ dir: join("local-template", "includes"), files: 2 });
+      expect(res.notRendered).not.toContain("summary.liquid");
+      expect(readFileSync(join(out, "_includes", "summary.liquid"), "utf-8")).toContain('href="artifact/Requirements-{{r.id}}.html"');
+      expect(readFileSync(join(out, "_includes", "both.liquid"), "utf-8")).toBe("from the IG\n");
+      expect(describeStage(res)).toContain("local template includes (ig.ini): 2 from local-template/includes");
     } finally {
       rmSync(d, { recursive: true, force: true });
     }
