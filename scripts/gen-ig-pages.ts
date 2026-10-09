@@ -1329,11 +1329,11 @@ if (ix.package?.localPath && igApiServing.ok) {
     const name = a.title ?? a.name ?? a.id;
     if (a.resourceType === "StructureDefinition") {
       const tabs = resourceTabs(a, igApiTabs, true);
-      // The definitions page is the Publisher's (it needs hl7.fhir.r5.core's
-      // base-type text, which this build cannot hold — bean wnhh), so each
-      // mapping row links an element's definition THERE.
-      const defsAt = `${a.published?.json?.url.replace(/[^/]*$/, "") ?? ""}${stem}-definitions.html#`;
-      const m = mappingsPage(JSON.parse(raw.toString("utf8")), f, resourceTabs(a, igApiTabs, true, "Mappings"), igStructures, (p) => `${defsAt}${p}`);
+      // No link from a mapping row to an element's definition: that page is
+      // the Publisher's `-definitions.html` (it needs hl7.fhir.r5.core's
+      // base-type text, which this build cannot hold — bean wnhh), not written
+      // here, so every such link was dead (owner, 2026-10-09).
+      const m = mappingsPage(JSON.parse(raw.toString("utf8")), f, resourceTabs(a, igApiTabs, true, "Mappings"), igStructures);
       if (m) {
         const esc = (t: { rows: Array<{ label: string; value: string }> }) => ({ ...t, rows: t.rows.map((r) => ({ ...r, label: mdText(r.label), value: mdText(r.value) })) });
         const data = { ...m, heading: mdText(m.heading), intro: mdText(m.intro), inIg: m.inIg.map(esc), toOther: m.toOther.map(esc), other: m.other.map(esc) };

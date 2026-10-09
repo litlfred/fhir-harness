@@ -154,12 +154,13 @@ export function resourceTabs(a: FhirArtifact, extraTabs: Tab[], jsonLocal: boole
   const stem = artifactPageName(a);
   const pub = (k: "json") => a.published?.[k]?.url;
   if (a.resourceType === "StructureDefinition") {
-    // The SD family's own bar: Content, Detailed Descriptions, Mappings, then
-    // the representations. The two table tabs are the Publisher's pages.
+    // The SD family's own bar: Content, Mappings, then the representations.
+    // No "Detailed Descriptions" (owner, 2026-10-09): it linked the
+    // Publisher's `-definitions.html`, which this site does not write -- 67
+    // dead links on smart-trust's gh-pages, measured 2026-10-09.
     const site = pub("json")?.replace(/[^/]*$/, "") ?? "";
     return [
       { label: "Content", href: `${stem}.html`, active: active === "Content" },
-      { label: "Detailed Descriptions", href: `${site}${stem}-definitions.html`, active: false },
       { label: "Mappings", href: jsonLocal ? `${stem}-mappings.html` : `${site}${stem}-mappings.html`, active: active === "Mappings" },
         ...(pub("json") ? [{ label: "JSON", href: jsonLocal ? `${stem}.profile.json.html` : pub("json")!, active: active === "JSON" }] : []),
         ...extraTabs,
@@ -257,7 +258,7 @@ export interface MappingsPageData {
 export interface MappingTable {
   name: string;
   uri?: string;
-  rows: Array<{ label: string; depth: number; href: string; title?: string; value: string }>;
+  rows: Array<{ label: string; depth: number; href?: string; title?: string; value: string }>;
 }
 
 /**
@@ -272,14 +273,16 @@ export interface MappingTable {
  *
  * @param igStructures canonical URLs of the IG's own StructureDefinitions —
  *   an identity whose URI is one of them maps to "this IG".
- * @param definitionsHref where an element's definition is, by its path.
+ * @param definitionsHref where an element's definition is, by its path; omitted,
+ *   a row's label is plain text. The site passes none (owner, 2026-10-09): the
+ *   Publisher's `-definitions.html` it used to link is not written here.
  */
 export function mappingsPage(
   sd: Record<string, unknown>,
   f: ResourceFacts,
   tabs: Tab[],
   igStructures: ReadonlySet<string>,
-  definitionsHref: (path: string) => string,
+  definitionsHref?: (path: string) => string,
 ): MappingsPageData | undefined {
   if (f.kind !== "logical") return undefined;
   const identities = (sd.mapping as Array<{ identity: string; uri?: string; name?: string }> | undefined) ?? [];
@@ -293,7 +296,7 @@ export function mappingsPage(
       const last = segs[segs.length - 1]!;
       const label = segs.length === 1 ? path : last === "id" && segs.length > 2 ? "@id" : e.sliceName ? `${last}:${e.sliceName}` : last;
       const maps = ((e.mapping as Array<{ identity: string; map: string }> | undefined) ?? []).filter((x) => x.identity === m.identity).map((x) => x.map);
-      return { label, depth: segs.length - 1, href: definitionsHref(path), title: typeof e.short === "string" ? e.short : undefined, value: maps.join(", ") };
+      return { label, depth: segs.length - 1, ...(definitionsHref ? { href: definitionsHref(path) } : {}), title: typeof e.short === "string" ? e.short : undefined, value: maps.join(", ") };
     }),
   });
   const inIg = identities.filter((m) => m.uri && igStructures.has(m.uri));
