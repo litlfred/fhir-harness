@@ -20,6 +20,19 @@
 # Manual trigger only (owner decision, 2026-10-06): an IG repository's site is
 # published by hand from the Actions tab, never on push. Add a `push` trigger
 # in the copy only if that repository's owner wants every push published.
+#
+# Built by hand, the IG sites drift apart: each wears the harness chrome of the
+# platform it was last built with (bean 48a6). So the site says what built it
+# (`folio-build.json` at its root) and the run REPORTS any sibling built with
+# a different platform — a message, never a failure. Two repository VARIABLES
+# configure it, so a copy needs no edit:
+#   FOLIO_SITE_SIBLINGS      site URLs to compare with, space-separated
+#   FOLIO_SITE_DEPENDENCIES  owner/repo@ref of the IGs this one depends on,
+#                            whose folio-site is re-run after a publish
+# The rebuild needs the FOLIO_SITE_DISPATCH_TOKEN secret, a token that may run
+# workflows in those repositories; without it the summary says what was NOT
+# rebuilt. Owner, 2026-10-09: "1, but rebuild dependency for now". Keep the
+# dependency list acyclic, or two sites will rebuild each other for ever.
 name: folio site
 
 on:
@@ -116,9 +129,28 @@ jobs:
           bun run cat-harness/scripts/rail-standalone-pages.ts --site ../_site --built cat-harness \
             --foreign-site --home-label "$LABEL" --instance "$INSTANCE"
 
+      - name: Say which platform built this site
+        working-directory: folio-assistant
+        run: |
+          bun run fhir-harness/scripts/site-build-stamp.ts stamp --site ../_site --instance "$INSTANCE" --platform .
+
       - name: Publish to gh-pages
         if: github.ref == 'refs/heads/main'
         uses: JamesIves/github-pages-deploy-action@v4
         with:
           branch: gh-pages
           folder: _site
+
+      - name: Report platform drift against the sibling sites
+        working-directory: folio-assistant
+        run: |
+          bun run fhir-harness/scripts/site-build-stamp.ts drift --self ../_site/folio-build.json \
+            --sites "${{ vars.FOLIO_SITE_SIBLINGS }}"
+
+      - name: Rebuild the IGs this one depends on
+        if: github.ref == 'refs/heads/main'
+        working-directory: folio-assistant
+        env:
+          FOLIO_SITE_DISPATCH_TOKEN: ${{ secrets.FOLIO_SITE_DISPATCH_TOKEN }}
+        run: |
+          bun run fhir-harness/scripts/site-build-stamp.ts dispatch --repos "${{ vars.FOLIO_SITE_DEPENDENCIES }}"
