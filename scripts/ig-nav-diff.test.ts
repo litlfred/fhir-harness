@@ -3,7 +3,7 @@
  * the Publisher's rendered top bar, entry by entry.
  */
 import { describe, expect, it } from "bun:test";
-import { combinedNavDiff, derivedMenu, navDiff, navDiffRecord, renderedMenu } from "./ig-nav-diff.ts";
+import { combinedNavDiff, derivedMenu, derivedPages, navDiff, navDiffRecord, renderedMenu, renderedTocPages, tocDiff } from "./ig-nav-diff.ts";
 
 const BAR = `<ul xmlns="http://www.w3.org/1999/xhtml" class="nav navbar-nav">
   <li class="dropdown"><a data-toggle="dropdown" href="#" class="dropdown-toggle">Home <b class="caret"></b></a>
@@ -78,5 +78,36 @@ describe("per IG and combined", () => {
     expect(c.families["by-ig"]!.entries).toEqual([{ ig: "a.ig", differences: 2 }, { ig: "b.ig", differences: 0 }]);
     expect(() => combinedNavDiff([a], script)).toThrow("at least two");
     expect(() => combinedNavDiff([a, a], script)).toThrow("twice");
+  });
+});
+
+describe("the toc half: declared pages against the Publisher's table of contents", () => {
+  const SUSHI_PAGES = `id: example.ig
+pages:
+  index.md:
+    title: Home
+    overview.md:
+      title: Overview
+  changes.xml:
+    title: Changes
+`;
+  const TOC = `<h2>Table of Contents</h2><table><tr><td><a href="index.html">Home</a></td></tr>
+<tr><td><a href="overview.html#top">Overview</a></td></tr><tr><td><a href="qa.html">QA</a></td></tr>
+<tr><td><a href="ValueSet-x.html">x</a></td></tr><tr><td><a href="https://hl7.org/x.html">ext</a></td></tr></table>`;
+
+  it("derives nested pages as .html, and reads the toc's pages without anchors, artefacts or external links", () => {
+    expect(derivedPages(SUSHI_PAGES)).toEqual(["index.html", "overview.html", "changes.html"]);
+    expect(renderedTocPages(TOC)).toEqual(["index.html", "overview.html", "qa.html"]);
+  });
+
+  it("names pages either side lacks", () => {
+    expect(tocDiff(derivedPages(SUSHI_PAGES), renderedTocPages(TOC))).toEqual([
+      { kind: "page-only-derived", page: "changes.html" },
+      { kind: "page-only-rendered", page: "qa.html" },
+    ]);
+  });
+
+  it("refuses a page that is not a table of contents", () => {
+    expect(() => renderedTocPages("<html></html>")).toThrow("Table of Contents");
   });
 });

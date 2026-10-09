@@ -32,9 +32,12 @@
  * - `group-only-derived` / `group-only-rendered`: a whole top-level group;
  * - `order`: the same entries in a different order (reported once per group).
  *
+ * With `--toc`, the PAGES too: `sushi-config.yaml` `pages:` against the pages
+ * the Publisher's `toc.html` lists (artefact pages left out), as `toc-diff`.
+ *
  * Generic: nothing here knows whose IG it is.
  *
- *   bun run fhir-harness/scripts/ig-nav-diff.ts --sushi <sushi-config.yaml> --rendered <index.html> --out <file> [--check]
+ *   bun run fhir-harness/scripts/ig-nav-diff.ts --sushi <sushi-config.yaml> --rendered <index.html> [--toc <toc.html>] --out <file> [--check]
  *   bun run fhir-harness/scripts/ig-nav-diff.ts --combine <record.json> <record.json> [...] --out <file> [--check]
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
@@ -117,6 +120,54 @@ export function derivedMenu(sushiYaml: string): IgMenuGroup[] {
   return groupsFromSushiMenu(s.menu);
 }
 
+/** The pages `sushi-config.yaml` `pages:` declares (a nested map, file → `{title, …children}`), as `.html` names. */
+export function derivedPages(sushiYaml: string): string[] {
+  const s = (parseYaml(sushiYaml) ?? {}) as Record<string, unknown>;
+  const out: string[] = [];
+  const walk = (node: unknown): void => {
+    if (node === null || typeof node !== "object" || Array.isArray(node)) return;
+    for (const [key, value] of Object.entries(node as Record<string, unknown>)) {
+      if (!/\.(md|xml|html)$/.test(key)) continue;
+      out.push(key.replace(/\.(md|xml)$/, ".html"));
+      walk(value);
+    }
+  };
+  walk(s.pages);
+  return out;
+}
+
+/** An artefact page (`ValueSet-x.html`, `StructureDefinition-y.html`): the toc's artefact half, not P1's. */
+const ARTEFACT_PAGE = /^[A-Z][A-Za-z0-9]+-[^/]+\.html$/;
+
+/**
+ * The PAGES the Publisher's `toc.html` lists: every local `.html` link in its
+ * table of contents, without anchors, artefact pages left out — those are the
+ * artefact index's question (`jut3`), not navigation's.
+ */
+export function renderedTocPages(html: string): string[] {
+  const start = html.indexOf("Table of Contents");
+  if (start < 0) throw new Error("no 'Table of Contents' in the page: not a Publisher toc.html");
+  const body = html.slice(start);
+  const seen = new Set<string>();
+  for (const m of body.matchAll(/<a\b[^>]*href="([^"#:?]+\.html)(?:#[^"]*)?"/g)) {
+    const href = m[1]!.replace(/^\.\//, "");
+    if (!href.includes("/") && !ARTEFACT_PAGE.test(href)) seen.add(href);
+  }
+  return [...seen];
+}
+
+export type TocDifference = { kind: "page-only-derived" | "page-only-rendered"; page: string };
+
+/** Pages one side has and the other does not. Order is not compared: a toc is a tree the Publisher numbers itself. */
+export function tocDiff(derived: string[], rendered: string[]): TocDifference[] {
+  const r = new Set(rendered);
+  const d = new Set(derived);
+  return [
+    ...derived.filter((p) => !r.has(p)).map((page) => ({ kind: "page-only-derived" as const, page })),
+    ...rendered.filter((p) => !d.has(p)).map((page) => ({ kind: "page-only-rendered" as const, page })),
+  ];
+}
+
 export type NavDifference =
   | { kind: "group-only-derived" | "group-only-rendered"; group: string }
   | { kind: "only-derived" | "only-rendered"; group: string; label: string; href: string }
@@ -158,8 +209,15 @@ export function navDiff(derived: IgMenuGroup[], rendered: IgMenuGroup[]): NavDif
 }
 
 /** One IG's record. Zero differences is a finding too: the comparison was made. */
-export function navDiffRecord(ig: string, derived: IgMenuGroup[], rendered: IgMenuGroup[], script: string): QaResult {
+export function navDiffRecord(
+  ig: string,
+  derived: IgMenuGroup[],
+  rendered: IgMenuGroup[],
+  script: string,
+  toc?: { derived: string[]; rendered: string[] },
+): QaResult {
   const diffs = navDiff(derived, rendered);
+  const tocDiffs = toc ? tocDiff(toc.derived, toc.rendered) : undefined;
   const count = (g: IgMenuGroup[]) => g.reduce((n, x) => n + Math.max(x.items.length, x.href ? 1 : 0), 0);
   return {
     $schema: "qa-results/v1",
@@ -171,8 +229,17 @@ export function navDiffRecord(ig: string, derived: IgMenuGroup[], rendered: IgMe
         count: diffs.length,
         entries: diffs,
       },
+      ...(tocDiffs && toc
+        ? {
+            "toc-diff": {
+              summary: `Pages declared by sushi-config.yaml pages: (${toc.derived.length}) against the pages the Publisher's toc.html lists (${toc.rendered.length}, artefact pages left out)`,
+              count: tocDiffs.length,
+              entries: tocDiffs,
+            },
+          }
+        : {}),
     },
-    total: diffs.length,
+    total: diffs.length + (tocDiffs?.length ?? 0),
   };
 }
 
@@ -181,7 +248,9 @@ export function combinedNavDiff(records: QaResult[], script: string): QaResult {
   if (records.length < 2) throw new Error(`a combined view needs at least two IGs, got ${records.length}`);
   const ids = records.map((r) => r.subject.id);
   if (new Set(ids).size !== ids.length) throw new Error(`an IG appears twice: ${ids.join(", ")}`);
-  const entries = records.flatMap((r) => (r.families["nav-diff"]?.entries ?? []).map((e) => ({ ig: r.subject.id, ...(e as Record<string, unknown>) })));
+  const entries = records.flatMap((r) =>
+    ["nav-diff", "toc-diff"].flatMap((fam) => (r.families[fam]?.entries ?? []).map((e) => ({ ig: r.subject.id, ...(e as Record<string, unknown>) }))),
+  );
   return {
     $schema: "qa-results/v1",
     producer: { script, script_hash: sourceHashOf(join(REPO, script)) },
@@ -192,7 +261,7 @@ export function combinedNavDiff(records: QaResult[], script: string): QaResult {
         count: records.length,
         entries: records.map((r) => ({ ig: r.subject.id, differences: r.total })),
       },
-      "nav-diff": { summary: `Navigation differences across ${ids.join(", ")}`, count: entries.length, entries },
+      "nav-diff": { summary: `Navigation and toc differences across ${ids.join(", ")}`, count: entries.length, entries },
     },
     total: entries.length,
   };
@@ -237,16 +306,18 @@ if (import.meta.main) {
     const sushi = opt("--sushi");
     const rendered = opt("--rendered");
     if (!sushi || !rendered || !out) {
-      console.error("usage: ig-nav-diff.ts --sushi <sushi-config.yaml> --rendered <index.html> --out <file> [--check]");
+      console.error("usage: ig-nav-diff.ts --sushi <sushi-config.yaml> --rendered <index.html> [--toc <toc.html>] --out <file> [--check]");
       process.exit(2);
     }
     const yaml = readFileSync(sushi, "utf8");
     const ig = String((parseYaml(yaml) as { id?: unknown } | null)?.id ?? "unknown");
-    const record = navDiffRecord(ig, derivedMenu(yaml), renderedMenu(readFileSync(rendered, "utf8")), script);
+    const tocFile = opt("--toc");
+    const toc = tocFile ? { derived: derivedPages(yaml), rendered: renderedTocPages(readFileSync(tocFile, "utf8")) } : undefined;
+    const record = navDiffRecord(ig, derivedMenu(yaml), renderedMenu(readFileSync(rendered, "utf8")), script, toc);
     writeOrCheck(resolve(out), record, check);
     if (!check) {
       console.log(`${out}: ${ig} — ${record.total} difference(s)`);
-      for (const d of record.families["nav-diff"]!.entries as NavDifference[]) console.log(`  ${JSON.stringify(d)}`);
+      for (const fam of ["nav-diff", "toc-diff"]) for (const d of record.families[fam]?.entries ?? []) console.log(`  ${fam}: ${JSON.stringify(d)}`);
     }
   }
 }
