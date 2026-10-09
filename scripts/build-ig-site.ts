@@ -46,6 +46,7 @@ import { parse as parseYaml } from "yaml";
 import { astImplementationGuide, describeSiteData, igSiteData, type IgSiteDataResult } from "./ig-site-data";
 import { defaultPackageCache, DEPENDENCY_FRAGMENTS, dependencyRows, fromImplementationGuide, fromSushiConfig, type DependencyRow } from "./ig-dependencies.ts";
 import { readAst } from "./ig-ast.ts";
+import { GLOBALS_FRAGMENT, globalsFromImplementationGuide, globalsFromSushiConfig } from "./ig-globals.ts";
 import { artifactPageName } from "../schemas/fhir-artifact-index.js";
 import { wrapRaw } from "../../cat-harness/scripts/lib/liquid-raw.ts";
 import type { IgReleases } from "../schemas/ig-releases.ts";
@@ -155,6 +156,8 @@ export interface StageResult {
   notRendered: string[];
   /** The Publisher's dependency tables (`dependency-table*.xhtml`) a page includes, written from `site.data.fhir.dependencies` (bean `4475`). */
   dependencyTables: string[];
+  /** The Publisher's global profiles table, written from `site.data.fhir.globals` when a page includes it: where the rows came from, and how many. */
+  globals?: { from: string; rows: number };
   /** Where the dependency rows came from, how many, and how many packages the cache did not hold. */
   dependencies?: { from: string; rows: number; unresolved: string[] };
   /** `input/images` data files (`.json`, `.jsonld`) that do not parse: not published, with the parser's reason. */
@@ -906,6 +909,9 @@ export const ARTIFACT_LIST_INCLUDE = "fa-ig-artifact-list.html";
 /** The include every `dependency-table*.xhtml` this build writes calls: prefixed, so it cannot collide with one the IG's source holds. */
 export const DEPENDENCY_TABLE_INCLUDE = "fa-ig-dependency-table.html";
 export const DEPENDENCY_TABLE_TEMPLATE_PATH = resolve(import.meta.dir, "templates/ig-site/dependency-table.liquid");
+/** The include the globals fragment calls, and its template. */
+export const GLOBALS_TABLE_INCLUDE = "fa-ig-globals-table.html";
+export const GLOBALS_TABLE_TEMPLATE_PATH = resolve(import.meta.dir, "templates/ig-site/globals-table.liquid");
 
 /** What stands in for a diagram nothing rendered: visible, never an empty include. */
 export const notRenderedMarker = (name: string, from: string) =>
@@ -1461,6 +1467,7 @@ export function stageIgSite(igSrc: string, out: string, opts: StageOptions = {})
   const listed: string[] = [];
   const notRendered: string[] = [];
   const dependencyTables: string[] = [];
+  let globalsIncluded = false;
   const imagesSource = join(src, "input", "images-source");
   const wanted = new Set(pages.flatMap((f) => includeTargets(readFileSync(join(out, f), "utf-8"))));
   for (const name of [...wanted].sort()) {
@@ -1495,6 +1502,13 @@ export function stageIgSite(igSrc: string, out: string, opts: StageOptions = {})
       writeFileSync(join(out, "_includes", name), `{% include ${DEPENDENCY_TABLE_INCLUDE} form="${depForm}" %}\n`);
       writeFileSync(join(out, "_includes", DEPENDENCY_TABLE_INCLUDE), readFileSync(DEPENDENCY_TABLE_TEMPLATE_PATH, "utf-8"));
       dependencyTables.push(name);
+      continue;
+    }
+    // The Publisher's global profiles table, from site.data.fhir.globals.
+    if (name === GLOBALS_FRAGMENT) {
+      writeFileSync(join(out, "_includes", name), `{% include ${GLOBALS_TABLE_INCLUDE} %}\n`);
+      writeFileSync(join(out, "_includes", GLOBALS_TABLE_INCLUDE), readFileSync(GLOBALS_TABLE_TEMPLATE_PATH, "utf-8"));
+      globalsIncluded = true;
       continue;
     }
     writeFileSync(join(out, "_includes", name), notRenderedMarker(name, existsSync(puml) ? `input/images-source/${basename(puml)}` : "a source this build does not hold"));
@@ -1537,7 +1551,11 @@ export function stageIgSite(igSrc: string, out: string, opts: StageOptions = {})
     rows: depRows.length,
     unresolved: depRows.filter((r) => !r.resolved && !r.repeat).map((r) => `${r.packageId}#${r.version}`),
   };
-  writeFileSync(join(out, "_data", "fhir.json"), JSON.stringify({ ...siteData.data, ...(lifted?.vars ?? {}), footer, dependencies: depRows }, null, 2) + "\n");
+  const globalRows = astIg && "resource" in astIg ? globalsFromImplementationGuide(astIg.resource) : globalsFromSushiConfig(sushi);
+  const globals = globalsIncluded
+    ? { from: astIg && "resource" in astIg ? `output-ast/${astIg.file} (global)` : "sushi-config.yaml (global)", rows: globalRows.length }
+    : undefined;
+  writeFileSync(join(out, "_data", "fhir.json"), JSON.stringify({ ...siteData.data, ...(lifted?.vars ?? {}), footer, dependencies: depRows, globals: globalRows }, null, 2) + "\n");
   const astData = astResourceData(opts.ast ?? join(src, "output-ast"), join(out, "_data"));
   // After every file this build writes to `_data/`, so a clash is seen (bean `yy4u`).
   const data = stageIgData(join(src, "input", "data"), join(out, "_data"));
@@ -1578,7 +1596,7 @@ export function stageIgSite(igSrc: string, out: string, opts: StageOptions = {})
     ].join("\n"),
   );
   const fillsResult = opts.fills?.length ? { filled, unused: opts.fills.map((x) => x.marker).filter((m) => !usedMarkers.has(m)) } : undefined;
-  return { templateIncludes: templateIncludesResult, pages: pages.sort(), generated, fills: fillsResult, variables: lifted ? { artifacts: Object.keys(lifted.vars.artifacts).length, notSourced: lifted.notSourced } : undefined, unlisted: unlisted.sort(), menuMissing, includes, images, rendered, listed, notRendered, unparseable, relinked, deadLinks: [...dead].sort(), scheme, siteData, data, astData, dependencyTables, dependencies };
+  return { templateIncludes: templateIncludesResult, pages: pages.sort(), generated, fills: fillsResult, variables: lifted ? { artifacts: Object.keys(lifted.vars.artifacts).length, notSourced: lifted.notSourced } : undefined, unlisted: unlisted.sort(), menuMissing, includes, images, rendered, listed, notRendered, unparseable, relinked, deadLinks: [...dead].sort(), scheme, siteData, data, astData, dependencyTables, dependencies, globals };
 }
 
 /**
@@ -1645,6 +1663,7 @@ export function describeStage(r: StageResult): string {
       ? [`dependency table(s) ${r.dependencyTables.join(", ")} from ${r.dependencies.from}: ${r.dependencies.rows} row(s)` +
           (r.dependencies.unresolved.length ? `; NOT in the package cache, so their own dependencies are not shown: ${r.dependencies.unresolved.join(", ")}` : "")]
       : []),
+    ...(r.globals ? [`globals table from ${r.globals.from}: ${r.globals.rows} global profile(s)`] : []),
     ...(r.data.staged.length ? [`IG data staged into _data/ (site.data.*): ${r.data.staged.join(", ")}`] : []),
     ...r.data.overwrites.map((o) => `QA FINDING data-overwrite: site.data.${o.key} — kept ${o.kept}, DROPPED ${o.dropped}`),
     r.scheme
