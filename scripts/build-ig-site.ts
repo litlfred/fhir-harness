@@ -168,6 +168,8 @@ export interface StageResult {
   siteData: IgSiteDataResult;
   /** The AST's resources as `site.data.canonicals` and `site.data["<Type>-<id>"]`; undefined when there is no AST. */
   astData?: { canonicals: number; resources: number } | { why: string };
+  /** The local template's `includes/` directory (`ig.ini` `template = #<dir>`), relative to the source, and how many files it gave `_includes/`. */
+  templateIncludes?: { dir: string; files: number };
   /** `input/data/*` staged into `_data/`, and every `site.data` key two sources defined (bean `yy4u`). */
   data: { staged: string[]; overwrites: DataOverwrite[] };
 }
@@ -199,6 +201,45 @@ export function relinkArtifacts(text: string, pageNames: ReadonlySet<string>, pa
     return `${pre}${pagesHref}${page}.html`;
   });
   return { text: out, count };
+}
+
+/**
+ * The same, for a link a TEMPLATE builds: `href="Requirements-{{requirement.id}}.html"`
+ * has no page name to look up until Liquid runs, so it is matched on the
+ * resource type before the `{{`. Only a type that has artefact pages here is
+ * touched. Measured on smart-trust's local template (2026-10-09): links to
+ * `Requirements-…` and `CapabilityStatement-…` pages, written this way.
+ */
+export function relinkTemplatedArtifacts(text: string, types: ReadonlySet<string>, pagesHref: string): { text: string; count: number } {
+  let count = 0;
+  const out = text.replace(/(\]\(|href=["'])([A-Z][A-Za-z]+)-(?=\{\{)/g, (whole, pre: string, type: string) => {
+    if (!types.has(type)) return whole;
+    count++;
+    return `${pre}${pagesHref}${type}-`;
+  });
+  return { text: out, count };
+}
+
+/**
+ * The IG Publisher's LOCAL template's includes, when `ig.ini` names one
+ * (`template = #<dir>`). The Publisher puts a template's `includes/` in
+ * `_includes/` under the IG's own `input/includes`, so a page can include a
+ * template fragment by name. smart-trust's `system-actors.md` includes
+ * `actordefinition-short-summary.liquid` from `local-template/includes/`, and
+ * that fragment reads the AST's `site.data`. Until this, it was a "not
+ * rendered" marker although its source was in the checkout (2026-10-09).
+ *
+ * A template named by package (`template = who.template.root#current`) is not
+ * in the checkout and is not looked for. The directory name is a plain path
+ * segment; anything else is ignored rather than followed.
+ */
+export function localTemplateIncludes(src: string): string | undefined {
+  const ini = join(src, "ig.ini");
+  if (!existsSync(ini)) return undefined;
+  const m = /^[ \t]*template[ \t]*=[ \t]*#[ \t]*([A-Za-z0-9_-][A-Za-z0-9._-]*)[ \t]*$/m.exec(readFileSync(ini, "utf-8"));
+  if (!m || m[1]!.includes("..")) return undefined;
+  const dir = join(src, m[1]!, "includes");
+  return existsSync(dir) && statSync(dir).isDirectory() ? dir : undefined;
 }
 
 /**
@@ -1366,6 +1407,25 @@ export function stageIgSite(igSrc: string, out: string, opts: StageOptions = {})
   }
 
   let includes = 0;
+  // The local template's includes first, so the IG's own of the same name win.
+  const templateIncludes = localTemplateIncludes(src);
+  const artifactTypes = new Set((opts.artifacts?.list ?? []).map((a) => a.resourceType));
+  let fromTemplate = 0;
+  for (const f of templateIncludes ? files(templateIncludes) : []) {
+    if (/\.(liquid|html|md)$/.test(f)) {
+      let t = rubyLiquidStrings(readFileSync(join(templateIncludes!, f), "utf-8")).text;
+      if (opts.artifacts) {
+        const r = relinkArtifacts(t, artifactPages, opts.artifacts.pagesHref);
+        const tr = relinkTemplatedArtifacts(r.text, artifactTypes, opts.artifacts.pagesHref);
+        relinked += r.count + tr.count;
+        t = tr.text;
+      }
+      writeFileSync(join(out, "_includes", f), t);
+    } else copyFileSync(join(templateIncludes!, f), join(out, "_includes", f));
+    fromTemplate++;
+    includes++;
+  }
+  const templateIncludesResult = templateIncludes ? { dir: relative(src, templateIncludes), files: fromTemplate } : undefined;
   for (const dir of [join(src, "input", "includes"), pagecontent]) {
     for (const f of files(dir)) {
       // A transcluded page carries the same flat artefact links as a page does.
@@ -1518,7 +1578,7 @@ export function stageIgSite(igSrc: string, out: string, opts: StageOptions = {})
     ].join("\n"),
   );
   const fillsResult = opts.fills?.length ? { filled, unused: opts.fills.map((x) => x.marker).filter((m) => !usedMarkers.has(m)) } : undefined;
-  return { pages: pages.sort(), generated, fills: fillsResult, variables: lifted ? { artifacts: Object.keys(lifted.vars.artifacts).length, notSourced: lifted.notSourced } : undefined, unlisted: unlisted.sort(), menuMissing, includes, images, rendered, listed, notRendered, unparseable, relinked, deadLinks: [...dead].sort(), scheme, siteData, data, astData, dependencyTables, dependencies };
+  return { templateIncludes: templateIncludesResult, pages: pages.sort(), generated, fills: fillsResult, variables: lifted ? { artifacts: Object.keys(lifted.vars.artifacts).length, notSourced: lifted.notSourced } : undefined, unlisted: unlisted.sort(), menuMissing, includes, images, rendered, listed, notRendered, unparseable, relinked, deadLinks: [...dead].sort(), scheme, siteData, data, astData, dependencyTables, dependencies };
 }
 
 /**
@@ -1566,6 +1626,7 @@ export function dedupeSiteIds(site: string): Map<string, string[]> {
 export function describeStage(r: StageResult): string {
   return [
     `pages: ${r.pages.length}; includes: ${r.includes}; images: ${r.images}; diagrams rendered: ${r.rendered.length}`,
+    ...(r.templateIncludes ? [`local template includes (ig.ini): ${r.templateIncludes.files} from ${r.templateIncludes.dir}`] : []),
     ...(r.generated.length ? [`generated from data this build holds (the Publisher generates these): ${r.generated.join(", ")}`] : []),
     ...(r.fills?.filled.length ? [`post-processing filled: ${r.fills.filled.join(", ")}`] : []),
     ...(r.fills?.unused.length ? [`post-processing fill with no marker in any page (NOT applied): ${r.fills.unused.join(", ")}`] : []),
