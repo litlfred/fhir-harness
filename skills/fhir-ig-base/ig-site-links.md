@@ -33,7 +33,7 @@ one, which is the IG's own.
 | a Publisher download (`package.tgz`, `*.zip`) | the IG's published site (sushi `canonical`) | `relinkPublisherOutputs` |
 | a Publisher-only page (`qa.html`, `toc.html`, …) | the published site | `relinkOffSite`, `PUBLISHER_PAGES` |
 | a FILE of the IG's repository (`.github/…`, `bpmn/x.bpmn` from `input/bpmn/`) | that file on GitHub, at the edit branch | `relinkOffSite` |
-| `openapi/index.html` (Swagger's deep links too) | the OpenAPI graph's own index, which forwards `#/<tag>/<operationId>` | `gen-openapi-pages` |
+| `openapi/index.html` (Swagger's deep links too) | the OpenAPI graph's own index, which forwards `#/<tag>/<operationId>` — on an IG repository's own site too, where `publish-served` puts the graph at `openapi/` | `gen-openapi-pages`, `publish-served` |
 | a `.html` page nothing serves | **left as written and reported** — `DEAD in the IG's own source` in the stage log | `relinkOffSite` |
 
 The last row is deliberate. smart-trust links `video_tutorial.html`, which is

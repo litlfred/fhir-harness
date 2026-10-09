@@ -51,16 +51,14 @@ export interface JsonViewData {
 
 /**
  * @param packagePath the package's instance-relative path (`fhir-artifact-index/package.tgz`)
- * @param extraTabs   tabs after TTL, in the Publisher's order (a DAK overlay's views)
+ * @param extraTabs   tabs after JSON, in the Publisher's order (a DAK overlay's views)
  */
 export function jsonViewData(a: FhirArtifact, packagePath: string, extraTabs: Tab[] = []): JsonViewData {
   const stem = artifactPageName(a);
-  const pub = (k: "xml" | "json" | "ttl") => a.published?.[k]?.url;
+  const pub = (k: "json") => a.published?.[k]?.url;
   const tabs: Tab[] = [
     { label: "Narrative Content", href: `${stem}.html`, active: false },
-    ...(pub("xml") ? [{ label: "XML", href: pub("xml")!, active: false }] : []),
     { label: "JSON", href: `${stem}.json.html`, active: true },
-    ...(pub("ttl") ? [{ label: "TTL", href: pub("ttl")!, active: false }] : []),
     ...extraTabs,
   ];
   return {
@@ -143,29 +141,34 @@ export interface TabPageData {
   sections: Array<{ heading?: string; text: string }>;
 }
 
-/** The Publisher's tab bar for a resource's pages, with `active` the current one (or none). */
+/**
+ * The Publisher's tab bar for a resource's pages, with `active` the current one (or none).
+ *
+ * No XML or TTL tab (owner, 2026-10-09: *"i dont want links to *.xml / *.ttl,
+ * only the json(ld)+schema and .html"*). The Publisher wrote both; this site
+ * renders neither, so each was an absolute link to a file the site root does
+ * not hold -- 4,288 of them on smart-trust's gh-pages, measured 2026-10-09.
+ * JSON-LD and the JSON Schema arrive as `extraTabs` from the IG API views.
+ */
 export function resourceTabs(a: FhirArtifact, extraTabs: Tab[], jsonLocal: boolean, active?: string): Tab[] {
   const stem = artifactPageName(a);
-  const pub = (k: "xml" | "json" | "ttl") => a.published?.[k]?.url;
+  const pub = (k: "json") => a.published?.[k]?.url;
   if (a.resourceType === "StructureDefinition") {
-    // The SD family's own bar: Content, Detailed Descriptions, Mappings, then
-    // the representations. The two table tabs are the Publisher's pages.
+    // The SD family's own bar: Content, Mappings, then the representations.
+    // No "Detailed Descriptions" (owner, 2026-10-09): it linked the
+    // Publisher's `-definitions.html`, which this site does not write -- 67
+    // dead links on smart-trust's gh-pages, measured 2026-10-09.
     const site = pub("json")?.replace(/[^/]*$/, "") ?? "";
     return [
       { label: "Content", href: `${stem}.html`, active: active === "Content" },
-      { label: "Detailed Descriptions", href: `${site}${stem}-definitions.html`, active: false },
       { label: "Mappings", href: jsonLocal ? `${stem}-mappings.html` : `${site}${stem}-mappings.html`, active: active === "Mappings" },
-      ...(pub("xml") ? [{ label: "XML", href: pub("xml")!, active: false }] : []),
-      ...(pub("json") ? [{ label: "JSON", href: jsonLocal ? `${stem}.profile.json.html` : pub("json")!, active: active === "JSON" }] : []),
-      ...(pub("ttl") ? [{ label: "TTL", href: pub("ttl")!, active: false }] : []),
-      ...extraTabs,
+        ...(pub("json") ? [{ label: "JSON", href: jsonLocal ? `${stem}.profile.json.html` : pub("json")!, active: active === "JSON" }] : []),
+        ...extraTabs,
     ];
   }
   return [
     { label: "Narrative Content", href: `${stem}.html`, active: false },
-    ...(pub("xml") ? [{ label: "XML", href: pub("xml")!, active: false }] : []),
     ...(pub("json") ? [{ label: "JSON", href: jsonLocal && hasJsonView(a) ? `${stem}.json.html` : pub("json")!, active: active === "JSON" }] : []),
-    ...(pub("ttl") ? [{ label: "TTL", href: pub("ttl")!, active: false }] : []),
     ...extraTabs,
   ];
 }
@@ -255,7 +258,7 @@ export interface MappingsPageData {
 export interface MappingTable {
   name: string;
   uri?: string;
-  rows: Array<{ label: string; depth: number; href: string; title?: string; value: string }>;
+  rows: Array<{ label: string; depth: number; href?: string; title?: string; value: string }>;
 }
 
 /**
@@ -270,14 +273,16 @@ export interface MappingTable {
  *
  * @param igStructures canonical URLs of the IG's own StructureDefinitions —
  *   an identity whose URI is one of them maps to "this IG".
- * @param definitionsHref where an element's definition is, by its path.
+ * @param definitionsHref where an element's definition is, by its path; omitted,
+ *   a row's label is plain text. The site passes none (owner, 2026-10-09): the
+ *   Publisher's `-definitions.html` it used to link is not written here.
  */
 export function mappingsPage(
   sd: Record<string, unknown>,
   f: ResourceFacts,
   tabs: Tab[],
   igStructures: ReadonlySet<string>,
-  definitionsHref: (path: string) => string,
+  definitionsHref?: (path: string) => string,
 ): MappingsPageData | undefined {
   if (f.kind !== "logical") return undefined;
   const identities = (sd.mapping as Array<{ identity: string; uri?: string; name?: string }> | undefined) ?? [];
@@ -291,7 +296,7 @@ export function mappingsPage(
       const last = segs[segs.length - 1]!;
       const label = segs.length === 1 ? path : last === "id" && segs.length > 2 ? "@id" : e.sliceName ? `${last}:${e.sliceName}` : last;
       const maps = ((e.mapping as Array<{ identity: string; map: string }> | undefined) ?? []).filter((x) => x.identity === m.identity).map((x) => x.map);
-      return { label, depth: segs.length - 1, href: definitionsHref(path), title: typeof e.short === "string" ? e.short : undefined, value: maps.join(", ") };
+      return { label, depth: segs.length - 1, ...(definitionsHref ? { href: definitionsHref(path) } : {}), title: typeof e.short === "string" ? e.short : undefined, value: maps.join(", ") };
     }),
   });
   const inIg = identities.filter((m) => m.uri && igStructures.has(m.uri));

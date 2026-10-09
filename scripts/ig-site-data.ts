@@ -32,6 +32,14 @@
  *
  * ## Sources, in authority order
  *
+ * 0. The IG's FHIR AST (`output-ast/`, where `ig-cache.sh restore` puts it,
+ *    or `--ast`): the ImplementationGuide RESOURCE the Publisher built, which
+ *    is what its `site.data.fhir.ig` is (owner, 2026-10-09: *"do
+ *    site.data.fhir from the FHIR AST"*; bean `jut3`). An AST is a cache, so
+ *    every field it supplies says so in its provenance. `sushi-config.yaml`
+ *    then fills only what the resource lacks, and a field the two state
+ *    DIFFERENTLY is reported in `disagreements` — the AST's value is written,
+ *    and the reader of the log learns the cache and the source have parted.
  * 1. `sushi-config.yaml` at the IG root — what the Publisher itself reads.
  * 2. `fhir-artifact-index/index.json` — read from a published IG; carries
  *    `packageId`, `version`, `fhirVersion`, `canonicalBase`, but not `id`,
@@ -43,7 +51,7 @@
  *    by its template and gave each IG an identity file of its own.
  *
  * Usage:
- *   bun run fhir-harness/scripts/ig-site-data.ts --ig <IG root> --out <site>/_data/fhir.json [--check]
+ *   bun run fhir-harness/scripts/ig-site-data.ts --ig <IG root> --out <site>/_data/fhir.json [--ast <AST dir>] [--check]
  *
  * @module fhir-harness/scripts/ig-site-data
  */
@@ -52,6 +60,7 @@ import { IG_IDENTITY_FILENAME, readIgIdentity, statusOf } from "../schemas/ig-id
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { parse as parseYaml } from "yaml";
+import { readAst } from "./ig-ast.ts";
 
 /** The ImplementationGuide resource fields the Publisher exposes as `site.data.fhir.ig`. */
 export interface IgResourceFields {
@@ -79,6 +88,30 @@ export interface IgSiteDataResult {
   undetermined: string[];
   /** Sources read and deliberately not used, with why. */
   refused: string[];
+  /** Fields the AST and `sushi-config.yaml` state differently: the AST's value was written. */
+  disagreements: string[];
+  /** An AST that is there and could not be used, with why -- the build goes on from the other sources. */
+  astNotUsed?: string;
+}
+
+/**
+ * The ImplementationGuide resource of the AST at `astDir`, with the file it
+ * was read from -- or undefined when there is no AST there. An AST that IS
+ * there but cannot be read, or holds no ImplementationGuide, is a reason, not
+ * a silent fallback.
+ */
+export function astImplementationGuide(astDir: string): { resource: Record<string, unknown>; file: string } | { why: string } | undefined {
+  if (!existsSync(join(astDir, "manifest.json"))) return undefined;
+  try {
+    const ast = readAst(astDir);
+    const igs = ast.manifest.resources.filter((r) => r.resourceType === "ImplementationGuide");
+    if (igs.length !== 1) return { why: `${astDir} holds ${igs.length} ImplementationGuide resources, not one` };
+    const resource = readJson(join(astDir, igs[0]!.file));
+    if (!resource) return { why: `${join(astDir, igs[0]!.file)} is not valid JSON` };
+    return { resource, file: igs[0]!.file };
+  } catch (e) {
+    return { why: (e as Error).message };
+  }
 }
 
 const ALL_IG_FIELDS: Array<keyof IgResourceFields> = ["id", "url", "name", "title", "version", "status", "publisher", "fhirVersion"];
@@ -93,14 +126,33 @@ function readJson(p: string): Record<string, unknown> | undefined {
   }
 }
 
-/** Compute `site.data.fhir` for the IG at `igRoot`. Throws when no source exists. */
-export function igSiteData(igRoot: string): IgSiteDataResult {
+/**
+ * Compute `site.data.fhir` for the IG at `igRoot`. Throws when no source exists.
+ *
+ * @param opts.ast the IG's AST directory; default `<igRoot>/output-ast`
+ */
+export function igSiteData(igRoot: string, opts: { ast?: string } = {}): IgSiteDataResult {
   const ig: IgResourceFields = {};
   const data: FhirSiteData = { ig };
   const provenance: Record<string, string> = {};
   const refused: string[] = [];
+  const disagreements: string[] = [];
+  const get = (field: string): unknown => {
+    const [head, tail] = field.split(".");
+    const v = (data as unknown as Record<string, unknown>)[head!];
+    return tail ? (v as Record<string, unknown> | undefined)?.[tail] : v;
+  };
+  // The first source to state a field writes it; a later one only fills a
+  // gap, and a later one that states it DIFFERENTLY is recorded.
   const set = (field: string, value: unknown, from: string) => {
     if (value === undefined) return;
+    const had = get(field);
+    if (had !== undefined) {
+      if (JSON.stringify(had) !== JSON.stringify(value)) {
+        disagreements.push(`${field}: ${provenance[field]} says ${JSON.stringify(had)}, ${from} says ${JSON.stringify(value)}`);
+      }
+      return;
+    }
     const [head, tail] = field.split(".");
     if (tail) (data as unknown as Record<string, Record<string, unknown>>)[head!]![tail] = value;
     else (data as unknown as Record<string, unknown>)[head!] = value;
@@ -109,6 +161,28 @@ export function igSiteData(igRoot: string): IgSiteDataResult {
 
   const sushiPath = join(igRoot, "sushi-config.yaml");
   const indexPath = join(igRoot, "fhir-artifact-index", "index.json");
+  const astDir = opts.ast ?? join(igRoot, "output-ast");
+
+  const fromAst = astImplementationGuide(astDir);
+  const astNotUsed = fromAst && "why" in fromAst ? `the FHIR AST at ${astDir}: ${fromAst.why}` : undefined;
+  if (fromAst && !("why" in fromAst)) {
+    const r = fromAst.resource;
+    const from = `FHIR AST ${fromAst.file} (cache)`;
+    const id = str(r.id);
+    const url = str(r.url);
+    set("ig.id", id, from);
+    set("ig.url", url, from);
+    set("ig.name", str(r.name), from);
+    set("ig.title", str(r.title), from);
+    set("ig.version", str(r.version), from);
+    set("ig.status", str(r.status), from);
+    set("ig.publisher", str(r.publisher), from);
+    set("ig.fhirVersion", Array.isArray(r.fhirVersion) ? r.fhirVersion.map(String) : undefined, from);
+    set("packageId", str(r.packageId), from);
+    // The canonical is the IG resource's url less its own path, as SUSHI composes it the other way.
+    const suffix = id ? `/ImplementationGuide/${id}` : undefined;
+    set("canonical", url && suffix && url.endsWith(suffix) ? url.slice(0, -suffix.length) : undefined, from);
+  }
 
   if (existsSync(sushiPath)) {
     const s = (parseYaml(readFileSync(sushiPath, "utf-8")) ?? {}) as Record<string, unknown>;
@@ -151,21 +225,23 @@ export function igSiteData(igRoot: string): IgSiteDataResult {
         );
       }
     }
-  } else {
-    throw new Error(`no sushi-config.yaml or fhir-artifact-index/index.json under ${igRoot}: nothing to populate site.data.fhir from`);
+  } else if (!fromAst || "why" in fromAst) {
+    throw new Error(`no FHIR AST, sushi-config.yaml or fhir-artifact-index/index.json under ${igRoot}: nothing to populate site.data.fhir from`);
   }
 
   const undetermined = [
     ...ALL_IG_FIELDS.filter((f) => ig[f] === undefined).map((f) => `ig.${f}`),
     ...(["packageId", "canonical"] as const).filter((f) => data[f] === undefined),
   ];
-  return { data, provenance, undetermined, refused };
+  return { data, provenance, undetermined, refused, disagreements, ...(astNotUsed ? { astNotUsed } : {}) };
 }
 
 export function describeSiteData(r: IgSiteDataResult): string {
   const lines = [`site.data.fhir: ${Object.keys(r.provenance).length} field(s) written`];
   if (r.undetermined.length) lines.push(`  undetermined (not written): ${r.undetermined.join(", ")}`);
   for (const x of r.refused) lines.push(`  refused: ${x}`);
+  if (r.astNotUsed) lines.push(`  AST NOT USED: ${r.astNotUsed}`);
+  for (const x of r.disagreements) lines.push(`  DISAGREE (the AST's value written): ${x}`);
   return lines.join("\n");
 }
 
@@ -178,10 +254,11 @@ if (import.meta.main) {
   const igRoot = opt("--ig");
   const out = opt("--out");
   if (!igRoot || !out) {
-    console.error("usage: ig-site-data.ts --ig <IG root> --out <site>/_data/fhir.json [--check]");
+    console.error("usage: ig-site-data.ts --ig <IG root> --out <site>/_data/fhir.json [--ast <AST dir>] [--check]");
     process.exit(2);
   }
-  const r = igSiteData(resolve(igRoot));
+  const ast = opt("--ast");
+  const r = igSiteData(resolve(igRoot), ast ? { ast: resolve(ast) } : {});
   const text = JSON.stringify(r.data, null, 2) + "\n";
   if (args.includes("--check")) {
     const current = existsSync(out) ? readFileSync(out, "utf-8") : undefined;
