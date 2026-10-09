@@ -1,5 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { type GitHubRelease, releasesFromGitHub } from "./ig-releases.ts";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { type GitHubRelease, IgReleasesSchema, releasesFromGitHub } from "./ig-releases.ts";
 
 const gh = (over: Partial<GitHubRelease>): GitHubRelease => ({
   tag_name: "v1",
@@ -36,8 +39,25 @@ describe("ig-releases/v1", () => {
     expect(() => releasesFromGitHub("o/r", "2026-10-02", [gh({ assets: [{ ...a, digest: "md5:x" }] })])).toThrow();
   });
 
-  // "the committed records validate" read smart-base's and smart-trust's
-  // `releases.json` — two instances ABOVE this layer, so it failed standing
-  // alone. It lives in `test/ig-releases-checkout.test.ts` now (bean `7zz1`'s
-  // rule: whatever names a layer above belongs at the top).
+  // The schema's half of "the committed records validate": a record written
+  // as an ingest writes it, then read back from disk as a consumer reads it,
+  // still parses -- over a SYNTHETIC repository, so this layer names no IG
+  // above it. Whether a REAL IG's committed `releases.json` validates is a
+  // fact about that IG, and is tested by the instance that holds it -- an
+  // instance above this layer, which this file does not name.
+  test("a record written to releases.json and read back validates; one carrying anything but pointers is refused", async () => {
+    const dir = mkdtempSync(join(tmpdir(), "ig-releases-"));
+    try {
+      const f = join(dir, "releases.json");
+      writeFileSync(f, JSON.stringify(releasesFromGitHub("o/r", "2026-10-02", [gh({}), gh({ tag_name: "v0", prerelease: true })]), null, 2));
+      const read = await Bun.file(f).json();
+      expect(IgReleasesSchema.safeParse(read).success).toBe(true);
+      // A record that held the bytes, or that a hand added a field to, is not this schema's.
+      const withBytes = { ...read, releases: [{ ...read.releases[0], assets: [{ ...read.releases[0].assets[0], content: "AAAA" }] }] };
+      expect(IgReleasesSchema.safeParse(withBytes).success).toBe(false);
+      expect(IgReleasesSchema.safeParse({ ...read, $schema: "ig-releases/v0" }).success).toBe(false);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
 });
