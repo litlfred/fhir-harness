@@ -6,7 +6,7 @@ output: schemas/skills/l3-fhir-authoring/output.schema.json
 # l3-fhir-authoring
 
 > Skill id: `l3-fhir-authoring` · Package: `fhir-ig-authoring` ·
-> Named by `l3-fhir-pipeline.bpmn` (**Map L2 → L3**, **Author FSH profiles**,
+> Named by `l3-fhir-pipeline.bpmn` (**Author FSH profiles**,
 > **SUSHI compile → FHIR JSON**) and `ig-incremental-build.bpmn`
 > (**SUSHI on the restricted tank**).
 
@@ -30,10 +30,11 @@ DAK, using FHIR Shorthand and SUSHI.
 `sourceModel` being required is the design: **L3 is derived, not authored from
 scratch.** An L3 artefact with no source behind it is a profile nobody can
 review against what it was meant to encode. Which source is the layer above's
-to say: a WHO SMART guideline passes its DAK's L2 content, and the WHO L3
-pipeline (`l3-fhir-pipeline.bpmn`, "Map L2 → L3") binds `l2-dak-authoring`
-beside this skill. This skill names no DAK, because `fhir-harness` may not
-(`fhir-harness/AGENTS.md`). Until stage D of the smart-* separation (#1767)
+to say, in its own process: that process maps its model and then CALLS
+`l3-fhir-pipeline.bpmn` (`Process_L3Fhir`), which starts at "Source model
+ready". Neither this skill nor that pipeline names the model, because
+`fhir-harness` may not (`fhir-harness/AGENTS.md`). The mapping step lived in
+`l3-fhir-pipeline.bpmn` itself until 2026-10-09 (bean `veiu`). Until stage D of the smart-* separation (#1767)
 the input was `l2Source` and the skill `dependsOn` `l2-dak-authoring`.
 
 CQL — clinical decision logic — is part of this skill, not a separate one; the
