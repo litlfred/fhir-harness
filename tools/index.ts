@@ -221,12 +221,12 @@ export function tools(baseUrl?: string): ToolDefinition[] {
       id: "ig-pages",
       title: "Generate an IG instance's reader-facing pages from its artefact index",
       description:
-        "Write `<instance>/docs/` — an index page, one page per artefact, a page per over-large category and per menu group — from `fhir-artifact-index/index.json` (and `menu.json` when ingested), styled by the template chrome an owning instance ingested. Moved down to this layer because nothing in it was one IG's own (#1767); with `--summary` it writes an instance's landing page, opening with that instance's harness section. For an instance whose docs declare `igSite` (bean `mftp`) it writes no index, menu or category pages — the IG site's own replace them — and only a front-matter `artifacts.md` carrying the viewer declaration. For an IG whose SOURCE is at hand, `build-ig-site` renders the IG's own pages instead; this is for an IG known only by what it published.",
+        "Write `<instance>/docs/` — an index page, one page per artefact, a page per over-large category and per menu group — from `fhir-artifact-index/index.json` (and `menu.json` when ingested), styled by the template chrome an owning instance ingested. Moved down to this layer because nothing in it was one IG's own (#1767); with `--summary` it writes an instance's landing page, opening with that instance's harness section. For an instance whose docs declare `igSite` (bean `mftp`) it writes no index, menu or category pages — the IG site's own replace them — and only a front-matter `artifacts.md` naming the Tool that drew it. Where an instance declares a visualiser `renderedBy: ig-pages`, it also writes that visualiser's route page, `<base>/<instance>/<id>/`, which opens the artefact index. For an IG whose SOURCE is at hand, `build-ig-site` renders the IG's own pages instead; this is for an IG known only by what it published.",
       install: { none: true },
       invoke: { shell: "bun run fhir-harness/scripts/gen-ig-pages.ts" },
-      // The viewer for this kind: each instance's index page declares
-      // `renders` / `rendered-by: ig-pages`, so harness-tiles opens it for
-      // the instance's artefact index (#1767, stage C3).
+      // What this Tool CAN draw. An instance declares that it DOES, in its
+      // own `visualisers` (`renderedBy: ig-pages`, owner 2026-10-09), and
+      // `check:visualiser-routes` checks the covered kind is listed here.
       renders: ["fhir-artifact-index"],
       io: {
         inputs: [

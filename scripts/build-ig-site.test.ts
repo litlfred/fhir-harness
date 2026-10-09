@@ -358,13 +358,13 @@ describe("copyDocsInto: a front-matter-only page declares something ABOUT a gene
     const d = mkdtempSync(join(tmpdir(), "ig-docs-"));
     mkdirSync(join(d, "docs"), { recursive: true });
     mkdirSync(join(d, "site"), { recursive: true });
-    writeFileSync(join(d, "docs", "artifacts.md"), "---\ntitle: mine\nrenders:\n  - x/fhir-artifact-index\nrendered-by: ig-pages\n---\n");
+    writeFileSync(join(d, "docs", "artifacts.md"), "---\ntitle: mine\nrendered-by: ig-pages\n---\n");
     writeFileSync(join(d, "site", "artifacts.md"), "---\ntitle: Artifact Index\nparent: Indices\n---\nbody\n");
-    writeFileSync(join(d, "docs", "orphan.md"), "---\nrenders:\n  - y\n---\n");
+    writeFileSync(join(d, "docs", "orphan.md"), "---\nrendered-by: y\n---\n");
     const c = copyDocsInto(join(d, "docs"), join(d, "site"));
     expect(c.merged).toEqual(["artifacts.md"]);
     expect(c.collisions).toEqual(["orphan.md (front matter only, and no generated page to lay it on)"]);
-    expect(readFileSync(join(d, "site", "artifacts.md"), "utf-8")).toBe("---\ntitle: Artifact Index\nparent: Indices\nrenders:\n  - x/fhir-artifact-index\nrendered-by: ig-pages\n---\nbody\n");
+    expect(readFileSync(join(d, "site", "artifacts.md"), "utf-8")).toBe("---\ntitle: Artifact Index\nparent: Indices\nrendered-by: ig-pages\n---\nbody\n");
     rmSync(d, { recursive: true, force: true });
   });
 });

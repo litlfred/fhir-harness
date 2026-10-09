@@ -90,7 +90,7 @@ import {
   type IgChrome,
 } from "../schemas/ig-chrome.js";
 import { readIgIdentity, statusOf, type IgIdentity } from "../schemas/ig-identity.js";
-import { renderedPath, rendersFrontMatter, withRendersFrontMatter } from "../../cat-harness/scripts/viewer-declarations.js";
+import { declaredRoute, siteOwnerDir, withRenderedBy, withRenderedByFrontMatter } from "../../cat-harness/scripts/viewer-declarations.js";
 import {
   declarationPathIn,
   directoriesForGraph,
@@ -1207,16 +1207,13 @@ pages.set("index.md", indexPage(ix));
 pages.set(PAGES_CSS, `${CSS.trim()}\n`);
 if (CHROME !== undefined) pages.set(CHROME_CSS, `${chromeStyles(CHROME).trim()}\n`);
 
-// THE VIEWER DECLARATION (#1767, stage C3). The index page says which
-// directory it renders and which Tool drew it, so `harness-tiles` finds this
-// page as the `fhir-artifact-index` kind's viewer for this instance, the same
-// way every other kind's viewer is found (`viewer-declarations.ts`). The
-// directories come from the instance's own declaration; an instance that
-// declares none (a scratch one) gets no declaration rather than a guessed one.
-{
-  const rendered = directoriesForGraph(INSTANCE, "fhir-artifact-index").map((d) => renderedPath(repoRootFor(INSTANCE), d));
-  pages.set("index.md", withRendersFrontMatter(pages.get("index.md")!, rendered, "ig-pages"));
-}
+// PROVENANCE ONLY. Until 2026-10-09 the index page said which directory it
+// rendered (`renders:`), and that was how a tile found it. The owner then
+// ruled that the HARNESS declares each visualiser (`visualisers` in the
+// instance's declaration, `renderedBy: ig-pages`) at
+// `<base>/<harness>/<visualiser>/`, so a page claims nothing and names only
+// the Tool that drew it.
+pages.set("index.md", withRenderedByFrontMatter(pages.get("index.md")!, "ig-pages"));
 
 // EVERY artefact, not only the sidecar-bearing ones. The owner's call,
 // 2026-09-22: full parity with the Publisher's 673 artefact pages, against a
@@ -1469,17 +1466,16 @@ if (IG_SITE) {
   for (const k of [...pages.keys()]) {
     if (k === "index.md" || k.startsWith("menu/") || k.startsWith("category/") || (ix.igApiHub?.localPath && k === `${hubPage(ix)}.md`)) pages.delete(k);
   }
-  // THE VIEWER DECLARATION MOVES WITH THE INDEX. The index page carried it;
-  // in the IG site the artefact index is the IG's own `artifacts` page, which
-  // `build-ig-site` writes from data and nothing commits. So this writes
-  // front matter only — the declaration — and `stage-ig-sites` lays it onto
-  // that generated page (`copyDocsInto`), so `harness-tiles` still finds a
-  // committed viewer for `fhir-artifact-index`, at `/<instance>/artifacts.html`.
-  const rendered = directoriesForGraph(INSTANCE, "fhir-artifact-index").map((d) => renderedPath(repoRootFor(INSTANCE), d));
-  if (rendered.length > 0) {
+  // THE PROVENANCE MOVES WITH THE INDEX. In the IG site the artefact index is
+  // the IG's own `artifacts` page, which `build-ig-site` writes from data and
+  // nothing commits. This writes its front matter only — title and
+  // `rendered-by` — and `stage-ig-sites` lays it onto that generated page
+  // (`copyDocsInto`). It no longer says what it renders: the instance's
+  // declared `visualisers` do (owner, 2026-10-09).
+  if (directoriesForGraph(INSTANCE, "fhir-artifact-index").length > 0) {
     pages.set(
       ARTIFACTS_FRONT_MATTER_PAGE,
-      `${["---", `title: ${yamlScalar(`${LABEL} — artefact index`)}`, ...rendersFrontMatter(rendered), "rendered-by: ig-pages", "---"].join("\n")}\n`,
+      `${["---", `title: ${yamlScalar(`${LABEL} — artefact index`)}`, "rendered-by: ig-pages", "---"].join("\n")}\n`,
     );
   }
 }
@@ -1540,7 +1536,38 @@ function docsDirectoryId(): string | undefined {
   }
 }
 
+// THE DECLARED ROUTE (owner, 2026-10-09: "<base URL>/<harness>/<visualizer>").
+// An instance that declares a visualiser `renderedBy: ig-pages` gets a page at
+// that route — `<site>/<instance>/<id>/` in the site's docs layer, from
+// `visualiserRoute` and nothing else — which sends a reader to the artefact
+// index this generator (or, for an IG site, the Publisher) draws: the IG's own
+// `artifacts.html`, or this instance's index. The index stays where the IG
+// puts it; the route is where the declaration says it is, and it always works.
+const ROUTE = declaredRoute(INSTANCE, "ig-pages");
+const routePage = ROUTE === undefined
+  ? undefined
+  : {
+      abs: join(siteOwnerDir(repoRootFor(INSTANCE)), ...ROUTE.split("/"), "index.html"),
+      html: routeRedirect(IG_SITE ? "../artifacts.html" : "../", `${LABEL} — artefact index`),
+    };
+
+/** A one-file redirect at the declared route, naming the Tool that drew it. */
+function routeRedirect(target: string, title: string): string {
+  const t = target.replace(/&/g, "&amp;").replace(/"/g, "&quot;");
+  const h = title.replace(/&/g, "&amp;").replace(/</g, "&lt;");
+  return withRenderedBy(
+    `<!doctype html>\n<html lang="en"><head><meta charset="utf-8"><title>${h}</title>\n` +
+      `<link rel="canonical" href="${t}"><meta http-equiv="refresh" content="0; url=${t}">\n` +
+      `</head><body><p><a href="${t}">${h}</a></p></body></html>\n`,
+    "ig-pages",
+  );
+}
+
 if (CHECK) {
+  if (routePage !== undefined && (!existsSync(routePage.abs) || readFileSync(routePage.abs, "utf8") !== routePage.html)) {
+    console.error(`✗ ${relative(repoRootFor(INSTANCE), routePage.abs)} — the declared route's page — is stale or missing. Run \`bun run cat ${INSTANCE_NAME}:pages\`.`);
+    process.exit(1);
+  }
   // Compared against whichever copy the declaration says is authoritative — the
   // checkout today, both while the same pages live on main and on
   // cat/fhir-harness/ig-docs, and the branch after the cutover (bean lbz8).
@@ -1592,6 +1619,11 @@ if (CHECK) {
     const abs = join(OUT, rel);
     mkdirSync(join(abs, ".."), { recursive: true });
     writeFileSync(abs, html);
+  }
+  if (routePage !== undefined) {
+    mkdirSync(join(routePage.abs, ".."), { recursive: true });
+    writeFileSync(routePage.abs, routePage.html);
+    console.log(`  declared route → ${relative(repoRootFor(INSTANCE), routePage.abs)}`);
   }
   const sc = sidecarCensus(ix.artifacts);
   console.log(`${INSTANCE_NAME}/docs: ${pages.size} page(s)`);
