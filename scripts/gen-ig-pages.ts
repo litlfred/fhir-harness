@@ -90,7 +90,8 @@ import {
   type IgChrome,
 } from "../schemas/ig-chrome.js";
 import { readIgIdentity, statusOf, type IgIdentity } from "../schemas/ig-identity.js";
-import { declaredRoute, siteOwnerDir, withRenderedBy, withRenderedByFrontMatter } from "../../cat-harness/scripts/viewer-declarations.js";
+import { declaredVisualisers, siteOwnerDir, withRenderedBy, withRenderedByFrontMatter } from "../../cat-harness/scripts/viewer-declarations.js";
+import { siteRootFrom, visualiserRoute } from "../../cat-harness/schemas/visualiser-route.js";
 import {
   declarationPathIn,
   directoriesForGraph,
@@ -1543,13 +1544,31 @@ function docsDirectoryId(): string | undefined {
 // index this generator (or, for an IG site, the Publisher) draws: the IG's own
 // `artifacts.html`, or this instance's index. The index stays where the IG
 // puts it; the route is where the declaration says it is, and it always works.
-const ROUTE = declaredRoute(INSTANCE, "ig-pages");
-const routePage = ROUTE === undefined
-  ? undefined
-  : {
-      abs: join(siteOwnerDir(repoRootFor(INSTANCE)), ...ROUTE.split("/"), "index.html"),
-      html: routeRedirect(IG_SITE ? "../artifacts.html" : "../", `${LABEL} — artefact index`),
-    };
+const ROUTE_REPO = repoRootFor(INSTANCE);
+const ROUTE_SITE = siteOwnerDir(ROUTE_REPO);
+const IG_VISUALISERS = declaredVisualisers(ROUTE_REPO).filter((v) => v.renderedBy === "ig-pages");
+const routePages: { abs: string; html: string }[] = [];
+for (const v of IG_VISUALISERS) {
+  const parts = { harness: v.harness, visualiser: v.id };
+  const here = IG_SITE ? "artifacts.html" : "";
+  // Its own harness: the full view at `<base>/<harness>/<id>/` opens this
+  // instance's artefact index.
+  if (v.harness === INSTANCE_NAME) {
+    routePages.push({
+      abs: join(ROUTE_SITE, ...visualiserRoute(parts).split("/").filter(Boolean), "index.html"),
+      html: routeRedirect(`${siteRootFrom(parts)}${INSTANCE_NAME}/${here}`, `${LABEL} — artefact index`),
+    });
+  }
+  // A harness covering the KIND per instance (`subgraphs: "instance"`):
+  // this instance's sub-graph view, `<base>/<harness>/<id>/<instance>/`.
+  if (v.subgraphs === "instance" && (v.coversKinds ?? []).includes("fhir-artifact-index") && directoriesForGraph(INSTANCE, "fhir-artifact-index").length > 0) {
+    const sub = { ...parts, subgraph: INSTANCE_NAME };
+    routePages.push({
+      abs: join(ROUTE_SITE, ...visualiserRoute(sub).split("/").filter(Boolean), "index.html"),
+      html: routeRedirect(`${siteRootFrom(sub)}${INSTANCE_NAME}/${here}`, `${LABEL} — artefact index`),
+    });
+  }
+}
 
 /** A one-file redirect at the declared route, naming the Tool that drew it. */
 function routeRedirect(target: string, title: string): string {
@@ -1564,9 +1583,11 @@ function routeRedirect(target: string, title: string): string {
 }
 
 if (CHECK) {
-  if (routePage !== undefined && (!existsSync(routePage.abs) || readFileSync(routePage.abs, "utf8") !== routePage.html)) {
-    console.error(`✗ ${relative(repoRootFor(INSTANCE), routePage.abs)} — the declared route's page — is stale or missing. Run \`bun run cat ${INSTANCE_NAME}:pages\`.`);
-    process.exit(1);
+  for (const routePage of routePages) {
+    if (!existsSync(routePage.abs) || readFileSync(routePage.abs, "utf8") !== routePage.html) {
+      console.error(`✗ ${relative(ROUTE_REPO, routePage.abs)} — a declared route's page — is stale or missing. Run \`bun run cat ${INSTANCE_NAME}:pages\`.`);
+      process.exit(1);
+    }
   }
   // Compared against whichever copy the declaration says is authoritative — the
   // checkout today, both while the same pages live on main and on
@@ -1620,10 +1641,10 @@ if (CHECK) {
     mkdirSync(join(abs, ".."), { recursive: true });
     writeFileSync(abs, html);
   }
-  if (routePage !== undefined) {
+  for (const routePage of routePages) {
     mkdirSync(join(routePage.abs, ".."), { recursive: true });
     writeFileSync(routePage.abs, routePage.html);
-    console.log(`  declared route → ${relative(repoRootFor(INSTANCE), routePage.abs)}`);
+    console.log(`  declared route → ${relative(ROUTE_REPO, routePage.abs)}`);
   }
   const sc = sidecarCensus(ix.artifacts);
   console.log(`${INSTANCE_NAME}/docs: ${pages.size} page(s)`);
