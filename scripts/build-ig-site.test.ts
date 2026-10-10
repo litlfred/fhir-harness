@@ -8,7 +8,7 @@ import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, 
 import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
 import { join } from "node:path";
-import { ARTIFACT_LIST_TEMPLATE_PATH, artifactListInclude, publisherPlural, FOOTER_TEMPLATE_PATH, ARTIFACTS_TEMPLATE_PATH,IG_FIGURE_IMAGES_STAMP, artifactVariables, artifactCellLookup, kramdownId, linkTableCells, colourScheme, composeIgSite, contrast, dedupeIds, igTocNav, igTopBar, includeTargets, localTemplateIncludes, pageNav, relinkArtifacts, relinkTemplatedArtifacts, relinkOffSite, rubyLiquidStrings, relinkPublisherOutputs, sourceHeadings, dataOverwritesQa, describeStage, RELEASES_TEMPLATE_PATH, releaseVariables, sizeLabel, stageIgSite, tocPage, type StageResult } from "./build-ig-site";
+import { ARTIFACT_LIST_TEMPLATE_PATH, artifactListInclude, publisherPlural, FOOTER_TEMPLATE_PATH, ARTIFACTS_TEMPLATE_PATH,IG_FIGURE_IMAGES_STAMP, annexMount, ANNEX_SCRIPT_PATH, artifactVariables, artifactCellLookup, kramdownId, linkTableCells, colourScheme, composeIgSite, contrast, dedupeIds, igTocNav, igTopBar, includeTargets, localTemplateIncludes, pageNav, relinkArtifacts, relinkTemplatedArtifacts, relinkOffSite, rubyLiquidStrings, relinkPublisherOutputs, sourceHeadings, dataOverwritesQa, describeStage, RELEASES_TEMPLATE_PATH, releaseVariables, sizeLabel, stageIgSite, tocPage, type StageResult } from "./build-ig-site";
 import { copyDocsInto, igSiteDocs, webpagePalette } from "./stage-ig-sites";
 import type { IgReleases } from "../schemas/ig-releases.ts";
 import { artifactPageName } from "../schemas/fhir-artifact-index.js";
@@ -1192,5 +1192,21 @@ describe("linkTableCells (owner, 2026-10-10: table ids should be clickable)", ()
 
   test("kramdownId matches the deployed heading ids", () => {
     expect(kramdownId("A.  Vaccination location registration")).toBe("a--vaccination-location-registration");
+  });
+});
+
+describe("annexes (owner, 2026-10-10: the data dictionary loaded on demand)", () => {
+  test("annexMount points at the copied JSON and the renderer, with a fallback link", () => {
+    const m = annexMount("dd.json", ["data element id", "data type"]);
+    expect(m).toContain('class="fa-annex" data-src="{{ site.baseurl }}/assets/annex/dd.json"');
+    expect(m).toContain('data-columns="data element id|data type"');
+    expect(m).toContain('href="{{ site.baseurl }}/assets/annex/dd.json"');
+    expect(m).toContain('src="{{ site.baseurl }}/assets/js/ig-annex.js"');
+  });
+
+  test("the renderer exists and sets data only through textContent", () => {
+    const js = readFileSync(ANNEX_SCRIPT_PATH, "utf-8");
+    expect(js).not.toContain("innerHTML");
+    expect(js).toContain("textContent");
   });
 });

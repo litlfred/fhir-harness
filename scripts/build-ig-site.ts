@@ -164,6 +164,10 @@ export interface StageResult {
   unparseable: string[];
   /** Links the IG's source writes to an artefact's flat Publisher page (`ValueSet-X.html`), pointed at this site's artefact page instead. */
   relinked: number;
+  /** Annexes appended to their pages (`page <- file`). */
+  annexed?: string[];
+  /** Annexes whose page this IG does not have: NOT placed. */
+  unplaced?: string[];
   /** Links a page makes to a `.html` page no source or build serves: the IG's own dead links, REPORTED (#2235). */
   deadLinks: string[];
   /** The colour scheme written from the instance's palette; undefined when none was declared. */
@@ -950,6 +954,17 @@ export interface StageOptions {
    */
   fills?: ReadonlyArray<{ marker: string; body: string; data: Record<string, unknown> }>;
   /**
+   * ANNEXES: tabular content a page loads when it is opened (owner,
+   * 2026-10-10: the data dictionary "should be in the KG but it should also be
+   * dynamically loaded", not the full Excel). Each names the page it belongs
+   * on and a JSON file in the instance's graph shaped as `{ title, source,
+   * sheets: [{ name, columns: [{ key, label }], rows: string[][] }] }`; the
+   * file is copied to `assets/annex/` and a mount point is appended to the
+   * page, rendered by `assets/js/ig-annex.js`. Generic: this layer knows a
+   * table, never whose workbook it came from.
+   */
+  annexes?: ReadonlyArray<IgAnnex>;
+  /**
    * The IG's GitHub releases as pointers to their binary assets
    * (`fhir-artifact-index/releases.json`, `ig-releases/v1`). Given, a
    * `releases` page lists them; the bytes stay on GitHub (bean `b8ip`).
@@ -1319,6 +1334,28 @@ export const SIDEBAR_SCSS = [
  * figures, not FHIR artefacts. A cell that already holds a link or markup
  * is left alone.
  */
+/** One annex: the page it belongs on, its JSON, and the columns shown before a row is opened. */
+export interface IgAnnex {
+  /** The page file under `input/pagecontent/`, e.g. `dictionary.md`. */
+  page: string;
+  /** Absolute path of the annex JSON. */
+  src: string;
+  /** Column keys shown in the table; the rest appear when a row is opened. Default: the first six. */
+  columns?: string[];
+}
+
+export const ANNEX_SCRIPT_PATH = join(import.meta.dir, "templates", "ig-site", "ig-annex.js");
+
+/** The mount point an annex page carries; `ig-annex.js` finds it by class. */
+export function annexMount(file: string, columns?: ReadonlyArray<string>): string {
+  const cols = columns?.length ? ` data-columns="${columns.map((c) => c.replace(/"/g, "&quot;")).join("|")}"` : "";
+  return (
+    `\n\n<div class="fa-annex" data-src="{{ site.baseurl }}/assets/annex/${file}"${cols}>` +
+    `<p>Loading the annex… If it does not appear, <a href="{{ site.baseurl }}/assets/annex/${file}">the data is here as JSON</a>.</p></div>\n` +
+    `<script src="{{ site.baseurl }}/assets/js/ig-annex.js" defer></script>\n`
+  );
+}
+
 export function artifactCellLookup(list: ReadonlyArray<IndexedArtifact>, pagesHref: string): Map<string, string> {
   const hits = new Map<string, Set<string>>();
   const add = (k: string | undefined, href: string) => {
@@ -1426,6 +1463,7 @@ export function stageIgSite(igSrc: string, out: string, opts: StageOptions = {})
   const filled: string[] = [];
   const usedMarkers = new Set<string>();
   const artifactPages = new Set((opts.artifacts?.list ?? []).map((a) => artifactPageName(a)));
+  const annexed: string[] = [];
   const cellLookup = opts.artifacts ? artifactCellLookup(opts.artifacts.list, opts.artifacts.pagesHref) : undefined;
   let relinked = 0;
   const canonical = typeof sushi.canonical === "string" ? sushi.canonical : undefined;
@@ -1495,12 +1533,24 @@ export function stageIgSite(igSrc: string, out: string, opts: StageOptions = {})
       filled.push(`${f} (${fill.marker})`);
       usedMarkers.add(fill.marker);
     }
+    for (const a of (opts.annexes ?? []).filter((x) => x.page === f)) {
+      mkdirSync(join(out, "assets", "annex"), { recursive: true });
+      copyFileSync(a.src, join(out, "assets", "annex", basename(a.src)));
+      body += annexMount(basename(a.src), a.columns);
+      annexed.push(`${f} <- ${basename(a.src)}`);
+    }
     // Page variables as JSON flow mappings — YAML is a superset of JSON.
     const dataLines = Object.entries(data).map(([k, v]) => `${k}: ${JSON.stringify(v)}\n`).join("");
     // A page that already carries front matter keeps it, with the fill's data added.
     writeFileSync(join(out, f), body.startsWith("---\n") ? `---\n${dataLines}${body.slice(4)}` : frontMatter(n).replace(/---\n$/, `${dataLines}---\n`) + body);
     pages.push(f);
   }
+
+  if (annexed.length) {
+    mkdirSync(join(out, "assets", "js"), { recursive: true });
+    copyFileSync(ANNEX_SCRIPT_PATH, join(out, "assets", "js", "ig-annex.js"));
+  }
+  const unplaced = (opts.annexes ?? []).filter((a) => !pages.includes(a.page)).map((a) => `${a.page} (${basename(a.src)})`);
 
   // Pages the Publisher GENERATES rather than reads from pagecontent, written
   // here from data this build holds (bean `jut3`'s parity list). Reported apart
@@ -1720,7 +1770,7 @@ export function stageIgSite(igSrc: string, out: string, opts: StageOptions = {})
     ].join("\n"),
   );
   const fillsResult = opts.fills?.length ? { filled, unused: opts.fills.map((x) => x.marker).filter((m) => !usedMarkers.has(m)) } : undefined;
-  return { templateIncludes: templateIncludesResult, pages: pages.sort(), generated, fills: fillsResult, variables: lifted ? { artifacts: Object.keys(lifted.vars.artifacts).length, notSourced: lifted.notSourced } : undefined, unlisted: unlisted.sort(), menuMissing, includes, images, rendered, listed, notRendered, unparseable, relinked, deadLinks: [...dead].sort(), scheme, siteData, data, astData, dependencyTables, dependencies, globals };
+  return { annexed, unplaced, templateIncludes: templateIncludesResult, pages: pages.sort(), generated, fills: fillsResult, variables: lifted ? { artifacts: Object.keys(lifted.vars.artifacts).length, notSourced: lifted.notSourced } : undefined, unlisted: unlisted.sort(), menuMissing, includes, images, rendered, listed, notRendered, unparseable, relinked, deadLinks: [...dead].sort(), scheme, siteData, data, astData, dependencyTables, dependencies, globals };
 }
 
 /**
@@ -1773,6 +1823,8 @@ export function describeStage(r: StageResult): string {
     ...(r.fills?.filled.length ? [`post-processing filled: ${r.fills.filled.join(", ")}`] : []),
     ...(r.fills?.unused.length ? [`post-processing fill with no marker in any page (NOT applied): ${r.fills.unused.join(", ")}`] : []),
     ...(r.variables ? [`site.data.fhir.artifacts: ${r.variables.artifacts} artefact(s); elements not sourced (not written): ${r.variables.notSourced.join(", ") || "none"}`] : []),
+    ...(r.annexed?.length ? [`annexes loaded by their pages: ${r.annexed.join(", ")}`] : []),
+    ...(r.unplaced?.length ? [`annex whose page this IG does not have (NOT placed): ${r.unplaced.join(", ")}`] : []),
     ...(r.relinked ? [`links pointed where they resolve (artefact pages, the published IG, the source repository): ${r.relinked}`] : []),
     ...(r.deadLinks.length ? [`DEAD in the IG's own source — no page anywhere serves: ${r.deadLinks.join(", ")}`] : []),
     ...(r.listed.length ? [`artefact lists written from the artefact index (the Publisher generates these): ${r.listed.join(", ")}`] : []),

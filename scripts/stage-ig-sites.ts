@@ -163,6 +163,27 @@ export function artifactsFor(root: string, pagesHref = "../artifact/"): StageOpt
 }
 
 /**
+ * The instance's ANNEXES: tables a page loads on demand (owner, 2026-10-10:
+ * the data dictionary in the KG, dynamically loaded). Declared beside the
+ * menu, in `fhir-artifact-index/annexes.json`, as
+ * `[{ page, file, columns? }]` with `file` relative to that directory, so an
+ * annex is a node of the instance's graph rather than a build-time product.
+ * Undefined when there is no declaration; a declared file that is missing
+ * throws, because a silent skip would publish a page that promises a table.
+ */
+export function annexesFor(root: string): StageOptions["annexes"] {
+  const dir = join(root, "fhir-artifact-index");
+  const decl = join(dir, "annexes.json");
+  if (!existsSync(decl)) return undefined;
+  const list = JSON.parse(readFileSync(decl, "utf-8")) as { page: string; file: string; columns?: string[] }[];
+  return list.map((a) => {
+    const src = join(dir, a.file);
+    if (!existsSync(src)) throw new Error(`${decl}: annex ${a.file} for ${a.page} is declared but not held`);
+    return { page: a.page, src, ...(a.columns ? { columns: a.columns } : {}) };
+  });
+}
+
+/**
  * The IG site pages' footer (#1901), dressed as the artefact pages' footer
  * is: the package's facts from the `assets/ig-footer.json` `gen-ig-pages`
  * writes, and the two stylesheets it writes beside it, linked from the IG
@@ -388,6 +409,7 @@ if (import.meta.main) {
       ...(editBase ? { editBase } : {}),
       // The IG's post-processing output, where its source holds only a marker.
       fills: [igApiHubFill(ig.root, docs ? "" : "../")].filter((x) => x !== undefined),
+      annexes: annexesFor(ig.root),
     });
     console.error(`${ig.instance} (${ig.repo}@${ig.ref.slice(0, 7)}):\n${describeStage(r)}`);
     // The `site.data` overwrite record (bean `yy4u`), as a QA sidecar in the
