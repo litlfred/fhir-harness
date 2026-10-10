@@ -107,7 +107,6 @@ import {
   byCategory,
   type FhirArtifact,
   type FhirArtifactIndex,
-  type Representation,
 } from "../schemas/fhir-artifact-index.js";
 
 /** `--name value`, or undefined. */
