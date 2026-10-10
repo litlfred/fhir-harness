@@ -735,17 +735,29 @@ function yamlScalar(v: string): string {
 }
 
 function repLinks(a: FhirArtifact): string {
+  // THIS SITE'S OWN COPIES FIRST (owner, 2026-10-10): "i dont want the html
+  // link b/c this site is replace the WHO one. the json should point to the
+  // current rendered KG … not WHO", and the JSON-LD and JSON Schema the IG's
+  // post-processing publishes belong beside it. So: no html (this page IS the
+  // html), the JSON this site serves when it holds the resource, and the
+  // schema / JSON-LD sidecars from the served index. The upstream file is
+  // linked only when nothing here holds it, and it says so.
   const out: string[] = [];
-  // JSON and HTML only -- no XML or TTL (owner, 2026-10-09).
-  for (const k of ["json", "html"] as const) {
-    const r: Representation | undefined = a.published[k];
-    if (r) out.push(`<a href="${esc(r.url)}">${k}</a>`);
+  const m = a.materialization;
+  const local = COMPILED_DATA && m.state === "materialized" && m.purpose === "compiled" && m.localPath
+    ? `../${COMPILED_DATA}/${m.localPath.replace(/^[^/]+\//, "")}`
+    : undefined;
+  if (local) out.push(`<a href="${esc(local)}">json</a>`);
+  else if (a.published.json) out.push(`<a href="${esc(a.published.json.url)}" rel="external">json (upstream)</a>`);
+  for (const [k, label] of [["schema", "JSON Schema"], ["jsonld", "JSON-LD"]] as const) {
+    const r = a.sidecars?.[k];
+    if (!r) continue;
+    out.push(r.localPath && igApiServable().ok ? `<a href="../${esc(r.localPath)}">${label}</a>` : `<a href="${esc(r.url)}" rel="external">${label} (upstream)</a>`);
   }
   // Separated by a middot. The old stylesheet gave `.reps` a flex gap; with
-  // that gone the four links rendered as one word -- `jsonxmlttlhtml` -- which
-  // reads as a broken link rather than as four working ones. A separator in
-  // the MARKUP survives the stylesheet being deleted, which is the whole point
-  // of having deleted it.
+  // that gone the links rendered as one word, which reads as a broken link
+  // rather than as several working ones. A separator in the MARKUP survives
+  // the stylesheet being deleted.
   return out.length ? out.join(" · ") : "—";
 }
 
