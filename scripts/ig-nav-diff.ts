@@ -43,7 +43,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { parse as parseYaml } from "yaml";
-import { sourceHashOf, type QaResult } from "../../cat-harness/scripts/qa-results.ts";
+import { sourceHashOf, type QaResult } from "../../cat-harness-tools/scripts/qa-results.ts";
 import { groupsFromSushiMenu } from "./ingest-ig-menu.ts";
 import type { IgMenuGroup } from "../schemas/ig-menu.ts";
 

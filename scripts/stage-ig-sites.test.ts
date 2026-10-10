@@ -7,7 +7,7 @@ import { afterAll, beforeAll, expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { writeDeclaration } from "../../cat-harness/test/support/instance-fixture";
+import { writeDeclaration } from "../../cat-harness-tools/test/support/instance-fixture";
 import { igsToBuild } from "./stage-ig-sites";
 
 let repo: string;

@@ -43,7 +43,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
-import { buildFshGraph, changeImpact, fileUsers, type FshGraph } from "../../cat-harness/content/pipeline/fsh-cone.ts";
+import { buildFshGraph, changeImpact, fileUsers, type FshGraph } from "../../cat-harness-tools/content/pipeline/fsh-cone.ts";
 import {
   pinImpact,
   RENDERED_IMPACT_TAG,
@@ -51,7 +51,7 @@ import {
   type RenderedFile,
   type RenderedImpact,
 } from "../../cat-harness/schemas/rendered-impact.ts";
-import { gitBlobs } from "../../cat-harness/scripts/git-blobs.ts";
+import { gitBlobs } from "../../cat-harness-tools/scripts/git-blobs.ts";
 import { artifactPageName } from "../schemas/fhir-artifact-index.js";
 
 export const RENDERER = "fhir-ig-pages";

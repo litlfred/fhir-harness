@@ -33,7 +33,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { artifactPageName, type FhirArtifactIndex } from "../schemas/fhir-artifact-index.js";
-import { sourceHashOf, type QaResult } from "../../cat-harness/scripts/qa-results.ts";
+import { sourceHashOf, type QaResult } from "../../cat-harness-tools/scripts/qa-results.ts";
 
 const REPO = resolve(import.meta.dir, "..", "..");
 const REASON =
