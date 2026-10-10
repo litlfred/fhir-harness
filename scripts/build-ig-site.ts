@@ -1298,6 +1298,119 @@ export const SIDEBAR_SCSS = [
   "",
 ].join("\n");
 
+/**
+ * TABLE CELLS THAT NAME SOMETHING THIS SITE SERVES BECOME LINKS.
+ *
+ * Owner, 2026-10-10: on smart-immunizations, the decision-logic table's
+ * `IMMZ.D2.DT.BCG`, the business-processes table's process name and id, and the
+ * indicators table's `IMMZ.IND.01` should be clickable. The IG's markdown writes
+ * them as bare text, because on WHO's own site nothing pairs them up either.
+ *
+ * Two kinds of target, both looked up and never guessed:
+ * - **an artefact**, by its title, name or id, exactly; or by its id with the
+ *   punctuation dropped (`IMMZ.IND.01` -> Measure `IMMZIND01`). A key two
+ *   artefacts share links neither, because a wrong link is worse than none;
+ * - **a heading on the same page**, by its text with a leading enumerator
+ *   (`A.`, `H .`) dropped, linked at kramdown's own auto-id for that heading.
+ *
+ * A row in which one cell resolved also links its identifier-shaped cells (no
+ * spaces, contains a dot: `IMMZ.A`) to the same target when they resolve to
+ * nothing themselves. That is the process table's id column, whose processes are
+ * figures, not FHIR artefacts. A cell that already holds a link or markup
+ * is left alone.
+ */
+export function artifactCellLookup(list: ReadonlyArray<IndexedArtifact>, pagesHref: string): Map<string, string> {
+  const hits = new Map<string, Set<string>>();
+  const add = (k: string | undefined, href: string) => {
+    if (!k) return;
+    const key = k.trim();
+    if (!key) return;
+    (hits.get(key) ?? hits.set(key, new Set()).get(key)!).add(href);
+  };
+  for (const a of list) {
+    const href = `${pagesHref}${artifactPageName(a)}.html`;
+    add(a.title, href);
+    add(a.name, href);
+    add(a.id, href);
+    add(`~${dotless(a.id)}`, href);
+  }
+  const out = new Map<string, string>();
+  for (const [k, v] of hits) if (v.size === 1) out.set(k, [...v][0]!);
+  return out;
+}
+
+function dotless(s: string): string {
+  return s.replace(/[^A-Za-z0-9]/g, "").toLowerCase();
+}
+
+/** kramdown's auto_ids: lowercased, characters other than letters, digits, spaces and hyphens dropped, spaces to hyphens. */
+export function kramdownId(text: string): string {
+  return text.trim().toLowerCase().replace(/[^a-z0-9 -]/g, "").replace(/ /g, "-");
+}
+
+export function linkTableCells(body: string, lookup: ReadonlyMap<string, string>, prefix = ""): { text: string; count: number } {
+  // Headings on this page, keyed by their text without an enumerator.
+  const headings = new Map<string, string>();
+  for (const m of body.matchAll(/^#{1,6}[ \t]+(.+?)[ \t#]*$/gm)) {
+    const text = m[1]!.trim();
+    const bare = text.replace(/^[A-Z0-9]{1,3}\s*\.\s+/, "").trim();
+    if (bare && bare !== text) headings.set(bare, `#${kramdownId(text)}`);
+  }
+  const resolve = (raw: string): string | undefined => {
+    const t = raw.trim();
+    if (!t || /[<>\[\]()`]/.test(t)) return undefined;
+    const art = lookup.get(t) ?? lookup.get(`~${dotless(t)}`);
+    if (art) return prefix + art;
+    return headings.get(t);
+  };
+  const idShaped = (t: string) => /^[A-Za-z0-9]+(\.[A-Za-z0-9]+)+$/.test(t.trim());
+  let count = 0;
+
+  // Markdown tables: rows of `| a | b |`.
+  const lines = body.split("\n");
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i]!;
+    if (!/^\s*\|.*\|\s*$/.test(line) || /^\s*\|[\s:|-]+\|\s*$/.test(line)) continue;
+    const cells = line.split(/(?<!\\)\|/);
+    const inner = cells.slice(1, -1);
+    const strip = (c: string) => {
+      const m = /^(\s*)(\*\*|__)?(.*?)(\*\*|__)?(\s*)$/.exec(c)!;
+      return { lead: m[1]!, open: m[2] ?? "", text: m[3]!, close: m[4] ?? "", trail: m[5]! };
+    };
+    const parts = inner.map(strip);
+    const targets = parts.map((p) => (p.open === p.close ? resolve(p.text) : undefined));
+    const rowTarget = targets.find((t) => t !== undefined);
+    if (!rowTarget) continue;
+    const next = parts.map((p, k) => {
+      const href = targets[k] ?? (idShaped(p.text) && p.open === p.close ? rowTarget : undefined);
+      if (!href) return inner[k]!;
+      count++;
+      return `${p.lead}[${p.open}${p.text}${p.close}](${href})${p.trail}`;
+    });
+    lines[i] = [cells[0], ...next, cells[cells.length - 1]].join("|");
+  }
+  let text = lines.join("\n");
+
+  // HTML tables: `<td>` cells holding plain text only.
+  text = text.replace(/<tr\b[^>]*>[\s\S]*?<\/tr>/g, (row) => {
+    const cells = [...row.matchAll(/(<td\b[^>]*>)([^<]*)(<\/td>)/g)];
+    const targets = cells.map((c) => resolve(c[2]!));
+    const rowTarget = targets.find((t) => t !== undefined);
+    if (!rowTarget) return row;
+    let k = 0;
+    return row.replace(/(<td\b[^>]*>)([^<]*)(<\/td>)/g, (whole, open: string, inner: string, close: string) => {
+      const href = targets[k] ?? (idShaped(inner) ? rowTarget : undefined);
+      k++;
+      if (!href) return whole;
+      count++;
+      const lead = /^\s*/.exec(inner)![0];
+      const trail = /\s*$/.exec(inner)![0];
+      return `${open}${lead}<a href="${href}">${inner.trim()}</a>${trail}${close}`;
+    });
+  });
+  return { text, count };
+}
+
 export function stageIgSite(igSrc: string, out: string, opts: StageOptions = {}): StageResult {
   const { baseurl = "", plantumlJar } = opts;
   const src = resolve(igSrc);
@@ -1313,6 +1426,7 @@ export function stageIgSite(igSrc: string, out: string, opts: StageOptions = {})
   const filled: string[] = [];
   const usedMarkers = new Set<string>();
   const artifactPages = new Set((opts.artifacts?.list ?? []).map((a) => artifactPageName(a)));
+  const cellLookup = opts.artifacts ? artifactCellLookup(opts.artifacts.list, opts.artifacts.pagesHref) : undefined;
   let relinked = 0;
   const canonical = typeof sushi.canonical === "string" ? sushi.canonical : undefined;
   const sourceBlob = opts.editBase?.replace(/\/$/, "").replace(/\/edit\//, "/blob/");
@@ -1351,6 +1465,11 @@ export function stageIgSite(igSrc: string, out: string, opts: StageOptions = {})
       n = { title: name, navOrder: 1000 + unlisted.length, ...(fromMenu ? { navExclude: true } : {}) };
     }
     let body = relink(readFileSync(join(pagecontent, f), "utf-8"));
+    if (cellLookup) {
+      const c = linkTableCells(body, cellLookup);
+      body = c.text;
+      relinked += c.count;
+    }
     // Standard HL7 IG Publisher macro for localized includes: {% lang-fragment <file> %}
     body = body.replace(/\{%-?\s*lang-fragment\s+([^\s%]+)\s*-?%\}/g, "{% include $1 %}");
     let data: Record<string, unknown> = opts.editBase

@@ -8,7 +8,7 @@ import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, 
 import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
 import { join } from "node:path";
-import { ARTIFACT_LIST_TEMPLATE_PATH, artifactListInclude, publisherPlural, FOOTER_TEMPLATE_PATH, ARTIFACTS_TEMPLATE_PATH,IG_FIGURE_IMAGES_STAMP, artifactVariables, colourScheme, composeIgSite, contrast, dedupeIds, igTocNav, igTopBar, includeTargets, localTemplateIncludes, pageNav, relinkArtifacts, relinkTemplatedArtifacts, relinkOffSite, rubyLiquidStrings, relinkPublisherOutputs, sourceHeadings, dataOverwritesQa, describeStage, RELEASES_TEMPLATE_PATH, releaseVariables, sizeLabel, stageIgSite, tocPage, type StageResult } from "./build-ig-site";
+import { ARTIFACT_LIST_TEMPLATE_PATH, artifactListInclude, publisherPlural, FOOTER_TEMPLATE_PATH, ARTIFACTS_TEMPLATE_PATH,IG_FIGURE_IMAGES_STAMP, artifactVariables, artifactCellLookup, kramdownId, linkTableCells, colourScheme, composeIgSite, contrast, dedupeIds, igTocNav, igTopBar, includeTargets, localTemplateIncludes, pageNav, relinkArtifacts, relinkTemplatedArtifacts, relinkOffSite, rubyLiquidStrings, relinkPublisherOutputs, sourceHeadings, dataOverwritesQa, describeStage, RELEASES_TEMPLATE_PATH, releaseVariables, sizeLabel, stageIgSite, tocPage, type StageResult } from "./build-ig-site";
 import { copyDocsInto, igSiteDocs, webpagePalette } from "./stage-ig-sites";
 import type { IgReleases } from "../schemas/ig-releases.ts";
 import { artifactPageName } from "../schemas/fhir-artifact-index.js";
@@ -1140,5 +1140,57 @@ describe("dependency-table.xhtml is written from the IG's declaration, not left 
     expect(JSON.parse(readFileSync(join(out, "_data", "fhir.json"), "utf-8")).dependencies).toEqual([{ packageId: "a.b", version: "1.0.0", depth: 0, resolved: false }]);
     expect(describeStage(r)).toContain("from sushi-config.yaml (dependencies): 1 row(s); NOT in the package cache");
     rmSync(d, { recursive: true, force: true });
+  });
+});
+
+describe("linkTableCells (owner, 2026-10-10: table ids should be clickable)", () => {
+  const lookup = artifactCellLookup(
+    [
+      { resourceType: "PlanDefinition", id: "IMMZD2DTBCG", title: "IMMZ.D2.DT.BCG" },
+      { resourceType: "PlanDefinition", id: "IMMZD18SBCG", title: "IMMZ.D18.S.BCG schedule" },
+      { resourceType: "Measure", id: "IMMZIND01", title: "IMMZIND01" },
+      { resourceType: "ValueSet", id: "Dup", title: "Shared" },
+      { resourceType: "CodeSystem", id: "Dup2", title: "Shared" },
+    ],
+    "artifact/",
+  );
+
+  test("a markdown cell naming an artefact by title links to its page, keeping the bold", () => {
+    const r = linkTableCells("| ID | Description |\n|---|---|\n| **IMMZ.D18.S.BCG schedule** | Recommended schedule |\n", lookup);
+    expect(r.text).toContain("| [**IMMZ.D18.S.BCG schedule**](artifact/PlanDefinition-IMMZD18SBCG.html) |");
+    expect(r.text).toContain("| Recommended schedule |");
+    expect(r.count).toBe(1);
+  });
+
+  test("an HTML cell matches an id with its punctuation dropped", () => {
+    const r = linkTableCells("<tr>\n<td>IMMZ.IND.01</td>\n<td>Coverage for BCG</td>\n</tr>", lookup);
+    expect(r.text).toContain('<td><a href="artifact/Measure-IMMZIND01.html">IMMZ.IND.01</a></td>');
+    expect(r.text).toContain("<td>Coverage for BCG</td>");
+  });
+
+  test("a process name links to its heading on the page, and the row's id cell follows it", () => {
+    const body = [
+      "| # | Process Name | Process ID |",
+      "|---|---|---|",
+      "| A | Vaccination location registration  | IMMZ.A |",
+      "| H | Resolve duplicate vaccination events | IMMZ.H |",
+      "",
+      "####  A.  Vaccination location registration  ",
+      "####  H .  Resolve duplicate vaccination events  ",
+    ].join("\n");
+    const r = linkTableCells(body, lookup);
+    expect(r.text).toContain("| A | [Vaccination location registration](#a--vaccination-location-registration)  | [IMMZ.A](#a--vaccination-location-registration) |");
+    expect(r.text).toContain("[IMMZ.H](#h---resolve-duplicate-vaccination-events)");
+    // The single-letter `#` column is not identifier-shaped and stays text.
+    expect(r.text).toContain("| A | [");
+  });
+
+  test("a key two artefacts share links neither, and a cell already holding a link is left alone", () => {
+    const r = linkTableCells("| x |\n|---|\n| Shared |\n| [IMMZ.D2.DT.BCG](elsewhere.html) |\n", lookup);
+    expect(r.count).toBe(0);
+  });
+
+  test("kramdownId matches the deployed heading ids", () => {
+    expect(kramdownId("A.  Vaccination location registration")).toBe("a--vaccination-location-registration");
   });
 });
