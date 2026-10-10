@@ -60,6 +60,14 @@ jobs:
 
       - uses: oven-sh/setup-bun@v2
 
+      - name: Mount the platform's instances from its lock
+        working-directory: folio-assistant
+        # Since the separation (folio-assistant #2518) the platform's instances
+        # (cat-harness, fhir-harness, folio-assistant-core, ...) are not in the
+        # submodule: they are remote mounts pinned by its index.lock.json, laid
+        # down by this script. Idempotent; it verifies each tree digest.
+        run: bash .github/mount-from-lock.sh --root .
+
       - name: Install folio-assistant
         working-directory: folio-assistant
         run: bun install --frozen-lockfile
