@@ -1338,7 +1338,7 @@ export const SIDEBAR_SCSS = [
 export interface IgAnnex {
   /** The page file under `input/pagecontent/`, e.g. `dictionary.md`. */
   page: string;
-  /** Absolute path of the annex JSON. */
+  /** Absolute path of the annex: `.json` (a table, loaded on demand) or `.md` (appended to the page as written). */
   src: string;
   /** Column keys shown in the table; the rest appear when a row is opened. Default: the first six. */
   columns?: string[];
@@ -1464,6 +1464,7 @@ export function stageIgSite(igSrc: string, out: string, opts: StageOptions = {})
   const usedMarkers = new Set<string>();
   const artifactPages = new Set((opts.artifacts?.list ?? []).map((a) => artifactPageName(a)));
   const annexed: string[] = [];
+  let jsonAnnexes = 0;
   const cellLookup = opts.artifacts ? artifactCellLookup(opts.artifacts.list, opts.artifacts.pagesHref) : undefined;
   let relinked = 0;
   const canonical = typeof sushi.canonical === "string" ? sushi.canonical : undefined;
@@ -1534,10 +1535,18 @@ export function stageIgSite(igSrc: string, out: string, opts: StageOptions = {})
       usedMarkers.add(fill.marker);
     }
     for (const a of (opts.annexes ?? []).filter((x) => x.page === f)) {
+      annexed.push(`${f} <- ${basename(a.src)}`);
+      // A MARKDOWN annex is content the instance's graph holds for this page
+      // (a cross-reference section, say) and is appended as written. A JSON
+      // one is a table, loaded when the page opens.
+      if (a.src.endsWith(".md")) {
+        body += `\n\n${readFileSync(a.src, "utf-8").trim()}\n`;
+        continue;
+      }
       mkdirSync(join(out, "assets", "annex"), { recursive: true });
       copyFileSync(a.src, join(out, "assets", "annex", basename(a.src)));
       body += annexMount(basename(a.src), a.columns);
-      annexed.push(`${f} <- ${basename(a.src)}`);
+      jsonAnnexes++;
     }
     // Page variables as JSON flow mappings — YAML is a superset of JSON.
     const dataLines = Object.entries(data).map(([k, v]) => `${k}: ${JSON.stringify(v)}\n`).join("");
@@ -1546,7 +1555,7 @@ export function stageIgSite(igSrc: string, out: string, opts: StageOptions = {})
     pages.push(f);
   }
 
-  if (annexed.length) {
+  if (jsonAnnexes) {
     mkdirSync(join(out, "assets", "js"), { recursive: true });
     copyFileSync(ANNEX_SCRIPT_PATH, join(out, "assets", "js", "ig-annex.js"));
   }
