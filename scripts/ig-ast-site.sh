@@ -116,7 +116,7 @@ T2=$(date +%s)
 if [ "$JEKYLL" -eq 1 ]; then
   step "jekyll"
   if command -v bundle >/dev/null 2>&1; then
-    echo "jekyll build is left to the instance's own site config; see cat-harness/scripts/compose-docs.ts"
+    echo "jekyll build is left to the instance's own site config; see cat-harness-tools/scripts/compose-docs.ts"
   else
     echo "bundle not found — jekyll step skipped, and SAID to be skipped"
   fi
