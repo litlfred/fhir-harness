@@ -1,5 +1,7 @@
 ---
 name: ig-render-jekyll
+graph-typologies:
+  - ig-pages
 description: >
   Rendering a FHIR IG's content through the just-the-docs pipeline instead of
   mounting the IG Publisher's finished HTML — the JSON-only representation
