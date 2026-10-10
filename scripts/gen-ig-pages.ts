@@ -398,7 +398,40 @@ function chromeStyles(chrome: IgChrome): string {
     chromeCss(chrome, CHROME_SCOPE) +
     `${CHROME_SCOPE} .st-ig-bar{background:${bar};padding:.5rem .8rem;border-radius:4px 4px 0 0}\n` +
     `${CHROME_SCOPE} .st-ig-bar a{color:#fff;font-weight:600;text-decoration:none}\n` +
-    `${CHROME_SCOPE} .st-ig-title{font-size:12pt;font-weight:bold;color:${ink}}\n`
+    `${CHROME_SCOPE} .st-ig-title{font-size:12pt;font-weight:bold;color:${ink}}\n` +
+    darkChrome()
+  );
+}
+
+/**
+ * THE INGESTED CHROME IS A LIGHT THEME, and this site is dark by default.
+ *
+ * Every token and mirrored rule above is the upstream template's, which paints
+ * on white: `--publish-box-bg-color: yellow`, `#ig-status p { background-color:
+ * white }`, `--ig-status-text-color: #00376d`. On the site's dark ground those
+ * read as a glaring yellow bar and a white card with near-black text (owner,
+ * 2026-10-10: "in dark mode, yellow and white backgrounds are harsh").
+ *
+ * So the light values stay exactly as ingested — they are what a light reader
+ * gets, and what the drift checks compare — and a DARK reader gets this block on
+ * top. Keyed on the site's scheme attribute (`<html data-fa-scheme>`, set before
+ * first paint by the docs theme), dark unless it says `light`, matching that
+ * script's own default. These are this site's colours, not a transcription of
+ * the upstream's, which has no dark palette to transcribe; the yellow keeps its
+ * meaning as an amber callout rather than vanishing.
+ */
+function darkChrome(): string {
+  const dark = `html:not([data-fa-scheme="light"]) ${CHROME_SCOPE}`;
+  return (
+    `${dark}{` +
+    `--publish-box-bg-color:#3b3415;--publish-box-border:1px solid #8a7524;` +
+    `--ig-status-text-color:#a9c8f5;--ig-header-color:#2f2e35;--ig-header-container-color:#2f2e35;` +
+    `--breadcrumb-bg-color:#2f2e35;--toc-box-bg-color:#2f2e35;--footer-nav-bg-color:#2f2e35;` +
+    `--stu-note-background-color:#3a2a3a;--dragon-background-color:#35302a;--dragon-text-color:#e6e1d8;` +
+    `--link-color:#7fb2ec;--link-hover-color:#a9c8f5}\n` +
+    `${dark} #ig-status p{background-color:#2f2e35}\n` +
+    `${dark} #publish-box{color:#efe3b0}\n` +
+    `${dark} #publish-box a{color:#ffd866}\n`
   );
 }
 
