@@ -77,9 +77,9 @@ jobs:
           # --instance/--title/--link-root scope the shell's harness data to THIS
           # IG (#2263): its tiles, icon row, rail scope and title, with the
           # main site's graphs linked there and none of its counts shown here.
-          bun run cat-harness/scripts/compose-docs.ts --out "$RUNNER_TEMP/docs" --shell \
+          bun run cat-harness-tools/scripts/compose-docs.ts --out "$RUNNER_TEMP/docs" --shell \
             --instance "$INSTANCE" --title "$LABEL" --link-root "$MAIN_SITE"
-          bun run cat-harness/scripts/gen-navbar-include.ts --instance "$INSTANCE" \
+          bun run cat-harness-tools/scripts/gen-navbar-include.ts --instance "$INSTANCE" \
             --link-root "$MAIN_SITE" --title "$LABEL" \
             --out "$RUNNER_TEMP/docs/_includes/generated/navbar-footer.html"
 
@@ -119,14 +119,14 @@ jobs:
           # graph's pages are generated here: only the ingested document is
           # committed, and its index is what the IG's Swagger links forward to.
           if [ -n "$(find "$INSTANCE" -maxdepth 3 -name cat-openapi.config.json -print -quit)" ]; then
-            bun run cat-harness/openapi/scripts/gen-openapi-pages.ts --instance "$INSTANCE"
+            bun run cat-harness-tools/openapi/scripts/gen-openapi-pages.ts --instance "$INSTANCE"
           fi
           bun run fhir-harness/scripts/publish-served.ts --instance "$INSTANCE" --site ../_site
 
       - name: Give any page Jekyll did not lay out the same navbar
         working-directory: folio-assistant
         run: |
-          bun run cat-harness/scripts/rail-standalone-pages.ts --site ../_site --built cat-harness \
+          bun run cat-harness-tools/scripts/rail-standalone-pages.ts --site ../_site --built cat-harness \
             --foreign-site --home-label "$LABEL" --instance "$INSTANCE"
 
       - name: Say which platform built this site
