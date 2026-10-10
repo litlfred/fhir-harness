@@ -1210,3 +1210,25 @@ describe("annexes (owner, 2026-10-10: the data dictionary loaded on demand)", ()
     expect(js).toContain("textContent");
   });
 });
+
+describe("annexes in a staged page", () => {
+  test("a JSON annex mounts the loader; a markdown annex is appended as written", () => {
+    const root = mkdtempSync(join(tmpdir(), "annex-"));
+    const src = join(root, "ig");
+    mkdirSync(join(src, "input", "pagecontent"), { recursive: true });
+    writeFileSync(join(src, "sushi-config.yaml"), "id: x\ncanonical: http://example.org/x\npages:\n  index.md:\n    title: Home\n  people.md:\n    title: People\n");
+    writeFileSync(join(src, "input", "pagecontent", "index.md"), "Home.\n");
+    writeFileSync(join(src, "input", "pagecontent", "people.md"), "People.\n");
+    writeFileSync(join(root, "t.json"), JSON.stringify({ title: "T", sheets: [] }));
+    writeFileSync(join(root, "x.md"), "### Cross-references\n\n- [A](index.html)\n");
+    const out = join(root, "out");
+    const r = stageIgSite(src, out, { annexes: [{ page: "index.md", src: join(root, "t.json") }, { page: "people.md", src: join(root, "x.md") }, { page: "nope.md", src: join(root, "x.md") }] });
+    expect(readFileSync(join(out, "index.md"), "utf-8")).toContain('class="fa-annex"');
+    expect(existsSync(join(out, "assets", "js", "ig-annex.js"))).toBe(true);
+    const people = readFileSync(join(out, "people.md"), "utf-8");
+    expect(people).toContain("### Cross-references");
+    expect(people).not.toContain("fa-annex");
+    expect(r.unplaced).toEqual(["nope.md (x.md)"]);
+    rmSync(root, { recursive: true, force: true });
+  });
+});
