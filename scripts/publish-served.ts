@@ -29,7 +29,7 @@
  */
 import { cpSync, existsSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { servedDirectories, type Served } from "../../cat-harness/scripts/mount-instance-docs.ts";
+import { servedDirectories, type Served } from "../../cat-harness-tools/scripts/mount-instance-docs.ts";
 
 export interface ServedPlan {
   copy: Array<{ from: string; to: string }>;

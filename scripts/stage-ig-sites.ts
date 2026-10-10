@@ -58,8 +58,8 @@ import { declarationPathIn, instanceRootsIn, readDeclaration } from "../../cat-h
 import { instanceThemes } from "../../cat-harness/schemas/theme-by-ref.js";
 import { composeIgSite, dataOverwritesQa, describeStage, stageIgSite, type IgMenu, type IndexedArtifact, type SitePalette, type StageOptions } from "./build-ig-site";
 import { IgReleasesSchema, type IgReleases } from "../schemas/ig-releases.ts";
-import { readChangedFiles, siteFilter } from "../../cat-harness/scripts/staging-cone.ts";
-import { sourceHashOf } from "../../cat-harness/scripts/qa-results.ts";
+import { readChangedFiles, siteFilter } from "../../cat-harness-tools/scripts/staging-cone.ts";
+import { sourceHashOf } from "../../cat-harness-tools/scripts/qa-results.ts";
 
 interface MenuFile extends IgMenu {
   source?: { kind?: string; of?: string; ref?: string };

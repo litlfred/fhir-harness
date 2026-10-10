@@ -37,10 +37,10 @@
  * @module fhir-harness/scripts/build-ig-site
  */
 
-import { EDIT_LINKS_RUNTIME } from "../../cat-harness/src/core/edit-links.js";
+import { EDIT_LINKS_RUNTIME } from "../../cat-harness-tools/src/core/edit-links.js";
 import { execFileSync } from "node:child_process";
 import { copyFileSync, cpSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
-import type { QaResult } from "../../cat-harness/scripts/qa-results.ts";
+import type { QaResult } from "../../cat-harness-tools/scripts/qa-results.ts";
 import { basename, dirname, extname, join, relative, resolve } from "node:path";
 import { parse as parseYaml } from "yaml";
 import { astImplementationGuide, describeSiteData, igSiteData, type IgSiteDataResult } from "./ig-site-data";
@@ -48,7 +48,7 @@ import { defaultPackageCache, DEPENDENCY_FRAGMENTS, dependencyRows, fromImplemen
 import { readAst } from "./ig-ast.ts";
 import { GLOBALS_FRAGMENT, globalsFromImplementationGuide, globalsFromSushiConfig } from "./ig-globals.ts";
 import { artifactPageName } from "../schemas/fhir-artifact-index.js";
-import { wrapRaw } from "../../cat-harness/scripts/lib/liquid-raw.ts";
+import { wrapRaw } from "../../cat-harness-tools/scripts/lib/liquid-raw.ts";
 import type { IgReleases } from "../schemas/ig-releases.ts";
 import { igSiteFooter, sushiFooterData, type IgFooterData } from "./ig-footer.ts";
 

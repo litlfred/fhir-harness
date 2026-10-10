@@ -75,7 +75,7 @@
  */
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { basename, join, posix, relative, resolve, sep } from "node:path";
-import { compareRoute } from "../../cat-harness/scripts/route-authority.ts";
+import { compareRoute } from "../../cat-harness-tools/scripts/route-authority.ts";
 import { IG_API_HUB_SCRIPT, IG_API_HUB_TEMPLATE, IG_API_VIEW_SCRIPT, igApiHubData, igApiHubFragment, igApiServed, igApiViewData, igApiViews } from "./ig-api-views.ts";
 import { IG_CHROME_SCOPE, igFooterData } from "./ig-footer.ts";
 import { JSON_VIEW_SCRIPT, VIEW_PAGE, examplesPage, hasJsonView, historyPage, jsonViewData, mappingsPage, mdText, packageEntries, profileJsonViewData, resourceFacts, resourceTabs, testingPage, type TabPageData } from "./resource-views.ts";
@@ -90,7 +90,7 @@ import {
   type IgChrome,
 } from "../schemas/ig-chrome.js";
 import { readIgIdentity, statusOf, type IgIdentity } from "../schemas/ig-identity.js";
-import { declaredVisualisers, siteOwnerDir, withRenderedBy, withRenderedByFrontMatter } from "../../cat-harness/scripts/viewer-declarations.js";
+import { declaredVisualisers, siteOwnerDir, withRenderedBy, withRenderedByFrontMatter } from "../../cat-harness-tools/scripts/viewer-declarations.js";
 import { siteRootFrom, visualiserRoute } from "../../cat-harness/schemas/visualiser-route.js";
 import {
   declarationPathIn,
