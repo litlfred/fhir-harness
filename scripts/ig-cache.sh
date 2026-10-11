@@ -167,7 +167,7 @@ resolve_branch() {
 
 count_resources() {
   local dir="$1"
-  find "$dir" -name '*.json' -not -name 'manifest.json' -not -name 'dependencies.json' -not -name 'fsh-index.json' -type f 2>/dev/null | head -20000 | wc -l | tr -d ' '
+  find "$dir" -name '*.json' -not -name 'manifest.json' -not -name 'dependencies.json' -not -name 'fsh-index.json' -not -name 'expansions.json' -type f 2>/dev/null | head -20000 | wc -l | tr -d ' '
 }
 
 cmd_status() {
@@ -362,6 +362,13 @@ if isinstance(m.get("ig"), dict) and "root" in m["ig"]:
         json.dump(m, f, indent=2)
         f.write("\n")
 PY
+  fi
+  # The Publisher's expansions go with the AST: its ValueSets carry no
+  # expansion, and anything that enumerates a ValueSet's codes (a JSON Schema,
+  # a vocabulary) needs the build's own expansion rather than a second call to
+  # a terminology server. Restored into output-ast/ with the rest.
+  if [ -f "$root/output/expansions.json" ] && [ ! -f "$tmp/expansions.json" ]; then
+    cp "$root/output/expansions.json" "$tmp/expansions.json"
   fi
   # txcache goes alongside AST on the branch
   if [ -d "$root/input-cache/txcache" ]; then
