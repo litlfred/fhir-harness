@@ -14,7 +14,7 @@ import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
-import { astToArtifactIndex, attachSidecars, compareIndexes, publisherCategory, readerText, withCrossVersionFields } from "./ast-to-artifact-index";
+import { astToArtifactIndex, attachSidecars, compareIndexes, keepPublishedGrouping, publisherCategory, readerText, withCrossVersionFields } from "./ast-to-artifact-index";
 import { readAst } from "./ig-ast";
 import { FhirArtifactIndexSchema, type FhirArtifactIndex } from "../schemas/fhir-artifact-index.js";
 
@@ -271,5 +271,21 @@ describe("attachSidecars", () => {
     expect(r).toEqual({ attached: 0, unbound: [] });
     expect(index.sidecarApi).toBe("unknown");
     expect(index.sidecarsUnbound).toBeUndefined();
+  });
+});
+
+describe("keepPublishedGrouping", () => {
+  test("the published grouping wins where the published index holds the key; the default stays elsewhere", () => {
+    const { index } = astToArtifactIndex(syntheticAst(), { instanceId: "example" });
+    const published = structuredClone(index);
+    const cs = published.artifacts.find((a) => a.key === "CodeSystem/Colours")!;
+    cs.category = "Terminology: Colour schemes";
+    cs.listedAt = 3;
+    published.artifacts = published.artifacts.filter((a) => a.key !== "StructureDefinition/Cat");
+    expect(keepPublishedGrouping(index, published)).toBe(2);
+    const got = index.artifacts.find((a) => a.key === "CodeSystem/Colours")!;
+    expect([got.category, got.listedAt]).toEqual(["Terminology: Colour schemes", 3]);
+    expect(index.artifacts.find((a) => a.key === "StructureDefinition/Cat")!.category).toBe("Structures: Logical Models");
+    expect(FhirArtifactIndexSchema.safeParse(index).success).toBe(true);
   });
 });
