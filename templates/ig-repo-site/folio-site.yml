@@ -127,6 +127,8 @@ jobs:
           # the released Publisher (skill ig-publisher-fork). Pinned, so a
           # rebuild runs the exporter this workflow was written against.
           AST_EXPORT_REF: bfa914b3910356019b646d64e723e3589392a459
+          # The Publisher's default (FhirSettings.getTxFhirProduction()).
+          TX_SERVER: http://tx.fhir.org
         run: |
           set -o pipefail
           npm install -g fsh-sushi
@@ -138,8 +140,13 @@ jobs:
           rm -rf output-ast
           # Absolute paths: the exporter refuses a relative -ig ("Computed path
           # does not start with first element: ., output-ast"), after the build.
+          # -tx explicitly: the Publisher's own command line defaults it to the
+          # production terminology server, but AstExportCli builds the Publisher
+          # directly and leaves it unset, so the build ran with NO terminology
+          # server (no external expansions; a ConceptMap narrative then fails on
+          # a null terminology client).
           java -Xmx10g -cp "$CP" org.hl7.fhir.igtools.ast.AstExportCli -ig "$GITHUB_WORKSPACE" \
-            -ast-out "$GITHUB_WORKSPACE/output-ast" > "$RUNNER_TEMP/ast-build.log" 2>&1 \
+            -ast-out "$GITHUB_WORKSPACE/output-ast" -tx "$TX_SERVER" > "$RUNNER_TEMP/ast-build.log" 2>&1 \
             || { tail -n 80 "$RUNNER_TEMP/ast-build.log"; exit 1; }
           tail -n 20 "$RUNNER_TEMP/ast-build.log"
           # The build's own expansions, beside the AST: its ValueSets carry
