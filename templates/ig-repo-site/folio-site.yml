@@ -37,6 +37,11 @@ name: folio site
 
 on:
   workflow_dispatch:
+    inputs:
+      rebuild_ast:
+        description: "Rebuild the IG's FHIR AST even when its cache is current"
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -51,6 +56,9 @@ jobs:
     env:
       INSTANCE: "@@INSTANCE@@"
       LABEL: "@@LABEL@@"
+      # The `bun run cat` script that writes this IG's API sidecars from its
+      # AST (`--ast <dir> --out <dir>`), or empty when it has none.
+      SIDECARS_SCRIPT: ""
       BASE: /${{ github.event.repository.name }}
       MAIN_SITE: https://litlfred.github.io/folio-assistant
     steps:
@@ -72,6 +80,119 @@ jobs:
         working-directory: folio-assistant
         run: bun install --frozen-lockfile
 
+      - name: The IG's FHIR AST, from its cache
+        id: ast
+        run: |
+          # The AST is the IG Publisher build itself, cached per IG on the
+          # branch family cat/fhir-harness/fhir-ast/<package id> of THIS
+          # repository (fhir-harness/scripts/ig-cache.sh). `valid` means it was
+          # built from the inputs this checkout has; anything else is rebuilt
+          # below, so a site is never drawn from an AST of other inputs.
+          set +e
+          verdict=missing
+          if bash folio-assistant/fhir-harness/scripts/ig-cache.sh restore --ig-root .; then
+            (cd folio-assistant && bun run fhir-harness/scripts/ig-ast.ts validity ../output-ast --ig .. > "$RUNNER_TEMP/ast-validity.json")
+            case $? in 0) verdict=valid ;; 1) verdict=stale ;; *) verdict=cannot-tell ;; esac
+          fi
+          rebuild=false
+          [ "$verdict" != valid ] && rebuild=true
+          [ "${{ inputs.rebuild_ast }}" = "true" ] && rebuild=true
+          echo "verdict=$verdict" >> "$GITHUB_OUTPUT"
+          echo "rebuild=$rebuild" >> "$GITHUB_OUTPUT"
+          echo "AST cache: $verdict; rebuild: $rebuild"
+
+      - name: Java for the IG Publisher
+        if: steps.ast.outputs.rebuild == 'true'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Node for SUSHI
+        if: steps.ast.outputs.rebuild == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Ruby for the Publisher's Jekyll
+        if: steps.ast.outputs.rebuild == 'true'
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+
+      - name: Build the IG and export its AST
+        if: steps.ast.outputs.rebuild == 'true'
+        env:
+          # litlfred/fhir-ig-publisher, branch claude/ast-export: a library ON
+          # the released Publisher (skill ig-publisher-fork). Pinned, so a
+          # rebuild runs the exporter this workflow was written against.
+          AST_EXPORT_REF: bfa914b3910356019b646d64e723e3589392a459
+        run: |
+          set -o pipefail
+          npm install -g fsh-sushi
+          gem install jekyll --no-document
+          git clone -q --filter=blob:none https://github.com/litlfred/fhir-ig-publisher "$RUNNER_TEMP/igp"
+          git -C "$RUNNER_TEMP/igp" checkout -q "$AST_EXPORT_REF"
+          (cd "$RUNNER_TEMP/igp/ast-export" && mvn -q -B -DskipTests compile dependency:build-classpath -Dmdep.outputFile=cp.txt)
+          CP="$RUNNER_TEMP/igp/ast-export/target/classes:$(cat "$RUNNER_TEMP/igp/ast-export/cp.txt")"
+          rm -rf output-ast
+          java -Xmx10g -cp "$CP" org.hl7.fhir.igtools.ast.AstExportCli -ig . > "$RUNNER_TEMP/ast-build.log" 2>&1 \
+            || { tail -n 80 "$RUNNER_TEMP/ast-build.log"; exit 1; }
+          tail -n 20 "$RUNNER_TEMP/ast-build.log"
+          # The build's own expansions, beside the AST: its ValueSets carry
+          # none, and an IG's post-processing that enumerates codes needs them.
+          cp output/expansions.json output-ast/expansions.json
+
+      - name: Keep the AST build log
+        if: always() && steps.ast.outputs.rebuild == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ast-build-log
+          path: ${{ runner.temp }}/ast-build.log
+          if-no-files-found: ignore
+
+      - name: Seed the AST cache
+        # Only the deploy branch writes the cache: a build of any other branch
+        # uses its own AST for its own run and leaves the shared one alone.
+        if: steps.ast.outputs.rebuild == 'true' && github.ref == 'refs/heads/main'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          bash folio-assistant/fhir-harness/scripts/ig-cache.sh seed --ig-root . --push
+
+      - name: Leave only the AST of the Publisher build
+        if: steps.ast.outputs.rebuild == 'true'
+        # The staging below copies this checkout as the IG's source; the
+        # Publisher's own output is not source, and is large.
+        run: rm -rf output temp template fsh-generated input-cache
+
+      - name: This IG's API sidecars, from the AST
+        if: env.SIDECARS_SCRIPT != ''
+        working-directory: folio-assistant
+        # An IG whose post-processing writes API sidecars (JSON Schema, JSON-LD,
+        # displays) names the script that writes them from the AST, as
+        # `<script> --ast <output-ast> --out <dir>`; this template knows none.
+        # They land in the served artefact index, where the pages link them.
+        run: bun run cat "$SIDECARS_SCRIPT" --ast ../output-ast --out "$INSTANCE/fhir-artifact-index/sidecars"
+
+      - name: The artefact index the AST describes
+        working-directory: folio-assistant
+        run: |
+          # A published index, where the instance holds one, keeps two jobs: the
+          # IG's own grouping, which the AST cannot know, and a parity report.
+          args=()
+          [ -f "$INSTANCE/fhir-artifact-index/index.json" ] && args+=(--compare "$INSTANCE/fhir-artifact-index/index.json" --keep-published-grouping --report "$RUNNER_TEMP/ast-parity.json")
+          [ -d "$INSTANCE/fhir-artifact-index/sidecars" ] && args+=(--sidecars "$INSTANCE/fhir-artifact-index/sidecars" --sidecars-local fhir-artifact-index/sidecars)
+          bun run fhir-harness/scripts/ast-to-artifact-index.ts --ast ../output-ast --instance-id "$INSTANCE" \
+            "${args[@]}" --out "$RUNNER_TEMP/ast-index.json"
+
+      - name: Generate this IG's pages, from the AST
+        working-directory: folio-assistant
+        # The instance's `docs/` (its `igSite` graph) is GENERATED, never
+        # committed. Each artefact page links the resource's JSON from this
+        # site's `ast-data/` and its JSON Schema and JSON-LD from the sidecars.
+        run: bun run cat "$INSTANCE:pages" --index "$RUNNER_TEMP/ast-index.json" --compiled-data ast-data
+
       - name: Set up Ruby for the site
         uses: ruby/setup-ruby@v1
         with:
@@ -91,15 +212,6 @@ jobs:
             --link-root "$MAIN_SITE" --title "$LABEL" \
             --out "$RUNNER_TEMP/docs/_includes/generated/navbar-footer.html"
 
-      - name: Restore the IG's FHIR AST, the source of site.data.fhir
-        run: |
-          # `ig-cache.sh restore` puts the AST at ./output-ast, where
-          # ig-site-data reads the ImplementationGuide resource first (bean
-          # jut3). Exit 1 is a cache MISS, not a failure: site.data.fhir then
-          # comes from sushi-config.yaml, and the stage log says which.
-          bash folio-assistant/fhir-harness/scripts/ig-cache.sh restore --ig-root . \
-            || echo "no FHIR AST restored (exit $?): site.data.fhir from sushi-config.yaml"
-
       - name: Compose this IG at the site root
         working-directory: folio-assistant
         run: |
@@ -116,6 +228,9 @@ jobs:
           BUNDLE_GEMFILE="$PWD/folio-assistant/cat-harness/docs/Gemfile" bundle exec jekyll build \
             --source "$RUNNER_TEMP/docs" --destination ./_site --baseurl "$BASE"
           bun run folio-assistant/fhir-harness/scripts/build-ig-site.ts --dedupe-ids ./_site
+          # Each artefact's own JSON, as the AST holds it: what the pages' json
+          # links and resource sections fetch (`../ast-data/`).
+          mkdir -p ./_site/ast-data && cp -a output-ast/resources ./_site/ast-data/resources
           touch ./_site/.nojekyll
 
       - name: Publish this IG's served directories
