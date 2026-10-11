@@ -14,7 +14,7 @@ import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
-import { astToArtifactIndex, compareIndexes, publisherCategory, readerText, withCrossVersionFields } from "./ast-to-artifact-index";
+import { astToArtifactIndex, attachSidecars, compareIndexes, publisherCategory, readerText, withCrossVersionFields } from "./ast-to-artifact-index";
 import { readAst } from "./ig-ast";
 import { FhirArtifactIndexSchema, type FhirArtifactIndex } from "../schemas/fhir-artifact-index.js";
 
@@ -223,5 +223,53 @@ describe("a resource whose `name` is not a string (bean c65n)", () => {
     expect(p.title).toBe("child-1");
     expect(p.description).toBeUndefined();
     expect(p.name).toBeUndefined();
+  });
+});
+
+describe("attachSidecars", () => {
+  const sidecars = () => {
+    const dir = mkdtempSync(join(tmpdir(), "ast-sidecars-"));
+    put(dir, "CodeSystem-Colours.jsonld", { "@context": {} });
+    // A logical model's schema named after its TITLE, not its id.
+    put(dir, "StructureDefinition-Cat.schema.json", { type: "object" });
+    put(dir, "CodeSystem-Colours.displays.json", {});
+    // An enumeration of every schema: binds to nothing, and is recorded.
+    put(dir, "LogicalModels.schema.json", {});
+    put(dir, "README.md", "not a sidecar");
+    return dir;
+  };
+
+  test("binds by <Type>-<id>, serves from the local prefix, and records what binds to nothing", () => {
+    const { index } = astToArtifactIndex(syntheticAst(), { instanceId: "example" });
+    const r = attachSidecars(index, sidecars(), { localPrefix: "fhir-artifact-index/sidecars/" });
+    expect(FhirArtifactIndexSchema.safeParse(index).success).toBe(true);
+    expect(r.attached).toBe(3);
+    const cs = index.artifacts.find((a) => a.key === "CodeSystem/Colours")!;
+    expect(cs.sidecars?.jsonld?.localPath).toBe("fhir-artifact-index/sidecars/CodeSystem-Colours.jsonld");
+    expect(cs.sidecars?.displays?.localPath).toBe("fhir-artifact-index/sidecars/CodeSystem-Colours.displays.json");
+    expect(index.artifacts.find((a) => a.key === "StructureDefinition/Cat")!.sidecars?.schema?.bytes).toBeGreaterThan(0);
+    expect(index.sidecarApi).toBe("present");
+    expect(index.sidecarsUnbound?.map((u) => u.filename)).toEqual(["LogicalModels.schema.json"]);
+  });
+
+  test("a title stem binds where neither the id nor the name does, and a published base becomes the url", () => {
+    const { index } = astToArtifactIndex(syntheticAst(), { instanceId: "example" });
+    const cat = index.artifacts.find((a) => a.key === "StructureDefinition/Cat")!;
+    cat.id = "C4";
+    cat.name = "C4";
+    cat.title = "Cat: the record";
+    const dir = mkdtempSync(join(tmpdir(), "ast-sidecars-"));
+    put(dir, "StructureDefinition-Cat_the_record.schema.json", {});
+    const r = attachSidecars(index, dir, { localPrefix: "sc", publishedBase: "https://pub.example.org/ig/" });
+    expect(r.attached).toBe(1);
+    expect(cat.sidecars?.schema).toEqual({ url: "https://pub.example.org/ig/StructureDefinition-Cat_the_record.schema.json", localPath: "sc/StructureDefinition-Cat_the_record.schema.json", bytes: 2 });
+  });
+
+  test("no sidecars leaves the index saying it cannot tell", () => {
+    const { index } = astToArtifactIndex(syntheticAst(), { instanceId: "example" });
+    const r = attachSidecars(index, mkdtempSync(join(tmpdir(), "ast-sidecars-")), { localPrefix: "sc" });
+    expect(r).toEqual({ attached: 0, unbound: [] });
+    expect(index.sidecarApi).toBe("unknown");
+    expect(index.sidecarsUnbound).toBeUndefined();
   });
 });

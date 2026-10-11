@@ -38,7 +38,7 @@
  *
  * Nothing here may know about WHO (fhir-harness/AGENTS.md).
  */
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 
 import { AST_GATES, readAst, type Ast, type AstResource } from "./ig-ast";
@@ -48,6 +48,8 @@ import {
   type FhirArtifact,
   type FhirArtifactIndex,
   type PublishedFormats,
+  type SidecarOverlay,
+  type UnboundSidecar,
 } from "../schemas/fhir-artifact-index.js";
 
 /** The fields of a FHIR resource the index reads. */
@@ -287,6 +289,78 @@ export function astToArtifactIndex(ast: Ast, opts: AstIndexOptions): AstIndexRes
   return { index, unreadable };
 }
 
+// ── sidecars ───────────────────────────────────────────────────────────────
+
+/** The sidecar slots, by file suffix. Longest first, so `.schema.json` is not read as `.json`. */
+const SIDECAR_SUFFIXES: ReadonlyArray<[keyof Omit<SidecarOverlay, "codeCount" | "propertyCount">, string]> = [
+  ["schema", ".schema.json"],
+  ["displays", ".displays.json"],
+  ["openapi", ".openapi.json"],
+  ["jsonld", ".jsonld"],
+];
+
+/** A title as a file stem: every run of characters that is not a word character becomes `_`. */
+const titleStem = (t: string): string => t.trim().replace(/\W+/g, "_").replace(/^_+|_+$/g, "");
+
+export interface SidecarAttachOptions {
+  /** The instance-relative directory the sidecars are SERVED from, e.g. `fhir-artifact-index/sidecars`. */
+  localPrefix: string;
+  /** Where the IG is published; with it, each sidecar's `url` is its published address too. */
+  publishedBase?: string;
+}
+
+export interface SidecarAttachResult {
+  /** Sidecar files bound to an artefact. */
+  attached: number;
+  /** Files that named no artefact, recorded on the index and returned. */
+  unbound: UnboundSidecar[];
+}
+
+/**
+ * Bind a directory of IG API sidecars (`<stem>.schema.json`, `.displays.json`,
+ * `.openapi.json`, `.jsonld`) to the artefacts of an AST-derived index.
+ *
+ * The AST stops at the FHIR build; whatever post-processing an IG runs writes
+ * these files beside it, and this layer does not know what that processing is.
+ * It only knows the names the IG Publisher gives a resource's files, so a
+ * sidecar binds by stem, tried in order: `<Type>-<id>`, `<Type>-<name>`, then
+ * `<Type>-<title>` with each run of non-word characters as `_` (a logical
+ * model's schema is commonly named after its title). Anything that binds to
+ * nothing is RECORDED in `sidecarsUnbound`, never dropped: an enumeration file
+ * listing every schema is such a file, and so is a naming this cannot read.
+ */
+export function attachSidecars(index: FhirArtifactIndex, dir: string, opts: SidecarAttachOptions): SidecarAttachResult {
+  const byStem = new Map<string, FhirArtifact>();
+  for (const a of index.artifacts) {
+    for (const s of [a.id, a.name, a.title ? titleStem(a.title) : undefined]) {
+      if (!s) continue;
+      const k = `${a.resourceType}-${s}`;
+      if (!byStem.has(k)) byStem.set(k, a);
+    }
+  }
+  const prefix = opts.localPrefix.replace(/\/+$/, "");
+  const base = opts.publishedBase?.replace(/\/+$/, "");
+  const unbound: UnboundSidecar[] = [];
+  let attached = 0;
+  for (const file of readdirSync(dir).sort()) {
+    const hit = SIDECAR_SUFFIXES.find(([, suf]) => file.endsWith(suf));
+    if (!hit || !statSync(join(dir, file)).isFile()) continue;
+    const [slot, suf] = hit;
+    const stem = file.slice(0, -suf.length);
+    const a = byStem.get(stem);
+    if (!a) {
+      unbound.push({ filename: file, enumeration: dir, reason: `no artefact has the stem ${stem} as <Type>-<id>, <Type>-<name> or <Type>-<title>` });
+      continue;
+    }
+    const localPath = `${prefix}/${file}`;
+    a.sidecars = { ...a.sidecars, [slot]: { url: base ? `${base}/${file}` : localPath, localPath, bytes: statSync(join(dir, file)).size } };
+    attached++;
+  }
+  if (attached) index.sidecarApi = "present";
+  if (unbound.length) index.sidecarsUnbound = unbound;
+  return { attached, unbound };
+}
+
 // ── parity ─────────────────────────────────────────────────────────────────
 
 export type FieldName = "title" | "description" | "canonical" | "version" | "category" | "name";
@@ -384,7 +458,8 @@ if (import.meta.main) {
   if (!astDir || !instanceId) {
     console.error(
       "usage: ast-to-artifact-index.ts --ast <output-ast dir> --instance-id <id> " +
-        "[--published-base <url>] [--out <index.json>] [--compare <published index.json>] [--report <json>]",
+        "[--published-base <url>] [--out <index.json>] [--compare <published index.json>] [--report <json>] " +
+        "[--sidecars <dir> [--sidecars-local <instance-relative dir>]]",
     );
     process.exit(2);
   }
@@ -396,6 +471,15 @@ if (import.meta.main) {
     publishedBase: arg("--published-base"),
     ...(pub ? { publishedKeys: new Set(pub.artifacts.map((a) => a.key)) } : {}),
   });
+  const sidecarDir = arg("--sidecars");
+  if (sidecarDir) {
+    const r = attachSidecars(index, resolve(sidecarDir), {
+      localPrefix: arg("--sidecars-local") ?? "fhir-artifact-index/sidecars",
+      publishedBase: arg("--published-base"),
+    });
+    FhirArtifactIndexSchema.parse(index);
+    console.log(`sidecars: ${r.attached} bound from ${sidecarDir}; ${r.unbound.length} bound to nothing (recorded in sidecarsUnbound)`);
+  }
   if (unreadable.length) {
     console.error(`! ${unreadable.length} manifest entr${unreadable.length === 1 ? "y has" : "ies have"} no readable resource file:`);
     for (const k of unreadable.slice(0, 10)) console.error(`    ${k}`);
