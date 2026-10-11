@@ -289,6 +289,34 @@ export function astToArtifactIndex(ast: Ast, opts: AstIndexOptions): AstIndexRes
   return { index, unreadable };
 }
 
+// ── editorial grouping ─────────────────────────────────────────────────────
+
+/**
+ * Take each artefact's editorial grouping (`category`, `listedAt`) from the
+ * PUBLISHED index, where it holds the same key.
+ *
+ * The AST stops before the Publisher writes `artifacts.html`, so
+ * {@link publisherCategory} can only apply the Publisher's default grouping by
+ * type. An IG that groups by hand (Libraries and PlanDefinitions under its own
+ * headings, say) would lose those headings on a site drawn from the AST. The
+ * published index is the only record of that grouping, so it is used where it
+ * has the artefact, and the default stays for an artefact it lacks (newer than
+ * the last publish). Returns how many artefacts took the published grouping.
+ */
+export function keepPublishedGrouping(index: FhirArtifactIndex, published: FhirArtifactIndex): number {
+  const p = new Map(published.artifacts.map((a) => [a.key, a]));
+  let n = 0;
+  for (const a of index.artifacts) {
+    const q = p.get(a.key);
+    if (!q?.category) continue;
+    a.category = q.category;
+    if (q.listedAt !== undefined) a.listedAt = q.listedAt;
+    else delete a.listedAt;
+    n++;
+  }
+  return n;
+}
+
 // ── sidecars ───────────────────────────────────────────────────────────────
 
 /** The sidecar slots, by file suffix. Longest first, so `.schema.json` is not read as `.json`. */
@@ -459,7 +487,7 @@ if (import.meta.main) {
     console.error(
       "usage: ast-to-artifact-index.ts --ast <output-ast dir> --instance-id <id> " +
         "[--published-base <url>] [--out <index.json>] [--compare <published index.json>] [--report <json>] " +
-        "[--sidecars <dir> [--sidecars-local <instance-relative dir>]]",
+        "[--sidecars <dir> [--sidecars-local <instance-relative dir>]] [--keep-published-grouping]",
     );
     process.exit(2);
   }
@@ -471,6 +499,14 @@ if (import.meta.main) {
     publishedBase: arg("--published-base"),
     ...(pub ? { publishedKeys: new Set(pub.artifacts.map((a) => a.key)) } : {}),
   });
+  if (process.argv.includes("--keep-published-grouping")) {
+    if (!pub) {
+      console.error("--keep-published-grouping needs --compare <published index.json>: the grouping comes from there");
+      process.exit(2);
+    }
+    // Before the comparison, so the report names only the differences left.
+    console.log(`grouping: ${keepPublishedGrouping(index, pub)} artefact(s) take the published category`);
+  }
   const sidecarDir = arg("--sidecars");
   if (sidecarDir) {
     const r = attachSidecars(index, resolve(sidecarDir), {

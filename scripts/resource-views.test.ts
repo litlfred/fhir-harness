@@ -5,7 +5,7 @@
 import { describe, expect, it } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
-import { JSON_VIEW_SCRIPT, hasJsonView, jsonViewData } from "./resource-views.ts";
+import { JSON_VIEW_SCRIPT, hasJsonView, jsonViewData, rebaseDescriptionLinks } from "./resource-views.ts";
 import type { FhirArtifact } from "../schemas/fhir-artifact-index.js";
 
 const vs = {
@@ -43,5 +43,19 @@ describe("JSON views", () => {
     const js = readFileSync(join(import.meta.dir, "templates", "ig-pages", "resource-json.js"), "utf8");
     expect(js).toContain("JSON.stringify(d, null, 2)");
     expect(js).toContain('DecompressionStream("gzip")');
+  });
+});
+
+describe("rebaseDescriptionLinks", () => {
+  const d = "As defined by the [certificate governance](concepts.html#x), see [spec](https://hl7.org/fhir), [up](../a.html) and [here](#top).";
+  it("rebases a relative link onto the IG root and leaves absolute, ../ and anchor links alone", () => {
+    expect(rebaseDescriptionLinks(d, "../")).toBe(
+      "As defined by the [certificate governance](../concepts.html#x), see [spec](https://hl7.org/fhir), [up](../a.html) and [here](#top).",
+    );
+  });
+  it("with no IG pages on the site, reduces a relative link to its text instead of leaving it to dangle", () => {
+    expect(rebaseDescriptionLinks(d, null)).toBe(
+      "As defined by the certificate governance, see [spec](https://hl7.org/fhir), [up](../a.html) and [here](#top).",
+    );
   });
 });

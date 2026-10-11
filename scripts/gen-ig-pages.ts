@@ -78,7 +78,7 @@ import { basename, join, posix, relative, resolve, sep } from "node:path";
 import { compareRoute } from "../../cat-harness-tools/scripts/route-authority.ts";
 import { IG_API_HUB_SCRIPT, IG_API_HUB_TEMPLATE, IG_API_VIEW_SCRIPT, igApiHubData, igApiHubFragment, igApiServed, igApiViewData, igApiViews } from "./ig-api-views.ts";
 import { IG_CHROME_SCOPE, igFooterData } from "./ig-footer.ts";
-import { JSON_VIEW_SCRIPT, VIEW_PAGE, examplesPage, hasJsonView, historyPage, jsonViewData, mappingsPage, mdText, packageEntries, profileJsonViewData, resourceFacts, resourceTabs, testingPage, type TabPageData } from "./resource-views.ts";
+import { JSON_VIEW_SCRIPT, VIEW_PAGE, examplesPage, hasJsonView, historyPage, jsonViewData, mappingsPage, mdText, packageEntries, rebaseDescriptionLinks, profileJsonViewData, resourceFacts, resourceTabs, testingPage, type TabPageData } from "./resource-views.ts";
 import { isDirectoryReadme } from "../../cat-harness/schemas/kg-node.js";
 
 import { IgMenuSchema, type IgMenu, type IgMenuGroup, menuHref, menuItemCount } from "../schemas/ig-menu.js";
@@ -1113,7 +1113,8 @@ function artifactPage(ix: FhirArtifactIndex, a: FhirArtifact): string {
     ``,
     `\`${a.key}\``,
     ``,
-    ...(a.description ? [a.description, ``] : []),
+    // Rebased: the description's links name IG pages at the root, one level up.
+    ...(a.description ? [rebaseDescriptionLinks(a.description, IG_SITE ? "../" : null), ``] : []),
     `<div class="st-grid">${stats}</div>`,
     ``,
     `## Identity and bytes are different questions`,

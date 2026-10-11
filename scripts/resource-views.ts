@@ -235,6 +235,24 @@ export function mdText(s: string): string {
 }
 
 /**
+ * A FHIR description's links, for a page written one level below the IG root.
+ *
+ * A description is markdown the IG author wrote for the Publisher's pages,
+ * which all sit at the IG root, so `[governance](concepts.html)` names a page
+ * beside it. An artefact page here sits in `artifact/`, where that link 404s.
+ * With a `prefix` (`../`), every relative link is rebased onto the IG root;
+ * with `null` (no IG pages exist on this site at all), the link is reduced to
+ * its text rather than left to dangle. Absolute links, `../` links, anchors and
+ * other schemes are left alone.
+ */
+export function rebaseDescriptionLinks(md: string, prefix: string | null): string {
+  return md.replace(/\[([^\]]*)\]\(([^)\s]+)\)/g, (all, text: string, target: string) => {
+    if (/^[a-z][a-z0-9+.-]*:|^\/|^#|^\.\.\//i.test(target)) return all;
+    return prefix === null ? text : `[${text}](${prefix}${target.replace(/^\.\//, "")})`;
+  });
+}
+
+/**
  * A VIEW page beside an artefact's own page — one per representation, sidecar
  * or tab, never one per artefact. The one rule every count and test reads.
  */
