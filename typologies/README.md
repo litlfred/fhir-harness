@@ -11,6 +11,7 @@ Part of [FHIR IG Harness](../README.md) 0.1.0, declared as `fhir-harness-typolog
 | file | what it is | used by |
 |---|---|---|
 | [`fhir-artifact-index.json`](fhir-artifact-index.json) | FHIR artefact index |  |
+| [`ig-artifact-jsonld.json`](ig-artifact-jsonld.json) | IG artefact JSON-LD |  |
 | [`ig-ast.json`](ig-ast.json) | IG AST |  |
 | [`ig-metadata-index.json`](ig-metadata-index.json) | IG metadata index |  |
 | [`ig-pages.json`](ig-pages.json) | IG pages |  |
