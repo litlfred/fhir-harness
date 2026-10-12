@@ -107,3 +107,78 @@ export function thinArtifactPage(ix: FhirArtifactIndex, a: FhirArtifact, o: Thin
 
 /** The page's path under the docs root. */
 export const thinArtifactPath = (a: FhirArtifact): string => `${ARTIFACT_DIR}/${artifactPageName(a)}.html`;
+
+/** The config block's id of a thin IG-level list page (`artifacts`, `toc`). */
+export const THIN_INDEX_CONFIG_ID = "ig-index-page";
+
+/**
+ * A thin IG-level page that LISTS the artefacts, drawn from the one index
+ * node (`artifact/index.jsonld`, `ig-artifact-jsonld.ts`) rather than written
+ * into the page: the IG's `artifacts.html` (`view: "artifacts"`, every
+ * category OPEN — the owner could not find artefacts behind collapsed ones,
+ * 2026-10-12) and its `toc.html` (`view: "toc"`: the IG's own pages, which
+ * are the page's structure and stay in its HTML as `outline`, then every
+ * artefact under its category). Written by `build-ig-site.ts`, which owns
+ * both pages, at the addresses the full pages had. Every href is relative
+ * to the page.
+ */
+export interface ThinIndexOptions {
+  view: "artifacts" | "toc";
+  /** The page's own heading, plain text. */
+  heading: string;
+  /** The IG's display name. */
+  label: string;
+  /** The page's file name, for `rel="canonical"`. */
+  canonical: string;
+  /** The index node. */
+  index: string;
+  /** The directory of the artefact pages, ending in `/`. */
+  pagesHref: string;
+  /** The docs root holding `assets/`, `""` or ending in `/`. */
+  assets: string;
+  /** The IG's home, its artifacts page and its table of contents. */
+  home: string;
+  artifacts: string;
+  toc: string;
+  /** The reading order's neighbours. */
+  prev?: string;
+  next?: string;
+  /** HTML the caller built and escaped: the IG's own pages, for the toc. */
+  outline?: string;
+}
+
+/** The thin `artifacts` or `toc` page. Deterministic. */
+export function thinIndexPage(o: ThinIndexOptions): string {
+  const config: Record<string, unknown> = {
+    view: o.view,
+    index: o.index,
+    // What a description's relative links are relative to: the IG's docs root.
+    root: o.assets,
+    pages: o.pagesHref,
+    home: o.home,
+    artifacts: o.artifacts,
+    toc: o.toc,
+    footer: `${o.assets}assets/ig-footer.json`,
+    ...(o.prev ? { prev: o.prev } : {}),
+    ...(o.next ? { next: o.next } : {}),
+  };
+  const lead = o.view === "artifacts" ? "This page lists the FHIR artifacts defined as part of this implementation guide." : "";
+  return thinPageHtml({
+    title: `${o.heading} — ${o.label}`,
+    jsonld: o.index,
+    canonical: o.canonical,
+    script: `${o.assets}${THIN_PAGE_SCRIPT}`,
+    stylesheet: `${o.assets}${THIN_PAGE_STYLE}`,
+    configId: THIN_INDEX_CONFIG_ID,
+    config,
+    body:
+      `<header class="iga-top"><a class="iga-home" href="${escHtml(o.home)}">${escHtml(o.label)}</a>` +
+      `<a href="${escHtml(o.artifacts)}">Artifacts</a><a href="${escHtml(o.toc)}">Table of Contents</a></header>\n` +
+      `<main class="iga igi"><h1>${escHtml(o.heading)}</h1>${lead ? `<p>${lead}</p>` : ""}${o.outline ?? ""}` +
+      `<div class="iga-body" aria-live="polite"><p class="iga-state">Loading the artefact index…</p></div></main>\n` +
+      `<footer id="ig-footer"></footer>`,
+    noscript:
+      `<p>The artefacts on this page are drawn from <a href="${escHtml(o.index)}">the IG's artefact index</a>; ` +
+      `it needs JavaScript to draw them. Each artefact's page is <code>${escHtml(o.pagesHref)}&lt;Type&gt;-&lt;id&gt;.html</code>.</p>`,
+  });
+}

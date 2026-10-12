@@ -50,6 +50,18 @@ layer. Do not restate the list here — two copies of an emission list is two
 copies free to drift, and the emission list is exactly the thing a new Publisher
 release changes.
 
+## What the site build emits: thin pages, by default
+
+Since 2026-10-12 (owner: *"make thin default"*) the Jekyll phase emits THIN
+pages: each artefact page and the IG's `artifacts.html` and `toc.html` are a
+few KB that load their content from JSON-LD nodes (`artifact/<Type>-<id>.jsonld`
+and `artifact/index.jsonld`), and the IG's narrative pages keep their prose
+with every piece of chrome linked rather than inlined. The old full pages stay
+reachable with `--full-pages` on both `gen-ig-pages.ts` and `stage-ig-sites.ts`.
+An IG that pins this layer by SHA changes nothing until it re-pins, and gets
+the thin pages when it does. What each page holds, and the QA over the nodes,
+is [`ig-render-jekyll`](ig-render-jekyll.md) §"Thin pages, the default".
+
 ## The deploy phase, and the result that surprised me
 
 The WHO build's deploy phase is **ten steps**, read from `ghbuild.yml`:

@@ -38,6 +38,12 @@
  * "Build in main site"). The build list is still printed, for the per-IG
  * duplicate-id pass after the host's build.
  *
+ * THIN BY DEFAULT (owner, 2026-10-12: "make thin default"): `artifacts.html`
+ * and `toc.html` are thin pages over the artefact index node, and pages
+ * composed into a host wear the thin layout (`thinIgLayout`) with the host's
+ * chrome linked, not inlined. `--full-pages` builds the earlier full pages; it
+ * needs `gen-ig-pages --full-pages` too, and a mismatch is refused.
+ *
  * `--only <instance> --source <dir>` builds ONE IG from a local checkout of
  * its source instead of cloning the recorded commit — what an IG's own
  * repository runs in its CI, so the site is built from the commit being
@@ -60,6 +66,7 @@ import { composeIgSite, dataOverwritesQa, describeStage, stageIgSite, type IgMen
 import { IgReleasesSchema, type IgReleases } from "../schemas/ig-releases.ts";
 import { readChangedFiles, siteFilter } from "../../cat-harness-tools/scripts/staging-cone.ts";
 import { sourceHashOf } from "../../cat-harness-tools/scripts/qa-results.ts";
+import { ARTIFACT_INDEX_FILE } from "./ig-artifact-jsonld.ts";
 
 interface MenuFile extends IgMenu {
   source?: { kind?: string; of?: string; ref?: string };
@@ -154,12 +161,24 @@ function instanceNeeds(repoRoot: string, name: string): string[] {
  * from the IG site is `../artifact/`. Read off the disk, not assumed: an
  * instance with an index and no artefact pages gets no `artifacts` page.
  */
-export function artifactsFor(root: string, pagesHref = "../artifact/"): StageOptions["artifacts"] {
+export function artifactsFor(root: string, pagesHref = "../artifact/", opts: { fullPages?: boolean } = {}): StageOptions["artifacts"] {
   const index = join(root, "fhir-artifact-index", "index.json");
   // declared-path-literal: the staged IG instance's own docs/artifact/ under `root`, not folio-assistant's docs/
   if (!existsSync(index) || !existsSync(join(root, "docs", "artifact"))) return undefined;
   const ix = JSON.parse(readFileSync(index, "utf-8")) as { artifacts: IndexedArtifact[] };
-  return { list: ix.artifacts, pagesHref };
+  if (opts.fullPages) return { list: ix.artifacts, pagesHref };
+  // THIN, the default (owner, 2026-10-12): the list pages draw the index node
+  // `gen-ig-pages` writes beside the artefact pages. Not there means those pages
+  // were generated with `--full-pages`, and two halves of one site disagreeing
+  // is refused rather than papered over with a page that draws nothing.
+  // declared-path-literal: the staged IG instance's own docs/artifact/ under `root`
+  if (!existsSync(join(root, "docs", "artifact", ARTIFACT_INDEX_FILE))) {
+    throw new Error(
+      `${join(root, "docs", "artifact", ARTIFACT_INDEX_FILE)} is not there: the artefact pages were generated with --full-pages. ` +
+        "Run gen-ig-pages without it, or pass --full-pages here too.",
+    );
+  }
+  return { list: ix.artifacts, pagesHref, index: `${pagesHref}${ARTIFACT_INDEX_FILE}` };
 }
 
 /**
@@ -345,7 +364,7 @@ if (import.meta.main) {
   const work = opt("--work");
   const base = opt("--baseurl");
   if (!work || base === undefined) {
-    console.error("usage: stage-ig-sites.ts --work <dir> --baseurl <site baseurl> [--plantuml-jar <jar>] [--remote-theme <owner/repo@ref>] [--changed-files <file>] [--compose-into <docs source> [--compose-at-root]] [--only <instance> [--source <dir>]]");
+    console.error("usage: stage-ig-sites.ts --work <dir> --baseurl <site baseurl> [--plantuml-jar <jar>] [--remote-theme <owner/repo@ref>] [--changed-files <file>] [--compose-into <docs source> [--compose-at-root]] [--only <instance> [--source <dir>]] [--full-pages]");
     process.exit(2);
   }
   const all = igsToBuild(resolve("."));
@@ -368,6 +387,9 @@ if (import.meta.main) {
   // building its OWN site composes the IG at the root of a chrome-only shell
   // (`compose-docs --shell`), so it carries the main site's chrome (#2235 F1).
   const atRoot = process.argv.includes("--compose-at-root");
+  // `--full-pages`: the pre-2026-10-12 pages — `artifacts`/`toc` as Liquid over
+  // `site.data.fhir`, and composed pages in the host's layout. Thin is the default.
+  const fullPages = process.argv.includes("--full-pages");
   if (atRoot && (!opt("--compose-into") || !opt("--only"))) {
     console.error("stage-ig-sites: --compose-at-root needs --compose-into and --only (one IG is the whole site)");
     process.exit(2);
@@ -403,7 +425,7 @@ if (import.meta.main) {
       plantumlJar: opt("--plantuml-jar"),
       menu: JSON.parse(readFileSync(ig.menuPath, "utf-8")) as IgMenu,
       remoteTheme: opt("--remote-theme"),
-      artifacts: artifactsFor(ig.root, docs ? "artifact/" : "../artifact/"),
+      artifacts: artifactsFor(ig.root, docs ? "artifact/" : "../artifact/", { fullPages }),
       footer: footerFor(ig.root, docs ? "" : "../"),
       releases: releasesFor(ig.root),
       ...(editBase ? { editBase } : {}),
@@ -430,7 +452,7 @@ if (import.meta.main) {
     }
     const into = opt("--compose-into");
     if (into) {
-      const c = composeIgSite(site, resolve(into), ig.instance, { atRoot });
+      const c = composeIgSite(site, resolve(into), ig.instance, { atRoot, fullPages });
       console.error(`${ig.instance}: composed into ${relative(resolve("."), atRoot ? resolve(into) : resolve(into, ig.instance))} — ${c.pages} page(s), ${c.files - c.pages} other file(s), ${c.includes} include(s)`);
       if (c.collisions.length) {
         console.error(`${ig.instance}: ${c.collisions.length} path(s) already in the host source — refusing two answers for one URL:\n  ${c.collisions.slice(0, 20).join("\n  ")}`);

@@ -51,6 +51,10 @@ import { artifactPageName } from "../schemas/fhir-artifact-index.js";
 import { wrapRaw } from "../../cat-harness-tools/scripts/lib/liquid-raw.ts";
 import type { IgReleases } from "../schemas/ig-releases.ts";
 import { igSiteFooter, sushiFooterData, type IgFooterData } from "./ig-footer.ts";
+import { thinIndexPage } from "./ig-thin-pages.ts";
+import { withRenderedBy } from "../../cat-harness-tools/scripts/viewer-declarations.js";
+import { NAVBAR_LINKED } from "../../cat-harness-tools/scripts/lib/harness-rail.ts";
+import { DEFAULT_ICON } from "../../cat-harness-tools/scripts/thin-page.ts";
 
 /** One page's navigation, from `sushi-config.yaml` `pages:`. */
 export interface PageNav {
@@ -568,12 +572,59 @@ link(h,"ig-feedback",repo+"/issues/new?title="+encodeURIComponent("Feedback on \
  * can live in an included file (bean `x78e`), and its issue is titled after
  * the section, with the page apart, which the block recipe does not do.
  */
-function igEditLines(): string[] {
+function igEditLines(scriptSrc?: string): string[] {
   return [
     '{% if page.ig_edit_url %}<p class="ig-edit"><a data-fa-link="edit" data-src="{{ page.ig_source_path }}" data-repo="{{ page.ig_source_repo }}" href="{{ page.ig_edit_url }}">Edit this page on GitHub</a></p>{% endif %}',
     '{% if page.ig_source_lines %}<script type="application/json" id="ig-source-lines">{"blob": {{ page.ig_source_blob | jsonify }}, "repo": {{ page.ig_source_repo | jsonify }}, "branch": {{ page.ig_source_branch | jsonify }}, "path": {{ page.ig_source_path | jsonify }}, "lines": {{ page.ig_source_lines | jsonify }}}</script>',
-    `<script>${EDIT_LINKS_RUNTIME}</script><script>${SOURCE_LINKS_JS}</script>{% endif %}`,
+    // Thin: the two runtimes are ONE linked file (`IG_SOURCE_LINKS_FILE`), not inlined into every page.
+    `${scriptSrc ? `<script src="${scriptSrc}"></script>` : `<script>${EDIT_LINKS_RUNTIME}</script><script>${SOURCE_LINKS_JS}</script>`}{% endif %}`,
   ];
+}
+
+/** The edit-link and source-link runtimes as one file, linked by a thin page's bottom. */
+export const IG_SOURCE_LINKS_FILE = "assets/ig-source-links.js";
+/** The IG top bar's style as a file, linked by the thin layout. */
+export const IG_TOPBAR_CSS_FILE = "assets/ig-topbar.css";
+/** The thin narrative layout's stylesheet: the one every thin IG page links (`gen-ig-pages` writes it). */
+export const IG_THIN_CSS_FILE = "assets/ig-artifact.css";
+
+/**
+ * The THIN layout for an IG's narrative pages composed into a host site
+ * (owner, 2026-10-12: "make thin default"): the page's own prose and the
+ * IG's top bar, edit links and footer — and nothing of the host's chrome
+ * inlined. Every stylesheet and script is LINKED: the shared thin-page
+ * stylesheet, the top bar's, and the rail, which the post-build rail pass
+ * links because the page asks for it (`folio-navbar: linked`, cat-harness-
+ * tools' `NAVBAR_LINKED`). `assetsAt` is the IG's docs root as a site path
+ * (`/` at the root, `/<instance>/` inside a host), for `relative_url`.
+ * The IG's TOC declaration and section label, when the staged layout carries
+ * them, keep the IG's menu in the rail as the full layout does.
+ */
+export function thinIgLayout(assetsAt: string, tocNav = "", sectionLabel?: string): string {
+  const asset = (f: string) => `{{ '${assetsAt}${f}' | relative_url }}`;
+  return [
+    "<!doctype html>",
+    '<html lang="{{ page.lang | default: site.lang | default: \'en\' }}">',
+    "<head>",
+    '<meta charset="utf-8">',
+    '<meta name="viewport" content="width=device-width, initial-scale=1">',
+    "<title>{% if page.title %}{{ page.title }} — {% endif %}{{ site.title }}</title>",
+    '<link rel="canonical" href="{{ page.url | relative_url }}">',
+    `<link rel="icon" href="${escHtml(DEFAULT_ICON)}">`,
+    NAVBAR_LINKED,
+    ...(sectionLabel ? [`<meta name="fa-visualiser-label" content="${escHtml(sectionLabel)}">`] : []),
+    `<link rel="stylesheet" href="${asset(IG_THIN_CSS_FILE)}">`,
+    `<link rel="stylesheet" href="${asset(IG_TOPBAR_CSS_FILE)}">`,
+    "</head>",
+    "<body>",
+    ...(tocNav ? [tocNav] : []),
+    '<main class="ig-main main-content" id="main-content">',
+    "{{ content }}",
+    "</main>",
+    "</body>",
+    "</html>",
+    "",
+  ].join("\n");
 }
 
 /** `https://github.com/<o>/<r>/edit/<branch>` and a path, as the front matter the link recipe reads. */
@@ -582,11 +633,12 @@ export function editBaseParts(editBase: string, path: string): { ig_source_repo?
   return m ? { ig_source_repo: m[1]!, ig_source_branch: m[2]!, ig_source_path: path } : { ig_source_path: path };
 }
 
-export function igChromeIncludes(topBar: string): { top: string; bottom: string } {
+export function igChromeIncludes(topBar: string, thin?: { assetsAt: string }): { top: string; bottom: string } {
   return {
-    top: `<style>${IG_TOPBAR_CSS.trim()}</style>\n${topBar}\n${IG_FIGURE_IMAGES_STAMP}\n`,
+    // Thin: the top bar's style is the linked `IG_TOPBAR_CSS_FILE`.
+    top: `${thin ? "" : `<style>${IG_TOPBAR_CSS.trim()}</style>\n`}${topBar}\n${IG_FIGURE_IMAGES_STAMP}\n`,
     bottom: [
-      ...igEditLines(),
+      ...igEditLines(thin ? `{{ '${thin.assetsAt}${IG_SOURCE_LINKS_FILE}' | relative_url }}` : undefined),
       "",
     ].join("\n"),
   };
@@ -619,7 +671,7 @@ export function composeIgSite(
   staged: string,
   docsRoot: string,
   instance: string,
-  opts: { atRoot?: boolean } = {},
+  opts: { atRoot?: boolean; fullPages?: boolean } = {},
 ): { pages: number; files: number; includes: number; collisions: string[] } {
   const title = /^title:\s*(.+)$/m.exec(readFileSync(join(staged, "_config.yml"), "utf-8"))?.[1]?.replace(/^"(.*)"$/, "$1") ?? instance;
   const q = JSON.stringify(title);
@@ -663,11 +715,28 @@ export function composeIgSite(
       else cpSync(from, join(dataDest, f), { recursive: true });
     } else put(join(dataDest, f), readFileSync(from));
   }
-  const topBar = /<div class="ig-topbar"[\s\S]*?<\/div>(?=\n|$)/.exec(existsSync(join(staged, "_layouts", "default.html")) ? readFileSync(join(staged, "_layouts", "default.html"), "utf-8") : "")?.[0] ?? "";
-  const chrome = igChromeIncludes(topBar);
+  const stagedLayout = existsSync(join(staged, "_layouts", "default.html")) ? readFileSync(join(staged, "_layouts", "default.html"), "utf-8") : "";
+  const topBar = /<div class="ig-topbar"[\s\S]*?<\/div>(?=\n|$)/.exec(stagedLayout)?.[0] ?? "";
+  // THIN, the default (owner, 2026-10-12: "make thin default"): the IG's pages
+  // wear `thinIgLayout` rather than the host's layout, so none of the host's
+  // chrome is written into them; their own top bar, edit links and footer stay,
+  // with every style and script linked. `fullPages` keeps the host's layout.
+  const thin = !opts.fullPages;
+  const assetsAt = opts.atRoot ? "/" : `/${instance}/`;
+  const layoutName = `ig-thin-${instance}`;
+  const chrome = igChromeIncludes(topBar, thin ? { assetsAt } : undefined);
   put(join(incDest, "_top.html"), chrome.top);
-  const bottom = join(docsRoot, "_includes", "ig", "_bottom.html");
-  if (!existsSync(bottom)) put(bottom, chrome.bottom);
+  // The full path shares one bottom across IGs; a thin one names its own IG's linked file.
+  const bottomInclude = thin ? `ig/${instance}/_bottom.html` : "ig/_bottom.html";
+  const bottom = join(docsRoot, "_includes", ...bottomInclude.split("/"));
+  if (!existsSync(bottom) || thin) put(bottom, chrome.bottom);
+  if (thin) {
+    const tocNav = /<script type="application\/json" data-fa-visualiser-nav>[\s\S]*?<\/script>/.exec(stagedLayout)?.[0];
+    const label = /<meta name="fa-visualiser-label" content="([^"]*)">/.exec(stagedLayout)?.[1];
+    put(join(docsRoot, "_layouts", `${layoutName}.html`), thinIgLayout(assetsAt, tocNav, label?.replace(/&quot;/g, '"').replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&")));
+    put(join(dest, IG_TOPBAR_CSS_FILE), `${IG_TOPBAR_CSS.trim()}\n`);
+    put(join(dest, IG_SOURCE_LINKS_FILE), `${EDIT_LINKS_RUNTIME}\n${SOURCE_LINKS_JS}\n`);
+  }
   let pages = 0;
   let count = 0;
   const walk = (rel: string): void => {
@@ -700,12 +769,13 @@ export function composeIgSite(
       if (r.startsWith(`artifact${"/"}`) && !/^search_exclude:/m.test(fm)) fm += "\nsearch_exclude: true";
       // Named, not inherited: GitHub Pages' default-layout plugin assigns one
       // and a plain Jekyll build does not, so the page says which it uses.
-      if (!/^layout:/m.test(fm)) fm += "\nlayout: default";
+      if (thin) fm = `${fm.replace(/^layout:.*\n?/m, "")}\nlayout: ${layoutName}`;
+      else if (!/^layout:/m.test(fm)) fm += "\nlayout: default";
       fm = fm.replace(/\n+$/, "");
       // The IG's footer last, after the shared bottom, on the pages the IG
       // build wrote (`ig_footer`), as `harnessLayout` places it.
       const footer = incNames.has(IG_FOOTER_INCLUDE) ? `{% if page.ig_footer %}{% include ig/${instance}/${IG_FOOTER_INCLUDE} %}{% endif %}\n` : "";
-      put(join(dest, r), `---\n${fm}\n---\n{% include ig/${instance}/_top.html %}\n\n${body.replace(/\s*$/, "")}\n\n{% include ig/_bottom.html %}\n${footer}`);
+      put(join(dest, r), `---\n${fm}\n---\n{% include ig/${instance}/_top.html %}\n\n${body.replace(/\s*$/, "")}\n\n{% include ${bottomInclude} %}\n${footer}`);
       pages++;
     }
   };
@@ -941,7 +1011,18 @@ export interface StageOptions {
    * `artifacts.html` — linking each artefact to `<pagesHref><stem>.html`.
    * Absent, `artifacts.html` stays a menu item this build does not hold.
    */
-  artifacts?: { list: ReadonlyArray<IndexedArtifact>; pagesHref: string };
+  artifacts?: {
+    list: ReadonlyArray<IndexedArtifact>;
+    pagesHref: string;
+    /**
+     * The artefact index NODE (`artifact/index.jsonld`, `ig-artifact-jsonld.ts`),
+     * relative to this site. Given — the default since 2026-10-12 (owner: "make
+     * thin default") — `artifacts.html` and `toc.html` are written as THIN pages
+     * that draw the list from it (`thinIndexPage`), not as Liquid over
+     * `site.data.fhir`. Absent (`stage-ig-sites --full-pages`), the full pages.
+     */
+    index?: string;
+  };
   /**
    * Content a POST-PROCESSING step writes into a page after the Publisher has
    * run, at a marker the page's source holds. The source alone is then not
@@ -1151,6 +1232,36 @@ export function tocPage(pages: unknown, has: (stem: string) => boolean): string 
   };
   walk(pages, 0);
   return ["# Table of Contents", "", ...wrapRaw(lines.join("\n")), ""].join("\n");
+}
+
+/** A page file's stem, whether it is written as markdown or as a finished thin page. */
+const stemOf = (f: string): string => basename(f, extname(f));
+
+/**
+ * The thin `toc.html`'s OUTLINE: the IG's own pages as `tocPage` lists them
+ * (`sushi-config.yaml` `pages:`, nested as declared, a page this build does
+ * not hold as text), as HTML, with the landing page first when `pages:` does
+ * not name it. The artefacts below it are drawn from the index node.
+ */
+export function tocOutlineHtml(pages: unknown, has: (stem: string) => boolean): string {
+  const walk = (node: unknown): string => {
+    if (!node || typeof node !== "object") return "";
+    const items: string[] = [];
+    for (const [file, spec] of Object.entries(node as Record<string, unknown>)) {
+      if (file === "title" || file === "generation") continue;
+      const sp = (spec ?? {}) as Record<string, unknown>;
+      const stem = basename(file, extname(file));
+      const title = escHtml(typeof sp.title === "string" ? sp.title : stem);
+      const label = has(stem) ? `<a href="${escHtml(stem)}.html">${title}</a>` : `${title} <em>(generated by the IG Publisher; not part of this build)</em>`;
+      items.push(`<li>${label}${walk(sp)}</li>`);
+    }
+    return items.length ? `<ul>${items.join("")}</ul>` : "";
+  };
+  const named = pages && typeof pages === "object" && Object.keys(pages as object).some((f) => basename(f, extname(f)) === "index");
+  const tree = walk(pages);
+  const home = !named && has("index") ? `<li><a href="index.html">Home</a></li>` : "";
+  const inner = tree.replace(/^<ul>|<\/ul>$/g, "");
+  return home || inner ? `<h2>Pages</h2><ul class="igi-outline">${home}${inner}</ul>` : "";
 }
 
 /**
@@ -1565,7 +1676,11 @@ export function stageIgSite(igSrc: string, out: string, opts: StageOptions = {})
   // here from data this build holds (bean `jut3`'s parity list). Reported apart
   // from `pages`, so a generated page is never mistaken for the IG's source.
   const generated: string[] = [];
-  if (opts.artifacts && !pages.includes("artifacts.md")) {
+  // THIN (the default when the index node is given): the two list pages are
+  // written after the reading order is known, below; here they are only held.
+  const thinIndex = opts.artifacts?.index !== undefined ? opts.artifacts : undefined;
+  if (thinIndex && !pages.includes("artifacts.md")) generated.push("artifacts.html");
+  if (opts.artifacts && !thinIndex && !pages.includes("artifacts.md")) {
     const n = nav.get("artifacts") ?? { title: "Artifacts Summary", navOrder: 999, navExclude: true };
     writeFileSync(join(out, "artifacts.md"), frontMatter(n) + readFileSync(ARTIFACTS_TEMPLATE_PATH, "utf-8"));
     generated.push("artifacts.md");
@@ -1577,7 +1692,8 @@ export function stageIgSite(igSrc: string, out: string, opts: StageOptions = {})
     writeFileSync(join(out, "_data", "ig_releases.json"), JSON.stringify(releaseVariables(opts.releases), null, 2) + "\n");
     generated.push("releases.md");
   }
-  if (!pages.includes("toc.md")) {
+  if (thinIndex && !pages.includes("toc.md")) generated.push("toc.html");
+  else if (!pages.includes("toc.md")) {
     const has = (stem: string) => pages.includes(`${stem}.md`) || generated.includes(`${stem}.md`) || stem === "toc";
     writeFileSync(join(out, "toc.md"), frontMatter(nav.get("toc") ?? { title: "Table of Contents", navOrder: 1000, navExclude: true }) + tocPage(sushi.pages, has));
     generated.push("toc.md");
@@ -1585,7 +1701,7 @@ export function stageIgSite(igSrc: string, out: string, opts: StageOptions = {})
 
   // One section page per menu group, and the items that have no page here.
   const menuMissing: string[] = [];
-  const held = new Set([...pages, ...generated].map((f) => basename(f, ".md")));
+  const held = new Set([...pages, ...generated].map(stemOf));
   for (const g of fromMenu?.groups ?? []) {
     // just-the-docs lists a parent's children itself; the page adds only
     // what that list cannot show: items the Publisher generates.
@@ -1703,9 +1819,37 @@ export function stageIgSite(igSrc: string, out: string, opts: StageOptions = {})
   // table-of-contents order. Without a menu there is no generated layout, so
   // the footer goes into the page itself.
   const written = [...pages, ...generated, ...(fromMenu?.groups ?? []).map((g) => `${g.stem}.md`)];
-  const heldStems = new Set(written.map((f) => basename(f, ".md")));
+  const heldStems = new Set(written.map(stemOf));
   const sequence = pageSequence(sushi.pages, (stem) => heldStems.has(stem));
-  for (const f of written) {
+  if (thinIndex) {
+    // The docs root the artefact pages hang off (`artifact/` → `""`,
+    // `../artifact/` → `../`): where `assets/` is, renderer and footer data.
+    const root = thinIndex.pagesHref.replace(/artifact\/$/, "");
+    const outline = tocOutlineHtml(sushi.pages, (stem) => heldStems.has(stem));
+    for (const f of generated.filter((g) => g.endsWith(".html"))) {
+      const stem = stemOf(f);
+      const at = sequence.get(stem);
+      const html = thinIndexPage({
+        view: stem === "toc" ? "toc" : "artifacts",
+        heading: stem === "toc" ? "Table of Contents" : "Artifacts Summary",
+        label: typeof sushi.title === "string" ? sushi.title : String(sushi.id ?? "IG"),
+        canonical: f,
+        index: thinIndex.index!,
+        pagesHref: thinIndex.pagesHref,
+        assets: root,
+        home: "index.html",
+        artifacts: "artifacts.html",
+        toc: "toc.html",
+        ...(at?.prev ? { prev: at.prev } : {}),
+        ...(at?.next ? { next: at.next } : {}),
+        ...(stem === "toc" ? { outline } : {}),
+      });
+      // The artefact index's viewer declaration, which the full page took as
+      // front matter (`gen-ig-pages`' front-matter-only `artifacts.md`).
+      writeFileSync(join(out, f), stem === "artifacts" ? withRenderedBy(html, "ig-pages") : html);
+    }
+  }
+  for (const f of written.filter((w) => !w.endsWith(".html"))) {
     const text = readFileSync(join(out, f), "utf-8");
     const at = sequence.get(basename(f, ".md"));
     const fm = ["ig_footer: true", ...(at?.prev ? [`ig_prev: ${yamlString(at.prev)}`] : []), ...(at?.next ? [`ig_next: ${yamlString(at.next)}`] : [])].join("\n");

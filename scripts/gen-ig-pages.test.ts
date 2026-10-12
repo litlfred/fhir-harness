@@ -92,7 +92,7 @@ const repo = scratchRepo({
 afterAll(() => rmSync(repo, { recursive: true, force: true }));
 
 function generate(instance: string, ...args: string[]): void {
-  const run = Bun.spawnSync(["bun", "run", SCRIPT, "--instance", join(repo, instance), ...args], { cwd: ROOT });
+  const run = Bun.spawnSync(["bun", "run", SCRIPT, "--instance", join(repo, instance), "--full-pages", ...args], { cwd: ROOT });
   if (run.exitCode !== 0) throw new Error(`gen-ig-pages failed for ${instance}:\n${run.stderr.toString()}`);
 }
 

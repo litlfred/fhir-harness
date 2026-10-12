@@ -174,10 +174,11 @@ export function tools(baseUrl?: string): ToolDefinition[] {
           { name: "baseurl", schema: t("RepoPath"), required: true, description: "The site's base URL; each IG is served under it at `/<instance>/` or `/<instance>/ig/`." },
           { name: "plantuml-jar", schema: t("RepoPath"), required: false, description: "Render `input/images-source/*.plantuml` as the Publisher does." },
           { name: "changed-files", schema: t("RepoPath"), required: false, description: "Build only the IGs a changed file reaches (the staging cone, bean `4j86`)." },
-          { name: "compose-into", schema: t("RepoPath"), required: false, description: "Move each staged IG into this host Jekyll source at `<instance>/`, so the host's build renders it with the host's chrome (sidebar, search, language selector)." },
+          { name: "compose-into", schema: t("RepoPath"), required: false, description: "Move each staged IG into this host Jekyll source at `<instance>/`, so the host's build renders it: in the thin layout with the host's rail linked (the default), or with the host's full chrome (sidebar, search, language selector) under `--full-pages`." },
           { name: "compose-at-root", schema: t("Flag"), required: false, arg: { flag: "--compose-at-root" }, description: "With `--compose-into` and `--only`: the IG IS the site — compose it at the host's ROOT, based at `--baseurl` itself. An IG repository's own site uses this with a `compose-docs --shell` host, so it wears the main site's chrome (#2235)." },
           { name: "only", schema: t("Slug"), required: false, description: "Build one IG instance." },
           { name: "source", schema: t("RepoPath"), required: false, description: "With `--only`: a local checkout of the IG's source to build from instead of cloning the recorded commit — an IG repository building its own site in CI." },
+          { name: "full-pages", schema: t("Flag"), required: false, arg: { flag: "--full-pages" }, description: "The opt-out. Without it (the default since 2026-10-12, owner: \"make thin default\") `artifacts.html` and `toc.html` are thin pages over the artefact index node, and composed IG pages wear the thin layout with the host's chrome linked, not inlined. With it, the full pages as before; it needs `gen-ig-pages --full-pages` too, and a mismatch is refused." },
         ],
         outputs: [
           { name: "sites", schema: t("Count"), description: "IGs staged, one stdout line each; an instance with no recorded source is skipped and reported, never silently." },
@@ -234,8 +235,8 @@ export function tools(baseUrl?: string): ToolDefinition[] {
           { name: "label", schema: t("Text"), required: false, description: "The IG's display name. The index carries only the package id, which stands in when this is absent." },
           { name: "chrome-owner", schema: t("Text"), required: false, description: "The instance whose `chrome.json` styles the pages. Absent, the pages are unstyled and the build says so. The banner's identity is always the index's; a chrome ingested from another IG lends its tokens, never its status." },
           { name: "summary", schema: t("Flag"), required: false, description: "Open the index page with the instance's own declaration (`harness_details.html` with `instance=`), making it the instance's landing page." },
-          { name: "thin", schema: t("Flag"), required: false, description: "Write each artefact page as a THIN shell at the same address (owner, 2026-10-11, option A): identity and a pointer, the artefact's JSON-LD node beside it, and one shared renderer, `assets/ig-artifact.js`, that draws the page from the node and the resource. The rail is linked, not inlined. Off by default, so an IG that has not opted in is unchanged." },
-          { name: "jsonld-base", schema: t("Url"), required: false, description: "With `--thin`: the docs root's published URL, so each node's IRIs are absolute. Absent, they are relative to the node's own file." },
+          { name: "full-pages", schema: t("Flag"), required: false, description: "The opt-out. Without it (the default since 2026-10-12, owner: \"make thin default\") each artefact page is a THIN shell at the same address: identity and a pointer, the artefact's JSON-LD node beside it, the index node (`artifact/index.jsonld`) the IG site's list pages draw, and one shared renderer, `assets/ig-artifact.js`. With it, the full pages as before, and no JSON-LD. `--thin`, the old opt-in, is accepted and changes nothing." },
+          { name: "jsonld-base", schema: t("Url"), required: false, description: "Thin pages only: the docs root's published URL, so each node's IRIs are absolute. Absent, they are relative to the node's own file." },
           { name: "compiled-data", schema: t("RepoPath"), required: false, description: "Where a compiled index's resource files are served, as a path from the docs root. In an IG site the docs root IS the site root, so it is `ast-data`, not `../ast-data`." },
           { name: "check", schema: t("Flag"), required: false, description: "Write nothing; exit 1 when any page is stale or orphaned." },
         ],
@@ -256,7 +257,7 @@ export function tools(baseUrl?: string): ToolDefinition[] {
       id: "ig-artifact-jsonld",
       title: "Write one JSON-LD node per IG artefact, and check a built site's nodes",
       description:
-        "`write` turns an artefact index into `artifact/<Type>-<id>.jsonld` (and a `.json` twin) under a docs root: one `folio-ig-artifact-jsonld/v1` node per artefact, in borrowed vocabularies only (the FHIR RDF class, dcterms, schema.org, PROV), naming the artefact's canonical URL, its representations and, for a compiled copy, what built it. `check` is the kind's QA: over a BUILT site, every artefact has its node and no node is an orphan, each node is its own file's, its twin matches, and every local resource it names is on the site. WHO-free; the asset `gen-ig-pages --thin` renders (owner, 2026-10-11, option A).",
+        "`write` turns an artefact index into `artifact/<Type>-<id>.jsonld` (and a `.json` twin) under a docs root: one `folio-ig-artifact-jsonld/v1` node per artefact, in borrowed vocabularies only (the FHIR RDF class, dcterms, schema.org, PROV), naming the artefact's canonical URL, its representations and, for a compiled copy, what built it. `check` is the kind's QA: over a BUILT site, every artefact has its node and no node is an orphan, each node is its own file's, its twin matches, and every local resource it names is on the site. It also writes and checks the index node, `artifact/index.jsonld` (`folio-ig-artifact-index-jsonld/v1`): every artefact once, each entry naming its node. WHO-free; the assets the thin pages render (owner, 2026-10-11, option A; thin by default since 2026-10-12).",
       install: { none: true },
       invoke: { shell: "bun run fhir-harness/scripts/ig-artifact-jsonld.ts" },
       io: {
@@ -274,7 +275,7 @@ export function tools(baseUrl?: string): ToolDefinition[] {
       },
       satisfies: ["ig-build-pipeline"],
       selection: {
-        when: "An IG's artefact pages are thin (`gen-ig-pages --thin`), or a consumer wants the artefacts as linked data.",
+        when: "An IG's pages are thin (the default of `gen-ig-pages`), or a consumer wants the artefacts as linked data.",
         limits: "Identity and representations only, never the resource's content: the resource is one of its encodings, fetched by the page. Upstream URLs are not fetched by `check`.",
         cost: "Milliseconds per artefact.",
       },
