@@ -126,7 +126,7 @@ jobs:
           # litlfred/fhir-ig-publisher, branch claude/ast-export: a library ON
           # the released Publisher (skill ig-publisher-fork). Pinned, so a
           # rebuild runs the exporter this workflow was written against.
-          AST_EXPORT_REF: bfa914b3910356019b646d64e723e3589392a459
+          AST_EXPORT_REF: d03a05a7bc298ce8079e0f14a47145f018db57f8
           # The Publisher's default (FhirSettings.getTxFhirProduction()).
           TX_SERVER: http://tx.fhir.org
         run: |
