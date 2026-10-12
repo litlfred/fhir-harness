@@ -144,12 +144,28 @@ core, which sits above cat-harness-tools.
   (family `folio-ig-artifact-index-jsonld/v1`, same kind) lists every artefact
   once, in the Publisher's order, each entry naming its node and carrying
   only what a list row shows. `check` holds the list to the artefact index
-  and each entry to its node.
+  and each entry to its node: key, class, canonical, profiles and code.
 - **`artifacts.html` is a thin shell** over that node, drawn by the same
   renderer: a jump list of categories, a filter, then every category OPEN
   with its table. The owner could not find artefacts behind collapsed
   `<details>`, so nothing is collapsed. Category anchors are the full page's
   (`#artifacts-<slug>`), so old links still land.
+- **What a list draws, and what it does not** (owner, 2026-10-12):
+  - **The IG's own ImplementationGuide resource is "This guide"**, drawn
+    first with its description and a link (`#artifacts-this-guide`), never
+    as a "Not categorised" row at the end. It is the guide, not one of its
+    artefacts; the toc lists it first the same way.
+  - **A category that mixes resource types is sub-headed by type**
+    (`#artifacts-<category>-<type>`; the Publisher's "Other": Basic,
+    Questionnaire, DocumentReference…), and the jump list counts each type.
+  - **A table draws only the columns its rows fill.** No row with a
+    description: no Description column. An instance (an artefact with no
+    canonical URL) has no description, so the index carries what the
+    resource states instead, copied, never looked up: its `meta.profile`
+    (`dcterms:conformsTo`, drawn as the profile's last path segment, linked
+    when it is an artefact of the same IG) and its `code`
+    (`dcterms:subject`). A definition's core profile (`shareablevalueset`)
+    is not written: on a phone it cost a column for nothing.
 - **`toc.html` is a thin shell.** The IG's own pages (`sushi-config.yaml`
   `pages:`, the landing page first) stay in its HTML: they are the page's
   structure. The artefacts under each category are drawn from the index node.

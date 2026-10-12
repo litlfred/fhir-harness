@@ -208,6 +208,27 @@ export const SidecarOverlaySchema = z
   .strict();
 export type SidecarOverlay = z.infer<typeof SidecarOverlaySchema>;
 
+/** A FHIR concept as a resource writes it: its text and its codings, nothing resolved. */
+export const FhirConceptSchema = z
+  .object({
+    text: z.string().min(1).optional(),
+    coding: z
+      .array(
+        z
+          .object({
+            system: z.string().min(1).optional(),
+            code: z.string().min(1).optional(),
+            display: z.string().min(1).optional(),
+          })
+          .strict(),
+      )
+      .min(1)
+      .optional(),
+  })
+  .strict()
+  .refine((c) => c.text !== undefined || c.coding !== undefined, "a concept with neither text nor a coding says nothing");
+export type FhirConcept = z.infer<typeof FhirConceptSchema>;
+
 /**
  * One artefact of the IG.
  *
@@ -246,6 +267,21 @@ export const FhirArtifactSchema = z
      * has no other source for either. Absent exactly when `category` is.
      */
     listedAt: z.number().int().nonnegative().optional(),
+    /**
+     * The resource's own `meta.profile`: the profiles it says it conforms to,
+     * as written. An instance has no canonical, title or description of its
+     * own, and this and `code` are what it does state; a list that showed
+     * neither showed an empty row. Absent when the resource claims none.
+     */
+    profiles: z.array(z.string().min(1)).min(1).optional(),
+    /**
+     * The resource's own `code` when it is a concept (`Basic.code`, a
+     * CodeableConcept; `Questionnaire.code`, a list of Codings, kept as the
+     * codings with no text). A string `code` (SearchParameter's) is a
+     * computable name, not a concept, and is not this. Copied, never looked up:
+     * a coding with no display stays without one.
+     */
+    code: FhirConceptSchema.optional(),
     published: PublishedFormatsSchema,
     sidecars: SidecarOverlaySchema.optional(),
     materialization: MaterializationSchema,

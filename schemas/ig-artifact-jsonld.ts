@@ -22,6 +22,14 @@
  * | `schema:creativeWorkStatus` | `materialized` or `referenced`, the index's own two states |
  * | `prov:wasGeneratedBy` | for a compiled copy, the toolchain (`schema:instrument`) and the revision it built (`prov:used`) |
  * | `dcterms:isPartOf` | the IG, by package id, version and canonical base |
+ * | `dcterms:conformsTo` | the resource's own `meta.profile`, each profile by its canonical URL |
+ * | `dcterms:subject` | the resource's own `code` concept, each coding a `schema:DefinedTerm` (`schema:termCode`, its display as `schema:name`, its system as `schema:inDefinedTermSet`), and the concept's `text`, when it has one, a `schema:DefinedTerm` with only a `schema:name` |
+ *
+ * The last two are what an INSTANCE (an artefact with no canonical URL) states about itself, and are written for instances only. A configuration
+ * instance (a `Basic` that is a page, a role or a task) has no title or
+ * description, and its list row was empty until it showed them (owner,
+ * 2026-10-12). Both are copied from the resource, never looked up: a coding
+ * with no display has no `schema:name`.
  *
  * FHIR RDF is used for the CLASS only. Its property shape (`fhir:url [ fhir:v
  * "…" ]`) describes a whole resource, which this node deliberately is not:
@@ -51,6 +59,22 @@ export const IG_ARTIFACT_JSONLD_CONTEXT = {
 export const FHIR_JSON = "application/fhir+json";
 
 const IdRef = z.object({ "@id": z.string().min(1) }).strict();
+
+/** `dcterms:conformsTo`: the profiles the resource claims, by canonical URL, as written. */
+export const IgConformsToSchema = z.array(IdRef).min(1);
+
+/** One term of `dcterms:subject`: a coding of the resource's `code`, or the concept's text alone. */
+export const IgDefinedTermSchema = z
+  .object({
+    "@type": z.literal("schema:DefinedTerm"),
+    "schema:termCode": z.string().min(1).optional(),
+    "schema:name": z.string().min(1).optional(),
+    "schema:inDefinedTermSet": IdRef.optional(),
+  })
+  .strict()
+  .refine((t) => t["schema:termCode"] !== undefined || t["schema:name"] !== undefined, "a term with neither a code nor a name says nothing");
+export type IgDefinedTerm = z.infer<typeof IgDefinedTermSchema>;
+export const IgSubjectSchema = z.array(IgDefinedTermSchema).min(1);
 
 export const IgArtifactEncodingSchema = z
   .object({
@@ -94,6 +118,8 @@ export const IgArtifactJsonLdSchema = z
         "schema:sameAs": IdRef.optional(),
       })
       .strict(),
+    "dcterms:conformsTo": IgConformsToSchema.optional(),
+    "dcterms:subject": IgSubjectSchema.optional(),
   })
   .strict()
   .superRefine((n, ctx) => {
@@ -119,10 +145,11 @@ export type IgArtifactJsonLd = z.infer<typeof IgArtifactJsonLdSchema>;
  * | `dcterms:identifier`, `schema:version`, `schema:sameAs` | its package id, version and canonical base |
  * | `dcterms:title` | the IG's display name, as the site shows it |
  * | `schema:numberOfItems` | how many artefacts the index holds; QA holds the list to it |
- * | `schema:hasPart` | one entry per artefact, in the Publisher's order (`byCategory`), each naming its node by `@id` and repeating only what a list row shows: key, class, title, description, grouping |
+ * | `schema:hasPart` | one entry per artefact, in the Publisher's order (`byCategory`), each naming its node by `@id` and repeating only what a list row shows: key, class, title, description, grouping, and for an instance (no canonical URL), which has no description to show, what the resource states instead — its profiles (`dcterms:conformsTo`) and its code (`dcterms:subject`). Its canonical (`schema:sameAs`) is repeated so a row can link a profile that is another artefact of the same IG |
  *
  * An entry is a SUMMARY of the node it names, never a second home for a fact
- * the node lacks: `check` holds every entry's key and class to its node's.
+ * the node lacks: `check` holds every entry's key, class, canonical, profiles
+ * and code to its node's.
  */
 export const IG_ARTIFACT_INDEX_JSONLD_SCHEMA_TAG = "folio-ig-artifact-index-jsonld/v1";
 
@@ -134,6 +161,9 @@ export const IgArtifactIndexEntrySchema = z
     "dcterms:title": z.string().min(1),
     "dcterms:description": z.string().min(1).optional(),
     "dcterms:type": z.string().min(1).optional(),
+    "schema:sameAs": IdRef.optional(),
+    "dcterms:conformsTo": IgConformsToSchema.optional(),
+    "dcterms:subject": IgSubjectSchema.optional(),
   })
   .strict();
 export type IgArtifactIndexEntry = z.infer<typeof IgArtifactIndexEntrySchema>;

@@ -47,6 +47,7 @@ import {
   FhirArtifactIndexSchema,
   type FhirArtifact,
   type FhirArtifactIndex,
+  type FhirConcept,
   type PublishedFormats,
   type SidecarOverlay,
   type UnboundSidecar,
@@ -64,6 +65,42 @@ interface ResourceJson {
   kind?: string;
   type?: string;
   derivation?: string;
+  meta?: { profile?: unknown };
+  code?: unknown;
+}
+
+/** The resource's own `meta.profile`, as written; undefined when it claims none. */
+export function profilesOf(r: ResourceJson): string[] | undefined {
+  const p = Array.isArray(r.meta?.profile) ? r.meta!.profile.filter((x): x is string => typeof x === "string" && x.trim() !== "") : [];
+  return p.length ? p : undefined;
+}
+
+/**
+ * The resource's own `code` when it is a concept: a CodeableConcept as
+ * written, or a list of Codings (Questionnaire's) as its codings. A string
+ * `code` (SearchParameter's) is not a concept and gives undefined. Nothing is
+ * looked up: a coding without a display stays without one.
+ */
+export function conceptOf(r: ResourceJson): FhirConcept | undefined {
+  const str = (v: unknown): string | undefined => (typeof v === "string" && v.trim() !== "" ? v : undefined);
+  const coding = (c: unknown) => {
+    if (!c || typeof c !== "object") return undefined;
+    const o = c as Record<string, unknown>;
+    const out = { ...(str(o.system) ? { system: str(o.system)! } : {}), ...(str(o.code) ? { code: str(o.code)! } : {}), ...(str(o.display) ? { display: str(o.display)! } : {}) };
+    return out.code || out.display ? out : undefined;
+  };
+  const codings = (list: unknown) => (Array.isArray(list) ? list.map(coding).filter((c): c is NonNullable<typeof c> => c !== undefined) : []);
+  const c = r.code;
+  if (Array.isArray(c)) {
+    const cs = codings(c);
+    return cs.length ? { coding: cs } : undefined;
+  }
+  if (!c || typeof c !== "object") return undefined;
+  const o = c as Record<string, unknown>;
+  const cs = codings(o.coding);
+  const text = str(o.text);
+  if (!text && !cs.length) return undefined;
+  return { ...(text ? { text } : {}), ...(cs.length ? { coding: cs } : {}) };
 }
 
 /**
@@ -242,6 +279,8 @@ export function astToArtifactIndex(ast: Ast, opts: AstIndexOptions): AstIndexRes
       ...(nonEmpty(json.url) ? { canonical: json.url } : {}),
       ...(nonEmpty(json.version) ? { version: json.version } : {}),
       ...(category ? { category } : {}),
+      ...(profilesOf(json) ? { profiles: profilesOf(json)! } : {}),
+      ...(conceptOf(json) ? { code: conceptOf(json)! } : {}),
       published,
       materialization: inputs
         ? {
