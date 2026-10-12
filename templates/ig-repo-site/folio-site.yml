@@ -233,6 +233,23 @@ jobs:
             --only "$INSTANCE" --source .. --plantuml-jar "$RUNNER_TEMP/plantuml.jar" \
             --compose-into "$RUNNER_TEMP/docs" --compose-at-root
 
+      - name: This IG's QA records, on a QA page
+        run: |
+          # Every qa-results/v1 record the instance declares (its `qa` graph),
+          # published under assets/ig-qa/ with a summary page at qa.html.
+          # Read from THIS checkout: the platform's mount carries no `qa`
+          # directory, and the records are committed beside the declaration.
+          SCRIPT=folio-assistant/fhir-harness/scripts/ig-qa-page.ts
+          DECL=$(git ls-files "$INSTANCE.json" "*/$INSTANCE.json" | head -1)
+          if [ ! -f "$SCRIPT" ]; then
+            echo "::notice::the pinned fhir-harness has no ig-qa-page.ts yet: no QA page in this build"
+          elif [ -z "$DECL" ]; then
+            echo "::notice::no $INSTANCE.json in this checkout: no QA page"
+          else
+            (cd folio-assistant && bun run fhir-harness/scripts/ig-qa-page.ts \
+              --instance-root "$GITHUB_WORKSPACE/$(dirname "$DECL")" --docs "$RUNNER_TEMP/docs")
+          fi
+
       - name: Build the site
         run: |
           BUNDLE_GEMFILE="$PWD/folio-assistant/cat-harness/docs/Gemfile" bundle exec jekyll build \
