@@ -104,3 +104,62 @@ export const IgArtifactJsonLdSchema = z
     }
   });
 export type IgArtifactJsonLd = z.infer<typeof IgArtifactJsonLdSchema>;
+
+/**
+ * The IG's artefact INDEX as one JSON-LD node: the list the thin `artifacts`
+ * and `toc` pages draw (owner, 2026-10-11, option A; "make thin default",
+ * 2026-10-12), so neither page fetches every artefact's node to draw a list.
+ *
+ * Written beside the nodes, `artifact/index.jsonld` (no artefact page name
+ * can be `index`: every one is `<Type>-<id>`). The same vocabularies:
+ *
+ * | term | what it says |
+ * |---|---|
+ * | `@type` `fhir:ImplementationGuide` | the IG the list is of |
+ * | `dcterms:identifier`, `schema:version`, `schema:sameAs` | its package id, version and canonical base |
+ * | `dcterms:title` | the IG's display name, as the site shows it |
+ * | `schema:numberOfItems` | how many artefacts the index holds; QA holds the list to it |
+ * | `schema:hasPart` | one entry per artefact, in the Publisher's order (`byCategory`), each naming its node by `@id` and repeating only what a list row shows: key, class, title, description, grouping |
+ *
+ * An entry is a SUMMARY of the node it names, never a second home for a fact
+ * the node lacks: `check` holds every entry's key and class to its node's.
+ */
+export const IG_ARTIFACT_INDEX_JSONLD_SCHEMA_TAG = "folio-ig-artifact-index-jsonld/v1";
+
+export const IgArtifactIndexEntrySchema = z
+  .object({
+    "@id": z.string().min(1),
+    "@type": z.string().regex(/^fhir:[A-Z][A-Za-z]+$/),
+    "dcterms:identifier": z.string().regex(/^[A-Z][A-Za-z]+\/[A-Za-z0-9\-.]{1,64}$/),
+    "dcterms:title": z.string().min(1),
+    "dcterms:description": z.string().min(1).optional(),
+    "dcterms:type": z.string().min(1).optional(),
+  })
+  .strict();
+export type IgArtifactIndexEntry = z.infer<typeof IgArtifactIndexEntrySchema>;
+
+export const IgArtifactIndexJsonLdSchema = z
+  .object({
+    "@context": z.object({ fhir: z.literal(IG_ARTIFACT_JSONLD_CONTEXT.fhir), dcterms: z.string(), schema: z.string(), prov: z.string() }).strict(),
+    $schema: z.literal(IG_ARTIFACT_INDEX_JSONLD_SCHEMA_TAG),
+    "@id": z.string().min(1),
+    "@type": z.literal("fhir:ImplementationGuide"),
+    "dcterms:identifier": z.string().min(1).optional(),
+    "schema:version": z.string().min(1).optional(),
+    "schema:sameAs": IdRef.optional(),
+    "dcterms:title": z.string().min(1).optional(),
+    "schema:numberOfItems": z.number().int().nonnegative(),
+    "schema:hasPart": z.array(IgArtifactIndexEntrySchema),
+  })
+  .strict()
+  .superRefine((n, ctx) => {
+    if (n["schema:hasPart"].length !== n["schema:numberOfItems"]) {
+      ctx.addIssue({ code: "custom", path: ["schema:numberOfItems"], message: `says ${n["schema:numberOfItems"]}, lists ${n["schema:hasPart"].length}` });
+    }
+    n["schema:hasPart"].forEach((e, i) => {
+      if (e["@type"] !== `fhir:${e["dcterms:identifier"].split("/")[0]}`) {
+        ctx.addIssue({ code: "custom", path: ["schema:hasPart", i, "@type"], message: `${e["@type"]} does not match the key ${e["dcterms:identifier"]}` });
+      }
+    });
+  });
+export type IgArtifactIndexJsonLd = z.infer<typeof IgArtifactIndexJsonLdSchema>;

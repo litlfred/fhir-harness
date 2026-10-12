@@ -66,15 +66,22 @@
  *   bun run fhir-harness/scripts/gen-ig-pages.ts --instance <dir> --label "<IG display name>"
  *     [--chrome-owner <instance>] [--summary] [--check]
  *
- * `--thin` (owner, 2026-10-11, option A) writes each ARTEFACT page as a thin
- * shell instead: `artifact/<Type>-<id>.html`, a few KB of identity and a
+ * THIN IS THE DEFAULT (owner, 2026-10-11, option A: "tiny html w/ dynamic
+ * load from json(ld) KG"; 2026-10-12: "make thin default"). Each ARTEFACT page
+ * is a thin shell: `artifact/<Type>-<id>.html`, a few KB of identity and a
  * pointer, with the artefact's JSON-LD node beside it (`<Type>-<id>.jsonld`,
  * `ig-artifact-jsonld.ts`) and one shared renderer (`assets/ig-artifact.js`)
- * that draws the page from the node and the resource. The address is the
- * full page's, so every link to it holds. Only the artefact pages change:
- * the IG API, JSON-view and tab pages stay full pages, and without the flag
- * nothing changes at all. `--jsonld-base <url>` makes the nodes' IRIs
- * absolute under the docs root's published URL.
+ * that draws the page from the node and the resource; and the index node
+ * (`artifact/index.jsonld`) that the IG site's thin `artifacts` and `toc`
+ * pages draw (`build-ig-site.ts`). The address is the full page's, so every
+ * link to it holds. The IG API, JSON-view and tab pages stay full pages.
+ * `--jsonld-base <url>` makes the nodes' IRIs absolute under the docs root's
+ * published URL.
+ *
+ * `--full-pages` is the opt-out: the full just-the-docs artefact pages, as
+ * before 2026-10-12, and no JSON-LD. It is kept reachable, not removed —
+ * removing it is a separate decision. `--thin` is still accepted and changes
+ * nothing; the two together are refused.
  *
  * `--summary` puts the instance's own declaration — its description and every
  * declared graph with its viewer — above the artefact index, via the
@@ -129,7 +136,7 @@ function arg(name: string): string | undefined {
 
 const INSTANCE_ARG = arg("--instance");
 if (!INSTANCE_ARG) {
-  console.error("usage: gen-ig-pages.ts --instance <dir> --label <name> [--chrome-owner <instance>] [--index <index.json>] [--out <dir>] [--summary] [--thin [--jsonld-base <url>]] [--check]");
+  console.error("usage: gen-ig-pages.ts --instance <dir> --label <name> [--chrome-owner <instance>] [--index <index.json>] [--out <dir>] [--summary] [--full-pages | --jsonld-base <url>] [--check]");
   process.exit(2);
 }
 const INSTANCE = resolve(process.cwd(), INSTANCE_ARG);
@@ -174,8 +181,13 @@ const MENU = join(INSTANCE, "fhir-artifact-index", "menu.json");
  */
 const COMPILED_DATA = arg("--compiled-data")?.replace(/\/+$/, "");
 const AST_LOADER = join(import.meta.dir, "templates", "ig-pages", "ast-resource.js");
-/** `--thin`: artefact pages as thin shells over a JSON-LD node per artefact (see the module doc). */
-const THIN = process.argv.includes("--thin");
+/** Thin unless `--full-pages` (see the module doc). `--thin`, the old opt-in, is accepted and is the default. */
+const FULL_PAGES = process.argv.includes("--full-pages");
+if (FULL_PAGES && process.argv.includes("--thin")) {
+  console.error("gen-ig-pages: --thin and --full-pages together — pick one (thin is the default)");
+  process.exit(2);
+}
+const THIN = !FULL_PAGES;
 const JSONLD_BASE = (() => {
   const b = arg("--jsonld-base");
   return b === undefined ? undefined : b.endsWith("/") ? b : `${b}/`;
@@ -1538,7 +1550,7 @@ if (existsSync(MENU)) {
         }),
       );
     }
-    for (const [rel, text] of artifactJsonLdFiles(ix, { ...(JSONLD_BASE ? { base: JSONLD_BASE } : {}), ...(COMPILED_DATA ? { compiledData: COMPILED_DATA } : {}) })) {
+    for (const [rel, text] of artifactJsonLdFiles(ix, { ...(JSONLD_BASE ? { base: JSONLD_BASE } : {}), ...(COMPILED_DATA ? { compiledData: COMPILED_DATA } : {}), title: LABEL })) {
       pages.set(rel, text);
     }
     pages.set(THIN_PAGE_SCRIPT, readFileSync(THIN_RENDERER, "utf8"));
@@ -1570,7 +1582,9 @@ if (IG_SITE) {
   // `rendered-by` — and `stage-ig-sites` lays it onto that generated page
   // (`copyDocsInto`). It no longer says what it renders: the instance's
   // declared `visualisers` do (owner, 2026-10-09).
-  if (directoriesForGraph(INSTANCE, "fhir-artifact-index").length > 0) {
+  // Thin, the IG site's `artifacts.html` is a finished page with no front
+  // matter to lay this on; it carries `rendered-by` itself (`build-ig-site`).
+  if (!THIN && directoriesForGraph(INSTANCE, "fhir-artifact-index").length > 0) {
     pages.set(
       ARTIFACTS_FRONT_MATTER_PAGE,
       `${["---", `title: ${yamlScalar(`${LABEL} — artefact index`)}`, "rendered-by: ig-pages", "---"].join("\n")}\n`,

@@ -104,13 +104,15 @@ than on the parity list.
 
 Declaring MVP against the checklist is the owner's call, not this skill's.
 
-## Thin artefact pages (`--thin`)
+## Thin pages, the default (`--full-pages` to opt out)
 
 The owner, 2026-10-11, option A: *"tiny html w/ dynamic load from json(ld)
-KG"*. `gen-ig-pages.ts --thin` writes each artefact page as a thin shell
-rather than a folio page. The shell is cat-harness-tools' `thinPageHtml`,
-imported and not copied: this layer needs core, which sits above
-cat-harness-tools.
+KG"*; and 2026-10-12: *"make thin default"*. Every page of an IG site is now
+thin unless a build asks for the old pages with `--full-pages`. The shell is
+cat-harness-tools' `thinPageHtml`, imported and not copied: this layer needs
+core, which sits above cat-harness-tools.
+
+### Artefact pages (`gen-ig-pages.ts`)
 
 - **The address does not move.** The page stays at `artifact/<Type>-<id>.html`
   and names that file as `rel="canonical"`. The IG's artifacts page, the
@@ -131,11 +133,53 @@ cat-harness-tools.
   build's rail pass (`rail-standalone-pages.ts`) links the rail's style and
   scripts instead of inlining them. Measured on the iHRIS 5 IG (182
   artefacts): 168 KB per full page, about 5.6 KB per railed thin page.
-- **Only artefact pages change.** IG API, JSON-view and tab pages stay full
-  pages. Without the flag nothing changes, so an IG opts in by passing it.
+- IG API, JSON-view and tab pages stay full pages.
 - In an IG site the docs root is the site root, so `--compiled-data` is
   `ast-data`. With `../ast-data`, every resource link points one level above
   the site.
+
+### The artefact list and the table of contents (`build-ig-site.ts`)
+
+- **One index node.** Beside the artefact nodes, `artifact/index.jsonld`
+  (family `folio-ig-artifact-index-jsonld/v1`, same kind) lists every artefact
+  once, in the Publisher's order, each entry naming its node and carrying
+  only what a list row shows. `check` holds the list to the artefact index
+  and each entry to its node.
+- **`artifacts.html` is a thin shell** over that node, drawn by the same
+  renderer: a jump list of categories, a filter, then every category OPEN
+  with its table. The owner could not find artefacts behind collapsed
+  `<details>`, so nothing is collapsed. Category anchors are the full page's
+  (`#artifacts-<slug>`), so old links still land.
+- **`toc.html` is a thin shell.** The IG's own pages (`sushi-config.yaml`
+  `pages:`, the landing page first) stay in its HTML: they are the page's
+  structure. The artefacts under each category are drawn from the index node.
+- Both are written by `stageIgSite` when `StageOptions.artifacts.index` is
+  given, which `stage-ig-sites.ts` does unless `--full-pages`. A site whose
+  artefact pages were generated with `--full-pages` has no index node, and
+  staging it thin is refused rather than shipping two pages that draw nothing.
+
+### The narrative pages (`composeIgSite`)
+
+- The IG's own prose stays in the HTML, rendered by Jekyll as before. What
+  changes is the layout: an IG page composed into a host site wears
+  `thinIgLayout` (`_layouts/ig-thin-<instance>.html`) instead of the host's
+  layout, so none of the host's chrome (the harness bar, the inline SVG
+  sprite, the sidebar nav, the inline scripts) is written into it.
+- Everything around the prose is LINKED: the shared `assets/ig-artifact.css`,
+  the top bar's `assets/ig-topbar.css`, the edit and source-link runtimes as
+  `assets/ig-source-links.js`, and the rail through `folio-navbar: linked`.
+  The IG's top bar, edit links, footer and its TOC declaration for the rail
+  stay. Measured on iHRIS 5: `index.html` 182 KB to about 11 KB.
+- What the host's chrome added and the thin page does not: the host's search
+  box and the language and QA badges.
+
+### The opt-out
+
+`gen-ig-pages.ts --full-pages` and `stage-ig-sites.ts --full-pages` build the
+pages as before 2026-10-12 (`composeIgSite(…, { fullPages: true })`). Pass
+both or neither. `gen-ig-pages --thin` is still accepted and changes nothing;
+`--thin --full-pages` is refused. Removing the full path is a separate
+decision.
 
 ## What this does not replace
 

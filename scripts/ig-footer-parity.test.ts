@@ -43,7 +43,7 @@ const declPath = join(instance, "igs.json");
 const decl = JSON.parse(readFileSync(declPath, "utf-8"));
 decl.directories.push({ id: "igs-docs", path: "docs/", graphTypologies: ["docs"], igSite: true });
 writeFileSync(declPath, JSON.stringify(decl));
-const gen = Bun.spawnSync(["bun", "run", SCRIPT, "--instance", instance, "--label", "Scratch IG", "--chrome-owner", "chrome-owner"], { cwd: ROOT });
+const gen = Bun.spawnSync(["bun", "run", SCRIPT, "--instance", instance, "--label", "Scratch IG", "--chrome-owner", "chrome-owner", "--full-pages"], { cwd: ROOT });
 if (gen.exitCode !== 0) throw new Error(`gen-ig-pages failed:\n${gen.stderr.toString()}`);
 const docs = join(instance, "docs");
 const artefactPages = readdirSync(join(docs, "artifact")).filter((f) => f.endsWith(".md"));
@@ -58,7 +58,7 @@ writeFileSync(
   ["id: igs", "title: Scratch IG", "copyrightYear: 2023+", "license: CC0-1.0", "publisher:", "  name: Example Org", "  url: https://example.org", "pages:", "  index.md:", "    title: Home", "  concepts.md:", "    title: Concepts", ""].join("\n"),
 );
 for (const p of ["index", "concepts"]) writeFileSync(join(src, "input", "pagecontent", `${p}.md`), `# ${p}\n`);
-stageIgSite(src, out, { menu: { groups: [{ label: "Home", items: [{ label: "Concepts", href: "concepts.html" }] }] }, artifacts: artifactsFor(instance, "artifact/"), footer: footerFor(instance, "") });
+stageIgSite(src, out, { menu: { groups: [{ label: "Home", items: [{ label: "Concepts", href: "concepts.html" }] }] }, artifacts: artifactsFor(instance, "artifact/", { fullPages: true }), footer: footerFor(instance, "") });
 const copied = copyDocsInto(docs, out);
 
 afterAll(() => {

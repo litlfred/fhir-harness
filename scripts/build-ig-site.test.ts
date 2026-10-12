@@ -622,7 +622,7 @@ describe("the Publisher's page footer on the IG site's own pages (#1901)", () =>
     const { d, out } = stage({ menu });
     const host = join(d, "host");
     mkdirSync(host, { recursive: true });
-    expect(composeIgSite(out, host, "x").collisions).toEqual([]);
+    expect(composeIgSite(out, host, "x", { fullPages: true }).collisions).toEqual([]);
     expect(readFileSync(join(host, "x", "concepts.md"), "utf-8")).toContain("{% include ig/_bottom.html %}\n{% if page.ig_footer %}{% include ig/x/fa-ig-footer.html %}{% endif %}");
     expect(readFileSync(join(host, "_includes", "ig", "x", "fa-ig-footer.html"), "utf-8")).toContain('site.data.ig["x"].fhir.footer');
     rmSync(d, { recursive: true, force: true });
@@ -782,7 +782,8 @@ describe("heading links on an IG's first page, whose headings live in an include
 // Bean `mftp`, owner 2026-10-05: "Build in main site" — the IG's pages wear the
 // host site's chrome, with the IG's includes and data namespaced per IG.
 describe("composeIgSite: a staged IG moved into a host Jekyll source", () => {
-  test("pages nest under the IG, includes and data are namespaced, chrome is injected", () => {
+  // The full path (`--full-pages`): the host's own layout and chrome.
+  test("pages nest under the IG, includes and data are namespaced, chrome is injected (--full-pages)", () => {
     const d = mkdtempSync(join(tmpdir(), "ig-compose-"));
     const src = join(d, "src");
     mkdirSync(join(src, "input", "pagecontent"), { recursive: true });
@@ -795,7 +796,7 @@ describe("composeIgSite: a staged IG moved into a host Jekyll source", () => {
     stageIgSite(src, staged, { menu: { groups: [{ label: "Home", items: [{ label: "Summary", href: "index.html" }] }, { label: "Business", items: [{ label: "Concepts", href: "concepts.html" }] }] }, baseurl: "/b/x" });
     const host = join(d, "host");
     mkdirSync(host, { recursive: true });
-    const c = composeIgSite(staged, host, "x");
+    const c = composeIgSite(staged, host, "x", { fullPages: true });
     expect(c.collisions).toEqual([]);
     const index = readFileSync(join(host, "x", "index.md"), "utf-8");
     expect(index).toMatch(/^---\ntitle: "X IG"\nhas_children: true\n/);
@@ -821,11 +822,11 @@ describe("composeIgSite: a staged IG moved into a host Jekyll source", () => {
     expect(existsSync(join(host, "x", "_config.yml"))).toBe(false);
     expect(existsSync(join(host, "x", "_layouts"))).toBe(false);
     // A second compose of the same IG is two answers for one URL.
-    expect(composeIgSite(staged, host, "x").collisions.length).toBeGreaterThan(0);
+    expect(composeIgSite(staged, host, "x", { fullPages: true }).collisions.length).toBeGreaterThan(0);
     // `atRoot` (#2235 F1): the IG IS the site — the same pages at the root.
     const root = join(d, "root");
     mkdirSync(root, { recursive: true });
-    expect(composeIgSite(staged, root, "x", { atRoot: true }).collisions).toEqual([]);
+    expect(composeIgSite(staged, root, "x", { atRoot: true, fullPages: true }).collisions).toEqual([]);
     expect(existsSync(join(root, "index.md"))).toBe(true);
     expect(existsSync(join(root, "concepts.md"))).toBe(true);
     expect(existsSync(join(root, "x"))).toBe(false);
