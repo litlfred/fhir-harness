@@ -2,6 +2,7 @@
 name: ig-render-jekyll
 graph-typologies:
   - ig-pages
+  - ig-artifact-jsonld
 description: >
   Rendering a FHIR IG's content through the just-the-docs pipeline instead of
   mounting the IG Publisher's finished HTML — the JSON-only representation
@@ -102,6 +103,39 @@ not emit cannot be rendered at any effort, and belongs on the AST ask rather
 than on the parity list.
 
 Declaring MVP against the checklist is the owner's call, not this skill's.
+
+## Thin artefact pages (`--thin`)
+
+The owner, 2026-10-11, option A: *"tiny html w/ dynamic load from json(ld)
+KG"*. `gen-ig-pages.ts --thin` writes each artefact page as a thin shell
+rather than a folio page. The shell is cat-harness-tools' `thinPageHtml`,
+imported and not copied: this layer needs core, which sits above
+cat-harness-tools.
+
+- **The address does not move.** The page stays at `artifact/<Type>-<id>.html`
+  and names that file as `rel="canonical"`. The IG's artifacts page, the
+  narrative's links and the footer's reading order all still land.
+- **The asset is a JSON-LD node.** The node, `artifact/<Type>-<id>.jsonld`
+  with a `.json` twin, is written by `ig-artifact-jsonld.ts` from the index.
+  It uses the FHIR RDF class, dcterms, schema.org and PROV, and mints nothing.
+  It is kind `ig-artifact-jsonld`, and its QA is
+  `ig-artifact-jsonld.ts check` over the built site. The page names the node
+  as `alternate`, and the node names no rendering.
+- **One shared renderer.** `assets/ig-artifact.js` fetches the node, then
+  the resource the node names as a local copy. It draws the description,
+  facts and identity table, the elements, concepts or includes, and then
+  hands the narrative and JSON to `ast-resource.js`. The page itself carries
+  only its title, its key and a `<noscript>` link to the node and the
+  resource.
+- **The rail is linked.** The page declares `folio-navbar: linked`, and the
+  build's rail pass (`rail-standalone-pages.ts`) links the rail's style and
+  scripts instead of inlining them. Measured on the iHRIS 5 IG (182
+  artefacts): 168 KB per full page, about 5.6 KB per railed thin page.
+- **Only artefact pages change.** IG API, JSON-view and tab pages stay full
+  pages. Without the flag nothing changes, so an IG opts in by passing it.
+- In an IG site the docs root is the site root, so `--compiled-data` is
+  `ast-data`. With `../ast-data`, every resource link points one level above
+  the site.
 
 ## What this does not replace
 

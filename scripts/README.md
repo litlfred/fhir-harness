@@ -21,6 +21,7 @@ Part of [FHIR IG Harness](../README.md) 0.1.0, declared as `fhir-ig-scripts`, ho
 | [`gen-ig-pages.ts`](gen-ig-pages.ts) | a file |  |
 | [`ig-api-views.test.ts`](ig-api-views.test.ts) | a file |  |
 | [`ig-api-views.ts`](ig-api-views.ts) | a file |  |
+| [`ig-artifact-jsonld.ts`](ig-artifact-jsonld.ts) | a file |  |
 | [`ig-ast-site.sh`](ig-ast-site.sh) | a file |  |
 | [`ig-ast.test.ts`](ig-ast.test.ts) | a file |  |
 | [`ig-ast.ts`](ig-ast.ts) | a file |  |
@@ -34,6 +35,8 @@ Part of [FHIR IG Harness](../README.md) 0.1.0, declared as `fhir-ig-scripts`, ho
 | [`ig-rendered-impact.ts`](ig-rendered-impact.ts) | a file |  |
 | [`ig-site-data.test.ts`](ig-site-data.test.ts) | a file |  |
 | [`ig-site-data.ts`](ig-site-data.ts) | a file |  |
+| [`ig-thin-pages.test.ts`](ig-thin-pages.test.ts) | a file |  |
+| [`ig-thin-pages.ts`](ig-thin-pages.ts) | a file |  |
 | [`ingest-ig-artifacts.ts`](ingest-ig-artifacts.ts) | a file |  |
 | [`ingest-ig-chrome.ts`](ingest-ig-chrome.ts) | a file |  |
 | [`ingest-ig-invocation.test.ts`](ingest-ig-invocation.test.ts) | a file |  |

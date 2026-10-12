@@ -66,6 +66,16 @@
  *   bun run fhir-harness/scripts/gen-ig-pages.ts --instance <dir> --label "<IG display name>"
  *     [--chrome-owner <instance>] [--summary] [--check]
  *
+ * `--thin` (owner, 2026-10-11, option A) writes each ARTEFACT page as a thin
+ * shell instead: `artifact/<Type>-<id>.html`, a few KB of identity and a
+ * pointer, with the artefact's JSON-LD node beside it (`<Type>-<id>.jsonld`,
+ * `ig-artifact-jsonld.ts`) and one shared renderer (`assets/ig-artifact.js`)
+ * that draws the page from the node and the resource. The address is the
+ * full page's, so every link to it holds. Only the artefact pages change:
+ * the IG API, JSON-view and tab pages stay full pages, and without the flag
+ * nothing changes at all. `--jsonld-base <url>` makes the nodes' IRIs
+ * absolute under the docs root's published URL.
+ *
  * `--summary` puts the instance's own declaration — its description and every
  * declared graph with its viewer — above the artefact index, via the
  * `harness_details.html` include (with `instance=`), which reads `site.data.harness` at build
@@ -80,6 +90,8 @@ import { IG_API_HUB_SCRIPT, IG_API_HUB_TEMPLATE, IG_API_VIEW_SCRIPT, igApiHubDat
 import { IG_CHROME_SCOPE, igFooterData } from "./ig-footer.ts";
 import { JSON_VIEW_SCRIPT, VIEW_PAGE, examplesPage, hasJsonView, historyPage, jsonViewData, mappingsPage, mdText, packageEntries, rebaseDescriptionLinks, profileJsonViewData, resourceFacts, resourceTabs, testingPage, type TabPageData } from "./resource-views.ts";
 import { isDirectoryReadme } from "../../cat-harness/schemas/kg-node.js";
+import { artifactJsonLdFiles } from "./ig-artifact-jsonld.ts";
+import { THIN_PAGE_SCRIPT, THIN_PAGE_STYLE, thinArtifactPage, thinArtifactPath } from "./ig-thin-pages.ts";
 
 import { IgMenuSchema, type IgMenu, type IgMenuGroup, menuHref, menuItemCount } from "../schemas/ig-menu.js";
 import {
@@ -117,7 +129,7 @@ function arg(name: string): string | undefined {
 
 const INSTANCE_ARG = arg("--instance");
 if (!INSTANCE_ARG) {
-  console.error("usage: gen-ig-pages.ts --instance <dir> --label <name> [--chrome-owner <instance>] [--index <index.json>] [--out <dir>] [--summary] [--check]");
+  console.error("usage: gen-ig-pages.ts --instance <dir> --label <name> [--chrome-owner <instance>] [--index <index.json>] [--out <dir>] [--summary] [--thin [--jsonld-base <url>]] [--check]");
   process.exit(2);
 }
 const INSTANCE = resolve(process.cwd(), INSTANCE_ARG);
@@ -162,6 +174,14 @@ const MENU = join(INSTANCE, "fhir-artifact-index", "menu.json");
  */
 const COMPILED_DATA = arg("--compiled-data")?.replace(/\/+$/, "");
 const AST_LOADER = join(import.meta.dir, "templates", "ig-pages", "ast-resource.js");
+/** `--thin`: artefact pages as thin shells over a JSON-LD node per artefact (see the module doc). */
+const THIN = process.argv.includes("--thin");
+const JSONLD_BASE = (() => {
+  const b = arg("--jsonld-base");
+  return b === undefined ? undefined : b.endsWith("/") ? b : `${b}/`;
+})();
+const THIN_RENDERER = join(import.meta.dir, "templates", "ig-pages", "ig-artifact.js");
+const THIN_STYLE = join(import.meta.dir, "templates", "ig-pages", "ig-artifact.css");
 
 /** `--out` writes the pages somewhere other than the instance's committed `docs/`. */
 const OUT_ARG = arg("--out");
@@ -1494,6 +1514,36 @@ if (existsSync(MENU)) {
       pages.set(page, text.replace(FOOTER_TAG, `${FOOTER_TAG}${attrs}`));
     });
   }
+
+  // THE THIN PAGES replace the full artefact pages built above, at the same
+  // addresses and in the same reading order, so every link computed from the
+  // full pages — the footer's, the narrative's, the IG site's artifacts
+  // page — still lands. Built from the full pages' order rather than beside
+  // it: one order, read once.
+  if (THIN) {
+    for (const a of ix.artifacts) {
+      const md = join("artifact", `${pageName(a)}.md`);
+      const i = position.get(md);
+      pages.delete(md);
+      pages.set(
+        thinArtifactPath(a),
+        thinArtifactPage(ix, a, {
+          label: LABEL,
+          home: IG_SITE ? "../index.html" : "../",
+          all: ALL_ARTEFACTS_HREF,
+          ...(IG_SITE ? { toc: "../toc.html" } : {}),
+          ...(i !== undefined && i > 0 ? { prev: href(md, order[i - 1]!) } : {}),
+          ...(i !== undefined && i < order.length - 1 ? { next: href(md, order[i + 1]!) } : {}),
+          ...(COMPILED_DATA ? { compiledData: COMPILED_DATA } : {}),
+        }),
+      );
+    }
+    for (const [rel, text] of artifactJsonLdFiles(ix, { ...(JSONLD_BASE ? { base: JSONLD_BASE } : {}), ...(COMPILED_DATA ? { compiledData: COMPILED_DATA } : {}) })) {
+      pages.set(rel, text);
+    }
+    pages.set(THIN_PAGE_SCRIPT, readFileSync(THIN_RENDERER, "utf8"));
+    pages.set(THIN_PAGE_STYLE, readFileSync(THIN_STYLE, "utf8"));
+  }
 }
 
 for (const [label, list] of byCategory(ix.artifacts)) {
@@ -1702,9 +1752,9 @@ if (CHECK) {
   // pages over a corpus of 674.
   // One per ARTEFACT: the IG API view pages and their raw files share the
   // directory and are counted on their own line.
-  const artefactPages = [...pages.keys()].filter((k) => k.startsWith("artifact/") && k.endsWith(".md") && !VIEW_PAGE.test(k)).length;
+  const artefactPages = [...pages.keys()].filter((k) => k.startsWith("artifact/") && (k.endsWith(".md") || (THIN && k.endsWith(".html"))) && !VIEW_PAGE.test(k)).length;
   const categoryPages = [...pages.keys()].filter((k) => k.startsWith("category/")).length;
-  console.log(`  ${artefactPages} artefact page(s) — one per artefact; ${sc.schema} carry a ${SIDECAR_LABEL} schema`);
+  console.log(`  ${artefactPages} artefact page(s) — one per artefact${THIN ? ", THIN: each a shell over its JSON-LD node, drawn by assets/ig-artifact.js" : ""}; ${sc.schema} carry a ${SIDECAR_LABEL} schema`);
   console.log(`  ${igApiViewCount} IG API view page(s) — one per held JSON Schema or JSON-LD sidecar, file fetched client-side`);
   console.log(`  ${jsonViewCount} JSON view page(s) — resource read client-side from the held package.tgz`);
   console.log(`  tab pages: ${tabCounts.history} change history, ${tabCounts.testing} testing, ${tabCounts.profileHistory} profile history, ${tabCounts.profileJson} profile JSON, ${tabCounts.examples} examples, ${tabCounts.mappings} mappings`);

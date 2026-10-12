@@ -234,6 +234,9 @@ export function tools(baseUrl?: string): ToolDefinition[] {
           { name: "label", schema: t("Text"), required: false, description: "The IG's display name. The index carries only the package id, which stands in when this is absent." },
           { name: "chrome-owner", schema: t("Text"), required: false, description: "The instance whose `chrome.json` styles the pages. Absent, the pages are unstyled and the build says so. The banner's identity is always the index's; a chrome ingested from another IG lends its tokens, never its status." },
           { name: "summary", schema: t("Flag"), required: false, description: "Open the index page with the instance's own declaration (`harness_details.html` with `instance=`), making it the instance's landing page." },
+          { name: "thin", schema: t("Flag"), required: false, description: "Write each artefact page as a THIN shell at the same address (owner, 2026-10-11, option A): identity and a pointer, the artefact's JSON-LD node beside it, and one shared renderer, `assets/ig-artifact.js`, that draws the page from the node and the resource. The rail is linked, not inlined. Off by default, so an IG that has not opted in is unchanged." },
+          { name: "jsonld-base", schema: t("Url"), required: false, description: "With `--thin`: the docs root's published URL, so each node's IRIs are absolute. Absent, they are relative to the node's own file." },
+          { name: "compiled-data", schema: t("RepoPath"), required: false, description: "Where a compiled index's resource files are served, as a path from the docs root. In an IG site the docs root IS the site root, so it is `ast-data`, not `../ast-data`." },
           { name: "check", schema: t("Flag"), required: false, description: "Write nothing; exit 1 when any page is stale or orphaned." },
         ],
         outputs: [
@@ -246,6 +249,34 @@ export function tools(baseUrl?: string): ToolDefinition[] {
         limits:
           "Narrative pages are not held — the harvest keeps artefacts — so menu entries link upstream. Bodies are still partly HTML inside markdown (`jut3`).",
         cost: "Seconds; one file per artefact.",
+      },
+      requires: { runtime: ["bun"], network: false },
+    }),
+    defineTool({
+      id: "ig-artifact-jsonld",
+      title: "Write one JSON-LD node per IG artefact, and check a built site's nodes",
+      description:
+        "`write` turns an artefact index into `artifact/<Type>-<id>.jsonld` (and a `.json` twin) under a docs root: one `folio-ig-artifact-jsonld/v1` node per artefact, in borrowed vocabularies only (the FHIR RDF class, dcterms, schema.org, PROV), naming the artefact's canonical URL, its representations and, for a compiled copy, what built it. `check` is the kind's QA: over a BUILT site, every artefact has its node and no node is an orphan, each node is its own file's, its twin matches, and every local resource it names is on the site. WHO-free; the asset `gen-ig-pages --thin` renders (owner, 2026-10-11, option A).",
+      install: { none: true },
+      invoke: { shell: "bun run fhir-harness/scripts/ig-artifact-jsonld.ts" },
+      io: {
+        inputs: [
+          { name: "command", schema: t("Text"), required: true, description: "`write` or `check`." },
+          { name: "index", schema: t("RepoPath"), required: true, description: "The `folio-fhir-artifact-index/v2` to write from, or to check against." },
+          { name: "out", schema: t("RepoPath"), required: false, description: "`write`: the docs root the nodes go under." },
+          { name: "dir", schema: t("RepoPath"), required: false, description: "`check`: the built docs root to check." },
+          { name: "base", schema: t("Url"), required: false, description: "`write`: the docs root's published URL, for absolute IRIs." },
+          { name: "compiled-data", schema: t("RepoPath"), required: false, description: "`write`: where compiled resource files are served, from the docs root." },
+        ],
+        outputs: [
+          { name: "nodes", schema: t("Count"), description: "Nodes written, or checked; `check` exits 1 with each finding named." },
+        ],
+      },
+      satisfies: ["ig-build-pipeline"],
+      selection: {
+        when: "An IG's artefact pages are thin (`gen-ig-pages --thin`), or a consumer wants the artefacts as linked data.",
+        limits: "Identity and representations only, never the resource's content: the resource is one of its encodings, fetched by the page. Upstream URLs are not fetched by `check`.",
+        cost: "Milliseconds per artefact.",
       },
       requires: { runtime: ["bun"], network: false },
     }),
