@@ -51,6 +51,7 @@ import {
   IgArtifactIndexJsonLdSchema,
   IgArtifactJsonLdSchema,
   type IgArtifactEncoding,
+  type IgDefinedTerm,
   type IgArtifactIndexJsonLd,
   type IgArtifactJsonLd,
 } from "../schemas/ig-artifact-jsonld.js";
@@ -95,6 +96,36 @@ function iriFor(href: string, base: string | undefined): string {
   return base ? new URL(href, new URL(`${ARTIFACT_DIR}/`, base)).href : href;
 }
 
+/**
+ * What an INSTANCE states about itself beyond its name: its profiles
+ * (`meta.profile`) and its `code` concept, in the node's vocabulary. Read off
+ * the index, which copied them from the resource; nothing is looked up.
+ *
+ * An instance is an artefact with no canonical URL (a `Basic` page, role or
+ * task, a DocumentReference, a Bundle): it has no title or description of
+ * its own, and these are what its list row can show (owner, 2026-10-12). A
+ * definition (a CodeSystem, a profile, a Questionnaire) is described by its
+ * own description, and its `meta.profile` is typically a core one
+ * (`shareablevalueset`): drawn, it cost a column on every phone for nothing,
+ * so it is not written.
+ */
+export function statedFacts(a: FhirArtifact): Pick<IgArtifactJsonLd, "dcterms:conformsTo" | "dcterms:subject"> {
+  if (a.canonical) return {};
+  const terms: IgDefinedTerm[] = [
+    ...(a.code?.coding ?? []).map((c) => ({
+      "@type": "schema:DefinedTerm" as const,
+      ...(c.code ? { "schema:termCode": c.code } : {}),
+      ...(c.display ? { "schema:name": c.display } : {}),
+      ...(c.system ? { "schema:inDefinedTermSet": { "@id": c.system } } : {}),
+    })),
+    ...(a.code?.text ? [{ "@type": "schema:DefinedTerm" as const, "schema:name": a.code.text }] : []),
+  ];
+  return {
+    ...(a.profiles?.length ? { "dcterms:conformsTo": a.profiles.map((p) => ({ "@id": p })) } : {}),
+    ...(terms.length ? { "dcterms:subject": terms } : {}),
+  };
+}
+
 /** The node for one artefact. Deterministic: the same index gives the same bytes. */
 export function artifactJsonLd(ix: FhirArtifactIndex, a: FhirArtifact, o: JsonLdOptions = {}): IgArtifactJsonLd {
   const file = `${artifactPageName(a)}.jsonld`;
@@ -133,6 +164,7 @@ export function artifactJsonLd(ix: FhirArtifactIndex, a: FhirArtifact, o: JsonLd
       ...(ix.version ? { "schema:version": ix.version } : {}),
       ...(ix.canonicalBase ? { "schema:sameAs": { "@id": ix.canonicalBase } } : {}),
     },
+    ...statedFacts(a),
   };
   return node;
 }
@@ -150,6 +182,8 @@ export function artifactIndexJsonLd(ix: FhirArtifactIndex, o: JsonLdOptions = {}
     "dcterms:title": a.title ?? a.name ?? a.id,
     ...(a.description ? { "dcterms:description": a.description } : {}),
     ...(a.category ? { "dcterms:type": a.category } : {}),
+    ...(a.canonical ? { "schema:sameAs": { "@id": a.canonical } } : {}),
+    ...statedFacts(a),
   }));
   return {
     "@context": { ...IG_ARTIFACT_JSONLD_CONTEXT },
@@ -183,6 +217,9 @@ export function artifactJsonLdFiles(ix: FhirArtifactIndex, o: JsonLdOptions = {}
   out.set(posix.join(ARTIFACT_DIR, ARTIFACT_INDEX_FILE.replace(/\.jsonld$/, ".json")), index);
   return out;
 }
+
+/** The terms an index entry repeats from its node, beyond key and class, which `check` holds equal. */
+const SUMMARISED = ["schema:sameAs", "dcterms:conformsTo", "dcterms:subject"] as const;
 
 /** The path from a node's directory to an IRI it names, as `check` resolves both kinds of IRI. */
 function relFrom(nodeId: string, url: string): string {
@@ -229,9 +266,16 @@ export function checkArtifactIndexJsonLd(ix: FhirArtifactIndex, docsRoot: string
       continue;
     }
     try {
-      const node = JSON.parse(readFileSync(nodePath, "utf8")) as { "dcterms:identifier"?: string; "@type"?: string };
+      const node = JSON.parse(readFileSync(nodePath, "utf8")) as Record<string, unknown> & { "dcterms:identifier"?: string; "@type"?: string };
       if (node["dcterms:identifier"] !== key || node["@type"] !== e["@type"]) {
         findings.push(`${at}: the entry for ${key} (${e["@type"]}) names a node that is ${node["dcterms:identifier"]} (${node["@type"]})`);
+        continue;
+      }
+      // A summary, never a second home: what the entry repeats is the node's.
+      for (const term of SUMMARISED) {
+        if (JSON.stringify(e[term] ?? null) !== JSON.stringify(node[term] ?? null)) {
+          findings.push(`${at}: the entry for ${key} says ${term} ${JSON.stringify(e[term] ?? null)}, its node ${JSON.stringify(node[term] ?? null)}`);
+        }
       }
     } catch {
       findings.push(`${at}: ${key}'s node ${e["@id"]} is not JSON`);

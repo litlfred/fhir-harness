@@ -14,7 +14,7 @@ import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
-import { astToArtifactIndex, attachSidecars, compareIndexes, keepPublishedGrouping, publisherCategory, readerText, withCrossVersionFields } from "./ast-to-artifact-index";
+import { astToArtifactIndex, attachSidecars, compareIndexes, conceptOf, keepPublishedGrouping, profilesOf, publisherCategory, readerText, withCrossVersionFields } from "./ast-to-artifact-index";
 import { readAst } from "./ig-ast";
 import { FhirArtifactIndexSchema, type FhirArtifactIndex } from "../schemas/fhir-artifact-index.js";
 
@@ -287,5 +287,32 @@ describe("keepPublishedGrouping", () => {
     expect([got.category, got.listedAt]).toEqual(["Terminology: Colour schemes", 3]);
     expect(index.artifacts.find((a) => a.key === "StructureDefinition/Cat")!.category).toBe("Structures: Logical Models");
     expect(FhirArtifactIndexSchema.safeParse(index).success).toBe(true);
+  });
+});
+
+describe("what an instance states: profilesOf and conceptOf (owner, 2026-10-12)", () => {
+  test("meta.profile as written, or nothing", () => {
+    expect(profilesOf({ meta: { profile: ["http://x/StructureDefinition/p", ""] } })).toEqual(["http://x/StructureDefinition/p"]);
+    expect(profilesOf({})).toBeUndefined();
+    expect(profilesOf({ meta: { profile: "not a list" } })).toBeUndefined();
+  });
+  test("a CodeableConcept keeps its text and codings, and invents no display", () => {
+    expect(conceptOf({ code: { coding: [{ system: "http://x/cs", code: "page" }] } })).toEqual({ coding: [{ system: "http://x/cs", code: "page" }] });
+    expect(conceptOf({ code: { text: "iHRIS Relationship" } })).toEqual({ text: "iHRIS Relationship" });
+  });
+  test("a Coding list (Questionnaire.code) is its codings; a string code (SearchParameter's) is no concept", () => {
+    expect(conceptOf({ code: [{ code: "a", display: "A" }] })).toEqual({ coding: [{ code: "a", display: "A" }] });
+    expect(conceptOf({ code: "name" })).toBeUndefined();
+    expect(conceptOf({ code: {} })).toBeUndefined();
+  });
+  test("the index carries them for the artefact that states them", () => {
+    const dir = mkdtempSync(join(tmpdir(), "ast-index-"));
+    const r = { resourceType: "Basic", id: "page-role", meta: { profile: [`${X}/StructureDefinition/page`] }, code: { coding: [{ system: `${X}/CodeSystem/k`, code: "page" }] } };
+    put(dir, "resources/Basic/page-role--0000.json", r);
+    put(dir, "manifest.json", { $schema: "ig-ast/v1", authority: "cache", provisional: [], generatedAt: "2026-10-12T00:00:00Z", inputs: { toolchain: "t", sourceRevision: "a".repeat(40) }, resources: [{ key: "Basic/page-role", canonical: null, version: null, resourceType: "Basic", id: "page-role", file: "resources/Basic/page-role--0000.json", source: "fsh-generated/resources/Basic-page-role.json" }] });
+    put(dir, "dependencies.json", { $schema: "ig-ast-dependencies/v1", authority: "cache", dependencies: [] });
+    const a = astToArtifactIndex(readAst(dir), { instanceId: "x" }).index.artifacts[0]!;
+    expect(a.profiles).toEqual([`${X}/StructureDefinition/page`]);
+    expect(a.code).toEqual({ coding: [{ system: `${X}/CodeSystem/k`, code: "page" }] });
   });
 });

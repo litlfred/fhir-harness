@@ -104,9 +104,9 @@ describe("ig-artifact-jsonld: one node per artefact, in borrowed vocabularies", 
 });
 
 /** A built docs root: the nodes, and the resource where the node says it is served. */
-function builtSite(): string {
+function builtSite(ix: FhirArtifactIndex = IX): string {
   const root = mkdtempSync(join(tmpdir(), "fhir-harness-thin-"));
-  for (const [rel, text] of artifactJsonLdFiles(IX, { compiledData: "ast-data" })) {
+  for (const [rel, text] of artifactJsonLdFiles(ix, { compiledData: "ast-data" })) {
     mkdirSync(dirname(join(root, rel)), { recursive: true });
     writeFileSync(join(root, rel), text);
   }
@@ -337,6 +337,114 @@ describe("ig-artifact-jsonld check over the index node (calibrated: each case br
   });
 });
 
+/**
+ * IPS's index plus what a configuration IG holds: an instance (a Basic page)
+ * that states only a profile and a code, and the IG's own resource.
+ */
+function instanceIndex(): FhirArtifactIndex {
+  const ix = compiledIndex("cfg") as { artifacts: Record<string, unknown>[]; count: number };
+  const ref = (key: string) => ({ state: "referenced", provenance: { upstream: `${IPS.published}/${key.replace("/", "-")}.html` } });
+  ix.artifacts.push(
+    {
+      key: "Basic/page-role",
+      resourceType: "Basic",
+      id: "page-role",
+      title: "page-role",
+      category: "Other",
+      profiles: [`${IPS.canonical}/StructureDefinition/Patient-uv-ips`, "http://example.org/StructureDefinition/elsewhere|1.0"],
+      code: { text: "Page", coding: [{ system: "http://example.org/CodeSystem/kinds", code: "page" }] },
+      published: {},
+      materialization: ref("Basic/page-role"),
+    },
+    {
+      key: `ImplementationGuide/${IPS.packageId}`,
+      resourceType: "ImplementationGuide",
+      id: IPS.packageId,
+      title: "The IG",
+      description: "What the guide is.",
+      canonical: `${IPS.canonical}/ImplementationGuide/${IPS.packageId}`,
+      profiles: ["http://hl7.org/fhir/StructureDefinition/shareable-ig"],
+      published: {},
+      materialization: ref("ImplementationGuide/x"),
+    },
+  );
+  ix.count = ix.artifacts.length;
+  return FhirArtifactIndexSchema.parse(ix);
+}
+
+describe("what an instance states: its profiles and its code, in the node and the index (owner, 2026-10-12)", () => {
+  const ix = instanceIndex();
+  const basic = ix.artifacts.find((a) => a.key === "Basic/page-role")!;
+  it("the node names its profiles as dcterms:conformsTo and its code as schema:DefinedTerms, as written", () => {
+    const n = artifactJsonLd(ix, basic);
+    expect(IgArtifactJsonLdSchema.safeParse(n).success).toBe(true);
+    expect(n["dcterms:conformsTo"]).toEqual([{ "@id": `${IPS.canonical}/StructureDefinition/Patient-uv-ips` }, { "@id": "http://example.org/StructureDefinition/elsewhere|1.0" }]);
+    expect(n["dcterms:subject"]).toEqual([
+      // No display in the resource, so no name: nothing is looked up.
+      { "@type": "schema:DefinedTerm", "schema:termCode": "page", "schema:inDefinedTermSet": { "@id": "http://example.org/CodeSystem/kinds" } },
+      { "@type": "schema:DefinedTerm", "schema:name": "Page" },
+    ]);
+  });
+  it("an artefact that states neither has neither", () => {
+    const n = artifactJsonLd(ix, COMPOSITION);
+    expect(n["dcterms:conformsTo"]).toBeUndefined();
+    expect(n["dcterms:subject"]).toBeUndefined();
+  });
+  it("a definition (it has a canonical) is described by its description: its profiles are not written", () => {
+    const ig = ix.artifacts.find((a) => a.resourceType === "ImplementationGuide")!;
+    expect(ig.profiles).toEqual(["http://hl7.org/fhir/StructureDefinition/shareable-ig"]);
+    expect(artifactJsonLd(ix, ig)["dcterms:conformsTo"]).toBeUndefined();
+    expect(artifactIndexJsonLd(ix)["schema:hasPart"].find((e) => e["@type"] === "fhir:ImplementationGuide")!["dcterms:conformsTo"]).toBeUndefined();
+  });
+  it("the index entry repeats them, and every canonical, so a row can link a profile of the same IG", () => {
+    const n = artifactIndexJsonLd(ix);
+    expect(IgArtifactIndexJsonLdSchema.safeParse(n).success).toBe(true);
+    const e = n["schema:hasPart"].find((x) => x["dcterms:identifier"] === "Basic/page-role")!;
+    expect(e["dcterms:conformsTo"]).toEqual(artifactJsonLd(ix, basic)["dcterms:conformsTo"]);
+    expect(e["dcterms:subject"]).toEqual(artifactJsonLd(ix, basic)["dcterms:subject"]);
+    expect(n["schema:hasPart"].find((x) => x["dcterms:identifier"] === "StructureDefinition/Patient-uv-ips")!["schema:sameAs"]).toEqual({ "@id": `${IPS.canonical}/StructureDefinition/Patient-uv-ips` });
+  });
+  it("the schema refuses a term with neither a code nor a name", () => {
+    const n = { ...artifactJsonLd(ix, basic), "dcterms:subject": [{ "@type": "schema:DefinedTerm" }] };
+    expect(IgArtifactJsonLdSchema.safeParse(n).success).toBe(false);
+  });
+
+  const sites: string[] = [];
+  afterAll(() => sites.forEach((s) => rmSync(s, { recursive: true, force: true })));
+  const rewrite = (f: (n: Record<string, any>) => void) => {
+    const s = builtSite(ix);
+    sites.push(s);
+    const p = join(s, "artifact", "index.jsonld");
+    const n = JSON.parse(readFileSync(p, "utf8"));
+    f(n);
+    const text = `${JSON.stringify(n, null, 2)}\n`;
+    writeFileSync(p, text);
+    writeFileSync(p.replace(/\.jsonld$/, ".json"), text);
+    return s;
+  };
+  it("check passes on what was written", () => {
+    expect(checkArtifactJsonLd(ix, rewrite(() => {}))).toEqual([]);
+  });
+  it("check fails when an entry's code is not its node's (a summary, never a second home)", () => {
+    const s = rewrite((n) => {
+      n["schema:hasPart"].find((x: any) => x["dcterms:identifier"] === "Basic/page-role")["dcterms:subject"][0]["schema:termCode"] = "role";
+    });
+    expect(checkArtifactJsonLd(ix, s).join("\n")).toContain("the entry for Basic/page-role says dcterms:subject");
+  });
+  it("check fails when an entry claims a profile its node does not", () => {
+    const s = rewrite((n) => {
+      n["schema:hasPart"][0]["dcterms:conformsTo"] = [{ "@id": "http://example.org/StructureDefinition/invented" }];
+    });
+    expect(checkArtifactJsonLd(ix, s).join("\n")).toContain("says dcterms:conformsTo");
+  });
+  it("check fails when an entry's canonical is not its node's", () => {
+    const s = rewrite((n) => {
+      n["schema:hasPart"][0]["schema:sameAs"] = { "@id": "http://example.org/other" };
+    });
+    expect(checkArtifactJsonLd(ix, s).join("\n")).toContain("says schema:sameAs");
+  });
+});
+
 describe("thinIndexPage: the IG's artifacts and toc pages as thin shells", () => {
   const base = { label: "IPS", canonical: "artifacts.html", index: "artifact/index.jsonld", pagesHref: "artifact/", assets: "", home: "index.html", artifacts: "artifacts.html", toc: "toc.html" } as const;
   const artifacts = thinIndexPage({ ...base, view: "artifacts", heading: "Artifacts Summary", next: "toc.html" });
@@ -367,6 +475,15 @@ describe("the shared renderer draws both page families", () => {
   const src = readFileSync(join(import.meta.dir, "templates", "ig-pages", "ig-artifact.js"), "utf8");
   it("reads either config block", () => {
     expect(src).toContain(`getElementById("${THIN_INDEX_CONFIG_ID}")`);
+  });
+  it("draws the IG's own resource first, as This guide, never as Not categorised", () => {
+    expect(src).toContain('"This guide"');
+    expect(src).toContain("guideOf(ix, all)");
+  });
+  it("draws only the columns a table's rows fill, and sub-heads a category that mixes types", () => {
+    expect(src).toMatch(/function columnsFor\(rows\)/);
+    expect(src).toMatch(/if \(cols\.description\) hr\.append/);
+    expect(src).toMatch(/el\("h3", null, t\.name/);
   });
   it("draws every category OPEN: no <details> (the owner could not find artefacts behind collapsed ones)", () => {
     expect(src).not.toMatch(/createElement\("details"\)|el\("details"/);
