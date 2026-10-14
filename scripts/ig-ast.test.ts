@@ -10,7 +10,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { spawnSync } from "node:child_process";
 
-import { astJsonLd, astValidity, diffAst, igAstSchemaFiles, inputDigest, listAst, readAst, recordSourceInputs, renderDelta } from "./ig-ast";
+import { astJsonLd, astValidity, diffAst, igAstSchemaFiles, inputDigest, inputDigestAt, listAst, readAst, recordSourceInputs, renderDelta } from "./ig-ast";
 import { igAstJsonSchemas } from "../schemas/ig-ast.ts";
 import Ajv from "ajv";
 
@@ -133,6 +133,34 @@ describe("validity — compiledValidity on the manifest's inputs", () => {
     const { ig } = igRepo();
     const a = readAst(ast([pat], [], { inputs: { toolchain: "t", sourceRevision: "f".repeat(40), inputDigest: inputDigest(ig) } }));
     expect(astValidity(a, ig).detail).toEqual({ verdict: "stale-inputs", differs: ["sourceRevision"] });
+  });
+
+  test("drift: a build that writes under input/ makes the work tree stale, never the commit", () => {
+    // smart-trust run 38609595363: the Publisher rendered images-source into
+    // input/images, overwriting a tracked SVG and adding an untracked one.
+    const { ig, rev } = igRepo();
+    put(ig, "input/images/a.svg", "<svg>committed</svg>\n");
+    const git = (...x: string[]) => spawnSync("git", ["-c", "user.email=t@t", "-c", "user.name=t", ...x], { cwd: ig, encoding: "utf-8" });
+    git("add", ".");
+    git("commit", "-qm", "image");
+    const head = git("rev-parse", "HEAD").stdout.trim();
+    const clean = inputDigest(ig);
+    expect(inputDigestAt(ig, "HEAD")).toBe(clean);
+    const a = readAst(ast([pat], [], { inputs: { toolchain: "t", sourceRevision: head, inputDigest: clean } }));
+    put(ig, "input/images/a.svg", "<svg>re-rendered</svg>\n");
+    put(ig, "input/images/b.svg", "<svg>new</svg>\n");
+    expect(inputDigest(ig)).not.toBe(clean);
+    expect(astValidity(a, ig).detail).toEqual({ verdict: "stale-inputs", differs: ["inputDigest"] });
+    expect(inputDigestAt(ig, "HEAD")).toBe(clean);
+    expect(astValidity(a, ig, undefined, { at: "HEAD" }).verdict).toBe("valid");
+    // The commit is still the subject: a committed input change is stale at HEAD too.
+    put(ig, "input/fsh/a.fsh", "Profile: A3\n");
+    git("add", "input/fsh/a.fsh");
+    git("commit", "-qm", "edit");
+    expect(astValidity(a, ig, undefined, { at: "HEAD" }).detail).toEqual({ verdict: "stale-inputs", differs: ["sourceRevision", "inputDigest"] });
+    // A revision that does not resolve states no digest: cannot-tell, never valid.
+    expect(astValidity(a, ig, undefined, { at: "f".repeat(40) }).verdict).toBe("cannot-tell");
+    expect(rev).not.toBe(head);
   });
 
   test("a newer Publisher is stale even when the source is not", () => {

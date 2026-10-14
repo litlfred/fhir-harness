@@ -21,8 +21,10 @@
  * ## Commands
  *
  * - `list <ast>`: what an AST holds (counts per type, edges, provenance).
- * - `validity <ast> --ig <root> [--toolchain <s>]`: whether it was built
- *   from the inputs the IG has NOW. Reuses folio-assistant-core's
+ * - `validity <ast> --ig <root> [--toolchain <s>] [--at <rev>]`: whether it
+ *   was built from the inputs the IG has NOW — or, with `--at`, from the
+ *   inputs COMMITTED at `rev` (`inputDigestAt`), which a build writing under
+ *   `input/` cannot disturb. Reuses folio-assistant-core's
  *   `compiledValidity` on the manifest's `inputs`, which the Java side writes
  *   in exactly `CompiledInputsSchema`'s shape. `inputDigest` is recomputed
  *   here by the same algorithm as the Java `InputDigest`, and a golden vector
@@ -164,6 +166,78 @@ export function inputDigest(igRoot: string): string {
   return h.digest("hex");
 }
 
+/**
+ * The same digest over the inputs AS COMMITTED at `rev`: the files
+ * `git ls-tree` lists under `sushi-config.yaml`, `ig.ini` and `input/`, with
+ * their committed bytes. Nothing in the work tree is read.
+ *
+ * Why it exists (2026-10-14, smart-trust run 38609595363): the Publisher
+ * writes under `input/` during a build — it renders
+ * `input/images-source/*.plantuml` into `input/images/*.svg`, overwriting the
+ * tracked ones and adding untracked ones git does not ignore — so the
+ * work-tree digest taken AFTER a build (`079a4e58…`) differed from the one the
+ * exporter recorded BEFORE it (`35047502…`) for the same commit, and the
+ * just-built AST failed its own check. Hashing the commit asks the question a
+ * seed or a publish actually asks: is this AST the one for that commit?
+ *
+ * In a clean checkout of `rev` (no local edits, no untracked input files) it
+ * equals `inputDigest` and the exporter's `InputDigest`, which is what lets a
+ * digest recorded before a build be checked after one. Only regular files
+ * (mode 100644/100755) count, as a work-tree walk counts only files.
+ * Returns null when `igRoot` is not in a git repository or `rev` does not
+ * resolve: the caller says cannot-tell, never valid.
+ */
+export function inputDigestAt(igRoot: string, rev: string): string | null {
+  const tops = ["sushi-config.yaml", "ig.ini", "input"];
+  const commit = spawnSync("git", ["rev-parse", "--verify", "--quiet", `${rev}^{commit}`], { cwd: igRoot, encoding: "utf-8" });
+  if (commit.status !== 0) return null;
+  const sha = commit.stdout.trim();
+  // Paths relative to igRoot (ls-tree's default, like ls-files), and the
+  // same paths in full for cat-file.
+  const ls = spawnSync("git", ["ls-tree", "-r", "-z", sha, "--", ...tops], { cwd: igRoot, encoding: "utf-8", maxBuffer: 2 ** 30 });
+  if (ls.status !== 0) return null;
+  const entries: { rel: string; blob: string }[] = [];
+  for (const line of ls.stdout.split("\0")) {
+    if (!line) continue;
+    const tab = line.indexOf("\t");
+    const [mode, type, blob] = line.slice(0, tab).split(" ");
+    if (type !== "blob" || (mode !== "100644" && mode !== "100755")) continue;
+    entries.push({ rel: line.slice(tab + 1), blob: blob! });
+  }
+  const contents = catBlobs(igRoot, entries.map((e) => e.blob));
+  if (!contents) return null;
+  const order = entries.map((e, i) => [Buffer.from(e.rel, "utf-8"), i] as const).sort((a, b) => Buffer.compare(a[0], b[0]));
+  const h = createHash("sha256");
+  const NUL = Buffer.from([0]);
+  for (const [bytes, i] of order) {
+    h.update(bytes);
+    h.update(NUL);
+    h.update(contents[i]!);
+    h.update(NUL);
+  }
+  return h.digest("hex");
+}
+
+/** The bytes of each blob, in order, through one `git cat-file --batch`; null on failure. */
+function catBlobs(cwd: string, blobs: string[]): Buffer[] | null {
+  if (blobs.length === 0) return [];
+  const r = spawnSync("git", ["cat-file", "--batch"], { cwd, input: blobs.join("\n") + "\n", maxBuffer: 2 ** 31 });
+  if (r.status !== 0 || !r.stdout) return null;
+  const out = r.stdout as Buffer;
+  const bufs: Buffer[] = [];
+  let at = 0;
+  for (let i = 0; i < blobs.length; i++) {
+    const nl = out.indexOf(0x0a, at);
+    if (nl < 0) return null;
+    const head = out.subarray(at, nl).toString("utf-8").split(" ");
+    if (head[1] !== "blob") return null;
+    const size = Number(head[2]);
+    bufs.push(out.subarray(nl + 1, nl + 1 + size));
+    at = nl + 1 + size + 1;
+  }
+  return bufs;
+}
+
 function walkTops(igRoot: string, tops: string[]): string[] {
   const files: string[] = [];
   for (const top of tops) {
@@ -256,14 +330,18 @@ export function sameSourceAs(
  * caller knows it (the Publisher version it would run) and otherwise
  * assumed unchanged, and SAID to be assumed, in `current`.
  */
-export function astValidity(ast: Ast, igRoot: string, toolchain?: string): AstValidity {
+export function astValidity(ast: Ast, igRoot: string, toolchain?: string, opts: { at?: string } = {}): AstValidity {
   const recorded = ast.manifest.inputs;
-  const rev = spawnSync("git", ["rev-parse", "HEAD"], { cwd: igRoot, encoding: "utf-8" });
+  const rev = spawnSync("git", ["rev-parse", opts.at ? `${opts.at}^{commit}` : "HEAD"], { cwd: igRoot, encoding: "utf-8" });
   const head = rev.status === 0 ? rev.stdout.trim() : undefined;
-  const digest = inputDigest(igRoot);
+  // `at`: the inputs as committed at that revision, not the work tree — what a
+  // seed or a publish asks after a build has written under input/
+  // (`inputDigestAt`). A revision that does not resolve states no digest, so
+  // the verdict is cannot-tell.
+  const digest = opts.at ? (head ? inputDigestAt(igRoot, head) ?? undefined : undefined) : inputDigest(igRoot);
   const current = {
     toolchain: toolchain ?? recorded?.toolchain,
-    sourceRevision: sameSourceAs(igRoot, head, recorded?.sourceRevision, recorded?.inputDigest, digest),
+    sourceRevision: digest === undefined ? head : sameSourceAs(igRoot, head, recorded?.sourceRevision, recorded?.inputDigest, digest),
     inputDigest: digest,
   };
   const rec = MaterializationSchema.safeParse({
@@ -687,18 +765,23 @@ if (import.meta.main) {
   };
   const pos = args.filter((a, i) => !a.startsWith("--") && !(i > 0 && args[i - 1]!.startsWith("--")));
   const usage =
-    "usage: ig-ast.ts list <ast> | validity <ast> --ig <root> [--toolchain <s>] | digest --ig <root> | " +
+    "usage: ig-ast.ts list <ast> | validity <ast> --ig <root> [--toolchain <s>] [--at <rev>] | digest --ig <root> [--at <rev>] | " +
     "source-inputs <ast> --digest <hex> --pre-export <command> | " +
     "diff <base-ast> <head-ast> [--plan plan.json] [--json out.json] [--site dir] | render <delta.json> --site dir | " +
     "jsonld <ast> | schema [--check]";
   if (cmd === "list" && pos[0]) {
     console.log(JSON.stringify(listAst(readAst(pos[0])), null, 2));
   } else if (cmd === "validity" && pos[0] && opt("--ig")) {
-    const v = astValidity(readAst(pos[0]), opt("--ig")!, opt("--toolchain"));
+    const v = astValidity(readAst(pos[0]), opt("--ig")!, opt("--toolchain"), { at: opt("--at") });
     console.log(JSON.stringify(v, null, 2));
     process.exit(v.verdict === "valid" ? 0 : v.verdict === "stale-inputs" ? 1 : 2);
   } else if (cmd === "digest" && opt("--ig")) {
-    console.log(inputDigest(opt("--ig")!));
+    const d = opt("--at") ? inputDigestAt(opt("--ig")!, opt("--at")!) : inputDigest(opt("--ig")!);
+    if (d === null) {
+      console.error(`${opt("--at")}: not a commit in ${opt("--ig")}`);
+      process.exit(2);
+    }
+    console.log(d);
   } else if (cmd === "source-inputs" && pos[0] && opt("--digest") && opt("--pre-export")) {
     const r = recordSourceInputs(pos[0], opt("--digest")!, opt("--pre-export")!);
     console.log(`inputs.inputDigest: ${r.source} (the source); the prepared tree's, ${r.prepared}, kept under preExport`);

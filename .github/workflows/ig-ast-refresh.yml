@@ -180,13 +180,21 @@ jobs:
           tail -n 20 "$RUNNER_TEMP/ast-build.log"
           # The build's own expansions, beside the AST: its ValueSets carry none.
           [ -f output/expansions.json ] && cp output/expansions.json output-ast/expansions.json
+          # Put the IG's inputs back as the commit has them, ALWAYS: the
+          # Publisher writes under input/ during a build (it renders
+          # input/images-source/*.plantuml into input/images/*.svg, overwriting
+          # tracked files and adding untracked ones), so a digest of the work
+          # tree after the build is not the commit's (smart-trust run
+          # 38609595363: recorded 35047502..., re-hashed 079a4e58...). Plain
+          # git, so it works with whichever fhir-harness the caller's lock
+          # mounts; a fhir-harness with `validity --at` can check the commit
+          # without it.
+          for p in sushi-config.yaml ig.ini input; do
+            if git ls-files --error-unmatch -- "$p" > /dev/null 2>&1; then git checkout -q HEAD -- "$p"; fi
+          done
+          git clean -fdq -- sushi-config.yaml ig.ini input
           if [ -n "$PRE_EXPORT" ]; then
-            # Put the IG's inputs back as the commit has them, check they are,
-            # and record the AST against them.
-            for p in sushi-config.yaml ig.ini input; do
-              if git ls-files --error-unmatch -- "$p" > /dev/null 2>&1; then git checkout -q HEAD -- "$p"; fi
-            done
-            git clean -fdq -- sushi-config.yaml ig.ini input
+            # Check the inputs are the commit's, and record the AST against them.
             now=$(bun run fhir-harness/scripts/ig-ast.ts digest --ig .)
             [ "$now" = "$source_digest" ] \
               || { echo "::error::the inputs are not the commit's after the pre-export was undone ($now, not $source_digest)"; exit 1; }
