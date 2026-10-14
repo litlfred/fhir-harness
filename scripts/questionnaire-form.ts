@@ -19,7 +19,11 @@
  *   assets/js/questionnaire-form.js          the page's loader
  *   assets/js/questionnaire-mode.js          the ✍ Questionnaire mode
  *   assets/js/check-wireframe-questionnaire.js  its checker, types stripped
- *   assets/js/edit-links.js                  the ✎ / 📣 link recipe
+ *   assets/js/questionnaire-edit-links.js    the ✎ / 📣 link recipe, at its own
+ *                                            path: `assets/js/edit-links.js` is the
+ *                                            platform chrome's, which an IG
+ *                                            repository's site composes at the
+ *                                            same root (see QFORM_EDIT_LINKS)
  *   assets/formbuilder/<version>/            the self-hosted NLM Form Builder, its
  *                                            index.html rewritten, and the service
  *                                            worker that answers its cross-site calls
@@ -42,6 +46,15 @@ import { EDIT_LINKS_RUNTIME } from "../../cat-harness-tools/src/core/edit-links.
 import { readAst } from "./ig-ast.ts";
 import { buildIndex, expansionsOf, preExpand, ucumRows, writeIndex } from "./terminology-index.ts";
 
+/**
+ * Where the form pages load the edit-links runtime they were built with. Not
+ * `assets/js/edit-links.js`: that path is the platform chrome's own copy, and
+ * an IG repository's folio site composes the IG at the chrome's root
+ * (`composeIgSite`, `atRoot`), where the two met and the compose refused "two
+ * answers for one URL" (smart-immunizations, 2026-10-14). The two copies come
+ * from different layers at different pins, so they need not be equal.
+ */
+export const QFORM_EDIT_LINKS = "assets/js/questionnaire-edit-links.js";
 /** The vendored LHC-Forms version this layer serves. */
 export const LHC_FORMS_VERSION = "44.1.0";
 const HERE = import.meta.dir;
@@ -162,7 +175,7 @@ export function formPageHtml(q: { id: string; title?: string; name?: string; url
     '<div id="fa-qform-editor" class="fa-qform-editor"></div>',
     "</div>",
     `<script type="application/json" id="fa-edit-cfg">${scriptJson(cfg)}</script>`,
-    '<script src="assets/js/edit-links.js"></script>',
+    `<script src="${QFORM_EDIT_LINKS}"></script>`,
     '<script src="assets/js/questionnaire-form.js" defer></script>',
     "",
   ].join("\n");
@@ -257,6 +270,6 @@ export function questionnaireFormPages(astDir: string, out: string, o: FormPageO
   writeFileSync(join(js, "questionnaire-form.js"), readFileSync(PAGE_SCRIPT, "utf-8"));
   writeFileSync(join(js, "questionnaire-mode.js"), readFileSync(MODE_MODULE, "utf-8"));
   writeFileSync(join(js, "check-wireframe-questionnaire.js"), checkerModule());
-  writeFileSync(join(js, "edit-links.js"), `${EDIT_LINKS_RUNTIME}\n`);
+  writeFileSync(join(out, QFORM_EDIT_LINKS), `${EDIT_LINKS_RUNTIME}\n`);
   return pages;
 }
