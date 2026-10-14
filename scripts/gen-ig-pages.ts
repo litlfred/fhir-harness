@@ -149,7 +149,7 @@ function arg(name: string): string | undefined {
 
 const INSTANCE_ARG = arg("--instance");
 if (!INSTANCE_ARG) {
-  console.error("usage: gen-ig-pages.ts --instance <dir> --label <name> [--chrome-owner <instance>] [--index <index.json>] [--out <dir>] [--summary] [--full-pages | --jsonld-base <url>] [--publisher-data <dir>] [--ig-site] [--check]");
+  console.error("usage: gen-ig-pages.ts --instance <dir> --label <name> [--chrome-owner <instance>] [--index <index.json>] [--out <dir>] [--summary] [--full-pages | --jsonld-base <url>] [--publisher-data <dir>] [--ig-site] [--ig-api-served] [--check]");
   process.exit(2);
 }
 const INSTANCE = resolve(process.cwd(), INSTANCE_ARG);
@@ -257,7 +257,16 @@ const CHROME_CSS = "assets/ig-chrome.css";
 const IG_FOOTER_SCRIPT = "assets/ig-footer.js";
 const IG_FOOTER_DATA = "assets/ig-footer.json";
 const IG_FOOTER_LOADER = join(import.meta.dir, "templates", "ig-pages", "ig-footer.js");
-const igApiServable = () => igApiServed(INSTANCE);
+/**
+ * `--ig-api-served`: the caller serves the artefact-index graph, sidecars
+ * included, at the docs root beside these pages, so `../<localPath>` from
+ * `artifact/` reaches it. Said by the caller for a checkout with no
+ * declaration to read `served` from: an IG repository's own site
+ * (`ig-repo-site.ts`), whose `publisher-pages` step copies the sidecars to
+ * the `localPath` they are bound at. Otherwise read off the declaration.
+ */
+const IG_API_SERVED_FLAG = process.argv.includes("--ig-api-served");
+const igApiServable = (): ReturnType<typeof igApiServed> => (IG_API_SERVED_FLAG ? { ok: true } : igApiServed(INSTANCE));
 
 /** The IG API view pages' Liquid template (`liquid-templates`: a file of this directory, beside its writer). */
 const IG_API_VIEW_TEMPLATE = join(import.meta.dir, "templates", "ig-pages", "ig-api-view.liquid");
