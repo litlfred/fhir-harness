@@ -112,6 +112,19 @@ equals the recorded one, the revision counts as unchanged (`sameSourceAs`,
 block the publish that reads it. A recorded commit the checkout cannot see
 (a shallow clone, another branch) stays stale.
 
+**After a build, check the commit, not the work tree: `--at <rev>`.** The
+Publisher writes under `input/` during a build: it renders
+`input/images-source/*.plantuml` into `input/images/*.svg`, which overwrites
+tracked files and adds untracked ones. A work-tree digest taken after the
+build is therefore not the commit's. On 2026-10-14 smart-trust run
+38609595363 recorded `35047502…` before its build and re-hashed `079a4e58…`
+after it, so the AST it had just built failed its own check.
+`validity --at HEAD` (and `digest --at HEAD`) hashes the inputs as committed
+(`inputDigestAt`). In a clean checkout this equals the work-tree digest and
+the exporter's. `ig-ast-refresh.yml` also puts `input/` back with plain git
+before its check, so the fix holds with a fhir-harness pinned before `--at`
+existed.
+
 The toolchain cannot be read from a checkout. Without `--toolchain` it is
 **assumed unchanged**, and the result's `current` says so. When the Publisher
 you would run is known, pass it.
