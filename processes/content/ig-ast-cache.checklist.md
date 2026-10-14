@@ -32,7 +32,7 @@ stale, cannot tell, miss» → `Task_Dispatch` (Dispatch the IG's ig-ast-refresh
 
 - Who: the `Site build (agent, stage-local)` lane (role `build-pipeline`).
 - Skill: `ig-render-jekyll`, `ig-build-pipeline`.
-- What: The IG repository's `site.build` steps, run by `stage-local.ts` → `build-instance-site.ts`: the artefact index from the AST (`ast-to-artifact-index.ts`), the pages (`gen-ig-pages.ts --compiled-data ast-data`), the IG composed at the root (`stage-ig-sites.ts --compose-into`), the AST's resources serv
+- What: The site route's steps, provided by the mounted layers and run by `stage-local.ts` → `build-instance-site.ts`: the landing layer's IG API sidecars when it has the step (`ig-site:sidecars`), the artefact index from the AST and the thin pages with the IG composed at the root (`ig-site:compose`: `ast-t
 - Record it: `workflow_complete` with `node: "Task_BuildSite"`.
 - next: → `End_Published` (Site published from the AST)
 
