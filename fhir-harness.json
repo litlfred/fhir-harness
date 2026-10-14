@@ -71,6 +71,22 @@
       ]
     },
     {
+      "id": "fhir-harness-pipeline-plugins",
+      "path": "pipeline-plugins/",
+      "description": "The generic pipeline slots this instance fills, one folio-pipeline-plugin/v1 node per slot, naming PIPELINE_IMPLEMENTATIONS in content/pipeline/plugin-slots.ts (bean riit, step 3b). Today one: `site-publisher-ig`, the FHIR-IG site publisher that cat-harness-tools' stage-local.ts finds among the dependencies of the repository it publishes (owner, 2026-10-14, Q4).",
+      "graphTypologies": [
+        "pipeline-plugins"
+      ]
+    },
+    {
+      "id": "fhir-harness-plugin-slots",
+      "path": "content/pipeline/",
+      "description": "The one typed table of this instance's pipeline-slot implementations (`plugin-slots.ts`), which the nodes in pipeline-plugins/ name and the loader requires. It lies under harness-config's declared `*/content/pipeline/plugin-slots.ts` import glob, as folio-assistant-sci's table does.",
+      "graphTypologies": [
+        "code"
+      ]
+    },
+    {
       "id": "fhir-harness-processes",
       "path": "processes/",
       "dependents": "skip",
