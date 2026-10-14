@@ -1,0 +1,15 @@
+# fhir-harness's checks on every pull request (owner, 2026-10-14: every
+# harnessed layer is judged by ONE reusable workflow the harness owns, and
+# "there shouldnt be copying of code"). Everything is decided there.
+name: Harness PR checks
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  checks:
+    uses: litlfred/cat-harness-tools/.github/workflows/layer-pr-checks.yml@claude/dreamy-brahmagupta-abdp43-pr-ci
