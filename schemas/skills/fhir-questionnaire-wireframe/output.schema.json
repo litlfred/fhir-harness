@@ -178,6 +178,13 @@
         "$ref": "#/definitions/fidelityEntry"
       }
     },
+    "sdcChecks": {
+      "type": "array",
+      "description": "The SDC build checks (fhir-harness `sdc-checks`, CSIRO's libraries), one entry per Questionnaire. `not-applicable`, `no-fixture` and `could-not-determine` are never a pass; a behavioural test's failure is a warning.",
+      "items": {
+        "$ref": "#/definitions/sdcCheckResult"
+      }
+    },
     "changeRequests": {
       "type": "array",
       "description": "Change requests received through ✍ suggest or the questionnaire-change issue form, and where each stands.",
@@ -460,6 +467,75 @@
         }
       },
       "$comment": "Copy of cat-harness schemas/staging-comparison.schema.json; cat-harness schemas/staging.test.ts fails when a copy drifts."
+    },
+    "sdcCheckResult": {
+      "type": "object",
+      "required": [
+        "questionnaire",
+        "checks"
+      ],
+      "properties": {
+        "questionnaire": {
+          "type": "string",
+          "description": "The Questionnaire's id."
+        },
+        "checks": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "check",
+              "library",
+              "status",
+              "severity",
+              "findings"
+            ],
+            "properties": {
+              "check": {
+                "type": "string",
+                "enum": [
+                  "assemble",
+                  "template-extract",
+                  "populate",
+                  "behaviour"
+                ]
+              },
+              "library": {
+                "type": "string",
+                "description": "The npm package and version that ran it."
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "pass",
+                  "fail",
+                  "not-applicable",
+                  "no-fixture",
+                  "could-not-determine"
+                ]
+              },
+              "severity": {
+                "type": "string",
+                "enum": [
+                  "error",
+                  "warning"
+                ],
+                "description": "`warning` for the behavioural tests (questionnaire-test-toolkit is early)."
+              },
+              "findings": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "output": {
+                "type": "string",
+                "description": "The assembled Questionnaire, when it was written."
+              }
+            }
+          }
+        }
+      }
     }
   }
 }

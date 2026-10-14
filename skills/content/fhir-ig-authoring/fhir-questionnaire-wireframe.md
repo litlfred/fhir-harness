@@ -43,7 +43,7 @@ from says, and take change requests on either side back through authoring.
   `assetDir`, `candidates[]` each with its source HTML, web and mobile
   screenshots and their staging links, `chosen`, `changedAssets`,
   `stagingLinks`), plus `renderer`, `fidelity[]` (the checker's findings per
-  layout) and `changeRequests[]` (issue URL, which side was edited, status).
+  layout), `sdcChecks[]` (step 4b) and `changeRequests[]` (issue URL, which side was edited, status).
 
 `stagingLinks` is an inline copy of cat-harness
 `schemas/staging-comparison.schema.json`, as every contract carrying it keeps
@@ -89,6 +89,24 @@ with three kinds of its own: `questionnaire-wireframe`,
    place the order differs. Exit 0 faithful, 1 a finding, 2 cannot tell —
    and 2 is never a pass. The findings go in `fidelity[]`, per layout. This is
    fidelity, not design: a faithful form can still be a poor one.
+   **4b. SDC build checks**, with CSIRO's libraries (Apache-2.0; owner,
+   2026-10-14: checks, not UI), Tool `sdc-checks`:
+
+   ```sh
+   bun run fhir-harness/scripts/sdc-checks.ts --ast output-ast --fixtures input/tests/questionnaires [--out <dir>]
+   ```
+
+   | check | library | passes when |
+   |---|---|---|
+   | `assemble` | `@aehrc/sdc-assemble` 2.0.3 | an `assemble-root`'s sub-forms all resolve in this IG; `--out` writes the assembled Questionnaire, so assembly is a build step too |
+   | `template-extract` | `@aehrc/sdc-template-extract` 1.0.16 | extraction from the fixture's `response.json` yields every resource in `extract-expected.json` |
+   | `populate` | `@aehrc/sdc-populate` 4.7.2 | FHIRPath pre-population from `populate-context.json` gives the answers in `populate-expected.json` |
+   | `behaviour` | `@aehrc/questionnaire-test-toolkit` 0.1.0 | the IG's `behaviour.test.tsx` passes. **Warn-only**: the toolkit is early, and needs its React and Smart Forms peers installed with the IG's tests |
+
+   The fixtures are the IG's, one directory per Questionnaire id. Nothing is
+   fetched from a server. `not-applicable`, `no-fixture` and
+   `could-not-determine` are said, and never read as a pass. The results go
+   in `sdcChecks[]`, one entry per Questionnaire.
 5. **Review** by `wireframe-design-review`, as-is use for a form that exists,
    design use for one being designed: blind, per criterion, at both
    viewports, adjudicated where reviewers disagree. That skill is the method;

@@ -3,6 +3,9 @@
   "private": true,
   "type": "module",
   "dependencies": {
+    "@aehrc/sdc-assemble": "2.0.3",
+    "@aehrc/sdc-populate": "4.7.2",
+    "@aehrc/sdc-template-extract": "1.0.16",
     "liquidjs": "^10.29.0",
     "yaml": "^2.9.1",
     "zod": "^4.6.5"
