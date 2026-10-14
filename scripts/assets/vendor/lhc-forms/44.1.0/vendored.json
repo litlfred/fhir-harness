@@ -1,5 +1,5 @@
 {
-  "_comment": "Vendored, unmodified, from the npm tarball below: the LHC-Forms web component and its FHIR support library, served from the IG site so a form page makes no request to a CDN at runtime (owner, 2026-10-14). Only the files a page loads are kept (see the package README, 'Using the LHC-Forms Web Component'); source maps are not. LICENSE.md is the package's own and travels with the files, as its terms require for redistribution in binary form.",
+  "_comment": "Vendored, unmodified, from the npm tarball below: the LHC-Forms web component and its FHIR support library, served from the IG site so a form page makes no request to a CDN at runtime (owner, 2026-10-14). Only the files a page loads are kept (see the package README, 'Using the LHC-Forms Web Component'); source maps are not. LICENSE.md is the package's own and travels with the files, as its terms require for redistribution in binary form. webcomponent/lhc-forms.js, the package's single-file build, is added for the self-hosted NLM Form Builder, which loads exactly that file (and the others here) for its preview; the service worker answers its requests to lhcforms-static.nlm.nih.gov from this directory.",
   "package": "lforms",
   "version": "44.1.0",
   "tarball": "https://registry.npmjs.org/lforms/-/lforms-44.1.0.tgz",
@@ -26,6 +26,11 @@
       "path": "webcomponent/down_arrow_gray_10_10.png",
       "sha256": "632fa54a55ec849bc6b618ec2ac97c8ea448d64174abcb094f568569da179919",
       "bytes": 119
+    },
+    {
+      "path": "webcomponent/lhc-forms.js",
+      "sha256": "d603578bca9dc10961c6a579457f9022816d6839dfc2d190712ef7e8ed3e47ab",
+      "bytes": 1913307
     },
     {
       "path": "webcomponent/magnifying_glass.png",

@@ -84,3 +84,54 @@ BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A
 PARTICULAR PURPOSE.
 
 ```
+
+
+## `scripts/assets/vendor/formbuilder-lhcforms/12.9.0/` — NLM Form Builder (`formbuilder-lhcforms` 12.9.0), NLM
+
+The NLM Form Builder, self-hosted as the editor of the ✍ Questionnaire mode.
+Its notice is [`LICENSE.md`](scripts/assets/vendor/formbuilder-lhcforms/12.9.0/LICENSE.md)
+in that directory: the same NLM owner notice, BSD-style conditions and
+disclaimer as LHC-Forms above, which this file reproduces once rather than
+twice. What its bundle includes, with each licence, is
+[`3rdpartylicenses.txt`](scripts/assets/vendor/formbuilder-lhcforms/12.9.0/3rdpartylicenses.txt),
+kept as the package ships it. The site serves a rewritten copy of its
+`index.html` (local jQuery, no Google fonts, a service-worker guard); the
+vendored file itself is unmodified.
+
+## `scripts/assets/vendor/jquery/3.6.0/` — jQuery 3.6.0, MIT
+
+Loaded by the Form Builder's `index.html`, served from this site instead of
+ajax.googleapis.com.
+
+```
+Copyright OpenJS Foundation and other contributors, https://openjsf.org/
+
+Permission is hereby granted, free of charge, to any person obtaining
+a copy of this software and associated documentation files (the
+"Software"), to deal in the Software without restriction, including
+without limitation the rights to use, copy, modify, merge, publish,
+distribute, sublicense, and/or sell copies of the Software, and to
+permit persons to whom the Software is furnished to do so, subject to
+the following conditions:
+
+The above copyright notice and this permission notice shall be
+included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
+EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF
+MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND
+NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE
+LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
+OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+```
+
+## `scripts/assets/vendor/ucum-lhc/8.0.0/` — UCUM definitions (`@lhncbc/ucum-lhc` 8.0.0), NLM; UCUM, Regenstrief Institute and the UCUM Organization
+
+The full UCUM unit and prefix definitions, from which the site build writes
+the index the Form Builder's unit search is answered from. Its notice is
+[`LICENSE.md`](scripts/assets/vendor/ucum-lhc/8.0.0/LICENSE.md): the NLM owner
+notice and BSD-style conditions above, and the UCUM terms of use at
+https://ucum.org/license, which this content is subject to. The UCUM table and
+UCUM codes are copyright © 1995-2009, Regenstrief Institute, Inc. and the
+Unified Codes for Units of Measures (UCUM) Organization. All rights reserved.

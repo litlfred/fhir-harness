@@ -1910,6 +1910,8 @@ export function stageIgSite(igSrc: string, out: string, opts: StageOptions = {})
         editBase: opts.editBase,
         fhirVersion: typeof sushi.fhirVersion === "string" ? sushi.fhirVersion : Array.isArray(sushi.fhirVersion) ? String(sushi.fhirVersion[0]) : undefined,
         slug: typeof sushi.id === "string" ? sushi.id : undefined,
+        // The Publisher's terminology cache, where `ig-cache.sh restore` puts it.
+        txcache: join(src, "input-cache", "txcache"),
       });
     } catch (e) {
       forms = { why: (e as Error).message };

@@ -85,6 +85,10 @@
     var host = root.querySelector(".fa-qform-editor");
     if (host.dataset.open) return;
     host.dataset.open = "1";
+    // The worker that answers the Form Builder's cross-site calls from this
+    // site, registered now so it controls the builder from its first load.
+    if (cfg.suggest.sw && "serviceWorker" in navigator)
+      navigator.serviceWorker.register(at(cfg.suggest.sw.url), { scope: at(cfg.suggest.sw.scope) }).catch(function () {});
     import(at(cfg.suggest.module)).then(function (mode) {
       var before = JSON.stringify(original, null, 2);
       var ed = mode.open(host, { questionnaire: original, builder: cfg.suggest.builder ? at(cfg.suggest.builder) : undefined, fhirVersion: root.dataset.fhir, source: cfg.suggest.source });
@@ -96,6 +100,8 @@
       send.textContent = "Check, then open the change request";
       send.addEventListener("click", function () {
         var after = ed.get();
+        // Measured against the editor's own round-trip of the original, when it gave one.
+        if (typeof ed.before === "function") before = ed.before();
         var findings = mode.checker(before, after, {});
         out.textContent = "";
         findings.forEach(function (f) {

@@ -19,6 +19,16 @@
  *   assets/js/questionnaire-mode.js          the ✍ Questionnaire mode
  *   assets/js/check-wireframe-questionnaire.js  its checker, types stripped
  *   assets/js/edit-links.js                  the ✎ / 📣 link recipe
+ *   assets/formbuilder/<version>/            the self-hosted NLM Form Builder, its
+ *                                            index.html rewritten, and the service
+ *                                            worker that answers its cross-site calls
+ *   assets/jquery/<version>/                 the jQuery its index.html loads
+ *   assets/terminology/                      the IG's terminology index and UCUM
+ *
+ * No page and no builder request leaves this site (owner, 2026-10-14: "cache
+ * + ucum. this is gh-pages so no XSS"): LOINC comes only from the IG's own
+ * restored cache (`expansions.json`, `txcache/`), UCUM from the vendored
+ * definitions, and `answerValueSet` is expanded into the rendered copy.
  *
  * The source Questionnaire is never changed; the rendered copy is the one a
  * later step may adapt for rendering.
@@ -29,6 +39,7 @@ import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node
 import { join } from "node:path";
 import { EDIT_LINKS_RUNTIME } from "../../cat-harness-tools/src/core/edit-links.js";
 import { readAst } from "./ig-ast.ts";
+import { buildIndex, expansionsOf, preExpand, ucumRows, writeIndex } from "./terminology-index.ts";
 
 /** The vendored LHC-Forms version this layer serves. */
 export const LHC_FORMS_VERSION = "44.1.0";
@@ -37,6 +48,16 @@ export const LHC_FORMS_DIR = join(HERE, "assets", "vendor", "lhc-forms", LHC_FOR
 const PAGE_SCRIPT = join(HERE, "templates", "ig-pages", "questionnaire-form.js");
 const MODE_MODULE = join(HERE, "questionnaire-mode.js");
 const CHECKER = join(HERE, "check-wireframe-questionnaire.ts");
+/** The vendored NLM Form Builder version this layer serves. */
+export const FORMBUILDER_VERSION = "12.9.0";
+const FORMBUILDER_DIR = join(HERE, "assets", "vendor", "formbuilder-lhcforms", FORMBUILDER_VERSION);
+export const JQUERY_VERSION = "3.6.0";
+const JQUERY_DIR = join(HERE, "assets", "vendor", "jquery", JQUERY_VERSION);
+const UCUM_DEFS = join(HERE, "assets", "vendor", "ucum-lhc", "8.0.0", "ucumDefs.min.json");
+const SW_SCRIPT = join(HERE, "terminology-sw.js");
+const SW_MAP = join(HERE, "terminology-map.js");
+/** The Form Builder's directory on the site, and the worker's scope. */
+export const BUILDER_AT = `assets/formbuilder/${FORMBUILDER_VERSION}/`;
 
 /** CSIRO's Smart Forms playground: a cross-check reached by a plain link, never embedded. */
 export const SMART_FORMS_URL = "https://smartforms.csiro.au/playground";
@@ -59,6 +80,12 @@ export interface FormPageOptions {
   slug?: string;
   /** The self-hosted NLM Form Builder's site-relative URL, when the site serves it. */
   builder?: string;
+  /** The service worker the page registers before the builder opens: its site-relative URL and scope. */
+  sw?: { url: string; scope: string };
+  /** The IG's restored `expansions.json` (`output-ast/`), for the terminology index and `answerValueSet`. */
+  expansions?: string;
+  /** The IG's restored Publisher `txcache/` (`input-cache/txcache/`), for the terminology index. */
+  txcache?: string;
 }
 
 export interface FormPage {
@@ -66,6 +93,9 @@ export interface FormPage {
   page: string;
   json: string;
   source?: string;
+  /** Items whose `answerValueSet` was expanded into the rendered copy, and those the cache does not hold. */
+  expanded?: string[];
+  notExpanded?: string[];
 }
 
 const esc = (s: string) => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -89,6 +119,7 @@ export function formPageHtml(q: { id: string; title?: string; name?: string; url
       module: "assets/js/questionnaire-mode.js",
       checker: "assets/js/questionnaire-mode.js",
       ...(o.builder ? { builder: o.builder } : {}),
+      ...(o.sw ? { sw: o.sw } : {}),
       ...(o.source ? { source: o.source } : {}),
       ...(o.slug ? { slug: o.slug } : {}),
     },
@@ -125,6 +156,55 @@ export function formPageHtml(q: { id: string; title?: string; name?: string; url
   ].join("\n");
 }
 
+/**
+ * The Form Builder's `index.html` as this site serves it: jQuery from this
+ * site rather than ajax.googleapis.com, the Google font rules and preconnect
+ * removed, and a guard first in `<head>` that stops the page, registers the
+ * service worker and reloads when the worker does not yet control it — so
+ * not even the first load makes a cross-site request. The vendored file is
+ * not changed.
+ */
+export function builderIndexHtml(original: string, swUrl: string): string {
+  const guard =
+    "<script>(function(){var k='fa-sw-reload';" +
+    "if(!('serviceWorker' in navigator)){window.stop();document.documentElement.textContent='This editor needs service workers, which this browser does not allow here.';return}" +
+    "if(navigator.serviceWorker.controller){try{sessionStorage.removeItem(k)}catch(e){}return}" +
+    "window.stop();var n=0;try{n=+sessionStorage.getItem(k)||0;sessionStorage.setItem(k,n+1)}catch(e){}" +
+    "if(n>2){document.documentElement.textContent='The editor could not start its offline service worker; reload to try again.';return}" +
+    `navigator.serviceWorker.register(${JSON.stringify(swUrl)},{scope:'./'}).then(function(){return navigator.serviceWorker.ready}).then(function(){location.reload()})` +
+    "})();</script>";
+  return original
+    .replace(/<link rel="preconnect" href="https:\/\/fonts\.gstatic\.com"[^>]*>/g, "")
+    .replace(/@font-face\{[^}]*fonts\.gstatic\.com[^}]*\}/g, "")
+    .replace(/https:\/\/ajax\.googleapis\.com\/ajax\/libs\/jquery\/3\.6\.0\/jquery\.min\.js/g, `../../jquery/${JQUERY_VERSION}/jquery.min.js`)
+    .replace(/<head>/, `<head>${guard}`);
+}
+
+/** The service worker's URL relative to the builder's directory, its configuration in the query. */
+export function swUrl(indexFile: string): string {
+  const q = new URLSearchParams({ index: `../../terminology/${indexFile}`, ucum: "../../terminology/ucum.json", lhc: `../../lhc-forms/${LHC_FORMS_VERSION}/`, v: LHC_FORMS_VERSION });
+  return `fa-terminology-sw.js?${q}`;
+}
+
+/** The self-hosted builder, its worker, jQuery and the terminology, under `out`. */
+export function stageBuilder(out: string, o: Pick<FormPageOptions, "expansions" | "txcache">): { builder: string; sw: { url: string; scope: string }; codes: number } {
+  const dir = join(out, BUILDER_AT);
+  cpSync(FORMBUILDER_DIR, dir, { recursive: true });
+  cpSync(JQUERY_DIR, join(out, "assets", "jquery", JQUERY_VERSION), { recursive: true });
+  const index = buildIndex({ expansions: o.expansions, txcache: o.txcache });
+  const w = writeIndex(index, join(out, "assets", "terminology"));
+  writeFileSync(join(out, "assets", "terminology", "ucum.json"), JSON.stringify({ source: "@lhncbc/ucum-lhc 8.0.0 data/ucumDefs.min.json", rows: ucumRows(JSON.parse(readFileSync(UCUM_DEFS, "utf-8"))) }));
+  const url = swUrl(w.file);
+  const page = builderIndexHtml(readFileSync(join(FORMBUILDER_DIR, "index.html"), "utf-8"), url);
+  writeFileSync(join(dir, "index.html"), page);
+  // The builder takes its opener hand-back only on its `window-open` route
+  // (API.md); GitHub Pages serves `window-open` from `window-open.html`.
+  writeFileSync(join(dir, "window-open.html"), page);
+  writeFileSync(join(dir, "fa-terminology-sw.js"), readFileSync(SW_SCRIPT, "utf-8"));
+  writeFileSync(join(dir, "fa-terminology-map.js"), readFileSync(SW_MAP, "utf-8"));
+  return { builder: `${BUILDER_AT}window-open`, sw: { url: `${BUILDER_AT}${url}`, scope: BUILDER_AT }, codes: index.codes.length };
+}
+
 /** The checker as a browser module: its types stripped, nothing else changed. */
 export function checkerModule(): string {
   const t = new Bun.Transpiler({ loader: "ts", target: "browser" });
@@ -142,14 +222,19 @@ export function questionnaireFormPages(astDir: string, out: string, o: FormPageO
   if (!qs.length) return [];
   const pages: FormPage[] = [];
   mkdirSync(join(out, "questionnaires"), { recursive: true });
+  const expansionsFile = o.expansions ?? join(astDir, "expansions.json");
+  const expansions = existsSync(expansionsFile) ? expansionsOf(JSON.parse(readFileSync(expansionsFile, "utf-8"))) : new Map();
+  const staged = stageBuilder(out, { expansions: existsSync(expansionsFile) ? expansionsFile : undefined, txcache: o.txcache });
   for (const r of qs) {
-    const q = JSON.parse(readFileSync(join(astDir, r.file), "utf-8"));
+    const source = JSON.parse(readFileSync(join(astDir, r.file), "utf-8"));
+    // The copy LHC-Forms renders: value sets expanded from the IG's cache; the source is untouched.
+    const { questionnaire: q, expanded, missing } = preExpand(source, expansions);
     const json = `questionnaires/Questionnaire-${r.id}.json`;
     writeFileSync(join(out, json), JSON.stringify(q, null, 2) + "\n");
     const page = `Questionnaire-${r.id}-form.html`;
-    const source = r.source ?? undefined;
-    writeFileSync(join(out, page), formPageHtml(q, { ...o, json, source }));
-    pages.push({ id: r.id, page, json, ...(source ? { source } : {}) });
+    const src = r.source ?? undefined;
+    writeFileSync(join(out, page), formPageHtml({ ...q, id: r.id }, { builder: staged.builder, sw: staged.sw, ...o, json, source: src }));
+    pages.push({ id: r.id, page, json, ...(src ? { source: src } : {}), ...(expanded.length ? { expanded } : {}), ...(missing.length ? { notExpanded: missing } : {}) });
   }
   const js = join(out, "assets", "js");
   mkdirSync(js, { recursive: true });

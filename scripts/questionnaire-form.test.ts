@@ -6,7 +6,7 @@ import { afterAll, describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { checkerModule, formPageHtml, LHC_FORMS_VERSION, lformsFhirVersion, questionnaireFormPages, SMART_FORMS_URL } from "./questionnaire-form.ts";
+import { BUILDER_AT, builderIndexHtml, checkerModule, formPageHtml, LHC_FORMS_VERSION, lformsFhirVersion, questionnaireFormPages, SMART_FORMS_URL, swUrl } from "./questionnaire-form.ts";
 
 const made: string[] = [];
 afterAll(() => made.forEach((d) => rmSync(d, { recursive: true, force: true })));
@@ -20,8 +20,9 @@ const put = (root: string, rel: string, text: string) => {
   writeFileSync(join(root, rel), text);
 };
 
-function ast(resources: Array<{ type: string; id: string; json: object; source?: string }>): string {
+function ast(resources: Array<{ type: string; id: string; json: object; source?: string }>, expansions?: object): string {
   const dir = tmp("q-ast-");
+  if (expansions) put(dir, "expansions.json", JSON.stringify(expansions));
   const rs = resources.map((r) => {
     const file = `resources/${r.type}/${r.id}.json`;
     put(dir, file, JSON.stringify({ resourceType: r.type, id: r.id, ...r.json }));
@@ -46,6 +47,9 @@ describe("questionnaireFormPages", () => {
       { editBase: "https://github.com/o/ig/edit/main", fhirVersion: "4.0.1", slug: "example.ig" },
     );
     expect(pages).toEqual([{ id: "intake", page: "Questionnaire-intake-form.html", json: "questionnaires/Questionnaire-intake.json", source: "input/fsh/intake.fsh" }]);
+    const cfg = JSON.parse(/id="fa-edit-cfg">(.*?)<\/script>/.exec(readFileSync(join(out, "Questionnaire-intake-form.html"), "utf-8"))![1]!);
+    expect(cfg.suggest.builder).toBe(`${BUILDER_AT}window-open`);
+    expect(cfg.suggest.sw).toEqual({ url: `${BUILDER_AT}${swUrl("index.json")}`, scope: BUILDER_AT });
     expect(JSON.parse(readFileSync(join(out, "questionnaires/Questionnaire-intake.json"), "utf-8"))).toEqual({ resourceType: "Questionnaire", id: "intake", ...intake });
     for (const f of [
       `assets/lhc-forms/${LHC_FORMS_VERSION}/webcomponent/main.js`,
@@ -55,6 +59,13 @@ describe("questionnaireFormPages", () => {
       "assets/js/questionnaire-mode.js",
       "assets/js/check-wireframe-questionnaire.js",
       "assets/js/edit-links.js",
+      `${BUILDER_AT}index.html`,
+      `${BUILDER_AT}window-open.html`,
+      `${BUILDER_AT}fa-terminology-sw.js`,
+      `${BUILDER_AT}fa-terminology-map.js`,
+      "assets/jquery/3.6.0/jquery.min.js",
+      "assets/terminology/index.json",
+      "assets/terminology/ucum.json",
     ])
       expect(existsSync(join(out, f))).toBe(true);
     expect(existsSync(join(out, "Questionnaire-p1-form.html"))).toBe(false);
@@ -64,6 +75,36 @@ describe("questionnaireFormPages", () => {
     expect(questionnaireFormPages(join(out, "absent"), out)).toEqual([]);
     expect(questionnaireFormPages(ast([{ type: "Patient", id: "p", json: {} }]), out)).toEqual([]);
     expect(existsSync(join(out, "assets"))).toBe(false);
+  });
+});
+
+test("answerValueSet is expanded from the IG's expansions in the rendered copy only", () => {
+  const out = tmp("q-site-");
+  const q = { item: [{ linkId: "s", type: "choice", answerValueSet: "http://example.org/ig/ValueSet/sex" }, { linkId: "t", type: "choice", answerValueSet: "http://example.org/ig/ValueSet/none" }] };
+  const vs = { resourceType: "ValueSet", url: "http://example.org/ig/ValueSet/sex", expansion: { contains: [{ system: "http://example.org/cs", code: "f", display: "Female" }] } };
+  const dir = ast([{ type: "Questionnaire", id: "q", json: q }], { resourceType: "Bundle", entry: [{ resource: vs }] });
+  const [p] = questionnaireFormPages(dir, out);
+  expect(p).toMatchObject({ expanded: ["s"], notExpanded: ["t"] });
+  const copy = JSON.parse(readFileSync(join(out, p!.json), "utf-8"));
+  expect(copy.item[0].answerOption).toEqual([{ valueCoding: { system: "http://example.org/cs", code: "f", display: "Female" } }]);
+  expect(JSON.parse(readFileSync(join(dir, "resources/Questionnaire/q.json"), "utf-8")).item[0].answerValueSet).toBe("http://example.org/ig/ValueSet/sex");
+  const index = JSON.parse(readFileSync(join(out, "assets/terminology/index.json"), "utf-8"));
+  expect(index.codes).toEqual([["http://example.org/cs", "f", "Female"]]);
+});
+
+describe("the Form Builder's index.html, as this site serves it", () => {
+  const original = readFileSync(join(import.meta.dir, "assets/vendor/formbuilder-lhcforms/12.9.0/index.html"), "utf-8");
+  const html = builderIndexHtml(original, swUrl("index.json"));
+  test("the vendored page loads jQuery and fonts from other origins; the served one loads nothing from anywhere else", () => {
+    expect(original).toContain("https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js");
+    expect(original).toContain("fonts.gstatic.com");
+    expect(html).not.toMatch(/(src|href)="https?:\/\//);
+    expect(html).not.toMatch(/url\(https?:/);
+    expect(html).toContain('src="../../jquery/3.6.0/jquery.min.js"');
+  });
+  test("the worker guard runs first", () => {
+    expect(html.indexOf("serviceWorker")).toBeLessThan(html.indexOf("<script src="));
+    expect(html).toContain(JSON.stringify(swUrl("index.json")));
   });
 });
 
