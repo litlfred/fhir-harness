@@ -171,6 +171,19 @@ who says so; it is no longer what silence means.
 
 Rules that hold whichever option is chosen:
 
+- **Turning a repository's automatic BUILDS off never turns its harness
+  CHECKS off.** The question is about the IG Publisher and gh-pages
+  workflows. The harness checks are a separate workflow: a caller of
+  cat-harness-tools' `layer-pr-checks.yml` on `pull_request`, described in the
+  cat-harness skill
+  [`index-config`](../../../cat-harness/skills/kg/kg-core/index-config.md)
+  ("A harnessed repository runs its checks on its own pull requests"). It stays
+  on whatever the answer is. On 2026-10-06 the answer "manual only" was
+  applied to every workflow in smart-base, smart-trust and smart-immunizations,
+  so their harness gates went off together with their builds, and nothing
+  judged those repositories until an index re-pinned them (owner, 2026-10-14:
+  "There should be CI running").
+
 - **Never delete gh-pages content as part of this.** The previews already
   published stay. Removing them is a separate question, asked separately, with
   what would go and how big it is, per
