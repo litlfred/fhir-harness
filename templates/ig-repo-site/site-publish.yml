@@ -24,9 +24,12 @@
 # What a run does — the agent's own command, `stage-local.ts`, on a runner:
 #   1. mounts the layers index.lock.json pins (cat-harness-tools first, from
 #      the lock, then everything else through it);
+#   0. (job `ast`) refreshes the IG's AST cache through fhir-harness's own
+#      `ig-ast-refresh.yml`: nothing when it is valid for this commit, the
+#      Publisher AST export when it is missing or stale;
 #   2. restores the IG's AST from its cache branch and judges it
 #      (`ig-site:ast`); a stale AST refuses the publish, and no IG Publisher
-#      runs (ig-build-pipeline rule 1 and 2);
+#      runs in this job (ig-build-pipeline rule 1 and 2);
 #   3. builds the folio site from it (`build-instance-site.ts`): the chrome
 #      of the landing harness, the landing layer's IG API sidecars
 #      (`ig-site:sidecars`, when it has the step), the IG's pages and the
@@ -61,7 +64,20 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
+  # The AST the site is built from, kept current by fhir-harness itself: a
+  # no-op when the cache on `cat/fhir-harness/fhir-ast/<package id>` is valid
+  # for this commit, the Publisher AST export when it is missing or stale
+  # (owner, 2026-10-14: "this all should be a part of fhir-harness via
+  # smart-base" — no IG repository carries a workflow of its own for it).
+  ast:
+    if: ${{ !inputs.plan }}
+    uses: litlfred/fhir-harness/.github/workflows/ig-ast-refresh.yml@main
+    with:
+      ref: ${{ github.sha }}
+
   publish:
+    needs: ast
+    if: ${{ always() && (needs.ast.result == 'success' || needs.ast.result == 'skipped') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4

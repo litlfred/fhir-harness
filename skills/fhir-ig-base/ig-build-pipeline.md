@@ -110,10 +110,14 @@ Terms:
 
 **Who writes the cache: one workflow, here.**
 [`.github/workflows/ig-ast-refresh.yml`](../../.github/workflows/ig-ast-refresh.yml)
-(`workflow_call`) is the only writer. Each IG repository calls it with an
-unchanged copy of
-[`templates/ig-repo-site/ig-ast-refresh.yml`](../../templates/ig-repo-site/ig-ast-refresh.yml),
-which is dispatch-only. No IG repository carries the steps itself. One run:
+(`workflow_call`) is the only writer. The IG repository's `site-publish.yml`
+(the [template](../../templates/ig-repo-site/site-publish.yml)) calls it as its
+first job, `ast`, so a publish refreshes the cache before it builds: a no-op
+when the cache is valid for the commit. No IG repository carries a workflow of
+its own for it (owner, 2026-10-14: "this all should be a part of fhir-harness
+via smart-base"). A repository whose owner wants the cache refreshed on every
+push to its IG sources may add the optional caller
+[`templates/ig-repo-site/ig-ast-refresh.yml`](../../templates/ig-repo-site/ig-ast-refresh.yml). One run:
 
 1. mounts the layers the IG repository's `index.lock.json` pins;
 2. restores and judges the cache for `ref` (default `main`);
@@ -400,12 +404,9 @@ On yes:
    The site is built from the IG's AST on its cache branch, never from the
    Publisher's HTML: the route's first step is `ig-site:ast`, the restore and
    its judgement (§"The AST cache lifecycle").
-3a. Add `.github/workflows/ig-ast-refresh.yml` from
-   [`templates/ig-repo-site/ig-ast-refresh.yml`](../../templates/ig-repo-site/ig-ast-refresh.yml),
-   unchanged and `workflow_dispatch` only. It calls this layer's reusable
-   workflow, which runs the Publisher on a runner and seeds the cache branch.
-   The publish refuses a stale AST, so this is what makes a publish possible
-   after the IG source changes.
+3a. Nothing more for the AST: the template's first job, `ast`, calls this
+   layer's reusable `ig-ast-refresh.yml`, which runs the Publisher on a runner
+   and seeds the cache branch when it is missing or stale for the commit.
 4. Tell the owner how to run it: **Actions tab → "Site publish (by hand)"
    → Run workflow**, on the branch to publish, with `plan` ticked first. The site lands at the repository's
    own Pages URL, since the template reads the base path from the repository

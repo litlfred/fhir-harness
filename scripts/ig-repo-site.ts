@@ -289,7 +289,7 @@ export function readIgApi(work: string | undefined): IgApi | undefined {
 export function astGate(verdict: string, o: { acceptStale: boolean; preview: boolean }): { ok: boolean; said: string } {
   if (verdict === "valid") return { ok: true, said: "the AST is valid for this checkout" };
   if (o.acceptStale && o.preview) return { ok: true, said: `the AST is ${verdict}; accepted for this preview (${ACCEPT_STALE_ENV}=1)` };
-  const why = o.acceptStale ? `${ACCEPT_STALE_ENV}=1 accepts a stale AST for a preview only, and this build is the root` : `run the IG's ig-ast-refresh.yml to rebuild it, or set ${ACCEPT_STALE_ENV}=1 for a preview`;
+  const why = o.acceptStale ? `${ACCEPT_STALE_ENV}=1 accepts a stale AST for a preview only, and this build is the root` : `run the IG's Site publish (its `ast` job refreshes the cache), or set ${ACCEPT_STALE_ENV}=1 for a preview`;
   return { ok: false, said: `the AST is ${verdict}: the site is not built from it (${why}). It does not fall back to a Publisher run or the Publisher's HTML` };
 }
 
@@ -309,7 +309,7 @@ export function restoreAst(o: { ig: string; work?: string; acceptStale: boolean;
   const restore = (): AstValidity => {
     const r = spawnSync("bash", [join(import.meta.dir, "ig-cache.sh"), "restore", "--ig-root", ig], { cwd: ig, stdio: ["ignore", "inherit", "inherit"] });
     if (r.status !== 0) {
-      throw new Error(`no AST to build from: ig-cache.sh restore exited ${r.status}${r.status === 1 ? " (no cache branch for this IG; run its ig-ast-refresh.yml)" : ""}. The site is never built from the Publisher's HTML`);
+      throw new Error(`no AST to build from: ig-cache.sh restore exited ${r.status}${r.status === 1 ? " (no cache branch for this IG; run its Site publish, whose `ast` job seeds it)" : ""}. The site is never built from the Publisher's HTML`);
     }
     return astValidity(readAst(join(ig, AST_DIR)), ig);
   };
