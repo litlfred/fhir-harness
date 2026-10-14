@@ -202,14 +202,27 @@ workflow publishes nothing until somebody runs it.
 
 On yes:
 
-1. Copy [`templates/ig-repo-site/folio-site.yml`](../../templates/ig-repo-site/folio-site.yml)
-   to `.github/workflows/folio-site.yml` and replace its two placeholders, as
-   its header says. The template is `workflow_dispatch` only (#2291). Add a
-   `push` trigger to the copy only if the owner asks for one in so many words.
-2. The repository needs folio-assistant as a submodule at `folio-assistant/`;
-   the template's header says so, and `init-folio --link submodule` does it.
-3. Tell the owner how to run it: **Actions tab → "folio site" → Run
-   workflow**, on the branch to publish. The site lands at the repository's
+1. **The repository needs no harness of its own.** No `<repo>.json`
+   declaration and no `folio-assistant/` submodule. Its `index.config.json`
+   names the layer it builds on as a remote instance, with consent: this
+   layer for a bare IG, or the overlay above it (smart-base, for an IG that
+   wants the DAK surface). `remote-mount.ts --seed` writes the entry and
+   `remote-mount.ts` the `index.lock.json`; the layer's closure comes with
+   it. The owner's ruling, 2026-10-14: *"It can just define
+   index.config.json and reference smart-base as a dependency. This is
+   preferred and expected behavior."*
+2. Add `.github/workflows/site-publish.yml`, `workflow_dispatch` only. It
+   mounts the locked layers and runs
+   `bun run cat-harness-tools/scripts/stage-local.ts --repo .`, the same
+   command every agent-run repository publishes with, which builds the IG
+   and composes it into the just-the-docs site at the root.
+   The per-repository `folio-site.yml` copied from
+   [`templates/ig-repo-site/`](../../templates/ig-repo-site/) is the route
+   this replaces: it needs the `folio-assistant/` submodule, which the layer
+   split (bean `n3h9`) removed, so a copy of it cannot run.
+3. Tell the owner how to run it: **Actions tab → "Site publish (by hand)"
+   → Run workflow**, on the branch to publish (`main` publishes the root,
+   any other branch a preview). The site lands at the repository's
    own Pages URL, since the template reads the base path from the repository
    name rather than assuming it.
 4. If the IG has sibling sites (other IGs on the same platform) or depends

@@ -130,13 +130,13 @@ From there the IG grows in place, and leaves only through
    12" is asked first, with default "not yet". The owner may create it
    themselves; a session without the permission hands over with
    [`agent-handoff`](../../../cat-harness/skills/sdlc/sdlc-core/agent-handoff.md).
-2. **Scaffold**: `bun run cat init-folio --dir <repo> --instance --title "<title>"`.
-   There is no IG content type, so `--instance` it is: a harness instance
-   with no folio (bean `mer2`). `--link submodule` is the default.
-3. **Declare** `needs: ["fhir-harness"]` and the same graphs as above, at the
-   new repository's root, with no `livesAt`.
-4. Then steps 3 to 5 of `in-repo`, at the root.
-5. **Ask the two build questions** before the first push: whether the
+2. **Mount, don't declare.** The repository gets an `index.config.json`
+   naming the layer it builds on (this one, or an overlay above it such as
+   smart-base) as a remote instance with consent, and the `index.lock.json`
+   `remote-mount.ts` writes. No `<repo>.json` and no submodule: an IG
+   repository needs no harness of its own (owner, 2026-10-14).
+3. Then steps 3 to 5 of `in-repo`, at the root.
+4. **Ask the two build questions** before the first push: whether the
    repository's automatic gh-pages builds stay automatic, and whether to
    install the just-the-docs site (default yes). The rule and the question
    text are [`ig-build-pipeline`](ig-build-pipeline.md) §"Who starts a
@@ -145,8 +145,8 @@ From there the IG grows in place, and leaves only through
 ### `existing-ig`
 
 `repo-conversion` scans first and imports second, never the other way round.
-After the import, declare the instance at the root as in `new-repo` step 3,
-then ask the two build questions in [`ig-build-pipeline`](ig-build-pipeline.md)
+After the import, mount its layer through `index.config.json` as in
+`new-repo` step 2 (no declaration of its own), then ask the two build questions in [`ig-build-pipeline`](ig-build-pipeline.md)
 §"Who starts a build". An existing IG repository almost always carries build
 workflows that publish on every push.
 
