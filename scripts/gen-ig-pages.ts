@@ -85,7 +85,8 @@
  * pages for its views beside its own, at the Publisher's tab file names:
  * `-definitions` and `-mappings` for a StructureDefinition, the JSON view
  * (`.profile.json` for a StructureDefinition, else `.json`), and `-examples`
- * for a profile some artefact of the IG claims. The artefact's page links
+ * for every StructureDefinition, saying so where no instance claims it
+ * (owner, 2026-10-14: "1a"). The artefact's page links
  * them in a tab bar, and they are drawn by the same renderer
  * (`ig-thin-pages.ts` `thinArtifactView`). A full tab page of the same
  * address is replaced. The IG API view pages stay full pages.
@@ -1571,10 +1572,6 @@ if (existsSync(MENU)) {
   // page — still lands. Built from the full pages' order rather than beside
   // it: one order, read once.
   if (THIN) {
-    // The profiles the IG's own instances claim (an artefact with no
-    // canonical, as the index node states them): a profile with a claimant
-    // gets an examples view.
-    const claimed = new Set(ix.artifacts.filter((a) => !a.canonical).flatMap((a) => (a.profiles ?? []).map((p) => p.split("|")[0]!)));
     const astPages: string[] = [];
     let served = 0;
     for (const a of ix.artifacts) {
@@ -1582,7 +1579,7 @@ if (existsSync(MENU)) {
       const i = position.get(md);
       pages.delete(md);
       const resource = servedResource(a);
-      const tabs = artifactTabs(a, { resource: resource !== undefined || localResourceHref(a, COMPILED_DATA) !== undefined, examples: a.canonical !== undefined && claimed.has(a.canonical) });
+      const tabs = artifactTabs(a, { resource: resource !== undefined || localResourceHref(a, COMPILED_DATA) !== undefined });
       const opts = {
         label: LABEL,
         home: IG_SITE ? "../index.html" : "../",

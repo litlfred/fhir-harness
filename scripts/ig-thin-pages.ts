@@ -88,7 +88,9 @@ export interface ThinArtifactOptions {
  *   The Publisher names a profile's `<…>.profile.json.html` and any other
  *   resource's `<…>.json.html`;
  * - `examples`: the IG's artefacts that claim the profile (`meta.profile`),
- *   read off the index node. Only where at least one does.
+ *   read off the index node. Written for EVERY StructureDefinition, as the
+ *   Publisher writes it; where nothing claims the profile the page says there
+ *   are no examples (owner, 2026-10-14: "1a").
  *
  * Not rendered: the change history, testing and XML/Turtle views, and the
  * Publisher's `comparison-v*` directories.
@@ -121,10 +123,10 @@ export function artifactTabFile(a: Pick<FhirArtifact, "resourceType" | "id">, vi
  * The views an artefact gets, its own page first. None without a resource
  * this site serves: every view is drawn from it. Deterministic.
  */
-export function artifactTabs(a: Pick<FhirArtifact, "resourceType" | "id">, o: { resource: boolean; examples: boolean }): ArtifactTab[] {
+export function artifactTabs(a: Pick<FhirArtifact, "resourceType" | "id">, o: { resource: boolean }): ArtifactTab[] {
   if (!o.resource) return [];
   const sd = a.resourceType === "StructureDefinition";
-  const views: ArtifactView[] = ["content", ...(sd ? (["definitions", "mappings"] as const) : []), "json", ...(sd && o.examples ? (["examples"] as const) : [])];
+  const views: ArtifactView[] = ["content", ...(sd ? (["definitions", "mappings"] as const) : []), "json", ...(sd ? (["examples"] as const) : [])];
   return views.map((view) => ({ view, label: TAB_LABEL[view], file: artifactTabFile(a, view) }));
 }
 
