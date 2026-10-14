@@ -138,8 +138,9 @@ core, which sits above cat-harness-tools.
   them too"*. This supersedes "IG API, JSON-view and tab pages stay full
   pages". Wherever the site serves the artefact's JSON, its views are written
   beside its page under `artifact/`. That JSON is either a compiled copy
-  (`--compiled-data`) or the Publisher's own `<Type>-<id>.json` carried as
-  data (`--publisher-data <dir>`, which `ig-site:compose` passes as `.`).
+  (`--compiled-data`, which `ig-site:compose` passes as `ast-data`: the
+  AST's copy) or the Publisher's own `<Type>-<id>.json` carried as data
+  (`--publisher-data <dir>`).
   Each view keeps the Publisher's file name:
   - `-definitions`: the element table, from the snapshot, with the
     differential's elements marked;
@@ -162,8 +163,8 @@ core, which sits above cat-harness-tools.
   instance of the IG claims the profile, the page says there are no examples.
 - **Nothing under `comparison-v*/` is published** (owner, 2026-10-14:
   *"2a"*). The Publisher's version comparisons are not rendered, and
-  `ig-site:publisher-pages` copies none of their files, their fonts and
-  stylesheets included (`takenFromOutput`).
+  `ig-site:publisher-pages` copies none of their files: it serves the AST's
+  data and reads no Publisher output at all.
 - In an IG site the docs root is the site root, so `--compiled-data` is
   `ast-data`. With `../ast-data`, every resource link points one level above
   the site.
