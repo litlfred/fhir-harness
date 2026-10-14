@@ -4,7 +4,7 @@
  *
  * On the main site `mount-instance-docs.ts` publishes every `served: true`
  * directory at `/<instance>/<path>`. An IG repository's OWN site
- * (`templates/ig-repo-site/folio-site.yml`) is that instance alone, at the
+ * (`templates/ig-repo-site/folio-site.yml`, since replaced by `site-publish.yml`) is that instance alone, at the
  * site root, and copied exactly one served directory by hand —
  * `fhir-artifact-index`. Every other one was missing, and the first casualty
  * was the `openapi` graph: smart-trust's pages link `openapi/index.html`
