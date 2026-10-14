@@ -433,7 +433,7 @@ export function harnessLayout(topBar: string, tocNav: string, sectionLabel?: str
     "<head>",
     '<meta charset="UTF-8">',
     '<meta name="viewport" content="width=device-width, initial-scale=1">',
-    "<title>{% if page.title %}{{ page.title }} | {% endif %}{{ site.title }}</title>",
+    "<title>{% if page.title and page.title != site.title %}{{ page.title }} | {% endif %}{{ site.title }}</title>",
     "<link rel=\"stylesheet\" href=\"{{ '/assets/css/just-the-docs-default.css' | relative_url }}\">",
     `<style>${IG_TOPBAR_CSS.trim()}</style>`,
     // The navbar section is named after the IG (owner, 2026-10-05).
@@ -608,7 +608,7 @@ export function thinIgLayout(assetsAt: string, tocNav = "", sectionLabel?: strin
     "<head>",
     '<meta charset="utf-8">',
     '<meta name="viewport" content="width=device-width, initial-scale=1">',
-    "<title>{% if page.title %}{{ page.title }} — {% endif %}{{ site.title }}</title>",
+    "<title>{% if page.title and page.title != site.title %}{{ page.title }} — {% endif %}{{ site.title }}</title>",
     '<link rel="canonical" href="{{ page.url | relative_url }}">',
     `<link rel="icon" href="${escHtml(DEFAULT_ICON)}">`,
     NAVBAR_LINKED,

@@ -6,7 +6,7 @@
  * Owner, 2026-10-12, on the four personas no swimlane names: *"should be in QA
  * report. where are qa reports visible?"* On the main site a QA record is
  * published under `/assets/qa/` and badged on its page; an IG repository's own
- * site (`templates/ig-repo-site/folio-site.yml`) published none of them. A
+ * site (`templates/ig-repo-site/folio-site.yml`, since replaced by `site-publish.yml`) published none of them. A
  * finding a check wrote and nobody can read is the same as no finding.
  *
  * The records are found through the declaration, never a path: every
