@@ -8,7 +8,7 @@ import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, 
 import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
 import { join } from "node:path";
-import { ARTIFACT_LIST_TEMPLATE_PATH, artifactListInclude, publisherPlural, FOOTER_TEMPLATE_PATH, ARTIFACTS_TEMPLATE_PATH,IG_FIGURE_IMAGES_STAMP, annexMount, ANNEX_SCRIPT_PATH, artifactVariables, artifactCellLookup, kramdownId, linkTableCells, colourScheme, composeIgSite, contrast, dedupeIds, igTocNav, igTopBar, includeTargets, localTemplateIncludes, pageNav, relinkArtifacts, relinkTemplatedArtifacts, relinkOffSite, rubyLiquidStrings, relinkPublisherOutputs, sourceHeadings, dataOverwritesQa, describeStage, RELEASES_TEMPLATE_PATH, releaseVariables, sizeLabel, stageIgSite, tocPage, type StageResult } from "./build-ig-site";
+import { ARTIFACT_LIST_TEMPLATE_PATH, artifactListInclude, publisherPlural, FOOTER_TEMPLATE_PATH, ARTIFACTS_TEMPLATE_PATH,IG_FIGURE_IMAGES_STAMP, annexMount, ANNEX_SCRIPT_PATH, artifactVariables, artifactCellLookup, kramdownId, linkTableCells, colourScheme, composeIgSite, contrast, dedupeIds, igTocNav, igTopBar, IG_TOPBAR_CSS, includeTargets, localTemplateIncludes, pageNav, relinkArtifacts, relinkTemplatedArtifacts, relinkOffSite, rubyLiquidStrings, relinkPublisherOutputs, sourceHeadings, dataOverwritesQa, describeStage, RELEASES_TEMPLATE_PATH, releaseVariables, sizeLabel, stageIgSite, tocPage, type StageResult } from "./build-ig-site";
 import { copyDocsInto, igSiteDocs, webpagePalette } from "./stage-ig-sites";
 import type { IgReleases } from "../schemas/ig-releases.ts";
 import { artifactPageName } from "../schemas/fhir-artifact-index.js";
@@ -518,6 +518,15 @@ describe("every IG site: the IG's top bar, and its TOC declared for the navbar",
     expect(bar).toContain('href="/b/acme-ig/overview.html"');
     expect(bar).not.toContain("fa-nav");
     expect(bar).not.toContain('id="site-nav"');
+  });
+  test("the title sits on its own line, the menu on the line below (owner, 2026-10-14)", () => {
+    const bar = igTopBar(menu, "/b/acme-ig", "ACME Example IG");
+    // The title comes first in the bar, before every group.
+    expect(bar.indexOf('class="ig-topbar-home"')).toBeLessThan(bar.indexOf('class="ig-topbar-group"'));
+    // The bar wraps, and the title takes the whole first line of it.
+    const rule = (sel: string) => new RegExp(`(?:^|\\n)\\${sel}\\{([^}]*)\\}`).exec(IG_TOPBAR_CSS)?.[1] ?? "";
+    expect(rule(".ig-topbar")).toContain("flex-wrap:wrap");
+    expect(rule(".ig-topbar-home")).toMatch(/flex:0 0 100%|flex-basis:100%/);
   });
   test("a harness-chrome site has a layout with no sidebar of its own", () => {
     const d = mkdtempSync(join(tmpdir(), "ig-chrome-"));

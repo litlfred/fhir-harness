@@ -136,7 +136,7 @@ function arg(name: string): string | undefined {
 
 const INSTANCE_ARG = arg("--instance");
 if (!INSTANCE_ARG) {
-  console.error("usage: gen-ig-pages.ts --instance <dir> --label <name> [--chrome-owner <instance>] [--index <index.json>] [--out <dir>] [--summary] [--full-pages | --jsonld-base <url>] [--check]");
+  console.error("usage: gen-ig-pages.ts --instance <dir> --label <name> [--chrome-owner <instance>] [--index <index.json>] [--out <dir>] [--summary] [--full-pages | --jsonld-base <url>] [--ig-site] [--check]");
   process.exit(2);
 }
 const INSTANCE = resolve(process.cwd(), INSTANCE_ARG);
@@ -203,7 +203,11 @@ const OUT = OUT_ARG ? resolve(process.cwd(), OUT_ARG) : join(INSTANCE, "docs");
  * `/<instance>/` (`igSite` on the docs directory, bean `mftp`), rather than
  * composed into the main site. Read off the declaration, never inferred.
  */
-const IG_SITE = readDeclaration(INSTANCE)?.directories?.find((d) => resolve(INSTANCE, d.path).replace(/\/+$/, "") === OUT.replace(/\/+$/, ""))?.igSite === true;
+const IG_SITE =
+  // `--ig-site`: said by the caller, for a checkout with no declaration to read it
+  // from — an IG repository's own site (`ig-repo-site.ts compose`), which IS its IG site.
+  process.argv.includes("--ig-site") ||
+  readDeclaration(INSTANCE)?.directories?.find((d) => resolve(INSTANCE, d.path).replace(/\/+$/, "") === OUT.replace(/\/+$/, ""))?.igSite === true;
 /**
  * The site-absolute path of this instance's docs root, for `relative_url`:
  * the instance's own route in the main site, or the IG site's root, whose

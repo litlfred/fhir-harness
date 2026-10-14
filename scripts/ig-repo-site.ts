@@ -42,18 +42,27 @@
  * platform's chrome step wrote (`composeIgSite --at-root`): the IG IS the site.
  * A path both write is refused, never overwritten.
  *
- * ## `publisher-pages`: what only the Publisher writes
+ * The IG's ARTEFACT pages are thin pages built from the Publisher's
+ * structured output ({@link artefactPages}: the artefact index reconstructed
+ * from `output/`, then `gen-ig-pages.ts --ig-site`), so `artifacts.html`,
+ * `toc.html` and `artifact/<Type>-<id>.html` are the site's own pages over
+ * JSON-LD nodes, and the narrative's links to `<Type>-<id>.html` are pointed
+ * at them (`relinkArtifacts`). `ig-render-jekyll` §"Thin pages, the default".
  *
- * The IG's narrative pages link its artefacts (`StructureDefinition-x.html`,
- * `artifacts.html`, `package.tgz`) by the names the Publisher gives them, and
- * the Jekyll build renders none of them. When the Publisher's output is at
- * hand (`output/`, where the IG's own build writes it), every file of it the
- * built site does not already hold is copied in beside the site's pages, so
- * those links land; a page the site built is never replaced by the
- * Publisher's. Then the repeated element ids the composition produces are
- * repaired (`dedupeSiteIds`). With no Publisher output, the site keeps only
- * its own pages, and says so. Last, the site's `folio-build.json` is written
- * at its root ({@link igSiteStamp}), as every folio site carries one.
+ * ## `publisher-pages`: the Publisher's data, never its HTML
+ *
+ * The site's pages and the thin artefact pages link the Publisher's DATA by
+ * the names the Publisher gives it (`<Type>-<id>.json`, `package.tgz`, the
+ * IG API sidecars, images). Every such file of `output/` the built site does
+ * not already hold is copied in. The Publisher's finished HTML is NEVER
+ * copied (owner, 2026-10-14: "I DO NOT WANT THE IG PUBLISHER HTML";
+ * `ig-render-jekyll`: rendered "rather than copying the Publisher's finished
+ * HTML into place"), nor its XML and Turtle (§"1. JSON only"); the count not
+ * taken is reported. A Publisher page with no rendering here is a dead link
+ * the IG's pages make, reported by the site build, not papered over with the
+ * Publisher's copy. Then the repeated element ids the composition produces
+ * are repaired (`dedupeSiteIds`), and the site's `folio-build.json` is
+ * written at its root ({@link igSiteStamp}), as every folio site carries one.
  *
  * ## Whose dead links
  *
@@ -73,7 +82,7 @@ import { parse as parseYaml } from "yaml";
 import { composeIgSite, dedupeSiteIds, describeStage, IG_THIN_CSS_FILE, stageIgSite, type SitePalette } from "./build-ig-site";
 import { buildMenu } from "./ingest-ig-menu.ts";
 import { siteBuild, type SiteBuild, STAMP_FILE } from "./site-build-stamp.ts";
-import { githubEditBase, instanceNeeds, webpagePalette } from "./stage-ig-sites.ts";
+import { artifactsFor, copyDocsInto, footerFor, githubEditBase, instanceNeeds, webpagePalette } from "./stage-ig-sites.ts";
 
 /**
  * The file, named by the site build in this variable, in which a step lists
@@ -140,6 +149,15 @@ export function siteName(ig: string): string {
   return m?.[1] ?? basename(resolve(ig));
 }
 
+/** The IG's title, from `sushi-config.yaml`; undefined when it states none. */
+export function igTitle(ig: string): string | undefined {
+  const f = join(ig, "sushi-config.yaml");
+  if (!existsSync(f)) return undefined;
+  const y = (parseYaml(readFileSync(f, "utf-8")) ?? {}) as { title?: unknown; name?: unknown };
+  const t = typeof y.title === "string" ? y.title : typeof y.name === "string" ? y.name : undefined;
+  return t?.trim() || undefined;
+}
+
 /** `https://github.com/<o>/<r>` from the checkout's origin, or undefined. */
 function githubRepo(ig: string): string | undefined {
   const r = spawnSync("git", ["-C", ig, "config", "--get", "remote.origin.url"], { encoding: "utf-8" });
@@ -164,7 +182,69 @@ export function notSource(root: string): Set<string> {
   return out;
 }
 
-export function compose(o: { docs: string; ig: string; baseurl: string; plantumlJar?: string; log?: (s: string) => void }): void {
+/**
+ * The representations of an artefact this site TAKES from the Publisher
+ * (`ig-render-jekyll` §"1. JSON only"): its JSON, and its page's address,
+ * which the thin page keeps (`artifact/<Type>-<id>.html` names it as where
+ * the narrative's other links go). XML and Turtle are not taken; an instance
+ * that needs RDF projects the JSON-LD.
+ */
+const TAKEN_FORMATS = new Set(["json", "html"]);
+/** Publisher output files never copied into the site: its finished pages, and the serialisations the render path refuses. */
+export const NOT_TAKEN = /\.(html?|xml|ttl)$/i;
+
+/**
+ * Drop the representations the site does not take from an ingested index,
+ * and say how many: a refusal recorded, not a silent drop.
+ */
+export function takeJsonOnly(indexFile: string): Record<string, number> {
+  const ix = JSON.parse(readFileSync(indexFile, "utf-8")) as { artifacts: { published: Record<string, unknown> }[] };
+  const refused: Record<string, number> = {};
+  for (const a of ix.artifacts) {
+    for (const f of Object.keys(a.published)) {
+      if (TAKEN_FORMATS.has(f)) continue;
+      refused[f] = (refused[f] ?? 0) + 1;
+      delete a.published[f];
+    }
+  }
+  writeFileSync(indexFile, `${JSON.stringify(ix, null, 2)}\n`);
+  return refused;
+}
+
+/**
+ * The IG's artefact pages, THIN (`ig-render-jekyll` §"Thin pages, the
+ * default"), from the Publisher's STRUCTURED output — never its finished HTML
+ * (owner, 2026-10-14: "I DO NOT WANT THE IG PUBLISHER HTML"). The artefact
+ * index is reconstructed from `output/` (`ingest-ig-artifacts.ts`: the
+ * package's `.index.json`, `canonicals.json`, the manifest, and the category
+ * the Publisher's artifact list states, read as data), and `gen-ig-pages.ts`
+ * writes one thin page and one JSON-LD node per artefact plus the index node
+ * the site's thin `artifacts.html` and `toc.html` draw. Undefined, and said,
+ * when there is no Publisher output to read.
+ */
+export function artefactPages(o: { ig: string; output: string; work: string; name: string; label: string; baseurl: string; log: (s: string) => void }): string | undefined {
+  if (!existsSync(join(o.output, "package.manifest.json")) && !existsSync(join(o.output, "package.tgz"))) {
+    o.log(`${o.name}: no Publisher output at ${o.output} — no artefact pages, and artifacts.html stays a menu item this build does not hold`);
+    return undefined;
+  }
+  const inst = join(o.work, "artefacts", o.name);
+  mkdirSync(inst, { recursive: true });
+  const bun = (script: string, args: string[]): void => {
+    const r = spawnSync("bun", ["run", join(import.meta.dir, script), ...args], { cwd: o.ig, encoding: "utf-8" });
+    if (r.status !== 0) throw new Error(`${script} failed (exit ${r.status}):\n${(r.stderr || r.stdout).trim().split("\n").slice(-15).join("\n")}`);
+    const last = (r.stderr || "").trim().split("\n").slice(0, 3).join("\n  ");
+    if (last) o.log(`  ${last}`);
+  };
+  // The site's own address: the JSON each node names is served beside the site's pages.
+  bun("ingest-ig-artifacts.ts", ["--source", o.output, "--out", inst, "--id", o.name, "--base", o.baseurl, "--kind", "output"]);
+  const refused = takeJsonOnly(join(inst, "fhir-artifact-index", "index.json"));
+  const said = Object.entries(refused).map(([f, n]) => `${n} ${f}`).join(", ");
+  if (said) o.log(`${o.name}: representations not taken (JSON only; RDF is projected from the JSON-LD): ${said}`);
+  bun("gen-ig-pages.ts", ["--instance", inst, "--label", o.label, "--ig-site"]);
+  return inst;
+}
+
+export function compose(o: { docs: string; ig: string; baseurl: string; output?: string; plantumlJar?: string; log?: (s: string) => void }): void {
   const log = o.log ?? ((s: string) => console.error(s));
   const ig = resolve(o.ig);
   if (!existsSync(join(ig, "sushi-config.yaml"))) throw new Error(`${ig} holds no sushi-config.yaml: not an IG checkout`);
@@ -183,15 +263,24 @@ export function compose(o: { docs: string; ig: string; baseurl: string; plantuml
     const gh = githubRepo(ig);
     const editBase = gh ? githubEditBase(gh) : undefined;
     const site = join(work, "site");
+    const baseurl = o.baseurl.replace(/\/$/, "");
+    const label = igTitle(ig) ?? name;
+    const inst = artefactPages({ ig, output: resolve(o.output ?? join(ig, "output")), work, name, label, baseurl, log });
     const r = stageIgSite(src, site, {
-      baseurl: o.baseurl.replace(/\/$/, ""),
+      baseurl,
       menu,
+      ...(inst ? { artifacts: artifactsFor(inst, "artifact/"), footer: footerFor(inst, "") } : {}),
       ...(theme.palette ? { palette: theme.palette } : {}),
       ...(o.plantumlJar ? { plantumlJar: o.plantumlJar } : {}),
       ...(editBase ? { editBase } : {}),
     });
     log(`${name}:\n${describeStage(r)}`);
     if (r.siteData.refused.length) throw new Error(`${name}: the IG's site data was refused (${r.siteData.refused.join(", ")})`);
+    if (inst) {
+      const d = copyDocsInto(join(inst, "docs"), site);
+      log(`${name}: ${d.copied} artefact page and node file(s) built into the site${d.merged.length ? `; front matter laid onto ${d.merged.join(", ")}` : ""}`);
+      if (d.collisions.length) throw new Error(`${name}: ${d.collisions.length} artefact file(s) the IG's own pages already write — refusing two answers for one URL:\n  ${d.collisions.slice(0, 20).join("\n  ")}`);
+    }
     const before = new Set(filesUnder(resolve(o.docs)));
     const c = composeIgSite(site, resolve(o.docs), name, { atRoot: true });
     listUpstream(filesUnder(resolve(o.docs)).filter((f) => !before.has(f)).map(builtPage).filter((p): p is string => p !== undefined));
@@ -266,25 +355,54 @@ export function igSiteStamp(ig: string, env: Record<string, string | undefined> 
   }, now);
 }
 
-export function publisherPages(o: { site: string; output: string; ig?: string; log?: (s: string) => void }): { copied: number; kept: number } {
+/**
+ * The IG Publisher's page chrome: its stylesheets (`fhir.css`,
+ * `bootstrap-fhir.css`) and its "Generated <date>" footer. A page carrying
+ * any of them is the Publisher's finished HTML, which this site never
+ * publishes (owner, 2026-10-14).
+ */
+export const PUBLISHER_CHROME: readonly RegExp[] = [
+  /<link\b[^>]*href="(?:[^"]*\/)?fhir\.css"/i,
+  /bootstrap-fhir\.css/i,
+  /Generated <span title="/,
+];
+
+/** The built pages that carry the Publisher's chrome, relative to the site. */
+export function publisherChromePages(site: string): string[] {
+  return filesUnder(site).filter((p) => /\.html?$/i.test(p) && PUBLISHER_CHROME.some((re) => re.test(readFileSync(join(site, p), "utf-8"))));
+}
+
+export function publisherPages(o: { site: string; output: string; ig?: string; log?: (s: string) => void }): { copied: number; kept: number; refused: number } {
   const log = o.log ?? ((s: string) => console.error(s));
   if (!existsSync(o.site) || !statSync(o.site).isDirectory()) throw new Error(`${o.site}: no built site`);
   let copied = 0;
   let kept = 0;
+  let refused = 0;
   if (existsSync(o.output) && statSync(o.output).isDirectory()) {
+    // NEVER the Publisher's finished HTML (`ig-render-jekyll`: the IG is
+    // rendered "populated from the Publisher's structured output, rather than
+    // copying the Publisher's finished HTML into place"; owner, 2026-10-14:
+    // "I DO NOT WANT THE IG PUBLISHER HTML"), and not the XML and Turtle the
+    // render path refuses (§"1. JSON only"). The artefact pages are the thin
+    // pages `compose` built; what is copied is the data and the files the
+    // site's pages link: the JSON, the package, the images.
     const all = filesUnder(o.output);
-    const missing = missingFromSite(all, new Set(filesUnder(o.site)));
+    const taken = all.filter((p) => !NOT_TAKEN.test(p));
+    refused = all.length - taken.length;
+    const missing = missingFromSite(taken, new Set(filesUnder(o.site)));
     for (const p of missing) {
       mkdirSync(join(o.site, p, ".."), { recursive: true });
       cpSync(join(o.output, p), join(o.site, p));
     }
     copied = missing.length;
-    listUpstream(missing.filter((p) => p.endsWith(".html")));
-    kept = all.length - missing.length;
-    log(`publisher pages: ${copied} file(s) of ${o.output} copied in; ${kept} the site already builds itself were kept as built`);
+    kept = taken.length - missing.length;
+    log(`publisher pages: ${copied} file(s) of ${o.output} copied in; ${kept} the site already holds were kept; ${refused} not taken (the Publisher's HTML, XML and Turtle)`);
   } else {
     log(`publisher pages: no Publisher output at ${o.output} — the site carries the IG's own pages only, and links to artefact pages do not land`);
   }
+  // The guard: whatever put it there, a page wearing the Publisher's chrome is not published.
+  const chrome = publisherChromePages(o.site);
+  if (chrome.length) throw new Error(`${chrome.length} page(s) of the built site carry the IG Publisher's chrome (fhir.css, bootstrap-fhir.css or its "Generated" footer) — the Publisher's HTML is not published:\n  ${chrome.slice(0, 20).join("\n  ")}`);
   const renamed = dedupeSiteIds(o.site);
   if (renamed.size) log(`publisher pages: repeated element ids repaired on ${renamed.size} page(s)`);
   if (o.ig !== undefined) {
@@ -292,7 +410,7 @@ export function publisherPages(o: { site: string; output: string; ig?: string; l
     writeFileSync(join(o.site, STAMP_FILE), `${JSON.stringify(stamp, null, 2)}\n`);
     log(`publisher pages: stamped ${STAMP_FILE} — ${stamp.instance}, platform ${stamp.platform.commit.slice(0, 9)}`);
   }
-  return { copied, kept };
+  return { copied, kept, refused };
 }
 
 if (import.meta.main) {
