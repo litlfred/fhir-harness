@@ -115,6 +115,26 @@ describe("validity — compiledValidity on the manifest's inputs", () => {
     expect(v.detail).toEqual({ verdict: "stale-inputs", differs: ["inputDigest"] });
   });
 
+  test("a later commit that changes no input is still valid; one that changes an input is not", () => {
+    const { ig, rev } = igRepo();
+    const a = readAst(ast([pat], [], { inputs: { toolchain: "t", sourceRevision: rev, inputDigest: inputDigest(ig) } }));
+    const git = (...x: string[]) => spawnSync("git", ["-c", "user.email=t@t", "-c", "user.name=t", ...x], { cwd: ig, encoding: "utf-8" });
+    put(ig, "README.md", "not an input\n");
+    git("add", ".");
+    git("commit", "-qm", "readme");
+    expect(astValidity(a, ig).verdict).toBe("valid");
+    put(ig, "input/fsh/a.fsh", "Profile: A2\n");
+    git("add", ".");
+    git("commit", "-qm", "input");
+    expect(astValidity(a, ig).detail).toEqual({ verdict: "stale-inputs", differs: ["sourceRevision", "inputDigest"] });
+  });
+
+  test("a recorded revision that is not an ancestor is stale even with the same inputs", () => {
+    const { ig } = igRepo();
+    const a = readAst(ast([pat], [], { inputs: { toolchain: "t", sourceRevision: "f".repeat(40), inputDigest: inputDigest(ig) } }));
+    expect(astValidity(a, ig).detail).toEqual({ verdict: "stale-inputs", differs: ["sourceRevision"] });
+  });
+
   test("a newer Publisher is stale even when the source is not", () => {
     const { ig, rev } = igRepo();
     const a = readAst(ast([pat], [], { inputs: { toolchain: "ig-publisher 2.3.4 / core 6.6.0", sourceRevision: rev, inputDigest: inputDigest(ig) } }));

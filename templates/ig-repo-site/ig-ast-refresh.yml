@@ -20,7 +20,7 @@ on:
   workflow_dispatch:
     inputs:
       ref:
-        description: "The ref to build (only the default branch's tip seeds the cache)"
+        description: "The ref to build (only a commit on the default branch with its inputs seeds the cache)"
         type: string
         default: main
       force:
