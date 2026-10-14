@@ -16,4 +16,5 @@ Held in the library [`fhir-harness/library/`](../README.md) as `cucumber-2024-gh
 | [sections](sections/) | 42 |
 | [blocks](blocks/) | 21 |
 | images | 0 |
+
 <!-- kg:subgraph:end -->
