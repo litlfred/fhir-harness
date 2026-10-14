@@ -16,4 +16,5 @@ Held in the library [`fhir-harness/library/`](../README.md) as `hl7-2023-fhir-r5
 | [sections](sections/) | 30 |
 | [blocks](blocks/) | 15 |
 | images | 0 |
+
 <!-- kg:subgraph:end -->

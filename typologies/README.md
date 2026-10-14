@@ -15,4 +15,5 @@ Part of [FHIR IG Harness](../README.md) 0.1.0, declared as `fhir-harness-typolog
 | [`ig-ast.json`](ig-ast.json) | IG AST |  |
 | [`ig-metadata-index.json`](ig-metadata-index.json) | IG metadata index |  |
 | [`ig-pages.json`](ig-pages.json) | IG pages |  |
+
 <!-- kg:subgraph:end -->
