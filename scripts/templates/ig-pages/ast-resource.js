@@ -103,7 +103,8 @@
       }
       if (/^([a-z][a-z0-9+.-]*:|#|\/)/i.test(v)) continue;
       if (local && local[v.split("#")[0]]) continue;
-      if (published) el.setAttribute(attr, new URL(v, published).href);
+      // A site-relative base (`/<repo>/`, an IG site's own address) resolves against the page.
+      if (published) el.setAttribute(attr, new URL(v, new URL(published, location.href)).href);
       else el.removeAttribute(attr);
     }
     return node;
