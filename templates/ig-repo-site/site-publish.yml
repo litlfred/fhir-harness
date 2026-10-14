@@ -73,7 +73,11 @@ jobs:
     if: ${{ !inputs.plan }}
     uses: litlfred/fhir-harness/.github/workflows/ig-ast-refresh.yml@main
     with:
-      ref: ${{ github.sha }}
+      # Always the default branch: only its build seeds the shared cache, so a
+      # preview of a branch that leaves the IG's inputs as they are on it finds
+      # a valid AST. A branch that changes the inputs is refused by
+      # `ig-site:ast` (stale), as the route requires.
+      ref: ${{ github.event.repository.default_branch }}
 
   publish:
     needs: ast
