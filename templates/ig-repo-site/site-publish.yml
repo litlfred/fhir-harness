@@ -1,0 +1,109 @@
+# TEMPLATE — an IG repository's OWN site: the platform's just-the-docs folio
+# site with the IG composed at its root, published to that repository's
+# gh-pages. Copy to `.github/workflows/site-publish.yml` unchanged: it has no
+# placeholders.
+#
+# What the repository needs, and nothing else from the platform (owner,
+# 2026-10-14: an IG repository "doesn't need its own harness. It can just
+# define index.config.json and reference [its base harness] as a dependency"):
+#
+#   index.config.json   mounts the harness the IG is built on (and its
+#                       closure), and names it as the site's landing:
+#                         "site": { "landing": "<that harness>" }
+#                       The landing scopes the site's chrome (tiles, navbar,
+#                       rail); the site's TITLE is the IG's own, from
+#                       sushi-config.yaml `title`.
+#   index.lock.json     written by the platform's `remote-mount.ts` from it.
+#   a workflow that calls the base harness's IG build (`ghbuild.yml`, or a
+#                       `fhirbuild.yml` beside one): the IG build recipe the
+#                       publish mirrors.
+#
+# No instance declaration (`<repo>.json`), no `package.json`, no committed
+# menu: the menu is read from sushi-config.yaml at build time.
+#
+# What a run does — the agent's own command, `stage-local.ts`, on a runner:
+#   1. mounts the layers index.lock.json pins (cat-harness-tools first, from
+#      the lock, then everything else through it);
+#   2. builds the IG with the steps of the workflow the repository calls (the
+#      IG Publisher in its Docker image, into output/);
+#   3. builds the folio site around it (`build-instance-site.ts`): the chrome
+#      of the landing harness, the IG's pages composed at the root
+#      (`ig-site:compose`), Jekyll, then every Publisher page the site lacks
+#      (`ig-site:publisher-pages`) so artefact links land, and the link check
+#      (a dead link in the chrome refuses the publish; one in the IG's own
+#      content is reported);
+#   4. on the default branch publishes the gh-pages ROOT, keeping STAGING/,
+#      _render-log/ and branches/; on any other branch the preview at
+#      STAGING/<branch>/.
+# `plan` prints what would run and publishes nothing. An agent runs the same
+# command from its checkout, with --plan or --dry-run to look first.
+#
+# Manual trigger only (owner decision, 2026-10-06): add a `push` trigger to a
+# copy only if that repository's owner asks for every push published.
+name: Site publish (by hand)
+
+on:
+  workflow_dispatch:
+    inputs:
+      plan:
+        description: "Only print what would run (--plan)"
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: site-publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14  # the platform's CI version
+
+      - name: Mount the layers index.lock.json pins
+        run: |
+          ref=$(python3 -c "import json;print(next(m['ref'] for m in json.load(open('index.lock.json'))['mounts'] if m['harness']=='cat-harness-tools'))")
+          M="$RUNNER_TEMP/mounter"
+          git init -q "$M"
+          git -C "$M" fetch -q --depth 1 https://github.com/litlfred/cat-harness-tools.git "$ref"
+          git -C "$M" checkout -q FETCH_HEAD
+          bun run "$M/scripts/mount-from-lock.ts" --root .
+          for d in $(python3 -c "import json;print(' '.join(sorted({i['path'] for i in json.load(open('index.lock.json'))['instances']})))"); do
+            [ -f "$d/package.json" ] && (cd "$d" && bun install --no-save)
+          done
+
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+
+      - name: Identify the publishing commit's author, and let it push
+        # The publisher clones gh-pages into a temporary directory, which does
+        # not inherit the checkout's credentials.
+        env:
+          TOKEN: ${{ github.token }}
+        run: |
+          git config --global user.name "Claude"
+          git config --global user.email "noreply@anthropic.com"
+          git config --global url."https://x-access-token:${TOKEN}@github.com/".insteadOf "https://github.com/"
+
+      - name: Build and publish with stage-local
+        # The job log is not readable from an agent's container, so a
+        # failure's last lines are also raised as annotations (at most 10).
+        run: |
+          set -o pipefail
+          if ! bun run cat-harness-tools/scripts/stage-local.ts --repo . ${{ inputs.plan && '--plan' || '' }} 2>&1 | tee "$RUNNER_TEMP/stage-local.log"; then
+            grep -v '^|' "$RUNNER_TEMP/stage-local.log" | grep -E '✗|[Ee]rror|unresolved|failed|Cannot|not found|refus' | grep -v DEPRECATION | tail -n 9 | cut -c1-900 | sed 's/^/::error::/'
+            exit 1
+          fi
+          if [ "${{ inputs.plan }}" = "true" ]; then
+            grep -v '^|' "$RUNNER_TEMP/stage-local.log" | tail -n 9 | cut -c1-900 | sed 's/^/::notice::/'
+          fi

@@ -148,7 +148,7 @@ export function githubEditBase(repo: string): string | undefined {
 }
 
 /** The instances `name` declares it `needs`, by name. */
-function instanceNeeds(repoRoot: string, name: string): string[] {
+export function instanceNeeds(repoRoot: string, name: string): string[] {
   const root = instanceRootsIn(repoRoot).find((r) => (readDeclaration(r)?.name ?? basename(r)) === name);
   return root ? (readDeclaration(root)?.needs ?? []) : [];
 }

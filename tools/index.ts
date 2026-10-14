@@ -194,6 +194,32 @@ export function tools(baseUrl?: string): ToolDefinition[] {
       remedies: [{ host: "github.com", none: "It clones each IG's source repository from GitHub; no declared Tool stages an IG without it." }],
     }),
     defineTool({
+      id: "ig-repo-site",
+      title: "Compose an IG repository's own site from its checkout, with no instance declaration",
+      description:
+        "The two checkout scripts the platform's site build runs for a repository that holds an IG and only mounts layers (`index.config.json`): `ig-site:compose` stages the IG's `input/` and `sushi-config.yaml` (menu read at build time, palette from the webpage theme of the top layer the repository mounts, edit links from its origin) and composes it at the ROOT of the host site source; `ig-site:publisher-pages` copies every IG Publisher output file the built site lacks, so artefact links land, never replacing a page the site built, and repairs repeated element ids. Both list the pages they put in the site in `FOLIO_SITE_UPSTREAM_PAGES`, so the site build reports the IG's own dead links rather than refusing the publish over them.",
+      install: { none: true },
+      invoke: { shell: "bun run fhir-harness/scripts/ig-repo-site.ts" },
+      io: {
+        inputs: [
+          { name: "ig", schema: t("RepoPath"), required: false, description: "The IG checkout; the current directory by default." },
+          { name: "baseurl", schema: t("RepoPath"), required: false, description: "`compose`: the site's base path; `FOLIO_SITE_BASEURL` from the site build when absent." },
+          { name: "plantuml-jar", schema: t("RepoPath"), required: false, description: "`compose`: render `input/images-source/*.plantuml` as the Publisher does." },
+          { name: "output", schema: t("RepoPath"), required: false, description: "`publisher-pages`: the IG Publisher's output; `<ig>/output` by default. Absent on disk, nothing is copied and the run says so." },
+        ],
+        outputs: [
+          { name: "pages", schema: t("Count"), description: "Pages composed, or Publisher files copied in." },
+        ],
+      },
+      satisfies: ["ig-build-pipeline"],
+      selection: {
+        when: "Publishing an IG repository's own site, as `stage-local.ts` does for a harnessed IG repository.",
+        limits: "Asks the IG's origin for its default branch for edit links (absent, pages carry none). Reads the Publisher's output, never runs the Publisher.",
+        cost: "Seconds to compose; copying a Publisher output is proportional to its size.",
+      },
+      requires: { runtime: ["bun", "git"], network: false },
+    }),
+    defineTool({
       id: "ingest-ig-menu",
       title: "Ingest an IG's navigation from its sushi-config",
       description:
