@@ -400,7 +400,11 @@ On yes:
    and `--dry-run` builds without publishing. `--bare-ig`, which publishes
    the Publisher's own output, is not how an IG site is built under the
    2026-10-14 rule, and neither is a Publisher run by the route: it runs
-   none. The repository declares no `site.build` for it. The menu is read from `sushi-config.yaml`
+   none. The route's steps come from the mounted layers (§"The IG
+   repository's site route"); an IG that needs steps of its own beyond them
+   declares `site.build` inline in its `index.config.json` entry, never in a
+   `<instance>.config.json` (bean `ymvt`, owner 2026-10-14: *"i thought ONLY
+   index.config.json"*). The menu is read from `sushi-config.yaml`
    at build time: nothing is committed for it. The old per-repository
    `folio-site.yml` needed the `folio-assistant/` submodule, which the layer
    split (bean `n3h9`) removed; the template above replaces it.

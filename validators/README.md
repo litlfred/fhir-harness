@@ -21,4 +21,5 @@ Part of [FHIR IG Harness](../README.md) 0.1.0, declared as `fhir-harness-validat
 | [`ig-menu.json`](ig-menu.json) | data |  |
 | [`ig-metadata-index.json`](ig-metadata-index.json) | data |  |
 | [`ig-releases.json`](ig-releases.json) | data |  |
+
 <!-- kg:subgraph:end -->

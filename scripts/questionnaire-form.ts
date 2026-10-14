@@ -117,7 +117,7 @@ function repoOf(editBase: string | undefined): { repo?: string; branch?: string 
 }
 
 /** One form page's HTML, front matter included. */
-export function formPageHtml(q: { id: string; title?: string; name?: string; url?: string }, o: FormPageOptions & { source?: string; json: string }): string {
+export function formPageHtml(q: { id: string; title?: string; name?: string; url?: string }, o: FormPageOptions & { source?: string; json: string; text?: string }): string {
   const title = q.title ?? q.name ?? q.id;
   const { repo, branch } = repoOf(o.editBase);
   const cfg = {
@@ -131,9 +131,12 @@ export function formPageHtml(q: { id: string; title?: string; name?: string; url
       ...(o.slug ? { slug: o.slug } : {}),
     },
   };
-  // The runtime matches the host to the profile by `data-suggest-mode`, and
-  // takes the block over only when its source is a `.json` it can read.
-  const src = `${o.source ? ` data-src="${esc(o.source)}"` : ""} data-block="questionnaire:${esc(q.id)}" data-suggest-mode="${QUESTIONNAIRE_PROFILE.id}"`;
+  // The runtime matches the host to the profile by `data-suggest-mode`.
+  // `data-src` names the source in the repository (an FSH file), which the
+  // issue names and the runtime's raw pane edits; `data-suggest-text` is the
+  // built Questionnaire JSON the form mode edits as `ctx.text`: the AST's copy,
+  // not the rendered one, whose value sets were expanded for display.
+  const src = `${o.source ? ` data-src="${esc(o.source)}"` : ""}${o.text ? ` data-suggest-text="${esc(o.text)}"` : ""} data-block="questionnaire:${esc(q.id)}" data-suggest-mode="${QUESTIONNAIRE_PROFILE.id}"`;
   return [
     "---",
     `title: ${yamlStr(`${title} — form`)}`,
@@ -240,9 +243,12 @@ export function questionnaireFormPages(astDir: string, out: string, o: FormPageO
     const { questionnaire: q, expanded, missing } = preExpand(source, expansions);
     const json = `questionnaires/Questionnaire-${r.id}.json`;
     writeFileSync(join(out, json), JSON.stringify(q, null, 2) + "\n");
+    // The unexpanded Questionnaire, as the IG built it: what a suggested edit diffs against.
+    const text = `questionnaires/Questionnaire-${r.id}.source.json`;
+    writeFileSync(join(out, text), JSON.stringify(source, null, 2) + "\n");
     const page = `Questionnaire-${r.id}-form.html`;
     const src = r.source ?? undefined;
-    writeFileSync(join(out, page), formPageHtml({ ...q, id: r.id }, { builder: staged.builder, sw: staged.sw, ...o, json, source: src }));
+    writeFileSync(join(out, page), formPageHtml({ ...q, id: r.id }, { builder: staged.builder, sw: staged.sw, ...o, json, text, source: src }));
     pages.push({ id: r.id, page, json, ...(src ? { source: src } : {}), ...(expanded.length ? { expanded } : {}), ...(missing.length ? { notExpanded: missing } : {}) });
   }
   const js = join(out, "assets", "js");

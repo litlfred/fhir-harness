@@ -16,4 +16,5 @@ Held in the library [`fhir-harness/library/`](../README.md) as `isaitb-2026-inte
 | [sections](sections/) | 52 |
 | [blocks](blocks/) | 26 |
 | images | 0 |
+
 <!-- kg:subgraph:end -->
