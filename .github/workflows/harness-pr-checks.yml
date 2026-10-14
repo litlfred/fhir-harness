@@ -12,4 +12,4 @@ permissions:
 
 jobs:
   checks:
-    uses: litlfred/cat-harness-tools/.github/workflows/layer-pr-checks.yml@claude/dreamy-brahmagupta-abdp43-pr-ci
+    uses: litlfred/cat-harness-tools/.github/workflows/layer-pr-checks.yml@main
