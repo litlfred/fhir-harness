@@ -16,6 +16,9 @@
  *   - the resource as `JSON.stringify(parsed, null, 2)`, as the Publisher's
  *     JSON view does, never the file's own bytes.
  *
+ * `data-ast-view="json"` draws the JSON alone: an artefact's JSON tab page
+ * (`ig-thin-pages.ts`, owner 2026-10-14: "3. Render them too").
+ *
  * Three states, always visible: loading, loaded, and could-not-load naming the
  * file and the error. Completion is signalled for print and PDF: each load
  * counts itself in and out of `window.__kgLoads`, and the last to finish sets
@@ -128,16 +131,19 @@
       })
       .then(function (resource) {
         var frag = document.createDocumentFragment();
-        var n = narrative(resource);
-        if (n) relink(n, local, el.getAttribute("data-ast-published"));
-        frag.appendChild(heading("Narrative"));
-        if (n) frag.appendChild(n);
-        else {
-          var none = document.createElement("p");
-          none.textContent = "This resource carries no narrative.";
-          frag.appendChild(none);
+        var jsonOnly = el.getAttribute("data-ast-view") === "json";
+        if (!jsonOnly) {
+          var n = narrative(resource);
+          if (n) relink(n, local, el.getAttribute("data-ast-published"));
+          frag.appendChild(heading("Narrative"));
+          if (n) frag.appendChild(n);
+          else {
+            var none = document.createElement("p");
+            none.textContent = "This resource carries no narrative.";
+            frag.appendChild(none);
+          }
+          frag.appendChild(heading("JSON"));
         }
-        frag.appendChild(heading("JSON"));
         var pre = document.createElement("pre");
         pre.className = "ast-json";
         pre.textContent = JSON.stringify(resource, null, 2);

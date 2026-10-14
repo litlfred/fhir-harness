@@ -133,7 +133,31 @@ core, which sits above cat-harness-tools.
   build's rail pass (`rail-standalone-pages.ts`) links the rail's style and
   scripts instead of inlining them. Measured on the iHRIS 5 IG (182
   artefacts): 168 KB per full page, about 5.6 KB per railed thin page.
-- IG API, JSON-view and tab pages stay full pages.
+- **The tab views are thin pages too.** Owner, 2026-10-14, answering
+  whether the IG Publisher's per-artefact tab views are rendered: *"3. Render
+  them too"*. This supersedes "IG API, JSON-view and tab pages stay full
+  pages". Wherever the site serves the artefact's JSON, its views are written
+  beside its page under `artifact/`. That JSON is either a compiled copy
+  (`--compiled-data`) or the Publisher's own `<Type>-<id>.json` carried as
+  data (`--publisher-data <dir>`, which `ig-site:compose` passes as `.`).
+  Each view keeps the Publisher's file name:
+  - `-definitions`: the element table, from the snapshot, with the
+    differential's elements marked;
+  - `-mappings`: the `mapping` declarations, each with the elements that map
+    to it;
+  - the JSON view, `.profile.json` for a StructureDefinition and `.json` for
+    anything else, drawn by `ast-resource.js` (`data-ast-view="json"`);
+  - `-examples`: only for a profile that an instance of the IG claims in its
+    `meta.profile`, listed from the index node.
+
+  Each is the same shell (`thinArtifactView`) and the same renderer
+  (`assets/ig-artifact.js`, the config's `view`). The artefact's page links
+  them in a tab bar of plain links. The narrative's links to those file
+  names are relinked the same way as its links to the artefact pages. A full
+  tab page at the same address is replaced. The change history, testing,
+  XML and Turtle views are not rendered, and neither are the Publisher's
+  `comparison-v*/` directories; none of them is published. The IG API view
+  pages stay full pages.
 - In an IG site the docs root is the site root, so `--compiled-data` is
   `ast-data`. With `../ast-data`, every resource link points one level above
   the site.

@@ -66,7 +66,7 @@ import { composeIgSite, dataOverwritesQa, describeStage, stageIgSite, type IgMen
 import { IgReleasesSchema, type IgReleases } from "../schemas/ig-releases.ts";
 import { readChangedFiles, siteFilter } from "../../cat-harness-tools/scripts/staging-cone.ts";
 import { sourceHashOf } from "../../cat-harness-tools/scripts/qa-results.ts";
-import { ARTIFACT_INDEX_FILE } from "./ig-artifact-jsonld.ts";
+import { ARTIFACT_INDEX_FILE, artifactPageName } from "./ig-artifact-jsonld.ts";
 
 interface MenuFile extends IgMenu {
   source?: { kind?: string; of?: string; ref?: string };
@@ -178,7 +178,17 @@ export function artifactsFor(root: string, pagesHref = "../artifact/", opts: { f
         "Run gen-ig-pages without it, or pass --full-pages here too.",
     );
   }
-  return { list: ix.artifacts, pagesHref, index: `${pagesHref}${ARTIFACT_INDEX_FILE}` };
+  // The artefacts' thin tab views, by page name, so the narrative's links to
+  // the Publisher's tab file names land on them (owner, 2026-10-14: "3. Render
+  // them too"). Read off the disk: only a view the generator wrote is named.
+  const own = new Set(ix.artifacts.map((a) => artifactPageName(a)));
+  // declared-path-literal: the staged IG instance's own docs/artifact/ under `root`
+  const pages = readdirSync(join(root, "docs", "artifact"))
+    .filter((f) => f.endsWith(".html"))
+    .map((f) => f.slice(0, -".html".length))
+    .filter((n) => !own.has(n))
+    .sort();
+  return { list: ix.artifacts, pagesHref, index: `${pagesHref}${ARTIFACT_INDEX_FILE}`, ...(pages.length ? { pages } : {}) };
 }
 
 /**
