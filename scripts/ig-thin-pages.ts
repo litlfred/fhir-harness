@@ -7,9 +7,9 @@
  *
  * ## Why
  *
- * The owner, 2026-10-11, option A: *"i still want fhir IG output like how
- * litlfred/smart-trust or litlfred/smart-immuz is done. tiny html w/ dynamic
- * load from json(ld) KG"*. A full artefact page (`gen-ig-pages.ts` without
+ * The owner's ruling of 2026-10-11, option A (paraphrased): FHIR IG output
+ * should look like the SMART IG sites' — tiny HTML that loads its content
+ * dynamically from the JSON(-LD) knowledge graph. A full artefact page (`gen-ig-pages.ts` without
  * `--thin`) is a just-the-docs page of about 170-230 KB, of which 5-8 KB is
  * the artefact; the rest is the theme's chrome, written into every page
  * (`folio-assistant-gp2f`, #1885). This page carries none of it: the rail is
