@@ -386,11 +386,18 @@ export function igTopBar(menu: IgMenu, baseurl: string, title: string): string {
   return `<div class="ig-topbar" role="navigation" aria-label="${escHtml(title)} menu"><a class="ig-topbar-home" href="${escHtml(siteHref(baseurl, "index.html"))}">${escHtml(title)}</a>${groups}</div>`;
 }
 
-/** The top bar's style: a horizontal row, dropdowns that overlay the page. */
-const IG_TOPBAR_CSS = `
+/**
+ * The top bar's style: the IG's title on a line of its own, its menu on the
+ * line below as a row of dropdowns that overlay the page. Owner, 2026-10-14,
+ * on smart-hiv: *"also need line break between IG title and top menu"* — on
+ * one wrapping row the title shared the line with the menu, and the last
+ * group dropped under the title. The break is the title's full-width flex
+ * basis, so the markup ({@link igTopBar}) stays one `<div>`.
+ */
+export const IG_TOPBAR_CSS = `
 .ig-topbar{display:flex;flex-wrap:wrap;align-items:center;gap:.25rem 1rem;padding:.5rem 1rem;background:var(--ig-topbar-bg,#1c4b7c);color:#fff;font-size:.95rem}
 .ig-topbar a{color:#fff;text-decoration:none}
-.ig-topbar-home{font-weight:600;margin-right:.5rem}
+.ig-topbar-home{flex:0 0 100%;font-weight:600}
 .ig-topbar-group{position:relative}
 .ig-topbar-group summary{cursor:pointer;list-style:none}
 .ig-topbar-group summary::after{content:" \\25BE"}
@@ -1025,6 +1032,14 @@ export interface StageOptions {
      * `site.data.fhir`. Absent (`stage-ig-sites --full-pages`), the full pages.
      */
     index?: string;
+    /**
+     * Every page name under `pagesHref` beyond the artefacts' own: an
+     * artefact's thin TAB VIEWS (`<Type>-<id>-definitions`, `-mappings`,
+     * `-examples`, `.json`, `.profile.json`; owner, 2026-10-14: "3. Render them
+     * too"). The narrative's links to them are pointed at `pagesHref` as its
+     * links to the artefact pages are (`relinkArtifacts`).
+     */
+    pages?: ReadonlyArray<string>;
   };
   /**
    * Content a POST-PROCESSING step writes into a page after the Publisher has
@@ -1576,7 +1591,7 @@ export function stageIgSite(igSrc: string, out: string, opts: StageOptions = {})
   const unlisted: string[] = [];
   const filled: string[] = [];
   const usedMarkers = new Set<string>();
-  const artifactPages = new Set((opts.artifacts?.list ?? []).map((a) => artifactPageName(a)));
+  const artifactPages = new Set([...(opts.artifacts?.list ?? []).map((a) => artifactPageName(a)), ...(opts.artifacts?.pages ?? [])]);
   const annexed: string[] = [];
   let jsonAnnexes = 0;
   const cellLookup = opts.artifacts ? artifactCellLookup(opts.artifacts.list, opts.artifacts.pagesHref) : undefined;

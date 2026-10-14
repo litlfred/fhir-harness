@@ -11,7 +11,7 @@ import { parseBuild, STAMP_FILE } from "./site-build-stamp.ts";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { builtPage, IG_SITE_SCRIPTS, igSiteStamp, platformCommit, listedInstances, UPSTREAM_PAGES_ENV, missingFromSite, notSource, publisherPages, topMounts } from "./ig-repo-site.ts";
+import { builtPage, IG_SITE_SCRIPTS, igSiteStamp, platformCommit, listedInstances, UPSTREAM_PAGES_ENV, missingFromSite, notSource, PUBLISHER_CHROME, publisherChromePages, publisherPages, takeJsonOnly, takenFromOutput, topMounts } from "./ig-repo-site.ts";
 
 let dir: string;
 beforeAll(() => {
@@ -55,22 +55,51 @@ describe("publisher pages", () => {
   test("missingFromSite keeps every path the site holds", () => {
     expect(missingFromSite(["index.html", "a.html", "x/b.json"], new Set(["index.html"]))).toEqual(["a.html", "x/b.json"]);
   });
-  test("copies what the site lacks and never replaces a page the site built", () => {
+  test("copies the Publisher's data the site lacks, never its HTML, XML or Turtle, and never replaces a site file", () => {
     const site = join(dir, "site");
     const out = join(dir, "output");
     mkdirSync(site, { recursive: true });
     mkdirSync(join(out, "sub"), { recursive: true });
     writeFileSync(join(site, "index.html"), "<p>site</p>");
+    writeFileSync(join(site, "a.json"), "site");
     writeFileSync(join(out, "index.html"), "<p>publisher</p>");
+    writeFileSync(join(out, "artifacts.html"), "<p>publisher list</p>");
     writeFileSync(join(out, "StructureDefinition-x.html"), "<p>artefact</p>");
+    writeFileSync(join(out, "StructureDefinition-x.json"), "{}");
+    writeFileSync(join(out, "StructureDefinition-x.xml"), "<x/>");
+    writeFileSync(join(out, "StructureDefinition-x.ttl"), "@prefix");
+    writeFileSync(join(out, "a.json"), "publisher");
     writeFileSync(join(out, "sub", "package.tgz"), "tgz");
     const r = publisherPages({ site, output: out, log: () => {} });
-    expect(r).toEqual({ copied: 2, kept: 1 });
+    expect(r).toEqual({ copied: 2, kept: 1, refused: 5 });
     expect(readFileSync(join(site, "index.html"), "utf-8")).toBe("<p>site</p>");
-    expect(readFileSync(join(site, "StructureDefinition-x.html"), "utf-8")).toBe("<p>artefact</p>");
+    expect(readFileSync(join(site, "a.json"), "utf-8")).toBe("site");
+    for (const f of ["artifacts.html", "StructureDefinition-x.html", "StructureDefinition-x.xml", "StructureDefinition-x.ttl"]) expect(existsSync(join(site, f))).toBe(false);
+    expect(readFileSync(join(site, "StructureDefinition-x.json"), "utf-8")).toBe("{}");
     expect(readFileSync(join(site, "sub", "package.tgz"), "utf-8")).toBe("tgz");
   });
-  test("the copied pages are listed for the site build as the content's own", () => {
+  test("nothing under comparison-v*/ is copied, its fonts and stylesheets included (owner, 2026-10-14: \"2a\")", () => {
+    const site = join(dir, "site4");
+    const out = join(dir, "output4");
+    mkdirSync(site, { recursive: true });
+    mkdirSync(join(out, "comparison-v1.0.0", "assets"), { recursive: true });
+    mkdirSync(join(out, "comparison-v2.1"), { recursive: true });
+    writeFileSync(join(out, "comparison-v1.0.0", "index.html"), "<p>comparison</p>");
+    writeFileSync(join(out, "comparison-v1.0.0", "OpenSans-CondBold-webfont.eot"), "font");
+    writeFileSync(join(out, "comparison-v1.0.0", "assets", "fhir.css"), "css");
+    writeFileSync(join(out, "comparison-v2.1", "sd-1-x.json"), "{}");
+    // A file merely NAMED like one, outside such a directory, is the Publisher's data.
+    writeFileSync(join(out, "comparison-v1.json"), "{}");
+    const r = publisherPages({ site, output: out, log: () => {} });
+    expect(r).toEqual({ copied: 1, kept: 0, refused: 4 });
+    expect(existsSync(join(site, "comparison-v1.0.0"))).toBe(false);
+    expect(existsSync(join(site, "comparison-v2.1"))).toBe(false);
+    expect(existsSync(join(site, "comparison-v1.json"))).toBe(true);
+    expect(takenFromOutput("comparison-v1.0.0/x.css")).toBe(false);
+    expect(takenFromOutput("sub/comparison-v1.0.0/x.css")).toBe(true);
+    expect(takenFromOutput("ValueSet-x.json")).toBe(true);
+  });
+  test("no page the Publisher wrote is listed as the site's: none is copied", () => {
     const site = join(dir, "site3");
     const out = join(dir, "output3");
     mkdirSync(site, { recursive: true });
@@ -85,14 +114,54 @@ describe("publisher pages", () => {
     } finally {
       delete process.env[UPSTREAM_PAGES_ENV];
     }
-    expect(readFileSync(list, "utf-8")).toBe("a.html\n");
+    expect(readFileSync(list, "utf-8")).toBe("");
+    expect(existsSync(join(site, "a.html"))).toBe(false);
   });
   test("no Publisher output: nothing copied, and no failure", () => {
     const site = join(dir, "site2");
     mkdirSync(site, { recursive: true });
     const said: string[] = [];
-    expect(publisherPages({ site, output: join(dir, "absent"), log: (s) => said.push(s) })).toEqual({ copied: 0, kept: 0 });
+    expect(publisherPages({ site, output: join(dir, "absent"), log: (s) => said.push(s) })).toEqual({ copied: 0, kept: 0, refused: 0 });
     expect(said.join("\n")).toContain("no Publisher output");
+  });
+});
+
+test("takeJsonOnly: the index keeps an artefact's JSON and page address, and counts the XML and Turtle it drops", () => {
+  const f = join(dir, "index.json");
+  writeFileSync(f, JSON.stringify({ artifacts: [
+    { key: "A/a", published: { json: { url: "/s/A-a.json" }, xml: { url: "/s/A-a.xml" }, ttl: { url: "/s/A-a.ttl" }, html: { url: "/s/A-a.html" } } },
+    { key: "B/b", published: { xml: { url: "/s/B-b.xml" } } },
+  ] }));
+  expect(takeJsonOnly(f)).toEqual({ xml: 2, ttl: 1 });
+  const ix = JSON.parse(readFileSync(f, "utf-8"));
+  expect(Object.keys(ix.artifacts[0].published).sort()).toEqual(["html", "json"]);
+  expect(ix.artifacts[1].published).toEqual({});
+});
+
+describe("the guard: no published page wears the IG Publisher's chrome (owner, 2026-10-14)", () => {
+  // The Publisher's own page head and footer, as it writes them.
+  const PUBLISHER_PAGE =
+    '<html><head><link href="fhir.css" rel="stylesheet"/><link href="assets/css/bootstrap-fhir.css" rel="stylesheet"/></head>' +
+    '<body><p>x</p><p>Generated <span title="Wed, Oct 14, 2026">2026-10-14</span></p></body></html>';
+  test("each marker alone is the Publisher's chrome; a site page is not", () => {
+    for (const html of ['<link href="fhir.css" rel="stylesheet"/>', '<link rel="stylesheet" href="../assets/css/fhir.css">', '<link href="assets/css/bootstrap-fhir.css" rel="stylesheet"/>', 'Generated <span title="Wed">2026</span>']) {
+      expect(PUBLISHER_CHROME.some((re) => re.test(html))).toBe(true);
+    }
+    expect(PUBLISHER_CHROME.some((re) => re.test('<link rel="stylesheet" href="/x/assets/ig-artifact.css"><p>Generated by hand</p>'))).toBe(false);
+  });
+  test("publisherChromePages names every built page that carries it", () => {
+    const site = join(dir, "guarded");
+    mkdirSync(join(site, "deep"), { recursive: true });
+    writeFileSync(join(site, "index.html"), "<p>site</p>");
+    writeFileSync(join(site, "deep", "StructureDefinition-x.html"), PUBLISHER_PAGE);
+    writeFileSync(join(site, "fhir.css"), "body{}");
+    expect(publisherChromePages(site)).toEqual(["deep/StructureDefinition-x.html"]);
+  });
+  test("the step refuses a site that carries one, whoever put it there", () => {
+    const site = join(dir, "refused");
+    mkdirSync(site, { recursive: true });
+    writeFileSync(join(site, "artifacts.html"), PUBLISHER_PAGE);
+    expect(() => publisherPages({ site, output: join(dir, "absent"), log: () => {} })).toThrow(/IG Publisher's chrome[\s\S]*artifacts\.html/);
   });
 });
 

@@ -737,7 +737,7 @@ export function tools(baseUrl?: string): ToolDefinition[] {
       id: "ig-ast-refresh",
       title: "Refresh an IG's AST cache on a runner",
       description:
-        "Dispatch an IG repository's `ig-ast-refresh.yml`, which calls fhir-harness's reusable `.github/workflows/ig-ast-refresh.yml`: mount the layers the IG's index.lock.json pins, restore and judge the cache for `ref`, and when it is not valid (or `force`) build the IG with the pinned Publisher AST exporter, check the new AST is valid for its commit, and seed `cat/fhir-harness/fhir-ast/<package id>` with `ig-cache seed --push` — only from a commit on the default branch with the tip's inputs. Builds no site, writes no gh-pages, dispatches nothing.",
+        "Dispatch an IG repository's `ig-ast-refresh.yml`, which calls fhir-harness's reusable `.github/workflows/ig-ast-refresh.yml`: mount the layers the IG's index.lock.json pins, restore and judge the cache for `ref`, and when it is not valid (or `force`) run the caller's optional `pre-export` overlay command and build the IG with the pinned Publisher AST exporter (the AST is recorded against the clean commit's inputs, the overlay's changes put back), check the new AST is valid for its commit, and seed `cat/fhir-harness/fhir-ast/<package id>` with `ig-cache seed --push` — only from a commit on the default branch with the tip's inputs. Builds no site, writes no gh-pages, dispatches nothing.",
       install: { none: true },
       invoke: { shell: "gh workflow run ig-ast-refresh.yml --repo <owner/repo> --ref main -f ref=main [-f force=true]" },
       io: {
@@ -751,7 +751,7 @@ export function tools(baseUrl?: string): ToolDefinition[] {
       satisfies: ["ig-build-pipeline", "compiled-artefact-cache"],
       selection: {
         when: "An IG site publish refused a stale or missing AST, or the IG's source changed on its default branch. Dispatched by a person, or by an agent the owner named for that run — never by an agent on its own.",
-        limits: "Needs the IG repository to carry the caller and an index.lock.json that mounts fhir-harness. A merge that changes an input during the build leaves the cache unseeded (the run says so). The no-shrink gate refuses a candidate under 90% of the incumbent.",
+        limits: "Needs the IG repository to carry the caller and an index.lock.json that mounts fhir-harness. A merge that changes an input during the build leaves the cache unseeded (the run says so). A `pre-export` command is the caller's, in its own workflow file, never a dispatch input; a failing one exports nothing. The no-shrink gate refuses a candidate under 90% of the incumbent.",
         cost: "One GitHub runner for the Publisher build: about 25 minutes cold for a ~700-resource IG, less with the restored txcache.",
       },
       requires: { runtime: ["gh"], network: true },
@@ -845,6 +845,31 @@ export function tools(baseUrl?: string): ToolDefinition[] {
         when: "Building an IG site whose Questionnaires are edited in the self-hosted Form Builder, or whose form views need `answerValueSet` expanded without a terminology server.",
         limits: "Only what the IG's own Publisher run looked up: a LOINC code the IG never used is not in it, and the site says so (\"not in this IG's terminology cache; add it via the FSH source\") rather than asking a server. A cache entry that does not parse is skipped.",
         cost: "Reads the cache once; seconds.",
+      },
+      requires: { runtime: ["bun"], network: false },
+    }),
+
+    defineTool({
+      id: "sdc-checks",
+      title: "Check an IG's built Questionnaires with CSIRO's SDC libraries",
+      description:
+        "Build-time Structured Data Capture checks, one result per Questionnaire (`sdcChecks[]` of `fhir-questionnaire-wireframe`): `assemble` (`@aehrc/sdc-assemble` 2.0.3: an assemble-root's sub-forms resolve in this IG, and `--out` writes the assembled Questionnaire), `template-extract` (`@aehrc/sdc-template-extract` 1.0.16: extraction from the IG's fixture response yields the expected resources), `populate` (`@aehrc/sdc-populate` 4.7.2: FHIRPath pre-population from a fixture context gives the expected answers) and `behaviour` (`@aehrc/questionnaire-test-toolkit` 0.1.0: the IG's own behavioural test, warn-only). Owner, 2026-10-14: checks, not UI.",
+      install: { none: true },
+      invoke: { shell: "bun run fhir-harness/scripts/sdc-checks.ts --ast <ast> [--questionnaire <id>] [--fixtures <dir>] [--out <dir>] [--json]" },
+      io: {
+        inputs: [
+          { name: "ast", schema: t("FilesystemPath"), required: true, description: "The IG's FHIR AST (`output-ast/`): its Questionnaires, and the canonicals a sub-form resolves against." },
+          { name: "questionnaire", schema: t("Text"), required: false, description: "A Questionnaire id to check; default every one in the AST." },
+          { name: "fixtures", schema: t("FilesystemPath"), required: false, description: "One directory per Questionnaire id: `response.json` + `extract-expected.json`, `populate-context.json` + `populate-expected.json`, `behaviour.test.tsx`." },
+          { name: "out", schema: t("FilesystemPath"), required: false, description: "Where assembled Questionnaires are written." },
+        ],
+        outputs: [{ name: "sdcChecks", schema: t("Text"), description: "Per Questionnaire, per check: pass, fail, not-applicable, no-fixture or could-not-determine — the last three never a pass. JSON with `--json`. Exit 1 on an error-severity failure; behavioural tests never fail the run." }],
+      },
+      satisfies: ["fhir-questionnaire-wireframe"],
+      selection: {
+        when: "After SUSHI has built the IG's Questionnaires and before they are reviewed as forms; whenever a Questionnaire uses modular sub-forms, template extraction or pre-population.",
+        limits: "Only as good as the IG's fixtures: with none, extraction and population say `no-fixture` rather than pass. Nothing is fetched from a server: sub-forms resolve in the AST and population queries in the fixture. The behavioural toolkit is early and needs React and Smart Forms peers installed with the IG's tests; without them it is `could-not-determine`, a warning.",
+        cost: "Seconds per Questionnaire; a behavioural test runs a bun test process.",
       },
       requires: { runtime: ["bun"], network: false },
     }),

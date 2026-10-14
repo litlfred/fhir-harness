@@ -58,7 +58,10 @@ release changes.
 Since 2026-10-12 (owner: *"make thin default"*) the Jekyll phase emits THIN
 pages: each artefact page and the IG's `artifacts.html` and `toc.html` are a
 few KB that load their content from JSON-LD nodes (`artifact/<Type>-<id>.jsonld`
-and `artifact/index.jsonld`), and the IG's narrative pages keep their prose
+and `artifact/index.jsonld`). Each artefact's tab views (definitions,
+mappings, JSON and examples) are thin pages beside it, drawn from the
+resource's JSON (owner, 2026-10-14: *"3. Render them too"*). The IG's
+narrative pages keep their prose
 with every piece of chrome linked rather than inlined. The old full pages stay
 reachable with `--full-pages` on both `gen-ig-pages.ts` and `stage-ig-sites.ts`.
 An IG that pins this layer by SHA changes nothing until it re-pins, and gets
@@ -113,9 +116,11 @@ which is dispatch-only. No IG repository carries the steps itself. One run:
 
 1. mounts the layers the IG repository's `index.lock.json` pins;
 2. restores and judges the cache for `ref` (default `main`);
-3. if the cache is not valid, or `force` is set, builds the IG with
+3. if the cache is not valid, or `force` is set, runs the caller's
+   `pre-export` command when it gives one, then builds the IG with
    `AstExportCli` (Tool `ig-ast-export`, pinned `ast-export-ref`);
-4. checks that the new AST is valid for its own commit;
+4. puts back what `pre-export` changed in the inputs, and checks that the new
+   AST is valid for its own commit;
 5. seeds the cache with `ig-cache.sh seed --push`, only when the commit is on
    the default branch with the tip's inputs. Otherwise the AST is uploaded as
    a run artefact.
@@ -123,6 +128,23 @@ which is dispatch-only. No IG repository carries the steps itself. One run:
 Seeding is refused below 90% of the incumbent's resources or edges (the
 no-shrink gate in `compiled-artefact-cache`). The run builds no site, writes
 no gh-pages and dispatches nothing. The Tool node is `ig-ast-refresh`.
+
+**An overlay's preparation: `pre-export`.** Some IGs prepare their inputs
+before the Publisher runs: an overlay registers pages in `sushi-config.yaml`
+or generates resources from other sources. The plain exporter does not do
+this, so the caller passes the command as the optional `pre-export` input,
+written in its own workflow file. This layer runs it with `bash` at the IG root
+and knows nothing about what it does: the overlay names its own steps, and
+this skill does not list them.
+
+The exporter records the digest of the tree it is given, and a prepared tree
+is one no clean checkout has. So the run takes the source's digest
+(`ig-ast.ts digest`) before the command runs. After the export it puts the
+inputs back, checks the digest again, and writes the source's digest into the
+manifest's `inputs` with `ig-ast.ts source-inputs`. The prepared tree's
+digest and the command are kept under `preExport`. The cache then verifies
+on any clean checkout, the way an AST built without `pre-export` does. A
+failing `pre-export` fails the run, so nothing is seeded.
 
 **When it runs.** The run is dispatched by a person, or by an agent the owner
 named for that run. An agent never dispatches it on its own (`feature-staging`

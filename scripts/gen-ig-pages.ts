@@ -74,9 +74,22 @@
  * that draws the page from the node and the resource; and the index node
  * (`artifact/index.jsonld`) that the IG site's thin `artifacts` and `toc`
  * pages draw (`build-ig-site.ts`). The address is the full page's, so every
- * link to it holds. The IG API, JSON-view and tab pages stay full pages.
- * `--jsonld-base <url>` makes the nodes' IRIs absolute under the docs root's
- * published URL.
+ * link to it holds. `--jsonld-base <url>` makes the nodes' IRIs absolute
+ * under the docs root's published URL.
+ *
+ * THE TAB VIEWS ARE THIN TOO (owner, 2026-10-14: "3. Render them too"; "I DO
+ * NOT WANT THE IG PUBLISHER HTML"). Where this site serves the artefact's
+ * JSON — a compiled copy (`--compiled-data`), or the Publisher's own
+ * `<Type>-<id>.json` carried as data (`--publisher-data <path from the docs
+ * root>`, which an IG repository's site passes) — each artefact gets thin
+ * pages for its views beside its own, at the Publisher's tab file names:
+ * `-definitions` and `-mappings` for a StructureDefinition, the JSON view
+ * (`.profile.json` for a StructureDefinition, else `.json`), and `-examples`
+ * for every StructureDefinition, saying so where no instance claims it
+ * (owner, 2026-10-14: "1a"). The artefact's page links
+ * them in a tab bar, and they are drawn by the same renderer
+ * (`ig-thin-pages.ts` `thinArtifactView`). A full tab page of the same
+ * address is replaced. The IG API view pages stay full pages.
  *
  * `--full-pages` is the opt-out: the full just-the-docs artefact pages, as
  * before 2026-10-12, and no JSON-LD. It is kept reachable, not removed —
@@ -97,8 +110,8 @@ import { IG_API_HUB_SCRIPT, IG_API_HUB_TEMPLATE, IG_API_VIEW_SCRIPT, igApiHubDat
 import { IG_CHROME_SCOPE, igFooterData } from "./ig-footer.ts";
 import { JSON_VIEW_SCRIPT, VIEW_PAGE, examplesPage, hasJsonView, historyPage, jsonViewData, mappingsPage, mdText, packageEntries, rebaseDescriptionLinks, profileJsonViewData, resourceFacts, resourceTabs, testingPage, type TabPageData } from "./resource-views.ts";
 import { isDirectoryReadme } from "../../cat-harness/schemas/kg-node.js";
-import { artifactJsonLdFiles } from "./ig-artifact-jsonld.ts";
-import { THIN_PAGE_SCRIPT, THIN_PAGE_STYLE, thinArtifactPage, thinArtifactPath } from "./ig-thin-pages.ts";
+import { ARTIFACT_INDEX_FILE, artifactJsonLdFiles, localResourceHref } from "./ig-artifact-jsonld.ts";
+import { THIN_PAGE_SCRIPT, THIN_PAGE_STYLE, artifactTabs, thinArtifactPath, thinArtifactView } from "./ig-thin-pages.ts";
 
 import { IgMenuSchema, type IgMenu, type IgMenuGroup, menuHref, menuItemCount } from "../schemas/ig-menu.js";
 import {
@@ -136,7 +149,7 @@ function arg(name: string): string | undefined {
 
 const INSTANCE_ARG = arg("--instance");
 if (!INSTANCE_ARG) {
-  console.error("usage: gen-ig-pages.ts --instance <dir> --label <name> [--chrome-owner <instance>] [--index <index.json>] [--out <dir>] [--summary] [--full-pages | --jsonld-base <url>] [--check]");
+  console.error("usage: gen-ig-pages.ts --instance <dir> --label <name> [--chrome-owner <instance>] [--index <index.json>] [--out <dir>] [--summary] [--full-pages | --jsonld-base <url>] [--publisher-data <dir>] [--ig-site] [--check]");
   process.exit(2);
 }
 const INSTANCE = resolve(process.cwd(), INSTANCE_ARG);
@@ -192,6 +205,14 @@ const JSONLD_BASE = (() => {
   const b = arg("--jsonld-base");
   return b === undefined ? undefined : b.endsWith("/") ? b : `${b}/`;
 })();
+/**
+ * `--publisher-data <dir>`: the Publisher's own data files — each artefact's
+ * `<Type>-<id>.json` — are served at this path from the docs root (`.` for an
+ * IG repository's site, which carries them at its root). The thin artefact
+ * page and its tab views draw the resource from there when no compiled copy
+ * is served. Absent: only a compiled copy is drawn.
+ */
+const PUBLISHER_DATA = arg("--publisher-data")?.replace(/\/+$/, "");
 const THIN_RENDERER = join(import.meta.dir, "templates", "ig-pages", "ig-artifact.js");
 const THIN_STYLE = join(import.meta.dir, "templates", "ig-pages", "ig-artifact.css");
 
@@ -203,7 +224,11 @@ const OUT = OUT_ARG ? resolve(process.cwd(), OUT_ARG) : join(INSTANCE, "docs");
  * `/<instance>/` (`igSite` on the docs directory, bean `mftp`), rather than
  * composed into the main site. Read off the declaration, never inferred.
  */
-const IG_SITE = readDeclaration(INSTANCE)?.directories?.find((d) => resolve(INSTANCE, d.path).replace(/\/+$/, "") === OUT.replace(/\/+$/, ""))?.igSite === true;
+const IG_SITE =
+  // `--ig-site`: said by the caller, for a checkout with no declaration to read it
+  // from — an IG repository's own site (`ig-repo-site.ts compose`), which IS its IG site.
+  process.argv.includes("--ig-site") ||
+  readDeclaration(INSTANCE)?.directories?.find((d) => resolve(INSTANCE, d.path).replace(/\/+$/, "") === OUT.replace(/\/+$/, ""))?.igSite === true;
 /**
  * The site-absolute path of this instance's docs root, for `relative_url`:
  * the instance's own route in the main site, or the IG site's root, whose
@@ -1381,6 +1406,20 @@ if (ix.artifacts.some(hasJsonView)) {
 // Each states only what the Publisher's states; a page whose Publisher form
 // would list data this build cannot (tests, examples) is not written.
 const tabCounts = { history: 0, testing: 0, profileHistory: 0, profileJson: 0, examples: 0, mappings: 0 };
+/** The THIN tab views written (`ig-thin-pages.ts` `thinArtifactView`), by view. */
+const thinTabCounts = { definitions: 0, mappings: 0, json: 0, examples: 0 };
+/**
+ * The resource's JSON as this site serves it, relative to an artefact page,
+ * when no compiled copy is: the Publisher's own file under `--publisher-data`,
+ * by the name its published JSON has. Undefined otherwise.
+ */
+function servedResource(a: FhirArtifact): string | undefined {
+  if (PUBLISHER_DATA === undefined || localResourceHref(a, COMPILED_DATA) !== undefined) return undefined;
+  const url = a.published.json?.url;
+  if (!url) return undefined;
+  const file = decodeURIComponent(url.split(/[?#]/)[0]!.split("/").pop() ?? "");
+  return file ? posix.normalize(`../${PUBLISHER_DATA}/${file}`) : undefined;
+}
 if (ix.package?.localPath && igApiServing.ok) {
   const entries = packageEntries(join(INSTANCE, ix.package.localPath));
   const resources = [...entries.values()].map((b) => JSON.parse(b.toString("utf8")) as Record<string, unknown>);
@@ -1533,22 +1572,42 @@ if (existsSync(MENU)) {
   // page — still lands. Built from the full pages' order rather than beside
   // it: one order, read once.
   if (THIN) {
+    const astPages: string[] = [];
+    let served = 0;
     for (const a of ix.artifacts) {
       const md = join("artifact", `${pageName(a)}.md`);
       const i = position.get(md);
       pages.delete(md);
-      pages.set(
-        thinArtifactPath(a),
-        thinArtifactPage(ix, a, {
-          label: LABEL,
-          home: IG_SITE ? "../index.html" : "../",
-          all: ALL_ARTEFACTS_HREF,
-          ...(IG_SITE ? { toc: "../toc.html" } : {}),
-          ...(i !== undefined && i > 0 ? { prev: href(md, order[i - 1]!) } : {}),
-          ...(i !== undefined && i < order.length - 1 ? { next: href(md, order[i + 1]!) } : {}),
-          ...(COMPILED_DATA ? { compiledData: COMPILED_DATA } : {}),
-        }),
-      );
+      const resource = servedResource(a);
+      const tabs = artifactTabs(a, { resource: resource !== undefined || localResourceHref(a, COMPILED_DATA) !== undefined });
+      const opts = {
+        label: LABEL,
+        home: IG_SITE ? "../index.html" : "../",
+        all: ALL_ARTEFACTS_HREF,
+        ...(IG_SITE ? { toc: "../toc.html" } : {}),
+        ...(i !== undefined && i > 0 ? { prev: href(md, order[i - 1]!) } : {}),
+        ...(i !== undefined && i < order.length - 1 ? { next: href(md, order[i + 1]!) } : {}),
+        ...(COMPILED_DATA ? { compiledData: COMPILED_DATA } : {}),
+        ...(resource ? { resource } : {}),
+        ...(tabs.length ? { tabs, index: ARTIFACT_INDEX_FILE } : {}),
+      };
+      if (resource) served += 1;
+      pages.set(thinArtifactPath(a), thinArtifactView(ix, a, "content", opts));
+      astPages.push(`${pageName(a)}.html`);
+      for (const t of tabs) {
+        if (t.view === "content") continue;
+        // The thin view replaces a full tab page at the same address.
+        pages.delete(join("artifact", t.file.replace(/\.html$/, ".md")));
+        pages.set(join("artifact", t.file), thinArtifactView(ix, a, t.view, opts));
+        astPages.push(t.file);
+        thinTabCounts[t.view as keyof typeof thinTabCounts] += 1;
+      }
+    }
+    // The AST loader, and the list of this site's own artefact pages it keeps
+    // a narrative's link to, once any page draws a resource.
+    if (astPages.length > ix.artifacts.length || served > 0) {
+      pages.set(join("assets", "ast-resource.js"), readFileSync(AST_LOADER, "utf8"));
+      pages.set(join("assets", "ast-pages.json"), `${JSON.stringify([...new Set(astPages)].sort())}\n`);
     }
     for (const [rel, text] of artifactJsonLdFiles(ix, { ...(JSONLD_BASE ? { base: JSONLD_BASE } : {}), ...(COMPILED_DATA ? { compiledData: COMPILED_DATA } : {}), title: LABEL })) {
       pages.set(rel, text);
@@ -1766,11 +1825,12 @@ if (CHECK) {
   // pages over a corpus of 674.
   // One per ARTEFACT: the IG API view pages and their raw files share the
   // directory and are counted on their own line.
-  const artefactPages = [...pages.keys()].filter((k) => k.startsWith("artifact/") && (k.endsWith(".md") || (THIN && k.endsWith(".html"))) && !VIEW_PAGE.test(k)).length;
+  const artefactPages = THIN ? ix.artifacts.length : [...pages.keys()].filter((k) => k.startsWith("artifact/") && k.endsWith(".md") && !VIEW_PAGE.test(k)).length;
   const categoryPages = [...pages.keys()].filter((k) => k.startsWith("category/")).length;
   console.log(`  ${artefactPages} artefact page(s) — one per artefact${THIN ? ", THIN: each a shell over its JSON-LD node, drawn by assets/ig-artifact.js" : ""}; ${sc.schema} carry a ${SIDECAR_LABEL} schema`);
   console.log(`  ${igApiViewCount} IG API view page(s) — one per held JSON Schema or JSON-LD sidecar, file fetched client-side`);
   console.log(`  ${jsonViewCount} JSON view page(s) — resource read client-side from the held package.tgz`);
+  if (THIN) console.log(`  thin tab views: ${thinTabCounts.definitions} definitions, ${thinTabCounts.mappings} mappings, ${thinTabCounts.json} JSON, ${thinTabCounts.examples} examples — each drawn by assets/ig-artifact.js from the resource's JSON`);
   console.log(`  tab pages: ${tabCounts.history} change history, ${tabCounts.testing} testing, ${tabCounts.profileHistory} profile history, ${tabCounts.profileJson} profile JSON, ${tabCounts.examples} examples, ${tabCounts.mappings} mappings`);
   console.log(`  ${categoryPages} category page(s) — categories over ${INLINE_LIMIT}, listed off the index`);
   // THE MENU IS REPORTED EITHER WAY. An unreported page is a page nothing

@@ -90,7 +90,7 @@ WHAT IT DOES NOT CLAIM. A valid AST is a cache built from these inputs; it is no
       <bpmn:outgoing>Flow_6</bpmn:outgoing>
     </bpmn:userTask>
     <bpmn:serviceTask id="Task_Export" name="Build the IG with the Publisher&#10;AST exporter [ig-publisher-fork]">
-      <bpmn:documentation>The runner mounts the layers the IG repository's `index.lock.json` pins, restores and judges the cache itself, and, when it is not valid, runs `AstExportCli` (Tool `ig-ast-export`, `litlfred/fhir-ig-publisher` at the pinned `claude/ast-export` commit) with `-tx`. The AST just built must itself be `valid` for the commit, or the run fails.</bpmn:documentation>
+      <bpmn:documentation>The runner mounts the layers the IG repository's `index.lock.json` pins, restores and judges the cache itself, and, when it is not valid, runs the caller's optional `pre-export` overlay command, then `AstExportCli` (Tool `ig-ast-export`, `litlfred/fhir-ig-publisher` at the pinned `claude/ast-export` commit) with `-tx`. The inputs `pre-export` changed are put back and the AST is recorded against the clean commit's input digest (`ig-ast.ts source-inputs`). The AST just built must itself be `valid` for the commit, or the run fails.</bpmn:documentation>
       <bpmn:extensionElements>
         <bootstrap.processes:skill ref="ig-publisher-fork"/>
       </bpmn:extensionElements>
