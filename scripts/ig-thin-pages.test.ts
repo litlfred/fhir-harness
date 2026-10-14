@@ -27,6 +27,10 @@ import { thinPageConfigOf } from "../../cat-harness-tools/scripts/thin-page.ts";
 import { composeIgSite, stageIgSite } from "./build-ig-site";
 import { artifactsFor } from "./stage-ig-sites";
 
+/** A parsed JSON-LD node, mutated in place by the rewrite helpers below. */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- arbitrary JSON-LD, indexed freely by each case
+type Json = Record<string, any>;
+
 const ROOT = resolve(import.meta.dir, "..", "..");
 const SCRIPT = join(ROOT, "fhir-harness/scripts/gen-ig-pages.ts");
 const RESOURCE = "output-ast/resources/StructureDefinition/Composition-uv-ips--7ae5e8a1.json";
@@ -290,7 +294,7 @@ describe("ig-artifact-jsonld check over the index node (calibrated: each case br
   };
   afterAll(() => sites.forEach((s) => rmSync(s, { recursive: true, force: true })));
   const indexPath = (s: string) => join(s, "artifact", "index.jsonld");
-  const rewrite = (s: string, f: (n: Record<string, any>) => void) => {
+  const rewrite = (s: string, f: (n: Json) => void) => {
     const n = JSON.parse(readFileSync(indexPath(s), "utf8"));
     f(n);
     const text = `${JSON.stringify(n, null, 2)}\n`;
@@ -411,7 +415,7 @@ describe("what an instance states: its profiles and its code, in the node and th
 
   const sites: string[] = [];
   afterAll(() => sites.forEach((s) => rmSync(s, { recursive: true, force: true })));
-  const rewrite = (f: (n: Record<string, any>) => void) => {
+  const rewrite = (f: (n: Json) => void) => {
     const s = builtSite(ix);
     sites.push(s);
     const p = join(s, "artifact", "index.jsonld");
@@ -427,7 +431,7 @@ describe("what an instance states: its profiles and its code, in the node and th
   });
   it("check fails when an entry's code is not its node's (a summary, never a second home)", () => {
     const s = rewrite((n) => {
-      n["schema:hasPart"].find((x: any) => x["dcterms:identifier"] === "Basic/page-role")["dcterms:subject"][0]["schema:termCode"] = "role";
+      n["schema:hasPart"].find((x: Json) => x["dcterms:identifier"] === "Basic/page-role")["dcterms:subject"][0]["schema:termCode"] = "role";
     });
     expect(checkArtifactJsonLd(ix, s).join("\n")).toContain("the entry for Basic/page-role says dcterms:subject");
   });
