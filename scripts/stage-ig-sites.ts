@@ -374,7 +374,10 @@ if (import.meta.main) {
     console.error("--source needs --only: a local checkout is one IG's source");
     process.exit(2);
   }
-  const build = only ? all.build.filter((b) => b.instance === only) : all.build;
+  // By directory name or by declared name: an instance declared at its checkout's
+  // root (an IG repository's own, as smart-trust's main declares it) has a
+  // directory named after the checkout, not after the instance.
+  const build = only ? all.build.filter((b) => b.instance === only || b.declaredAs === only) : all.build;
   const skipped = all.skipped;
   if (only && build.length === 0) {
     console.error(`${only}: no instance here records a sushi-config source in fhir-artifact-index/menu.json`);

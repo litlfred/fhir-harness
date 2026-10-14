@@ -115,8 +115,8 @@ import {
   declarationPathIn,
   directoriesForGraph,
   instanceRootsIn,
+  checkoutRootFor,
   readDeclaration,
-  repoRootFor,
 } from "../../cat-harness/schemas/cat-harness.js";
 
 import {
@@ -326,7 +326,7 @@ function declaredName(root: string): string | undefined {
  */
 function loadChrome(): IgChrome | undefined {
   if (CHROME_OWNER === undefined) return undefined;
-  const file = chromeFileFor(repoRootFor(INSTANCE), CHROME_OWNER, {
+  const file = chromeFileFor(checkoutRootFor(INSTANCE), CHROME_OWNER, {
     instanceRootsIn,
     declarationNameOf: declaredName,
     directoriesForGraph: (root, graph) => directoriesForGraph(root, graph),
@@ -1655,7 +1655,7 @@ function docsDirectoryId(): string | undefined {
 // index this generator (or, for an IG site, the Publisher) draws: the IG's own
 // `artifacts.html`, or this instance's index. The index stays where the IG
 // puts it; the route is where the declaration says it is, and it always works.
-const ROUTE_REPO = repoRootFor(INSTANCE);
+const ROUTE_REPO = checkoutRootFor(INSTANCE);
 const ROUTE_SITE = siteOwnerDir(ROUTE_REPO);
 const IG_VISUALISERS = declaredVisualisers(ROUTE_REPO).filter((v) => v.renderedBy === "ig-pages");
 const routePages: { abs: string; html: string }[] = [];
@@ -1705,7 +1705,7 @@ if (CHECK) {
   // cat/fhir-harness/ig-docs, and the branch after the cutover (bean lbz8).
   // The resolver is the one `uml:overview:check` uses (`route-authority.ts`,
   // #2053). A branch it cannot reach is UNKNOWN: neither stale nor a pass.
-  const repoRoot = repoRootFor(INSTANCE);
+  const repoRoot = checkoutRootFor(INSTANCE);
   const id = docsDirectoryId();
   const outRel = relative(repoRoot, OUT).split(sep).join("/");
   const verdict = id === undefined
