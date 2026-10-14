@@ -12,6 +12,7 @@ import { ARTIFACT_LIST_TEMPLATE_PATH, artifactListInclude, publisherPlural, FOOT
 import { copyDocsInto, igSiteDocs, webpagePalette } from "./stage-ig-sites";
 import type { IgReleases } from "../schemas/ig-releases.ts";
 import { artifactPageName } from "../schemas/fhir-artifact-index.js";
+import { siteFileFor } from "../../cat-harness/schemas/cat-harness.js";
 
 let dir: string;
 let out: string;
@@ -817,7 +818,11 @@ describe("composeIgSite: a staged IG moved into a host Jekyll source", () => {
     expect(readFileSync(join(host, "_includes", "ig", "x", "_top.html"), "utf-8")).toContain(IG_FIGURE_IMAGES_STAMP);
     // ...through the attribute the platform's viewer actually reads: the contract is docs-ui.js's.
     expect(IG_FIGURE_IMAGES_STAMP).toContain("data-fa-figure-images");
-    const docsUi = readFileSync(join(import.meta.dir, "..", "..", "cat-harness", "docs", "assets", "js", "docs-ui.js"), "utf-8");
+    // Asked, never spelled: `docs-ui.js` is the site CHROME's since cat-harness
+    // moved the chrome into its own `site-chrome/` layer (semantic subgraphs,
+    // slice 1); `siteFileFor` gives the later-wins answer compose-docs gives.
+    const harness = join(import.meta.dir, "..", "..", "cat-harness");
+    const docsUi = readFileSync(join(harness, siteFileFor(harness, "assets/js/docs-ui.js")), "utf-8");
     expect(docsUi).toContain('document.querySelector("[data-fa-figure-images]")');
     expect(existsSync(join(host, "x", "_config.yml"))).toBe(false);
     expect(existsSync(join(host, "x", "_layouts"))).toBe(false);
