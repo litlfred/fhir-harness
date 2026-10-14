@@ -105,6 +105,13 @@ asserted by both test suites. If you change the algorithm, change it in both
 places, and change the vector in both tests. A drift here makes every AST read
 as stale, or worse, makes a stale one read as valid.
 
+**A later commit that changes no input is the same source.** If the recorded
+`sourceRevision` is an ancestor of HEAD and the recomputed `inputDigest`
+equals the recorded one, the revision counts as unchanged (`sameSourceAs`,
+2026-10-14). Without that, every README merge would make the cache stale and
+block the publish that reads it. A recorded commit the checkout cannot see
+(a shallow clone, another branch) stays stale.
+
 The toolchain cannot be read from a checkout. Without `--toolchain` it is
 **assumed unchanged**, and the result's `current` says so. When the Publisher
 you would run is known, pass it.
@@ -202,4 +209,7 @@ bun run fhir-harness/scripts/ig-rendered-impact.ts --ig <root> --base origin/mai
 - **Do not render from an AST whose `validity` you did not check.**
 - **Do not re-implement any of this in a CI workflow.** Owner, 2026-09-30: if
   CI is ever added, it **calls these same scripts and tools**, so a CI result
-  and a local result are the same measurement.
+  and a local result are the same measurement. The one workflow there is,
+  `.github/workflows/ig-ast-refresh.yml` (2026-10-14; `ig-build-pipeline`
+  §"The AST cache lifecycle"), does exactly that: `ig-cache.sh`,
+  `ig-ast.ts validity` and `AstExportCli`.

@@ -223,7 +223,31 @@ export interface AstValidity {
 }
 
 /**
- * Whether `ast` was built from the inputs `igRoot` has now. The toolchain
+ * The source revision to compare with the recorded one. A commit that changes
+ * none of the IG's inputs (a README, a workflow, a declaration) does not make
+ * its AST stale: when the recorded revision is an ANCESTOR of HEAD and the
+ * input digest recomputed now equals the recorded one, the recorded revision
+ * is returned, so the comparison passes. Every other case returns HEAD as it
+ * is: a recorded revision that is not an ancestor (another branch), or one
+ * this checkout cannot see (a shallow clone), or no recorded digest to vouch
+ * for the inputs, still reads as stale — never as valid by default.
+ */
+export function sameSourceAs(
+  igRoot: string,
+  head: string | undefined,
+  recordedRev: string | undefined,
+  recordedDigest: string | undefined,
+  digest: string,
+): string | undefined {
+  if (!head || !recordedRev || head === recordedRev) return head;
+  if (!recordedDigest || recordedDigest !== digest) return head;
+  const anc = spawnSync("git", ["merge-base", "--is-ancestor", recordedRev, head], { cwd: igRoot, encoding: "utf-8" });
+  return anc.status === 0 ? recordedRev : head;
+}
+
+/**
+ * Whether `ast` was built from the inputs `igRoot` has now. A later commit
+ * whose inputs are unchanged counts as the same source (`sameSourceAs`). The toolchain
  * cannot be read from a checkout, so it is taken from `toolchain` when the
  * caller knows it (the Publisher version it would run) and otherwise
  * assumed unchanged, and SAID to be assumed, in `current`.
@@ -231,10 +255,12 @@ export interface AstValidity {
 export function astValidity(ast: Ast, igRoot: string, toolchain?: string): AstValidity {
   const recorded = ast.manifest.inputs;
   const rev = spawnSync("git", ["rev-parse", "HEAD"], { cwd: igRoot, encoding: "utf-8" });
+  const head = rev.status === 0 ? rev.stdout.trim() : undefined;
+  const digest = inputDigest(igRoot);
   const current = {
     toolchain: toolchain ?? recorded?.toolchain,
-    sourceRevision: rev.status === 0 ? rev.stdout.trim() : undefined,
-    inputDigest: inputDigest(igRoot),
+    sourceRevision: sameSourceAs(igRoot, head, recorded?.sourceRevision, recorded?.inputDigest, digest),
+    inputDigest: digest,
   };
   const rec = MaterializationSchema.safeParse({
     state: "materialized",

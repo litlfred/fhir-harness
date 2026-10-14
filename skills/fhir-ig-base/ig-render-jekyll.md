@@ -199,6 +199,13 @@ decision.
 
 ## What this does not replace
 
+**Which AST the pages are drawn from.** An IG repository's site is drawn from
+the AST on its cache branch, `cat/fhir-harness/fhir-ast/<package id>`. The
+publish refuses one that is not valid for the commit, and is never drawn from
+the Publisher's HTML. The cache is refreshed by a Publisher run on a runner.
+[`ig-build-pipeline`](ig-build-pipeline.md) §"The AST cache lifecycle" has the
+rule and the workflow.
+
 The Publisher still runs. This skill is about **where pages are rendered**, not
 about whether the IG is built: validation, dependency resolution and terminology
 expansion are the Publisher's and are not reproducible from cached output. The
