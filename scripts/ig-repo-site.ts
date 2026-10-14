@@ -203,6 +203,17 @@ export function notSource(root: string): Set<string> {
 const TAKEN_FORMATS = new Set(["json", "html"]);
 /** Publisher output files never copied into the site: its finished pages, and the serialisations the render path refuses. */
 export const NOT_TAKEN = /\.(html?|xml|ttl)$/i;
+/**
+ * The Publisher's version comparisons (`comparison-v<version>/`): its own
+ * pages and the fonts, stylesheets and images they wear. Not rendered here,
+ * so none of it is copied (owner, 2026-10-14: "2a").
+ */
+export const NOT_TAKEN_DIR = /^comparison-v[^/]*\//;
+
+/** Whether `ig-site:publisher-pages` copies this Publisher output file (a path relative to `output/`). */
+export function takenFromOutput(path: string): boolean {
+  return !NOT_TAKEN.test(path) && !NOT_TAKEN_DIR.test(path);
+}
 
 /**
  * Drop the representations the site does not take from an ingested index,
@@ -430,11 +441,13 @@ export function publisherPages(o: { site: string; output: string; ig?: string; l
     // rendered "populated from the Publisher's structured output, rather than
     // copying the Publisher's finished HTML into place"; owner, 2026-10-14:
     // "I DO NOT WANT THE IG PUBLISHER HTML"), and not the XML and Turtle the
-    // render path refuses (§"1. JSON only"). The artefact pages are the thin
+    // render path refuses (§"1. JSON only"), and nothing under the
+    // Publisher's `comparison-v*/`, fonts and stylesheets included (owner,
+    // 2026-10-14: "2a"). The artefact pages are the thin
     // pages `compose` built; what is copied is the data and the files the
     // site's pages link: the JSON, the package, the images.
     const all = filesUnder(o.output);
-    const taken = all.filter((p) => !NOT_TAKEN.test(p));
+    const taken = all.filter(takenFromOutput);
     refused = all.length - taken.length;
     const missing = missingFromSite(taken, new Set(filesUnder(o.site)));
     for (const p of missing) {
@@ -443,7 +456,7 @@ export function publisherPages(o: { site: string; output: string; ig?: string; l
     }
     copied = missing.length;
     kept = taken.length - missing.length;
-    log(`publisher pages: ${copied} file(s) of ${o.output} copied in; ${kept} the site already holds were kept; ${refused} not taken (the Publisher's HTML, XML and Turtle)`);
+    log(`publisher pages: ${copied} file(s) of ${o.output} copied in; ${kept} the site already holds were kept; ${refused} not taken (the Publisher's HTML, XML and Turtle, and everything under comparison-v*/)`);
   } else {
     log(`publisher pages: no Publisher output at ${o.output} — the site carries the IG's own pages only, and links to artefact pages do not land`);
   }

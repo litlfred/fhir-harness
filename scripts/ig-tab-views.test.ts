@@ -55,6 +55,17 @@ function siteIndex(id: string): Record<string, unknown> {
       profiles: [PROFILE],
     },
     {
+      key: "StructureDefinition/Lonely",
+      resourceType: "StructureDefinition",
+      id: "Lonely",
+      published: at("StructureDefinition-Lonely"),
+      materialization: ref("StructureDefinition-Lonely"),
+      canonical: `${IPS.canonical}/StructureDefinition/Lonely`,
+      name: "Lonely",
+      category: "Structures: Resource Profiles",
+      title: "A profile nothing claims",
+    },
+    {
       key: "ValueSet/sections",
       resourceType: "ValueSet",
       id: "sections",
@@ -80,34 +91,33 @@ if (gen.exitCode !== 0) throw new Error(`gen-ig-pages failed:\n${gen.stderr.toSt
 // pages (`build-ig-site`) and the Publisher's JSON, copied as data
 // (`ig-site:publisher-pages`).
 for (const f of ["index.html", "artifacts.html", "toc.html"]) writeFileSync(join(docs, f), "<!doctype html><title>x</title>");
-for (const stem of ["StructureDefinition-Composition-uv-ips", "Composition-example", "ValueSet-sections"]) writeFileSync(join(docs, `${stem}.json`), "{}");
+for (const stem of ["StructureDefinition-Composition-uv-ips", "StructureDefinition-Lonely", "Composition-example", "ValueSet-sections"]) writeFileSync(join(docs, `${stem}.json`), "{}");
 
 const page = (file: string) => readFileSync(join(docs, "artifact", file), "utf8");
 const IX = FhirArtifactIndexSchema.parse(siteIndex("unit"));
-const [SD, EXAMPLE, VS] = IX.artifacts as [(typeof IX.artifacts)[0], (typeof IX.artifacts)[0], (typeof IX.artifacts)[0]];
+const [SD, EXAMPLE, , VS] = IX.artifacts as [(typeof IX.artifacts)[0], (typeof IX.artifacts)[0], (typeof IX.artifacts)[0], (typeof IX.artifacts)[0]];
 
 describe("artifactTabs: which views an artefact gets, at the Publisher's file names", () => {
-  it("a profile: its page, definitions, mappings, the JSON as .profile.json, and examples when claimed", () => {
-    expect(artifactTabs(SD, { resource: true, examples: true }).map((t) => t.file)).toEqual([
+  it("a profile: its page, definitions, mappings, the JSON as .profile.json, and examples, claimed or not (owner, 2026-10-14: \"1a\")", () => {
+    expect(artifactTabs(SD, { resource: true }).map((t) => t.file)).toEqual([
       "StructureDefinition-Composition-uv-ips.html",
       "StructureDefinition-Composition-uv-ips-definitions.html",
       "StructureDefinition-Composition-uv-ips-mappings.html",
       "StructureDefinition-Composition-uv-ips.profile.json.html",
       "StructureDefinition-Composition-uv-ips-examples.html",
     ]);
-    expect(artifactTabs(SD, { resource: true, examples: false }).map((t) => t.view)).not.toContain("examples");
   });
   it("anything else: its page and the JSON view as .json", () => {
-    expect(artifactTabs(VS, { resource: true, examples: true }).map((t) => t.file)).toEqual(["ValueSet-sections.html", "ValueSet-sections.json.html"]);
+    expect(artifactTabs(VS, { resource: true }).map((t) => t.file)).toEqual(["ValueSet-sections.html", "ValueSet-sections.json.html"]);
     expect(artifactTabFile(EXAMPLE, "json")).toBe("Composition-example.json.html");
   });
   it("none without a resource this site serves: every view is drawn from it", () => {
-    expect(artifactTabs(SD, { resource: false, examples: true })).toEqual([]);
+    expect(artifactTabs(SD, { resource: false })).toEqual([]);
   });
 });
 
 describe("thinArtifactView: one shell, the view in its config", () => {
-  const tabs = artifactTabs(SD, { resource: true, examples: true });
+  const tabs = artifactTabs(SD, { resource: true });
   const html = thinArtifactView(IX, SD, "definitions", { label: "X IG", home: "../index.html", all: "../artifacts.html", resource: "../StructureDefinition-Composition-uv-ips.json", tabs, index: "index.jsonld" });
   it("names its own file as canonical and the node as its alternate", () => {
     expect(html).toContain('<link rel="canonical" href="StructureDefinition-Composition-uv-ips-definitions.html">');
@@ -134,7 +144,7 @@ describe("thinArtifactView: one shell, the view in its config", () => {
 describe("gen-ig-pages --ig-site --publisher-data: a thin page per view, beside the artefact's", () => {
   const files = readdirSync(join(docs, "artifact")).filter((f) => f.endsWith(".html")).sort();
 
-  it("writes each view where the Publisher made one: definitions, mappings, JSON, and examples for the claimed profile", () => {
+  it("writes each view where the Publisher made one: definitions, mappings, JSON, and examples for every profile, claimed or not", () => {
     expect(files).toEqual([
       "Composition-example.html",
       "Composition-example.json.html",
@@ -143,12 +153,18 @@ describe("gen-ig-pages --ig-site --publisher-data: a thin page per view, beside 
       "StructureDefinition-Composition-uv-ips-mappings.html",
       "StructureDefinition-Composition-uv-ips.html",
       "StructureDefinition-Composition-uv-ips.profile.json.html",
+      "StructureDefinition-Lonely-definitions.html",
+      "StructureDefinition-Lonely-examples.html",
+      "StructureDefinition-Lonely-mappings.html",
+      "StructureDefinition-Lonely.html",
+      "StructureDefinition-Lonely.profile.json.html",
       "ValueSet-sections.html",
       "ValueSet-sections.json.html",
     ]);
     const views = files.map((f) => thinPageConfigOf(page(f), THIN_PAGE_CONFIG_ID)?.view ?? "content");
-    expect(views.filter((v) => v === "content")).toHaveLength(3);
-    expect(views.filter((v) => v === "json")).toHaveLength(3);
+    expect(views.filter((v) => v === "content")).toHaveLength(4);
+    expect(views.filter((v) => v === "json")).toHaveLength(4);
+    expect(views.filter((v) => v === "examples")).toHaveLength(2);
   });
 
   it("every page is thin and wears none of the Publisher's chrome", () => {
@@ -208,6 +224,10 @@ describe("the narrative's links to the Publisher's tab file names land on the th
       "StructureDefinition-Composition-uv-ips-examples",
       "StructureDefinition-Composition-uv-ips-mappings",
       "StructureDefinition-Composition-uv-ips.profile.json",
+      "StructureDefinition-Lonely-definitions",
+      "StructureDefinition-Lonely-examples",
+      "StructureDefinition-Lonely-mappings",
+      "StructureDefinition-Lonely.profile.json",
       "ValueSet-sections.json",
     ]);
   });
@@ -278,6 +298,9 @@ describe("the shared renderer and the AST loader draw the views", () => {
     for (const fn of ["drawDefinitions", "drawMappings", "drawExamples"]) expect(renderer).toContain(`function ${fn}(`);
     // The definitions come from the snapshot, the differential where there is none.
     expect(renderer).toMatch(/snap && snap\.length \? snap : diff/);
+  });
+  it("an examples view nothing claims says there are no examples", () => {
+    expect(renderer).toContain("No examples: no artefact of this IG claims this profile");
   });
   it("the JSON view is the AST loader's JSON, alone", () => {
     expect(renderer).toContain('astHolder(src, "json")');

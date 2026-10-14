@@ -11,7 +11,7 @@ import { parseBuild, STAMP_FILE } from "./site-build-stamp.ts";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { builtPage, IG_SITE_SCRIPTS, igSiteStamp, platformCommit, listedInstances, UPSTREAM_PAGES_ENV, missingFromSite, notSource, PUBLISHER_CHROME, publisherChromePages, publisherPages, takeJsonOnly, topMounts } from "./ig-repo-site.ts";
+import { builtPage, IG_SITE_SCRIPTS, igSiteStamp, platformCommit, listedInstances, UPSTREAM_PAGES_ENV, missingFromSite, notSource, PUBLISHER_CHROME, publisherChromePages, publisherPages, takeJsonOnly, takenFromOutput, topMounts } from "./ig-repo-site.ts";
 
 let dir: string;
 beforeAll(() => {
@@ -77,6 +77,27 @@ describe("publisher pages", () => {
     for (const f of ["artifacts.html", "StructureDefinition-x.html", "StructureDefinition-x.xml", "StructureDefinition-x.ttl"]) expect(existsSync(join(site, f))).toBe(false);
     expect(readFileSync(join(site, "StructureDefinition-x.json"), "utf-8")).toBe("{}");
     expect(readFileSync(join(site, "sub", "package.tgz"), "utf-8")).toBe("tgz");
+  });
+  test("nothing under comparison-v*/ is copied, its fonts and stylesheets included (owner, 2026-10-14: \"2a\")", () => {
+    const site = join(dir, "site4");
+    const out = join(dir, "output4");
+    mkdirSync(site, { recursive: true });
+    mkdirSync(join(out, "comparison-v1.0.0", "assets"), { recursive: true });
+    mkdirSync(join(out, "comparison-v2.1"), { recursive: true });
+    writeFileSync(join(out, "comparison-v1.0.0", "index.html"), "<p>comparison</p>");
+    writeFileSync(join(out, "comparison-v1.0.0", "OpenSans-CondBold-webfont.eot"), "font");
+    writeFileSync(join(out, "comparison-v1.0.0", "assets", "fhir.css"), "css");
+    writeFileSync(join(out, "comparison-v2.1", "sd-1-x.json"), "{}");
+    // A file merely NAMED like one, outside such a directory, is the Publisher's data.
+    writeFileSync(join(out, "comparison-v1.json"), "{}");
+    const r = publisherPages({ site, output: out, log: () => {} });
+    expect(r).toEqual({ copied: 1, kept: 0, refused: 4 });
+    expect(existsSync(join(site, "comparison-v1.0.0"))).toBe(false);
+    expect(existsSync(join(site, "comparison-v2.1"))).toBe(false);
+    expect(existsSync(join(site, "comparison-v1.json"))).toBe(true);
+    expect(takenFromOutput("comparison-v1.0.0/x.css")).toBe(false);
+    expect(takenFromOutput("sub/comparison-v1.0.0/x.css")).toBe(true);
+    expect(takenFromOutput("ValueSet-x.json")).toBe(true);
   });
   test("no page the Publisher wrote is listed as the site's: none is copied", () => {
     const site = join(dir, "site3");

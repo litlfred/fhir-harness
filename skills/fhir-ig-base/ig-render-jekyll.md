@@ -147,17 +147,23 @@ core, which sits above cat-harness-tools.
     to it;
   - the JSON view, `.profile.json` for a StructureDefinition and `.json` for
     anything else, drawn by `ast-resource.js` (`data-ast-view="json"`);
-  - `-examples`: only for a profile that an instance of the IG claims in its
-    `meta.profile`, listed from the index node.
+  - `-examples`: for every StructureDefinition, listing from the index node
+    the instances that claim it in their `meta.profile` (see below).
 
   Each is the same shell (`thinArtifactView`) and the same renderer
   (`assets/ig-artifact.js`, the config's `view`). The artefact's page links
   them in a tab bar of plain links. The narrative's links to those file
   names are relinked the same way as its links to the artefact pages. A full
   tab page at the same address is replaced. The change history, testing,
-  XML and Turtle views are not rendered, and neither are the Publisher's
-  `comparison-v*/` directories; none of them is published. The IG API view
-  pages stay full pages.
+  XML and Turtle views are not rendered, and none of them is published. The
+  IG API view pages stay full pages.
+- **Every profile gets its examples view** (owner, 2026-10-14: *"1a"*). Each
+  StructureDefinition gets `-examples`, as the Publisher writes it. Where no
+  instance of the IG claims the profile, the page says there are no examples.
+- **Nothing under `comparison-v*/` is published** (owner, 2026-10-14:
+  *"2a"*). The Publisher's version comparisons are not rendered, and
+  `ig-site:publisher-pages` copies none of their files, their fonts and
+  stylesheets included (`takenFromOutput`).
 - In an IG site the docs root is the site root, so `--compiled-data` is
   `ast-data`. With `../ast-data`, every resource link points one level above
   the site.

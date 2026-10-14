@@ -466,7 +466,7 @@
   function drawExamples(node, holder) {
     var canonical = node["schema:sameAs"] && bare(node["schema:sameAs"]["@id"]);
     if (!cfg.index || !canonical) {
-      holder.append(el("p", null, "This artefact has no canonical URL: nothing can claim it."));
+      holder.append(el("p", "iga-none", "No examples: this artefact has no canonical URL, so nothing can claim it."));
       return;
     }
     var url = new URL(cfg.index, location.href).href;
@@ -483,7 +483,7 @@
           });
         });
         if (!hits.length) {
-          holder.append(el("p", null, "No artefact of this IG claims this profile."));
+          holder.append(el("p", "iga-none", "No examples: no artefact of this IG claims this profile in its meta.profile."));
           return;
         }
         holder.append(el("p", "iga-sub", hits.length + " artefact(s) of this IG claim this profile in their meta.profile."));
