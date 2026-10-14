@@ -383,11 +383,18 @@ export function igTopBar(menu: IgMenu, baseurl: string, title: string): string {
   return `<div class="ig-topbar" role="navigation" aria-label="${escHtml(title)} menu"><a class="ig-topbar-home" href="${escHtml(siteHref(baseurl, "index.html"))}">${escHtml(title)}</a>${groups}</div>`;
 }
 
-/** The top bar's style: a horizontal row, dropdowns that overlay the page. */
-const IG_TOPBAR_CSS = `
+/**
+ * The top bar's style: the IG's title on a line of its own, its menu on the
+ * line below as a row of dropdowns that overlay the page. Owner, 2026-10-14,
+ * on smart-hiv: *"also need line break between IG title and top menu"* — on
+ * one wrapping row the title shared the line with the menu, and the last
+ * group dropped under the title. The break is the title's full-width flex
+ * basis, so the markup ({@link igTopBar}) stays one `<div>`.
+ */
+export const IG_TOPBAR_CSS = `
 .ig-topbar{display:flex;flex-wrap:wrap;align-items:center;gap:.25rem 1rem;padding:.5rem 1rem;background:var(--ig-topbar-bg,#1c4b7c);color:#fff;font-size:.95rem}
 .ig-topbar a{color:#fff;text-decoration:none}
-.ig-topbar-home{font-weight:600;margin-right:.5rem}
+.ig-topbar-home{flex:0 0 100%;font-weight:600}
 .ig-topbar-group{position:relative}
 .ig-topbar-group summary{cursor:pointer;list-style:none}
 .ig-topbar-group summary::after{content:" \\25BE"}
