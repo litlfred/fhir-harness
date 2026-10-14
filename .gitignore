@@ -1,2 +1,6 @@
 # BEGIN index mounts (generated from index.config.json — do not edit)
 # END index mounts
+
+# Install artefacts are never tracked: a mount refuses a tree that pins them
+# (remote-mount fixity), and 32k of them were committed by mistake once.
+node_modules/
