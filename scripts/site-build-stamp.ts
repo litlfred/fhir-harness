@@ -3,7 +3,7 @@
  * Which platform an IG repository's own site was built from, and whether its
  * siblings were built from the same one.
  *
- * Every IG repository publishes its own site by hand (`folio-site.yml`, manual
+ * Every IG repository publishes its own site by hand (`site-publish.yml`, manual
  * trigger only — owner, 2026-10-06), each from its own folio-assistant pin. So
  * the sites drift: rebuild one and it wears the new harness chrome while the
  * others keep the old. That was bean `48a6` — two of three IG sites looked
@@ -19,7 +19,7 @@
  * - `drift` reads the sibling sites' stamps as deployed and prints a table.
  *   It never fails: drift is a message. A sibling whose stamp cannot be read is
  *   reported as **not checked**, never as matching.
- * - `dispatch` triggers `folio-site.yml` in each dependency repository. It
+ * - `dispatch` triggers `site-publish.yml` in each dependency repository. It
  *   needs a token that may run workflows there; without one it says what it
  *   did not rebuild, rather than skipping quietly.
  *
@@ -35,7 +35,8 @@ import { spawnSync } from "node:child_process";
 import { join } from "node:path";
 
 export const STAMP_FILE = "folio-build.json";
-export const WORKFLOW = "folio-site.yml";
+/** The workflow an IG repository publishes its site with (`templates/ig-repo-site/site-publish.yml`). */
+export const WORKFLOW = "site-publish.yml";
 
 export interface SiteBuild {
   $schema: "folio-site-build/v1";

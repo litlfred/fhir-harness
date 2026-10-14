@@ -52,7 +52,8 @@
  * those links land; a page the site built is never replaced by the
  * Publisher's. Then the repeated element ids the composition produces are
  * repaired (`dedupeSiteIds`). With no Publisher output, the site keeps only
- * its own pages, and says so.
+ * its own pages, and says so. Last, the site's `folio-build.json` is written
+ * at its root ({@link igSiteStamp}), as every folio site carries one.
  *
  * ## Whose dead links
  *
@@ -63,7 +64,7 @@
  * refuse the publish over it, while a dead link in the chrome still refuses.
  */
 import { spawnSync } from "node:child_process";
-import { appendFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from "node:fs";
+import { appendFileSync, cpSync, writeFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join, relative, resolve, sep } from "node:path";
 
@@ -71,6 +72,7 @@ import { parse as parseYaml } from "yaml";
 
 import { composeIgSite, dedupeSiteIds, describeStage, IG_THIN_CSS_FILE, stageIgSite, type SitePalette } from "./build-ig-site";
 import { buildMenu } from "./ingest-ig-menu.ts";
+import { siteBuild, type SiteBuild, STAMP_FILE } from "./site-build-stamp.ts";
 import { githubEditBase, instanceNeeds, webpagePalette } from "./stage-ig-sites.ts";
 
 /**
@@ -229,7 +231,42 @@ export function missingFromSite(publisher: readonly string[], site: ReadonlySet<
   return publisher.filter((p) => !site.has(p));
 }
 
-export function publisherPages(o: { site: string; output: string; log?: (s: string) => void }): { copied: number; kept: number } {
+/**
+ * The platform commit a site was built with: the `cat-harness-tools` mount
+ * `index.lock.json` pins (the toolset that draws the chrome), else the first
+ * mount it pins. A checkout that only mounts layers has no platform checkout
+ * of its own to ask `git` about.
+ */
+export function platformCommit(root: string): string | undefined {
+  const lock = join(root, "index.lock.json");
+  if (!existsSync(lock)) return undefined;
+  const mounts = ((JSON.parse(readFileSync(lock, "utf-8")) as { mounts?: { harness?: unknown; ref?: unknown }[] }).mounts ?? []).filter((m) => typeof m.ref === "string" && m.ref !== "");
+  return (mounts.find((m) => m.harness === "cat-harness-tools") ?? mounts[0])?.ref as string | undefined;
+}
+
+/**
+ * The site's `folio-build.json` (`site-build-stamp.ts`): what built it, read
+ * from the runner's environment and, where that is silent (an agent's own
+ * run), from the checkout. Every folio site carries one at its root, and the
+ * publisher's root guard recognises a folio site by it, so a bare IG deploy
+ * never overwrites this one.
+ */
+export function igSiteStamp(ig: string, env: Record<string, string | undefined> = process.env, now = new Date()): SiteBuild {
+  const git = (...a: string[]): string | undefined => {
+    const r = spawnSync("git", ["-C", ig, ...a], { encoding: "utf-8" });
+    return r.status === 0 ? r.stdout.trim() || undefined : undefined;
+  };
+  const platform = platformCommit(ig) ?? git("rev-parse", "HEAD");
+  if (!platform) throw new Error(`${ig}: no index.lock.json pin and no git commit to name the platform this site was built with`);
+  const repo = /github\.com[/:]([^/]+\/[^/]+?)(?:\.git)?\/?$/.exec(git("config", "--get", "remote.origin.url") ?? "")?.[1];
+  return siteBuild(siteName(ig), platform, {
+    GITHUB_REPOSITORY: env.GITHUB_REPOSITORY ?? repo,
+    GITHUB_REF_NAME: env.GITHUB_REF_NAME ?? git("rev-parse", "--abbrev-ref", "HEAD"),
+    GITHUB_SHA: env.GITHUB_SHA ?? git("rev-parse", "HEAD"),
+  }, now);
+}
+
+export function publisherPages(o: { site: string; output: string; ig?: string; log?: (s: string) => void }): { copied: number; kept: number } {
   const log = o.log ?? ((s: string) => console.error(s));
   if (!existsSync(o.site) || !statSync(o.site).isDirectory()) throw new Error(`${o.site}: no built site`);
   let copied = 0;
@@ -250,6 +287,11 @@ export function publisherPages(o: { site: string; output: string; log?: (s: stri
   }
   const renamed = dedupeSiteIds(o.site);
   if (renamed.size) log(`publisher pages: repeated element ids repaired on ${renamed.size} page(s)`);
+  if (o.ig !== undefined) {
+    const stamp = igSiteStamp(o.ig);
+    writeFileSync(join(o.site, STAMP_FILE), `${JSON.stringify(stamp, null, 2)}\n`);
+    log(`publisher pages: stamped ${STAMP_FILE} — ${stamp.instance}, platform ${stamp.platform.commit.slice(0, 9)}`);
+  }
   return { copied, kept };
 }
 
@@ -266,7 +308,7 @@ if (import.meta.main) {
       if (baseurl === undefined) throw new Error("compose needs --baseurl, or FOLIO_SITE_BASEURL from the site build");
       compose({ docs: resolve(target), ig, baseurl, ...(opt("plantuml-jar") ? { plantumlJar: opt("plantuml-jar")! } : {}) });
     } else if (cmd === "publisher-pages" && target) {
-      publisherPages({ site: resolve(target), output: resolve(opt("output") ?? join(ig, "output")) });
+      publisherPages({ site: resolve(target), output: resolve(opt("output") ?? join(ig, "output")), ig });
     } else {
       console.error("usage: ig-repo-site.ts compose <site source> [--ig <checkout>] [--baseurl <base>] [--plantuml-jar <jar>]\n       ig-repo-site.ts publisher-pages <built site> [--ig <checkout>] [--output <dir>]");
       process.exit(2);

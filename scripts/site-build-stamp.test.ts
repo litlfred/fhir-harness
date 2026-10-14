@@ -1,10 +1,16 @@
 import { describe, expect, it } from "bun:test";
-import { compare, driftReport, parseBuild, parseRepo, siteBuild } from "./site-build-stamp";
+import { compare, driftReport, parseBuild, parseRepo, siteBuild, WORKFLOW } from "./site-build-stamp";
+import { existsSync } from "node:fs";
+import { join } from "node:path";
 
 const self = siteBuild("my-ig", "aaaaaaaaaaaa", { GITHUB_REPOSITORY: "o/my-ig", GITHUB_REF_NAME: "main", GITHUB_SHA: "s1" }, new Date("2026-10-09T00:00:00Z"));
 const other = (commit: string) => ({ ...self, instance: "other", platform: { commit } });
 
 describe("site-build-stamp", () => {
+  it("rebuilds a dependency with the workflow the IG repository template installs", () => {
+    expect(WORKFLOW).toBe("site-publish.yml");
+    expect(existsSync(join(import.meta.dir, "..", "templates", "ig-repo-site", WORKFLOW))).toBe(true);
+  });
   it("stamps the platform commit and the source it was built from", () => {
     expect(self.platform.commit).toBe("aaaaaaaaaaaa");
     expect(self.source).toEqual({ repo: "o/my-ig", ref: "main", commit: "s1" });
