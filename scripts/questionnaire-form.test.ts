@@ -109,7 +109,7 @@ describe("the Form Builder's index.html, as this site serves it", () => {
 });
 
 describe("the page", () => {
-  const html = formPageHtml({ id: "intake", title: "Client <intake>" }, { json: "questionnaires/Questionnaire-intake.json", source: "input/fsh/intake.fsh", editBase: "https://github.com/o/ig/edit/main", fhirVersion: "5.0.0", slug: "example.ig" });
+  const html = formPageHtml({ id: "intake", title: "Client <intake>" }, { json: "questionnaires/Questionnaire-intake.json", text: "questionnaires/Questionnaire-intake.source.json", source: "input/fsh/intake.fsh", editBase: "https://github.com/o/ig/edit/main", fhirVersion: "5.0.0", slug: "example.ig" });
   test("✎, 📣 and ✍, the Smart Forms link-out, and nothing loaded from another origin", () => {
     expect(html).toContain('data-fa-link="edit"');
     expect(html).toContain('data-fa-link="feedback"');
@@ -136,7 +136,12 @@ describe("the page", () => {
   });
   test("the form host names the mode and the block, for the runtime to match", () => {
     expect(html).toContain('<div id="fa-qform" class="fa-qform"');
-    expect(/<div id="fa-qform"[^>]*>/.exec(html)![0]).toContain('data-src="input/fsh/intake.fsh" data-block="questionnaire:intake" data-suggest-mode="questionnaire"');
+    expect(/<div id="fa-qform"[^>]*>/.exec(html)![0]).toContain('data-src="input/fsh/intake.fsh" data-suggest-text="questionnaires/Questionnaire-intake.source.json" data-block="questionnaire:intake" data-suggest-mode="questionnaire"');
+  });
+  test("the mode edits the unexpanded built JSON; the FSH stays the named source", () => {
+    const host = /<div id="fa-qform"[^>]*>/.exec(html)![0];
+    expect(host).toContain('data-suggest-text="questionnaires/Questionnaire-intake.source.json"');
+    expect(host).not.toContain('data-suggest-text="questionnaires/Questionnaire-intake.json"');
   });
   test("without a repository there is no edit, feedback or suggest link", () => {
     const bare = formPageHtml({ id: "x" }, { json: "questionnaires/Questionnaire-x.json" });
