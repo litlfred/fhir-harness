@@ -87,13 +87,18 @@ jobs:
 
       - name: Identify the publishing commit's author, and let it push
         # The publisher clones gh-pages into a temporary directory, which does
-        # not inherit the checkout's credentials.
+        # not inherit the checkout's credentials: the job token goes in the
+        # global config as a request HEADER, never in a URL. An insteadOf
+        # rewrite put it in `git remote get-url origin`, and from there into
+        # every page of a site (litlfred/smart-ra, 2026-10-14).
         env:
           TOKEN: ${{ github.token }}
         run: |
           git config --global user.name "Claude"
           git config --global user.email "noreply@anthropic.com"
-          git config --global url."https://x-access-token:${TOKEN}@github.com/".insteadOf "https://github.com/"
+          auth=$(printf 'x-access-token:%s' "$TOKEN" | base64 -w0)
+          echo "::add-mask::$auth"
+          git config --global http.https://github.com/.extraheader "AUTHORIZATION: basic $auth"
 
       - name: Build and publish with stage-local
         # The job log is not readable from an agent's container, so a
