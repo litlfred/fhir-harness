@@ -351,12 +351,14 @@ On yes:
    and `--dry-run` builds without publishing. `--bare-ig`, which publishes
    the Publisher's own output, and a repository with no `site.build`, which
    runs the Publisher workflow, are not how an IG site is built under the
-   2026-10-14 rule. Declare `site.build` instead. The menu is read from `sushi-config.yaml`
+   2026-10-14 rule. Declare `site.build` instead, inline in the IG's own
+   `index.config.json` entry: never a `<instance>.config.json` (bean `ymvt`,
+   owner 2026-10-14: *"i thought ONLY index.config.json"*). The menu is read from `sushi-config.yaml`
    at build time: nothing is committed for it. The old per-repository
    `folio-site.yml` needed the `folio-assistant/` submodule, which the layer
    split (bean `n3h9`) removed; the template above replaces it.
    The site is built from the IG's AST on its cache branch, never from the
-   Publisher's HTML: the repository's `<instance>.config.json` `site.build`
+   Publisher's HTML: the IG's `index.config.json` entry's `site.build`
    starts with the restore and `verify` step (§"The AST cache lifecycle").
 3a. Add `.github/workflows/ig-ast-refresh.yml` from
    [`templates/ig-repo-site/ig-ast-refresh.yml`](../../templates/ig-repo-site/ig-ast-refresh.yml),
