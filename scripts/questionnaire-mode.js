@@ -205,10 +205,13 @@ export function builderStep(state, data, questionnaire) {
   switch (data?.type) {
     case "initialized":
       return { state: { ...state, status: "editing" }, reply: { type: "initialQuestionnaire", questionnaire } };
+    // The builder's first version, sent before any edit, is its round-trip
+    // of the original: the baseline a change is measured against, so its own
+    // normalisations are not reported as the reviewer's.
     case "updateQuestionnaire":
-      return { state: { ...state, status: "editing", latest: data.questionnaire ?? state.latest } };
+      return { state: { ...state, status: "editing", latest: data.questionnaire ?? state.latest, roundTrip: state.roundTrip ?? data.questionnaire } };
     case "closed":
-      return { state: { ...state, status: "closed", latest: data.questionnaire ?? state.latest } };
+      return { state: { ...state, status: "closed", latest: data.questionnaire ?? state.latest, roundTrip: state.roundTrip ?? data.questionnaire } };
     case "canceled":
       return { state: { ...state, status: "canceled" } };
     case "aborted":
@@ -239,7 +242,7 @@ const STATUS = {
 /**
  * The editor. `ctx.questionnaire` is the Questionnaire (object or JSON text)
  * the page rendered; `ctx.builder` the self-hosted Form Builder's URL, when
- * the site carries it. Returns `{ get, edited, dispose }`.
+ * the site carries it. Returns `{ get, before, edited, dispose }`.
  */
 export function open(host, ctx = {}) {
   const doc = host.ownerDocument;
@@ -302,6 +305,10 @@ export function open(host, ctx = {}) {
     get() {
       if (raw && textarea.value.trim()) return textarea.value;
       return JSON.stringify(state.latest ?? original, null, 2);
+    },
+    /** The baseline the edit is measured against: the builder's round-trip of the original, else the original. */
+    before() {
+      return JSON.stringify(state.roundTrip ?? original, null, 2);
     },
     /** `questionnaire` or `wireframe`: the side the reviewer says they edited. */
     edited() {

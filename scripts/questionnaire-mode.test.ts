@@ -84,7 +84,8 @@ describe("the Form Builder hand-back (formbuilder-lhcforms API.md)", () => {
     let s = builderStep({ status: "editing" }, { type: "updateQuestionnaire", questionnaire: q(dob) }, Q).state;
     expect(s.latest).toEqual(q(dob));
     s = builderStep(s, { type: "closed", questionnaire: q(name, dob) }, Q).state;
-    expect(s).toEqual({ status: "closed", latest: q(name, dob) });
+    // The first version the builder sent is its round-trip, kept as the baseline.
+    expect(s).toEqual({ status: "closed", latest: q(name, dob), roundTrip: q(dob) });
     expect(builderStep(s, { type: "canceled" }, Q).state.status).toBe("canceled");
     expect(builderStep(s, { type: "aborted", error: "bad" }, Q).state).toMatchObject({ status: "aborted", error: "bad" });
     expect(builderStep(s, { type: "other" }, Q)).toEqual({ state: s });

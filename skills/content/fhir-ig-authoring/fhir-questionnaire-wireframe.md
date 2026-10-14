@@ -162,6 +162,40 @@ cat-harness-tools mode registry merges**:
 Until the suggest runtime carries the registry, the form page opens the mode
 itself (`templates/ig-pages/questionnaire-form.js`).
 
+### The self-hosted Form Builder, and no cross-site call
+
+Owner, 2026-10-14: the editor is the **NLM Form Builder (formbuilder-lhcforms
+12.9.0), self-hosted**, and *"cache + ucum. this is gh-pages so no XSS"*: the
+site makes no cross-site call at all.
+
+- The builder is vendored unmodified (`scripts/assets/vendor/formbuilder-lhcforms/`).
+  The site serves a rewritten copy of its `index.html`, also as
+  `window-open.html` (its hand-back route): jQuery from this site
+  (`vendor/jquery/3.6.0`), the Google font rules removed, and a guard that
+  registers the service worker and reloads before anything else loads.
+- The service worker (`scripts/terminology-sw.js`, scoped to the builder;
+  the mapping is the pure `scripts/terminology-map.js`) answers every request
+  to another origin from this site:
+
+  | request | answer |
+  |---|---|
+  | clinicaltables `/api/loinc_items/v3/search` | the IG's terminology index, in the CTSS shape. LOINC comes **only** from the IG's cache; a code it does not hold shows *"not in this IG's terminology cache; add it via the FSH source"* |
+  | clinicaltables `/api/ucum/v3/search` | the full UCUM list (vendored `@lhncbc/ucum-lhc` definitions) |
+  | lhcforms-static `/lforms-versions/…` | the vendored LHC-Forms |
+  | lforms-fhir.nlm.nih.gov (import and export), anything else | a local error saying it is disabled on this site |
+
+- The **terminology index** is written at build time by
+  [`scripts/terminology-index.ts`](../../../scripts/terminology-index.ts)
+  (Tool `terminology-index`) from the IG's own restored cache:
+  `output-ast/expansions.json` and `input-cache/txcache/`
+  (`ig-build-pipeline`, §"The AST cache lifecycle").
+- The **form view** needs no terminology server either: each item's
+  `answerValueSet` that the expansions hold becomes `answerOption` in the
+  rendered copy. The source Questionnaire is unchanged; a value set the cache
+  does not hold is reported.
+- A code the cache lacks is added through the FSH source. A ✍ change request
+  can carry it as free text.
+
 ## The suggest checker
 
 `checkSuggestion(before, after, { wireframe })` in
