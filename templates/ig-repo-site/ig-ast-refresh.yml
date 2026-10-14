@@ -11,6 +11,12 @@
 #
 # Needs: index.lock.json mounting fhir-harness (as site-publish.yml does).
 #
+# An IG whose own build prepares its inputs before the Publisher runs (an
+# overlay: generated pages, generated resources) passes that command as
+# `pre-export` under `with:` below; the reusable workflow runs it before the
+# AST export and records the AST against the clean commit. Write it in this
+# file, never as a dispatch input. Without one, nothing is run.
+#
 # Manual trigger only (owner decision, 2026-10-06): add `push` on the default
 # branch to a copy only if that repository's owner asks for every change of
 # the IG source to rebuild the cache.
@@ -37,3 +43,4 @@ jobs:
     with:
       ref: ${{ inputs.ref }}
       force: ${{ inputs.force }}
+      # pre-export: bash <overlay>/scripts/<prepare-inputs>.sh

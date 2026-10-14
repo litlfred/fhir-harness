@@ -10,7 +10,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { spawnSync } from "node:child_process";
 
-import { astJsonLd, astValidity, diffAst, igAstSchemaFiles, inputDigest, listAst, readAst, renderDelta } from "./ig-ast";
+import { astJsonLd, astValidity, diffAst, igAstSchemaFiles, inputDigest, listAst, readAst, recordSourceInputs, renderDelta } from "./ig-ast";
 import { igAstJsonSchemas } from "../schemas/ig-ast.ts";
 import Ajv from "ajv";
 
@@ -146,6 +146,58 @@ describe("validity — compiledValidity on the manifest's inputs", () => {
     expect(astValidity(readAst(ast([pat], [])), ig).verdict).toBe("cannot-tell");
     const legacy = readAst(ast([pat], [], { inputs: { toolchain: "t", sourceRevision: "r", inputDigest: "sha256:" + "0".repeat(64) } }));
     expect(astValidity(legacy, ig).verdict).toBe("cannot-tell");
+  });
+});
+
+describe("source-inputs — an AST exported after a pre-export command", () => {
+  function igRepo() {
+    const ig = tmp("ig-");
+    put(ig, "sushi-config.yaml", "id: x\n");
+    put(ig, "input/fsh/a.fsh", "Profile: A\n");
+    const git = (...a: string[]) => spawnSync("git", ["-c", "user.email=t@t", "-c", "user.name=t", ...a], { cwd: ig, encoding: "utf-8" });
+    git("init", "-q");
+    git("add", ".");
+    git("commit", "-qm", "base");
+    return { ig, git, rev: git("rev-parse", "HEAD").stdout.trim() };
+  }
+
+  test("recorded against the prepared tree it is stale once the tree is put back; against the source, valid", () => {
+    const { ig, git, rev } = igRepo();
+    const source = inputDigest(ig);
+    // The pre-export command: rewrites a tracked input and adds an untracked one.
+    put(ig, "sushi-config.yaml", "id: x\npages: {}\n");
+    put(ig, "input/pagecontent/generated.md", "placeholder\n");
+    const prepared = inputDigest(ig);
+    expect(prepared).not.toBe(source);
+    const dir = ast([pat], [], { inputs: { toolchain: "t", sourceRevision: rev, inputDigest: prepared } });
+    // ...the export, then the tree put back as the workflow does.
+    git("checkout", "-q", "HEAD", "--", "sushi-config.yaml", "input");
+    git("clean", "-fdq", "--", "sushi-config.yaml", "input");
+    expect(inputDigest(ig)).toBe(source);
+    expect(astValidity(readAst(dir), ig).verdict).toBe("stale-inputs");
+
+    expect(recordSourceInputs(dir, source, "bash overlay/pre.sh")).toEqual({ prepared, source });
+    const m = readAst(dir).manifest as Record<string, unknown>;
+    expect(m.preExport).toEqual({ command: "bash overlay/pre.sh", preparedInputDigest: prepared });
+    expect(astValidity(readAst(dir), ig).verdict).toBe("valid");
+  });
+
+  test("refuses what it cannot record honestly", () => {
+    const { rev } = igRepo();
+    const none = ast([pat], []);
+    expect(() => recordSourceInputs(none, "a".repeat(64), "cmd")).toThrow(/records no inputs.inputDigest/);
+    const dir = ast([pat], [], { inputs: { toolchain: "t", sourceRevision: rev, inputDigest: "b".repeat(64) } });
+    expect(() => recordSourceInputs(dir, "not-a-digest", "cmd")).toThrow(/not a sha256/);
+    expect(() => recordSourceInputs(dir, "a".repeat(64), " ")).toThrow(/no pre-export command/);
+    recordSourceInputs(dir, "a".repeat(64), "cmd");
+    expect(() => recordSourceInputs(dir, "c".repeat(64), "cmd")).toThrow(/already records a preExport/);
+  });
+
+  test("the CLI prints the same digest validity computes", () => {
+    const { ig } = igRepo();
+    const r = spawnSync("bun", ["run", join(import.meta.dir, "ig-ast.ts"), "digest", "--ig", ig], { encoding: "utf-8" });
+    expect(r.status).toBe(0);
+    expect(r.stdout.trim()).toBe(inputDigest(ig));
   });
 });
 
