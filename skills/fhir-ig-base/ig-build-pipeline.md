@@ -211,26 +211,36 @@ On yes:
    it. The owner's ruling, 2026-10-14: *"It can just define
    index.config.json and reference smart-base as a dependency. This is
    preferred and expected behavior."*
-2. Add `.github/workflows/site-publish.yml`, `workflow_dispatch` only. It
-   mounts the locked layers and runs
+   `index.config.json` also says which mounted layer's chrome the site
+   wears: `"site": {"landing": "<that layer>"}` (`smart-base` for a WHO
+   SMART IG). Without it the route refuses rather than guess among the
+   mounted layers.
+2. Keep one workflow that calls the overlay's IG build (`ghbuild.yml` or
+   `fhirbuild.yml` of the layer the IG builds on): it is the recipe the
+   publish mirrors, and it stays `workflow_dispatch` only.
+3. Add `.github/workflows/site-publish.yml` from
+   [`templates/ig-repo-site/site-publish.yml`](../../templates/ig-repo-site/site-publish.yml),
+   `workflow_dispatch` only. It mounts the locked layers and runs
    `bun run cat-harness-tools/scripts/stage-local.ts --repo .`, the same
-   command every agent-run repository publishes with, which builds the IG
-   and composes it into the just-the-docs site at the root.
-   The per-repository `folio-site.yml` copied from
-   [`templates/ig-repo-site/`](../../templates/ig-repo-site/) is the route
-   this replaces: it needs the `folio-assistant/` submodule, which the layer
-   split (bean `n3h9`) removed, so a copy of it cannot run.
-3. Tell the owner how to run it: **Actions tab → "Site publish (by hand)"
-   → Run workflow**, on the branch to publish (`main` publishes the root,
-   any other branch a preview). The site lands at the repository's
+   command every agent-run repository publishes with: it builds the IG,
+   composes it into the just-the-docs site, and publishes `main` at the root
+   (keeping `STAGING/`, `_render-log/` and `branches/`) and any other branch
+   as a preview under `STAGING/<branch>/`. `--plan` prints what it would do
+   and `--dry-run` builds without publishing; `--bare-ig` publishes the
+   Publisher's own output instead. The menu is read from `sushi-config.yaml`
+   at build time: nothing is committed for it. The old per-repository
+   `folio-site.yml` needed the `folio-assistant/` submodule, which the layer
+   split (bean `n3h9`) removed; the template above replaces it.
+4. Tell the owner how to run it: **Actions tab → "Site publish (by hand)"
+   → Run workflow**, on the branch to publish, with `plan` ticked first. The site lands at the repository's
    own Pages URL, since the template reads the base path from the repository
    name rather than assuming it.
-4. If the IG has sibling sites (other IGs on the same platform) or depends
+5. If the IG has sibling sites (other IGs on the same platform) or depends
    on another IG with its own site, set the two repository **variables** the
    template reads, so no copy is edited per repository:
    `FOLIO_SITE_SIBLINGS` (site URLs) and `FOLIO_SITE_DEPENDENCIES`
    (`owner/repo@ref`). The run then reports each sibling built with a
-   different platform, and re-runs the dependencies' `folio site` after a
+   different platform, and re-runs the dependencies' `Site publish (by hand)` after a
    publish. The re-run needs a `FOLIO_SITE_DISPATCH_TOKEN` secret. Without it
    the run summary says what was not rebuilt, and nothing fails.
 
