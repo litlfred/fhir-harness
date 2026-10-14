@@ -129,8 +129,8 @@ with three kinds of its own: `questionnaire-wireframe`,
 
 ## The change-request payload
 
-What the ✍ editor writes, and what the issue form asks for when it is filled
-by hand:
+What the ✍ editor writes into the issue's body, and what the issue form
+asks for, by these field ids, when it is filled by hand:
 
 | field id | holds |
 |---|---|
@@ -144,9 +144,12 @@ by hand:
 The issue form is
 [`templates/ig-repo-site/ISSUE_TEMPLATE/questionnaire-change.yml`](../../../templates/ig-repo-site/ISSUE_TEMPLATE/questionnaire-change.yml),
 which an IG repository copies to `.github/ISSUE_TEMPLATE/`, as it copies the
-workflows beside it. A pre-filled link longer than about 7000 characters is
-too long for GitHub; the editor then copies the body to the clipboard and
-opens a stub issue, as the ✍ runtime already does.
+workflows beside it. It is for people filing by hand: the ✍ editor does
+**not** open it, because GitHub ignores a prefilled `body` when `template=`
+names an issue form, and the patch would be lost. The editor opens a plain
+issue whose body carries everything. A pre-filled link longer than about
+7000 characters is too long for GitHub; the body then goes to the clipboard
+and a stub issue opens, as the ✍ runtime does.
 
 ## The form view and the ✍ Questionnaire mode
 
@@ -162,23 +165,40 @@ opens a stub issue, as the ✍ runtime already does.
   origin;
 - ✎ (the FSH source the AST names), 📣 (feedback) and ✍ (suggest a change),
   through the platform's edit-links recipe and a `#fa-edit-cfg` block whose
-  `suggest` is `{ mode: "questionnaire", module, checker }`;
+  `suggest.profiles` names the mode for the ✍ runtime's mode registry,
+  `[{ id: "questionnaire", module, extensions: [".json"], kinds: ["questionnaire"] }]`,
+  beside the mode's own `builder`, `sw`, `fhirVersion`, `source` and `slug`.
+  The form host carries `data-suggest-mode="questionnaire"` and
+  `data-block="questionnaire:<id>"`;
 - a plain **open in CSIRO Smart Forms** link-out, as a rendering cross-check
   (owner, 2026-10-14). Nothing of it is embedded.
 
 The ✍ Questionnaire mode is
 [`scripts/questionnaire-mode.js`](../../../scripts/questionnaire-mode.js), a
-plain ES module with no build step. **Its interface is provisional until the
-cat-harness-tools mode registry merges**:
+plain ES module with no build step. It exports the three roles the ✍ suggest
+runtime's mode registry calls (cat-harness-tools `EDIT_LINKS_RUNTIME`, #218),
+by these names:
 
 | export | does |
 |---|---|
-| `open(host, ctx)` → `{ get, edited, dispose }` | a panel: which side was edited (the Questionnaire or its L2 wireframe), the editor's status, and a raw-JSON fallback. With `ctx.builder`, the self-hosted NLM Form Builder is opened in a window and its `updateQuestionnaire` / `closed` result kept (its API.md hand-back). `get()` is the edited Questionnaire as JSON text |
-| `checker(before, after, ctx)` | findings `{ severity, message }`, from `checkSuggestion` below |
-| `issue(before, after, ctx)` | `{ title, body, template: "questionnaire-change.yml", fields }`: the JSON Patch with each operation's `linkId`, the item table, the source, the side edited |
+| `open(host, ctx)` → `{ get, dispose }` | `ctx` is `{ text, src, path, label, kind, repo, branch, config, status(msg) }`, `text` the Questionnaire JSON. A panel: which side was edited (the Questionnaire or its L2 wireframe), and a raw-JSON fallback; with `config.suggest.builder`, the self-hosted NLM Form Builder in a window, its `updateQuestionnaire` / `closed` result kept (its API.md hand-back). Progress goes to `ctx.status`. `get()` is awaited on Submit, never polled, and is `ctx.text` itself while nothing was edited; `dispose()` closes the builder window |
+| `check(before, after, opts)` | findings `[{ severity, message }]`, from `checkSuggestion` below; an error blocks Submit |
+| `issue(before, after, ctx)` | `{ title, body }` and no `template`: the side edited, the FSH source link, the page, the reader's Why, the item table and the JSON Patch with each operation's `linkId` |
 
-Until the suggest runtime carries the registry, the form page opens the mode
-itself (`templates/ig-pages/questionnaire-form.js`).
+The side edited and the builder's round-trip baseline reach `check` and
+`issue` through the session `open` keeps. The runtime's dialog has its own
+Why field and does not hand it to `issue`, so the mode reads it from the
+dialog it sits in.
+
+**Which path opens it.** The runtime takes a block over only when a profile
+serves its source: `data-suggest-mode` names the profile, and the source must
+end in `.json`, which the runtime reads from the repository. A Questionnaire
+authored as JSON is edited in the runtime's dialog; one built from FSH has no
+JSON in the repository, so the form page's loader
+(`templates/ig-pages/questionnaire-form.js`) opens the mode itself, with the
+same `ctx`, its own Why field, and `issueUrl` for the link. The loader also
+does so under a runtime without the registry; where the runtime has put its
+✍ link in the host, the page's own link hands the click to it.
 
 ### The self-hosted Form Builder, and no cross-site call
 
@@ -227,8 +247,11 @@ reviewer's edit, in the editor-checker shape `{ errors, warnings }`:
   findings of step 4 when a wireframe is given.
 
 It is ready to be declared as an editor-checker profile (`contentType:
-questionnaire`) once that graph typology is reachable from this layer; today
-it is not, and this layer does not reach up for it.
+questionnaire`; a `folio-editor-checker/v1` node naming `open`, `check` and
+`issue` with `extensions: [".json"]`) once that graph typology is reachable
+from this layer. Today `editor-checkers` is declared only by
+folio-assistant-sci, which this layer does not need, so the page config names
+the profile directly (`QUESTIONNAIRE_PROFILE` in `questionnaire-form.ts`).
 
 ## What this skill does not do
 

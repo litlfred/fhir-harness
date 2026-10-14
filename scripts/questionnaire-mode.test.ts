@@ -6,29 +6,29 @@
 import { describe, expect, test } from "bun:test";
 
 // @ts-expect-error -- a plain ES module, deliberately untyped (no build step).
-import { annotatedPatch, builderStep, builderUrl, checker, issue, issueUrl, itemTable, jsonPatch, TEMPLATE, URL_CAP } from "./questionnaire-mode.js";
+import { annotatedPatch, builderStep, builderUrl, check, issue, issueUrl, itemTable, jsonPatch, open, URL_CAP } from "./questionnaire-mode.js";
 
 const q = (...item: object[]) => ({ resourceType: "Questionnaire", id: "intake", url: "http://example.org/ig/Questionnaire/intake", item });
 const name = { linkId: "1", type: "string", text: "Name", definition: "http://example.org/ig/StructureDefinition/Client#name" };
 const dob = { linkId: "2", type: "date", text: "Date of birth", code: [{ code: "DE2" }] };
 const text = (o: object) => JSON.stringify(o, null, 2);
 
-describe("checker: findings in the registry's shape", () => {
+describe("check: findings in the registry's shape", () => {
   test("errors are syntax only", () => {
-    expect(checker(text(q(name)), "{nope")).toEqual([{ severity: "error", message: expect.stringMatching(/^not JSON/) }]);
-    expect(checker(text(q(name)), '{"resourceType":"Patient"}')[0].severity).toBe("error");
+    expect(check(text(q(name)), "{nope")).toEqual([{ severity: "error", message: expect.stringMatching(/^not JSON/) }]);
+    expect(check(text(q(name)), '{"resourceType":"Patient"}')[0].severity).toBe("error");
   });
   test("warnings report only what the edit introduces", () => {
     const before = text(q(name, { ...dob, enableWhen: [{ question: "9" }] }));
     const after = text(q(name, { ...dob, linkId: "1", enableWhen: [{ question: "9" }] }));
-    expect(checker(before, after)).toEqual([
+    expect(check(before, after)).toEqual([
       { severity: "warning", message: 'linkId "1" is used by more than one item' },
       { severity: "warning", message: 'item "1" has enableWhen on "9", which is no item\'s linkId' },
     ]);
-    expect(checker(before, before)).toEqual([]);
+    expect(check(before, before)).toEqual([]);
   });
   test("a wireframe adds fidelity warnings", () => {
-    const f = checker(text(q(name, dob)), text(q(dob, name)), { wireframe: '<input data-element="name"><input data-element="DE2">' });
+    const f = check(text(q(name, dob)), text(q(dob, name)), { wireframe: '<input data-element="name"><input data-element="DE2">' });
     expect(f).toHaveLength(1);
     expect(f[0].message).toContain("order differs");
   });
@@ -47,31 +47,112 @@ describe("the JSON Patch", () => {
 });
 
 describe("issue: the change request", () => {
-  test("title, template, prefilled fields and a body a person can read", () => {
-    const r = issue(text(q(name, dob)), text(q(name, { ...dob, required: true })), { edited: "wireframe", source: "input/fsh/intake.fsh#L12", slug: "example.ig" });
+  const cfg = { repo: "o/ig", branch: "main", suggest: { source: "input/fsh/intake.fsh#L12", slug: "example.ig" } };
+  test("title and body, and no template: GitHub drops a body sent with an issue form", () => {
+    const r = issue(text(q(name, dob)), text(q(name, { ...dob, required: true })), { repo: "o/ig", branch: "dev", config: cfg, edited: "wireframe", why: "Birth date is mandatory.", page: "https://o.github.io/ig/Questionnaire-intake-form.html" });
+    expect(Object.keys(r).sort()).toEqual(["body", "title"]);
     expect(r.title).toBe("Suggested edit [example.ig]: Questionnaire/intake");
-    expect(r.template).toBe(TEMPLATE);
-    expect(r.fields.questionnaire).toBe("http://example.org/ig/Questionnaire/intake");
-    expect(r.fields.edited).toBe("wireframe");
-    expect(r.fields.source).toBe("input/fsh/intake.fsh#L12");
-    expect(JSON.parse(r.fields.patch)).toEqual([{ op: "add", path: "/item/1/required", value: true, linkId: "2" }]);
-    expect(r.fields.items).toContain("| `2` | date · Date of birth | date · Date of birth · required |");
+    expect(r.body).toContain("**Questionnaire:** http://example.org/ig/Questionnaire/intake");
     expect(r.body).toContain("the L2 wireframe — bring the Questionnaire in line with it");
-    expect(r.body).toContain("```json");
+    expect(r.body).toContain("**Source:** [input/fsh/intake.fsh#L12](https://github.com/o/ig/blob/dev/input/fsh/intake.fsh#L12)");
+    expect(r.body).toContain("**Page:** https://o.github.io/ig/Questionnaire-intake-form.html");
+    expect(r.body).toContain("### Why\n\nBirth date is mandatory.");
+    expect(r.body).toContain("| `2` | date · Date of birth | date · Date of birth · required |");
+    const patch = /```json\n([\s\S]*?)\n```/.exec(r.body)![1]!;
+    expect(JSON.parse(patch)).toEqual([{ op: "add", path: "/item/1/required", value: true, linkId: "2" }]);
   });
-  test("the side defaults to the Questionnaire", () => {
-    expect(issue(text(q(name)), text(q({ ...name, text: "Full name" }))).fields.edited).toBe("questionnaire");
+  test("the side defaults to the Questionnaire, and a missing Why says so", () => {
+    const r = issue(text(q(name)), text(q({ ...name, text: "Full name" })));
+    expect(r.body).toContain("the Questionnaire — bring the L2 wireframe in line with it");
+    expect(r.body).toContain("### Why\n\n_Not given._");
+    expect(r.title).toBe("Suggested edit: Questionnaire/intake");
   });
   test("an unchanged item list says so", () => {
     expect(itemTable(q(name), { ...q(name), title: "New" })).toStartWith("No item changed");
   });
-  test("a link longer than the cap falls back to the clipboard", () => {
+  test("the fallback link mirrors the runtime: title and body, the clipboard past the cap", () => {
     const small = issueUrl("o/r", issue(text(q(name)), text(q({ ...name, text: "Full name" }))));
     expect(small.clipboard).toBeUndefined();
-    expect(small.url).toStartWith("https://github.com/o/r/issues/new?template=questionnaire-change.yml");
+    const u = new URL(small.url);
+    expect(u.origin + u.pathname).toBe("https://github.com/o/r/issues/new");
+    expect(u.searchParams.get("template")).toBeNull();
+    expect(u.searchParams.get("body")).toContain("JSON Patch");
+    expect(new URL(issueUrl("o/r", { title: "t", body: "b", template: "x.md" }).url).searchParams.get("template")).toBe("x.md");
     const big = issueUrl("o/r", issue(text(q(name)), text(q({ ...name, text: "x".repeat(URL_CAP) }))));
     expect(big.url.length).toBeLessThan(URL_CAP);
+    expect(new URL(big.url).searchParams.get("body")).toBe("The suggested change is on the clipboard: paste it here.");
     expect(big.clipboard).toContain("JSON Patch");
+  });
+});
+
+/** Just enough DOM for `open`: elements that nest, find a checked radio, and leave. */
+class El {
+  kids: El[] = [];
+  parent: El | null = null;
+  attrs: Record<string, string> = {};
+  listeners: Record<string, Array<(e: unknown) => void>> = {};
+  [k: string]: unknown;
+  constructor(public tagName: string, public ownerDocument: unknown) {}
+  append(...ks: Array<El | string>) {
+    for (const k of ks) if (k instanceof El) { k.parent = this; this.kids.push(k); }
+  }
+  setAttribute(k: string, v: string) { this.attrs[k] = v; }
+  addEventListener(t: string, f: (e: unknown) => void) { (this.listeners[t] ??= []).push(f); }
+  click() { for (const f of this.listeners.click ?? []) f({}); }
+  remove() { if (this.parent) this.parent.kids = this.parent.kids.filter((k) => k !== this); this.parent = null; }
+  all(): El[] { return this.kids.flatMap((k) => [k, ...k.all()]); }
+  querySelector(sel: string) {
+    if (sel === 'input[name="fa-q-edited"]:checked') return this.all().find((e) => e.tagName === "input" && e.checked) ?? null;
+    if (sel === ".fa-sg-why textarea") return this.all().find((e) => e.tagName === "textarea" && e.why) ?? null;
+    return null;
+  }
+  closest(sel: string): El | null { return sel === "dialog" ? (this.tagName === "dialog" ? this : (this.parent?.closest(sel) ?? null)) : null; }
+}
+function page() {
+  const win = { location: { href: "https://o.github.io/ig/Questionnaire-intake-form.html#x" }, addEventListener() {}, removeEventListener() {}, open: () => null, navigator: {} };
+  const doc = { defaultView: win, createElement: (t: string) => new El(t, doc) };
+  const dialog = new El("dialog", doc);
+  const why = new El("textarea", doc);
+  why.why = true;
+  why.value = "  Reads better.  ";
+  dialog.append(why);
+  const host = new El("div", doc);
+  dialog.append(host);
+  return { host, dialog };
+}
+
+describe("open: the mode the runtime calls", () => {
+  const original = text(q(name, dob));
+  test("an untouched editor hands back ctx.text, so the runtime sees no change", async () => {
+    const { host } = page();
+    const said: string[] = [];
+    const h = open(host, { text: original, status: (m: string) => said.push(m) });
+    expect(await h.get()).toBe(original);
+    expect(said[0]).toBe("Not edited yet.");
+    h.dispose();
+    expect(host.kids).toHaveLength(0);
+  });
+  test("the raw JSON edit, the side chosen and the dialog's Why reach issue() through the session", async () => {
+    const { host } = page();
+    const ctx = { text: original, status: () => {}, config: { suggest: {} } };
+    const h = open(host, ctx);
+    const panel = host.kids[0]!;
+    const [rawBtn] = panel.all().filter((e) => e.tagName === "button" && e.textContent === "Edit the JSON");
+    rawBtn!.click();
+    const ta = panel.all().find((e) => e.tagName === "textarea")!;
+    ta.value = text(q(name, { ...dob, text: "Birth date" }));
+    for (const r of panel.all().filter((e) => e.tagName === "input")) r.checked = r.value === "wireframe";
+    const after = await h.get();
+    expect(JSON.parse(after).item[1].text).toBe("Birth date");
+    expect(check(original, after)).toEqual([]);
+    const r = issue(original, after, ctx);
+    expect(r.body).toContain("the L2 wireframe — bring the Questionnaire in line with it");
+    expect(r.body).toContain("### Why\n\nReads better.");
+    expect(r.body).toContain('"path": "/item/1/text"');
+    h.dispose();
+  });
+  test("text that is not a Questionnaire is refused, which the runtime reports", () => {
+    expect(() => open(page().host, { text: "# a page", src: "x.json" })).toThrow("x.json is not a Questionnaire as JSON");
   });
 });
 
