@@ -43,7 +43,7 @@ import { execFileSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
-import { buildFshGraph, changeImpact, fileUsers, type FshGraph } from "../../cat-harness-tools/content/pipeline/fsh-cone.ts";
+import { buildFshGraph, changeImpact, fileUsers, type FshGraph } from "./fsh-cone.ts";
 import {
   pinImpact,
   RENDERED_IMPACT_TAG,
