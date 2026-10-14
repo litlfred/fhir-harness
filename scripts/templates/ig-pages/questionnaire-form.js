@@ -99,8 +99,15 @@
     status.setAttribute("role", "status");
     host.appendChild(status);
     var label = root.dataset.block || root.dataset.src || "";
+    var why = document.createElement("textarea");
+    // The ctx the runtime gives: `text` the BUILT Questionnaire
+    // (`data-suggest-text`, not the copy LHC-Forms renders, whose value sets
+    // were expanded), `sourcePath` the FSH it was built from, `why` live.
+    // `sourceText` is the runtime's read of the repository; the page has none.
     var ctx = {
       text: JSON.stringify(original, null, 2),
+      sourcePath: root.dataset.src,
+      get why() { return why.value.trim(); },
       src: root.dataset.src || root.dataset.json,
       path: root.dataset.src || root.dataset.json,
       label: label,
@@ -111,9 +118,16 @@
       page: base,
       status: function (m) { status.textContent = String(m); },
     };
-    import(at(prof.module)).then(function (mode) {
+    var built = root.dataset.suggestText
+      ? fetch(at(root.dataset.suggestText)).then(function (r) {
+          if (!r.ok) throw new Error(root.dataset.suggestText + ": HTTP " + r.status);
+          return r.text();
+        })
+      : Promise.resolve(ctx.text);
+    Promise.all([import(at(prof.module)), built]).then(function (got) {
+      var mode = got[0];
+      ctx.text = got[1];
       var ed = mode.open(host, ctx);
-      var why = document.createElement("textarea");
       why.className = "fa-qform-why";
       why.rows = 3;
       why.placeholder = "What should change, and why? This becomes the issue's reason.";
@@ -145,8 +159,9 @@
             out.appendChild(p);
           });
           if (findings.some(function (f) { return f.severity === "error"; })) return;
-          ctx.why = why.value;
           var r = mode.issue(ctx.text, after, ctx);
+          // As the runtime does: the reader's Why appended when the body lacks it.
+          r = { title: r.title, body: mode.withWhy(r.body, ctx.why) };
           var u = mode.issueUrl(cfg.repo, r);
           if (u.clipboard) {
             if (!navigator.clipboard) { ctx.status("Too long for a link, and the clipboard is blocked."); return; }

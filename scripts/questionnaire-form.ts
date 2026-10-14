@@ -146,9 +146,11 @@ export function formPageHtml(q: { id: string; title?: string; name?: string; url
   };
   // The runtime matches the host to the profile by `data-suggest-mode`.
   // `data-src` names the source in the repository (an FSH file), which the
-  // issue names and the runtime's raw pane edits; `data-suggest-text` is the
-  // built Questionnaire JSON the form mode edits as `ctx.text`: the AST's copy,
-  // not the rendered one, whose value sets were expanded for display.
+  // issue names and the runtime's FSH pane edits (`ctx.sourcePath` /
+  // `ctx.sourceText`); `data-suggest-text` is the URL, relative to this page,
+  // of the built Questionnaire JSON the form mode edits as `ctx.text`: the
+  // AST's `.source.json` copy, not the rendered one, whose value sets were
+  // expanded for display.
   const src = `${o.source ? ` data-src="${esc(o.source)}"` : ""}${o.text ? ` data-suggest-text="${esc(o.text)}"` : ""} data-block="questionnaire:${esc(q.id)}" data-suggest-mode="${QUESTIONNAIRE_PROFILE.id}"`;
   return [
     "---",
