@@ -1,0 +1,189 @@
+# Refresh an IG's FHIR AST cache — the ONE place an IG Publisher run writes
+# `cat/fhir-harness/fhir-ast/<package id>` (skill `ig-build-pipeline`,
+# "The AST cache lifecycle"). Reusable: an IG repository calls it with a short
+# caller (template: `templates/ig-repo-site/ig-ast-refresh.yml`); it carries no
+# copy of these steps (owner, 2026-10-14: "that should be in fhir-harness then
+# smart-* all use that").
+#
+# What a run does, and nothing else — no site build, no gh-pages, no dispatch
+# of another repository's workflow:
+#   1. checks out the CALLING repository at `ref` (default `main`);
+#   2. mounts the layers the caller's index.lock.json pins (this layer's
+#      `ig-cache.sh` and `ig-ast.ts` among them);
+#   3. restores the cache and asks `ig-ast.ts validity` whether it was built
+#      from the inputs that commit has (`valid`, `stale`, `cannot-tell`, or
+#      `missing` when there is no cache);
+#   4. when it is not `valid`, or `force` is set: builds the IG with the
+#      Publisher AST exporter (`litlfred/fhir-ig-publisher`, branch
+#      `claude/ast-export`, pinned by `ast-export-ref`; skill
+#      `ig-publisher-fork`), checks the new AST is `valid` for the commit, and
+#      seeds the cache branch with `ig-cache.sh seed --push`.
+#
+# The cache is shared by every build of the IG, so only a build of the tip of
+# the caller's DEFAULT branch seeds it; a build of any other ref reports its
+# verdict and keeps its AST to itself (as an artifact).
+#
+# Nothing here may know about any one IG or publisher (fhir-harness/AGENTS.md).
+name: IG AST refresh
+
+on:
+  workflow_call:
+    inputs:
+      ref:
+        description: "The caller's ref to build (branch, tag or sha)"
+        type: string
+        default: main
+      force:
+        description: "Rebuild even when the cache is valid for the ref"
+        type: boolean
+        default: false
+      ast-export-ref:
+        description: "litlfred/fhir-ig-publisher commit carrying ast-export (AstExportCli)"
+        type: string
+        default: d03a05a7bc298ce8079e0f14a47145f018db57f8
+      tx:
+        description: "Terminology server the Publisher uses (its own default)"
+        type: string
+        default: http://tx.fhir.org
+    outputs:
+      verdict:
+        description: "The cache's verdict before the run: valid, stale, cannot-tell or missing"
+        value: ${{ jobs.refresh.outputs.verdict }}
+      seeded:
+        description: "true when this run wrote the cache branch"
+        value: ${{ jobs.refresh.outputs.seeded }}
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    concurrency:
+      group: ig-ast-refresh-${{ github.repository }}
+      cancel-in-progress: false
+    outputs:
+      verdict: ${{ steps.ast.outputs.verdict }}
+      seeded: ${{ steps.seed.outputs.seeded }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.ref }}
+          fetch-depth: 1
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: 1.3.14  # the platform's CI version
+
+      - name: Mount the layers index.lock.json pins
+        run: |
+          [ -f index.lock.json ] || { echo "::error::no index.lock.json: the caller must mount fhir-harness (templates/ig-repo-site)"; exit 2; }
+          ref=$(python3 -c "import json;print(next(m['ref'] for m in json.load(open('index.lock.json'))['mounts'] if m['harness']=='cat-harness-tools'))")
+          M="$RUNNER_TEMP/mounter"
+          git init -q "$M"
+          git -C "$M" fetch -q --depth 1 https://github.com/litlfred/cat-harness-tools.git "$ref"
+          git -C "$M" checkout -q FETCH_HEAD
+          bun run "$M/scripts/mount-from-lock.ts" --root .
+          for d in fhir-harness folio-assistant-core cat-harness; do
+            [ -f "$d/package.json" ] && (cd "$d" && bun install --no-save)
+          done
+          [ -f fhir-harness/scripts/ig-cache.sh ] || { echo "::error::the lock mounts no fhir-harness"; exit 2; }
+
+      - name: The cache's verdict for this commit
+        id: ast
+        run: |
+          set +e
+          verdict=missing
+          if bash fhir-harness/scripts/ig-cache.sh restore --ig-root .; then
+            bun run fhir-harness/scripts/ig-ast.ts validity output-ast --ig . > "$RUNNER_TEMP/ast-validity.json"
+            case $? in 0) verdict=valid ;; 1) verdict=stale ;; *) verdict=cannot-tell ;; esac
+            cat "$RUNNER_TEMP/ast-validity.json"
+          fi
+          rebuild=false
+          [ "$verdict" != valid ] && rebuild=true
+          [ "${{ inputs.force }}" = "true" ] && rebuild=true
+          echo "verdict=$verdict" >> "$GITHUB_OUTPUT"
+          echo "rebuild=$rebuild" >> "$GITHUB_OUTPUT"
+          echo "::notice::AST cache for $(git rev-parse --short HEAD): $verdict; rebuild: $rebuild"
+
+      - name: Java for the IG Publisher
+        if: steps.ast.outputs.rebuild == 'true'
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+
+      - name: Node for SUSHI
+        if: steps.ast.outputs.rebuild == 'true'
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Ruby for the Publisher's Jekyll
+        if: steps.ast.outputs.rebuild == 'true'
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.3"
+
+      - name: Build the IG and export its AST
+        if: steps.ast.outputs.rebuild == 'true'
+        env:
+          AST_EXPORT_REF: ${{ inputs.ast-export-ref }}
+          TX_SERVER: ${{ inputs.tx }}
+        run: |
+          set -o pipefail
+          npm install -g fsh-sushi
+          gem install jekyll --no-document
+          git clone -q --filter=blob:none https://github.com/litlfred/fhir-ig-publisher "$RUNNER_TEMP/igp"
+          git -C "$RUNNER_TEMP/igp" checkout -q "$AST_EXPORT_REF"
+          (cd "$RUNNER_TEMP/igp/ast-export" && mvn -q -B -DskipTests compile dependency:build-classpath -Dmdep.outputFile=cp.txt)
+          CP="$RUNNER_TEMP/igp/ast-export/target/classes:$(cat "$RUNNER_TEMP/igp/ast-export/cp.txt")"
+          rm -rf output-ast
+          # Absolute paths: the exporter refuses a relative -ig. -tx explicitly:
+          # AstExportCli builds the Publisher directly and leaves it unset, so
+          # without it the build runs with NO terminology server.
+          java -Xmx10g -cp "$CP" org.hl7.fhir.igtools.ast.AstExportCli -ig "$GITHUB_WORKSPACE" \
+            -ast-out "$GITHUB_WORKSPACE/output-ast" -tx "$TX_SERVER" > "$RUNNER_TEMP/ast-build.log" 2>&1 \
+            || { tail -n 80 "$RUNNER_TEMP/ast-build.log"; exit 1; }
+          tail -n 20 "$RUNNER_TEMP/ast-build.log"
+          # The build's own expansions, beside the AST: its ValueSets carry none.
+          [ -f output/expansions.json ] && cp output/expansions.json output-ast/expansions.json
+          # The new AST must be valid for the commit it was built from, or it
+          # is not seeded: a cache that fails its own check is worse than none.
+          bun run fhir-harness/scripts/ig-ast.ts validity output-ast --ig . \
+            || { echo "::error::the AST just built is not valid for $(git rev-parse --short HEAD)"; exit 1; }
+
+      - name: Keep the AST build log
+        if: always() && steps.ast.outputs.rebuild == 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: ast-build-log
+          path: ${{ runner.temp }}/ast-build.log
+          if-no-files-found: ignore
+
+      - name: Seed the AST cache
+        id: seed
+        if: steps.ast.outputs.rebuild == 'true'
+        env:
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+        run: |
+          head=$(git rev-parse HEAD)
+          tip=$(git ls-remote origin "refs/heads/${DEFAULT_BRANCH:-main}" | cut -f1)
+          if [ "$head" != "$tip" ]; then
+            echo "::notice::$head is not the tip of ${DEFAULT_BRANCH:-main} ($tip): the shared cache is left alone"
+            echo "seeded=false" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          bash fhir-harness/scripts/ig-cache.sh seed --ig-root . --push
+          echo "seeded=true" >> "$GITHUB_OUTPUT"
+
+      - name: Keep the AST when it was not seeded
+        if: steps.ast.outputs.rebuild == 'true' && steps.seed.outputs.seeded != 'true'
+        uses: actions/upload-artifact@v4
+        with:
+          name: output-ast
+          path: output-ast
+          if-no-files-found: ignore
