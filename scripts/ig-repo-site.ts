@@ -45,7 +45,10 @@
  * pages say "IG API". Files it leaves in `<work>/ig-api/site/` (its own pages
  * over the sidecars, such as an OpenAPI page) are served verbatim at the site
  * root, never over a path the site already holds, and the Publisher-chrome
- * guard judges them like every other page.
+ * guard judges them like every other page. The one exception: a page of the
+ * IG's own that holds the marker the descriptor names (`"placeholder"`) is a
+ * shell around the layer's content, and the layer's page at that path
+ * replaces it.
  *
  * ## Why there is no instance here
  *
@@ -257,6 +260,12 @@ export interface IgApi {
   label?: string;
   /** Files to serve at the site root, at the paths they hold under this directory. */
   site?: string;
+  /**
+   * The marker a page of the IG's own holds where the layer above's page goes
+   * (the IG's hub page is a shell around it). A site page holding it is
+   * replaced by the layer's file at the same path; no other page ever is.
+   */
+  placeholder?: string;
 }
 
 /**
@@ -275,9 +284,16 @@ export function readIgApi(work: string | undefined): IgApi | undefined {
   const site = existsSync(siteDir) && statSync(siteDir).isDirectory() ? { site: siteDir } : {};
   const desc = join(dir, IG_API_DESCRIPTOR);
   if (!existsSync(desc)) return { sidecars, files, ...site };
-  const d = JSON.parse(readFileSync(desc, "utf-8")) as { label?: unknown };
+  const d = JSON.parse(readFileSync(desc, "utf-8")) as { label?: unknown; placeholder?: unknown };
   if (d.label !== undefined && (typeof d.label !== "string" || d.label.trim() === "")) throw new Error(`${desc}: "label" must be a non-empty string`);
-  return { sidecars, files, ...(typeof d.label === "string" ? { label: d.label.trim() } : {}), ...site };
+  if (d.placeholder !== undefined && (typeof d.placeholder !== "string" || d.placeholder.trim().length < 8)) throw new Error(`${desc}: "placeholder" must be a marker string of at least 8 characters`);
+  return {
+    sidecars,
+    files,
+    ...(typeof d.label === "string" ? { label: d.label.trim() } : {}),
+    ...(typeof d.placeholder === "string" ? { placeholder: d.placeholder } : {}),
+    ...site,
+  };
 }
 
 /**
@@ -289,7 +305,7 @@ export function readIgApi(work: string | undefined): IgApi | undefined {
 export function astGate(verdict: string, o: { acceptStale: boolean; preview: boolean }): { ok: boolean; said: string } {
   if (verdict === "valid") return { ok: true, said: "the AST is valid for this checkout" };
   if (o.acceptStale && o.preview) return { ok: true, said: `the AST is ${verdict}; accepted for this preview (${ACCEPT_STALE_ENV}=1)` };
-  const why = o.acceptStale ? `${ACCEPT_STALE_ENV}=1 accepts a stale AST for a preview only, and this build is the root` : `run the IG's Site publish (its `ast` job refreshes the cache), or set ${ACCEPT_STALE_ENV}=1 for a preview`;
+  const why = o.acceptStale ? `${ACCEPT_STALE_ENV}=1 accepts a stale AST for a preview only, and this build is the root` : `run the IG's Site publish (its "ast" job refreshes the cache), or set ${ACCEPT_STALE_ENV}=1 for a preview`;
   return { ok: false, said: `the AST is ${verdict}: the site is not built from it (${why}). It does not fall back to a Publisher run or the Publisher's HTML` };
 }
 
@@ -576,6 +592,8 @@ export interface ServedData {
   /** Files the layer above wrote for the site root, served; and those the site already held, not laid over. */
   siteFiles: number;
   siteKept: string[];
+  /** Pages of the IG's own that held the layer's placeholder, replaced by the layer's file. */
+  siteFilled: string[];
   /** Whether the artefact index is served at `fhir-artifact-index/index.json`. */
   index: boolean;
 }
@@ -597,7 +615,7 @@ function serve(from: string, site: string, rel: string): boolean {
 export function serveAstData(o: { site: string; ast: string; index?: string; igApi?: IgApi }): ServedData {
   const manifest = join(o.ast, "manifest.json");
   if (!existsSync(manifest)) throw new Error(`${o.ast}: no AST to serve — run ${IG_SITE_SCRIPTS.ast} first`);
-  const out: ServedData = { resources: 0, named: 0, kept: 0, sidecars: 0, siteFiles: 0, siteKept: [], index: false };
+  const out: ServedData = { resources: 0, named: 0, kept: 0, sidecars: 0, siteFiles: 0, siteKept: [], siteFilled: [], index: false };
   const m = JSON.parse(readFileSync(manifest, "utf-8")) as { resources?: { resourceType?: string; id?: string; file?: string }[] };
   for (const r of m.resources ?? []) {
     if (!r.file || !r.resourceType || !r.id) continue;
@@ -617,7 +635,11 @@ export function serveAstData(o: { site: string; ast: string; index?: string; igA
     if (o.igApi.site) {
       for (const f of filesUnder(o.igApi.site)) {
         if (serve(join(o.igApi.site, f), o.site, f)) out.siteFiles += 1;
-        else out.siteKept.push(f);
+        else if (o.igApi.placeholder && /\.html?$/i.test(f) && readFileSync(join(o.site, f), "utf-8").includes(o.igApi.placeholder)) {
+          // The IG's page is a shell around the layer's marker: the layer's page is its content.
+          cpSync(join(o.igApi.site, f), join(o.site, f));
+          out.siteFilled.push(f);
+        } else out.siteKept.push(f);
       }
     }
   }
@@ -636,6 +658,7 @@ export function publisherPages(o: { site: string; ast: string; work?: string; ig
       `${served.index ? `the artefact index at ${INDEX_SERVED}/index.json` : "no artefact index served"}; ` +
       `${served.sidecars} IG API sidecar(s) at ${SIDECARS_SERVED}/; ${served.siteFiles} file(s) the layer above wrote for the site root. The Publisher's HTML is not taken`,
   );
+  if (served.siteFilled.length) log(`publisher pages: ${served.siteFilled.length} page(s) of the IG's own held the layer above's placeholder and are its page now: ${served.siteFilled.join(", ")}`);
   if (served.siteKept.length) log(`publisher pages: the site already held ${served.siteKept.length} path(s) the layer above also wrote, kept as the site built them: ${served.siteKept.slice(0, 10).join(", ")}`);
   // The guard: whatever put it there, a page wearing the Publisher's chrome is not published.
   const chrome = publisherChromePages(o.site);

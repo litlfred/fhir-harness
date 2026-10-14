@@ -149,7 +149,7 @@ describe("publisher pages: the AST's data, never the Publisher's HTML", () => {
     mkdirSync(sidecars);
     writeFileSync(join(sidecars, "ValueSet-x.schema.json"), "{}");
     const r = serveAstData({ site, ast, index, igApi: { sidecars, files: 1 } });
-    expect(r).toEqual({ resources: 2, named: 1, kept: 1, sidecars: 1, siteFiles: 0, siteKept: [], index: true });
+    expect(r).toEqual({ resources: 2, named: 1, kept: 1, sidecars: 1, siteFiles: 0, siteKept: [], siteFilled: [], index: true });
     expect(existsSync(join(site, AST_DATA, "resources", "ValueSet", "x--0000.json"))).toBe(true);
     expect(JSON.parse(readFileSync(join(site, "ValueSet-x.json"), "utf-8")).id).toBe("x");
     expect(readFileSync(join(site, "CodeSystem-y.json"), "utf-8")).toBe("site");
@@ -172,7 +172,7 @@ describe("publisher pages: the AST's data, never the Publisher's HTML", () => {
     const site = join(root, "_site");
     mkdirSync(site, { recursive: true });
     const said: string[] = [];
-    expect(publisherPages({ site, ast, work, log: (s) => said.push(s) })).toEqual({ resources: 1, named: 1, kept: 0, sidecars: 1, siteFiles: 0, siteKept: [], index: true });
+    expect(publisherPages({ site, ast, work, log: (s) => said.push(s) })).toEqual({ resources: 1, named: 1, kept: 0, sidecars: 1, siteFiles: 0, siteKept: [], siteFilled: [], index: true });
     expect(said.join("\n")).toContain("The Publisher's HTML is not taken");
   });
 });
@@ -199,6 +199,36 @@ test("what the layer above wrote for the site root is served there, never over a
   expect(readFileSync(join(site, "openapi", "index.html"), "utf-8")).toBe("<p>hub</p>");
   expect(existsSync(join(site, "ValueSet-x.openapi.json"))).toBe(true);
   expect(readFileSync(join(site, "index.html"), "utf-8")).toBe("<p>site</p>");
+});
+
+test("a page of the IG's own holding the layer's placeholder is replaced by the layer's page; no other is", () => {
+  const root = join(dir, "serve-fill");
+  const ast = fakeAst(root, [{ resourceType: "ValueSet", id: "x" }]);
+  const work = join(root, "work");
+  const api = join(work, IG_API_WORK);
+  mkdirSync(join(api, "sidecars"), { recursive: true });
+  writeFileSync(join(api, "sidecars", "ValueSet-x.jsonld"), "{}");
+  mkdirSync(join(api, IG_API_SITE), { recursive: true });
+  writeFileSync(join(api, IG_API_SITE, "hub.html"), "<p>thin hub</p>");
+  writeFileSync(join(api, IG_API_SITE, "other.html"), "<p>overlay</p>");
+  writeFileSync(join(api, IG_API_DESCRIPTOR), JSON.stringify({ placeholder: "<!-- HUB_HERE -->" }));
+  const site = join(root, "_site");
+  mkdirSync(site, { recursive: true });
+  writeFileSync(join(site, "hub.html"), "<h1>Hub</h1><!-- HUB_HERE -->");
+  writeFileSync(join(site, "other.html"), "<p>the IG's own</p>");
+  const r = serveAstData({ site, ast, igApi: readIgApi(work)! });
+  expect(r.siteFilled).toEqual(["hub.html"]);
+  expect(r.siteKept).toEqual(["other.html"]);
+  expect(readFileSync(join(site, "hub.html"), "utf-8")).toBe("<p>thin hub</p>");
+  expect(readFileSync(join(site, "other.html"), "utf-8")).toBe("<p>the IG's own</p>");
+});
+
+test("a placeholder too short to be a marker is refused", () => {
+  const w = join(dir, "work-ph");
+  mkdirSync(join(w, IG_API_WORK, "sidecars"), { recursive: true });
+  writeFileSync(join(w, IG_API_WORK, "sidecars", "a.jsonld"), "{}");
+  writeFileSync(join(w, IG_API_WORK, IG_API_DESCRIPTOR), JSON.stringify({ placeholder: "<p>" }));
+  expect(() => readIgApi(w)).toThrow(/placeholder/);
 });
 
 describe("the PlantUML jar", () => {

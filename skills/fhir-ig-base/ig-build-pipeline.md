@@ -206,7 +206,10 @@ the pages say "IG API". Files the layer above leaves in
 `$SITE_WORK/ig-api/site/` (its own pages over the sidecars, such as an
 OpenAPI page at `openapi/index.html`) are served verbatim at the site root,
 never over a path the site already holds, and the Publisher-chrome guard
-judges them like every other page.
+judges them like every other page. The one exception is named by the
+descriptor's `"placeholder"`: a page of the IG's own that holds that marker
+is a shell around the layer's content (an IG's hub page around its marker),
+and the layer's page at the same path replaces it. No other page is replaced.
 
 **What the site serves from the AST**: each resource under `ast-data/` (the
 thin pages' data, `gen-ig-pages --compiled-data ast-data`) and under the
