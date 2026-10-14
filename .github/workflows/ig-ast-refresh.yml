@@ -13,7 +13,8 @@
 #   3. restores the cache and asks `ig-ast.ts validity` whether it was built
 #      from the inputs that commit has (`valid`, `stale`, `cannot-tell`, or
 #      `missing` when there is no cache);
-#   4. when it is not `valid`, or `force` is set: builds the IG with the
+#   4. when it is not `valid`, or `force` is set: runs the caller's
+#      `pre-export` command, if it gives one, then builds the IG with the
 #      Publisher AST exporter (`litlfred/fhir-ig-publisher`, branch
 #      `claude/ast-export`, pinned by `ast-export-ref`; skill
 #      `ig-publisher-fork`), checks the new AST is `valid` for the commit, and
@@ -25,6 +26,16 @@
 # the caller's DEFAULT branch whose inputs (sushi-config.yaml, ig.ini, input/)
 # equal its tip's seeds it; a build of any other ref reports its verdict and
 # keeps its AST to itself (as an artifact).
+#
+# `pre-export` is the hook for an OVERLAY: a command, in the caller's own
+# checkout, that prepares the IG's inputs the way that IG's own build does
+# before its Publisher run (pages registered, resources generated). This
+# workflow knows nothing of what it does. It records the AST against the
+# CLEAN commit's inputs: it takes their digest before the command runs, puts
+# the inputs back after the export, checks the digest is the same again, and
+# writes it into the manifest with `ig-ast.ts source-inputs` (the prepared
+# tree's digest is kept beside it, under `preExport`). Otherwise the cache
+# would record a tree no checkout has, and never verify.
 #
 # Nothing here may know about any one IG or publisher (fhir-harness/AGENTS.md).
 name: IG AST refresh
@@ -48,6 +59,10 @@ on:
         description: "Terminology server the Publisher uses (its own default)"
         type: string
         default: http://tx.fhir.org
+      pre-export:
+        description: "Optional command run with bash at the IG root before the AST export: the caller's overlay. Its changes to the IG's inputs are not part of the source the AST is recorded against"
+        type: string
+        default: ""
     outputs:
       verdict:
         description: "The cache's verdict before the run: valid, stale, cannot-tell or missing"
@@ -136,6 +151,7 @@ jobs:
         env:
           AST_EXPORT_REF: ${{ inputs.ast-export-ref }}
           TX_SERVER: ${{ inputs.tx }}
+          PRE_EXPORT: ${{ inputs.pre-export }}
         run: |
           set -o pipefail
           npm install -g fsh-sushi
@@ -145,6 +161,13 @@ jobs:
           (cd "$RUNNER_TEMP/igp/ast-export" && mvn -q -B -DskipTests compile dependency:build-classpath -Dmdep.outputFile=cp.txt)
           CP="$RUNNER_TEMP/igp/ast-export/target/classes:$(cat "$RUNNER_TEMP/igp/ast-export/cp.txt")"
           rm -rf output-ast
+          # The SOURCE's input digest, before anything prepares the tree.
+          source_digest=$(bun run fhir-harness/scripts/ig-ast.ts digest --ig .)
+          if [ -n "$PRE_EXPORT" ]; then
+            echo "::group::pre-export: $PRE_EXPORT"
+            bash -c "$PRE_EXPORT" || { echo "::error::the pre-export command failed: nothing is exported"; exit 1; }
+            echo "::endgroup::"
+          fi
           # Absolute paths: the exporter refuses a relative -ig. -tx explicitly:
           # AstExportCli builds the Publisher directly and leaves it unset, so
           # without it the build runs with NO terminology server.
@@ -154,6 +177,18 @@ jobs:
           tail -n 20 "$RUNNER_TEMP/ast-build.log"
           # The build's own expansions, beside the AST: its ValueSets carry none.
           [ -f output/expansions.json ] && cp output/expansions.json output-ast/expansions.json
+          if [ -n "$PRE_EXPORT" ]; then
+            # Put the IG's inputs back as the commit has them, check they are,
+            # and record the AST against them.
+            for p in sushi-config.yaml ig.ini input; do
+              if git ls-files --error-unmatch -- "$p" > /dev/null 2>&1; then git checkout -q HEAD -- "$p"; fi
+            done
+            git clean -fdq -- sushi-config.yaml ig.ini input
+            now=$(bun run fhir-harness/scripts/ig-ast.ts digest --ig .)
+            [ "$now" = "$source_digest" ] \
+              || { echo "::error::the inputs are not the commit's after the pre-export was undone ($now, not $source_digest)"; exit 1; }
+            bun run fhir-harness/scripts/ig-ast.ts source-inputs output-ast --digest "$source_digest" --pre-export "$PRE_EXPORT"
+          fi
           # The new AST must be valid for the commit it was built from, or it
           # is not seeded: a cache that fails its own check is worse than none.
           bun run fhir-harness/scripts/ig-ast.ts validity output-ast --ig . \

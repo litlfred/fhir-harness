@@ -27,6 +27,10 @@
  *   in exactly `CompiledInputsSchema`'s shape. `inputDigest` is recomputed
  *   here by the same algorithm as the Java `InputDigest`, and a golden vector
  *   shared by both test suites keeps the two from drifting.
+ * - `digest --ig <root>`: the IG's input digest now, as `validity` computes it.
+ * - `source-inputs <ast> --digest <hex> --pre-export <command>`: after a
+ *   `pre-export` command rewrote the tree, record the AST against the
+ *   source's digest (`recordSourceInputs`).
  * - `diff <base> <head> [--plan plan.json] [--json out] [--site dir]`: the
  *   delta between two ASTs, and optionally just-the-docs pages for it.
  * - `render <delta.json> --site dir`: pages from a delta already computed.
@@ -274,6 +278,39 @@ export function astValidity(ast: Ast, igRoot: string, toolchain?: string): AstVa
     ? compiledValidity(rec.data, current)
     : { verdict: "cannot-tell", why: `the manifest's inputs do not parse: ${rec.error.issues.map((i) => i.message).join("; ")}` };
   return { verdict: detail.verdict, detail, recorded, current };
+}
+
+/**
+ * After a `pre-export` command (`ig-ast-refresh.yml`), record the AST against
+ * the SOURCE's inputs rather than the prepared tree's.
+ *
+ * The exporter records `inputs.inputDigest` from the work tree it was handed,
+ * and a pre-export command rewrites that tree (an overlay registering pages,
+ * generating resources). Left as it is, that digest describes a tree no clean
+ * checkout ever has, so the cache could never verify anywhere: `validity`
+ * would read `stale-inputs` on every later run. The prepared tree is a
+ * function of the commit plus the command, so the source digest, taken by the
+ * caller BEFORE the command ran and checked again after the tree was put
+ * back, is the honest one. The prepared digest and the command are kept
+ * beside it, under `preExport`, so a reader can see the AST was not built
+ * from the bare source. `inputs` itself stays in `CompiledInputsSchema`'s
+ * strict shape.
+ *
+ * Refuses a manifest with no recorded `inputDigest` (nothing to replace, so
+ * the AST stays `cannot-tell`) and a digest that is not 64 hex characters.
+ */
+export function recordSourceInputs(dir: string, sourceDigest: string, preparedBy: string): { prepared: string; source: string } {
+  if (!/^[0-9a-f]{64}$/.test(sourceDigest)) throw new Error(`not a sha256 input digest: ${sourceDigest}`);
+  if (!preparedBy.trim()) throw new Error("no pre-export command to record");
+  const mf = join(dir, "manifest.json");
+  const m = JSON.parse(readFileSync(mf, "utf-8")) as { inputs?: { inputDigest?: unknown }; preExport?: unknown };
+  const prepared = m.inputs?.inputDigest;
+  if (typeof prepared !== "string") throw new Error(`${mf} records no inputs.inputDigest to replace`);
+  if (m.preExport !== undefined) throw new Error(`${mf} already records a preExport: it was recorded once`);
+  m.inputs!.inputDigest = sourceDigest;
+  m.preExport = { command: preparedBy, preparedInputDigest: prepared };
+  writeFileSync(mf, `${JSON.stringify(m, null, 2)}\n`);
+  return { prepared, source: sourceDigest };
 }
 
 // ── diff ───────────────────────────────────────────────────────────────────
@@ -650,7 +687,8 @@ if (import.meta.main) {
   };
   const pos = args.filter((a, i) => !a.startsWith("--") && !(i > 0 && args[i - 1]!.startsWith("--")));
   const usage =
-    "usage: ig-ast.ts list <ast> | validity <ast> --ig <root> [--toolchain <s>] | " +
+    "usage: ig-ast.ts list <ast> | validity <ast> --ig <root> [--toolchain <s>] | digest --ig <root> | " +
+    "source-inputs <ast> --digest <hex> --pre-export <command> | " +
     "diff <base-ast> <head-ast> [--plan plan.json] [--json out.json] [--site dir] | render <delta.json> --site dir | " +
     "jsonld <ast> | schema [--check]";
   if (cmd === "list" && pos[0]) {
@@ -659,6 +697,11 @@ if (import.meta.main) {
     const v = astValidity(readAst(pos[0]), opt("--ig")!, opt("--toolchain"));
     console.log(JSON.stringify(v, null, 2));
     process.exit(v.verdict === "valid" ? 0 : v.verdict === "stale-inputs" ? 1 : 2);
+  } else if (cmd === "digest" && opt("--ig")) {
+    console.log(inputDigest(opt("--ig")!));
+  } else if (cmd === "source-inputs" && pos[0] && opt("--digest") && opt("--pre-export")) {
+    const r = recordSourceInputs(pos[0], opt("--digest")!, opt("--pre-export")!);
+    console.log(`inputs.inputDigest: ${r.source} (the source); the prepared tree's, ${r.prepared}, kept under preExport`);
   } else if (cmd === "diff" && pos[0] && pos[1]) {
     const plan = opt("--plan") ? JSON.parse(readFileSync(opt("--plan")!, "utf-8")) : undefined;
     const d = diffAst(readAst(pos[0]), readAst(pos[1]), plan);
