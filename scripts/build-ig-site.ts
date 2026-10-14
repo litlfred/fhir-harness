@@ -1029,6 +1029,14 @@ export interface StageOptions {
      * `site.data.fhir`. Absent (`stage-ig-sites --full-pages`), the full pages.
      */
     index?: string;
+    /**
+     * Every page name under `pagesHref` beyond the artefacts' own: an
+     * artefact's thin TAB VIEWS (`<Type>-<id>-definitions`, `-mappings`,
+     * `-examples`, `.json`, `.profile.json`; owner, 2026-10-14: "3. Render them
+     * too"). The narrative's links to them are pointed at `pagesHref` as its
+     * links to the artefact pages are (`relinkArtifacts`).
+     */
+    pages?: ReadonlyArray<string>;
   };
   /**
    * Content a POST-PROCESSING step writes into a page after the Publisher has
@@ -1580,7 +1588,7 @@ export function stageIgSite(igSrc: string, out: string, opts: StageOptions = {})
   const unlisted: string[] = [];
   const filled: string[] = [];
   const usedMarkers = new Set<string>();
-  const artifactPages = new Set((opts.artifacts?.list ?? []).map((a) => artifactPageName(a)));
+  const artifactPages = new Set([...(opts.artifacts?.list ?? []).map((a) => artifactPageName(a)), ...(opts.artifacts?.pages ?? [])]);
   const annexed: string[] = [];
   let jsonAnnexes = 0;
   const cellLookup = opts.artifacts ? artifactCellLookup(opts.artifacts.list, opts.artifacts.pagesHref) : undefined;

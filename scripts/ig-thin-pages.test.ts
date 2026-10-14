@@ -223,9 +223,14 @@ describe("gen-ig-pages: thin by default, end to end (owner, 2026-10-12: \"make t
   it("with no flag, writes each artefact page as a thin .html at the full page's address, its node beside it, and the index node", () => {
     const art = readdirSync(join(docs("thin"), "artifact")).sort();
     expect(art).toEqual([
+      // The compiled profile's tab views (owner, 2026-10-14: "3. Render them
+      // too"); the referenced one has no resource here, so no views.
+      "StructureDefinition-Composition-uv-ips-definitions.html",
+      "StructureDefinition-Composition-uv-ips-mappings.html",
       "StructureDefinition-Composition-uv-ips.html",
       "StructureDefinition-Composition-uv-ips.json",
       "StructureDefinition-Composition-uv-ips.jsonld",
+      "StructureDefinition-Composition-uv-ips.profile.json.html",
       "StructureDefinition-Patient-uv-ips.html",
       "StructureDefinition-Patient-uv-ips.json",
       "StructureDefinition-Patient-uv-ips.jsonld",

@@ -58,7 +58,10 @@ release changes.
 Since 2026-10-12 (owner: *"make thin default"*) the Jekyll phase emits THIN
 pages: each artefact page and the IG's `artifacts.html` and `toc.html` are a
 few KB that load their content from JSON-LD nodes (`artifact/<Type>-<id>.jsonld`
-and `artifact/index.jsonld`), and the IG's narrative pages keep their prose
+and `artifact/index.jsonld`). Each artefact's tab views (definitions,
+mappings, JSON and examples) are thin pages beside it, drawn from the
+resource's JSON (owner, 2026-10-14: *"3. Render them too"*). The IG's
+narrative pages keep their prose
 with every piece of chrome linked rather than inlined. The old full pages stay
 reachable with `--full-pages` on both `gen-ig-pages.ts` and `stage-ig-sites.ts`.
 An IG that pins this layer by SHA changes nothing until it re-pins, and gets

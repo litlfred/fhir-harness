@@ -49,6 +49,16 @@
  * JSON-LD nodes, and the narrative's links to `<Type>-<id>.html` are pointed
  * at them (`relinkArtifacts`). `ig-render-jekyll` §"Thin pages, the default".
  *
+ * Each artefact's TAB VIEWS are thin pages too (owner, 2026-10-14, answering
+ * whether the Publisher's per-artefact tabs are rendered: "3. Render them
+ * too"): `artifact/<Type>-<id>-definitions.html`, `-mappings.html`, the JSON
+ * view (`.json.html`, a profile's `.profile.json.html`) and `-examples.html`
+ * where an artefact claims the profile, at the Publisher's file names beside
+ * the artefact's page, drawn from the Publisher's `<Type>-<id>.json` the site
+ * carries as data. The narrative's links to those names are pointed at them
+ * as its links to the artefact pages are. The Publisher's `comparison-v*`
+ * directories are not rendered and not published.
+ *
  * ## `publisher-pages`: the Publisher's data, never its HTML
  *
  * The site's pages and the thin artefact pages link the Publisher's DATA by
@@ -79,6 +89,7 @@ import { basename, join, relative, resolve, sep } from "node:path";
 
 import { parse as parseYaml } from "yaml";
 
+import { conceptOf, profilesOf } from "./ast-to-artifact-index.ts";
 import { composeIgSite, dedupeSiteIds, describeStage, IG_THIN_CSS_FILE, stageIgSite, type SitePalette } from "./build-ig-site";
 import { buildMenu } from "./ingest-ig-menu.ts";
 import { siteBuild, type SiteBuild, STAMP_FILE } from "./site-build-stamp.ts";
@@ -212,6 +223,37 @@ export function takeJsonOnly(indexFile: string): Record<string, number> {
 }
 
 /**
+ * What each artefact's own JSON states about itself — its `meta.profile` and
+ * its `code` concept — copied into the index from the Publisher's
+ * `<Type>-<id>.json` in `output/`, as `ast-to-artifact-index` copies them
+ * from the AST. Nothing is looked up. The index node carries them
+ * (`statedFacts`), so the artifacts page can show an instance's profile and
+ * code, and a profile's examples view (owner, 2026-10-14: "3. Render them
+ * too") can list what claims it. Returns how many artefacts state either.
+ */
+export function stateFromOutput(indexFile: string, output: string): number {
+  const ix = JSON.parse(readFileSync(indexFile, "utf-8")) as { artifacts: { resourceType: string; id: string; canonical?: string; profiles?: string[]; code?: unknown }[] };
+  let stated = 0;
+  for (const a of ix.artifacts) {
+    const f = join(output, `${a.resourceType}-${a.id}.json`);
+    if (!existsSync(f)) continue;
+    let r: Parameters<typeof profilesOf>[0];
+    try {
+      r = JSON.parse(readFileSync(f, "utf-8")) as Parameters<typeof profilesOf>[0];
+    } catch {
+      continue;
+    }
+    const profiles = a.profiles ?? profilesOf(r);
+    const code = a.code ?? conceptOf(r);
+    if (profiles) a.profiles = profiles;
+    if (code) a.code = code;
+    if (profiles || code) stated += 1;
+  }
+  writeFileSync(indexFile, `${JSON.stringify(ix, null, 2)}\n`);
+  return stated;
+}
+
+/**
  * The IG's artefact pages, THIN (`ig-render-jekyll` §"Thin pages, the
  * default"), from the Publisher's STRUCTURED output — never its finished HTML
  * (owner, 2026-10-14: "I DO NOT WANT THE IG PUBLISHER HTML"). The artefact
@@ -240,7 +282,12 @@ export function artefactPages(o: { ig: string; output: string; work: string; nam
   const refused = takeJsonOnly(join(inst, "fhir-artifact-index", "index.json"));
   const said = Object.entries(refused).map(([f, n]) => `${n} ${f}`).join(", ");
   if (said) o.log(`${o.name}: representations not taken (JSON only; RDF is projected from the JSON-LD): ${said}`);
-  bun("gen-ig-pages.ts", ["--instance", inst, "--label", o.label, "--ig-site"]);
+  const stated = stateFromOutput(join(inst, "fhir-artifact-index", "index.json"), o.output);
+  o.log(`${o.name}: ${stated} artefact(s) state a profile or a code in their own JSON`);
+  // `--publisher-data .`: the Publisher's `<Type>-<id>.json` is served at the
+  // site root (`publisher-pages` copies it as data), so each thin artefact
+  // page and its tab views draw the resource from there.
+  bun("gen-ig-pages.ts", ["--instance", inst, "--label", o.label, "--ig-site", "--publisher-data", "."]);
   return inst;
 }
 
