@@ -6,7 +6,7 @@ import { afterAll, describe, expect, test } from "bun:test";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { BUILDER_AT, builderIndexHtml, checkerModule, formPageHtml, LHC_FORMS_VERSION, lformsFhirVersion, questionnaireFormPages, SMART_FORMS_URL, swUrl } from "./questionnaire-form.ts";
+import { BUILDER_AT, builderIndexHtml, QFORM_EDIT_LINKS, checkerModule, formPageHtml, LHC_FORMS_VERSION, lformsFhirVersion, questionnaireFormPages, SMART_FORMS_URL, swUrl } from "./questionnaire-form.ts";
 
 const made: string[] = [];
 afterAll(() => made.forEach((d) => rmSync(d, { recursive: true, force: true })));
@@ -58,7 +58,7 @@ describe("questionnaireFormPages", () => {
       "assets/js/questionnaire-form.js",
       "assets/js/questionnaire-mode.js",
       "assets/js/check-wireframe-questionnaire.js",
-      "assets/js/edit-links.js",
+      QFORM_EDIT_LINKS,
       `${BUILDER_AT}index.html`,
       `${BUILDER_AT}window-open.html`,
       `${BUILDER_AT}fa-terminology-sw.js`,
@@ -69,6 +69,8 @@ describe("questionnaireFormPages", () => {
     ])
       expect(existsSync(join(out, f))).toBe(true);
     expect(existsSync(join(out, "Questionnaire-p1-form.html"))).toBe(false);
+    // The platform chrome's path, which an IG repository's site composes at the same root.
+    expect(existsSync(join(out, "assets/js/edit-links.js"))).toBe(false);
   });
   test("no AST, or none with a Questionnaire: nothing written", () => {
     const out = tmp("q-site-");
