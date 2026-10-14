@@ -150,7 +150,7 @@ of an IG that actually changes. Re-derive that 61 % before quoting it.
 
 #### There is a second route to the edges, and it needs no fork
 
-`content/pipeline/fsh-cone.ts` (merged, from `267x`) builds the same IG's graph
+`scripts/fsh-cone.ts` (merged, from `267x`) builds the same IG's graph
 from **source** — `.fsh` + `.cql` — where the export side is the Publisher's
 output. Both are true at once: 2,478 source edges, 0 export edges. Measured on
 smart-immunizations 2026-09-23 (`f4gj`, reproduce with
