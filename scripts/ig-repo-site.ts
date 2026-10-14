@@ -1,21 +1,48 @@
 #!/usr/bin/env bun
 /**
- * An IG repository's OWN site, from its checkout alone: the two steps the
- * platform's site build runs for a repository that holds an implementation
- * guide and no instance declaration of its own.
+ * An IG repository's OWN site, from its checkout and its cached AST alone:
+ * the three steps the platform's site build runs for a repository that holds
+ * an implementation guide and no instance declaration of its own.
  *
  * @module fhir-harness/scripts/ig-repo-site
  * @covers none — a build step: it composes an IG into a site and judges no declared graph
  *
  * ```sh
- * bun run fhir-harness/scripts/ig-repo-site.ts compose <site source> [--ig <checkout>] [--baseurl <base>] [--plantuml-jar <jar>]
- * bun run fhir-harness/scripts/ig-repo-site.ts publisher-pages <built site> [--ig <checkout>] [--output <dir>]
+ * bun run fhir-harness/scripts/ig-repo-site.ts ast [--ig <checkout>] [--work <dir>]
+ * bun run fhir-harness/scripts/ig-repo-site.ts compose <site source> [--ig <checkout>] [--baseurl <base>] [--plantuml-jar <jar>] [--work <dir>]
+ * bun run fhir-harness/scripts/ig-repo-site.ts publisher-pages <built site> [--ig <checkout>] [--work <dir>]
  * ```
  *
- * The checkout scripts `ig-site:compose` and `ig-site:publisher-pages`
- * (`package.json` `checkoutScripts`) are these two, and that is how the
- * platform finds them: it asks the mounted layers' script table for those
- * names and never names this layer.
+ * The checkout scripts `ig-site:ast`, `ig-site:compose` and
+ * `ig-site:publisher-pages` (`package.json` `checkoutScripts`) are these
+ * three, and that is how the platform finds them: it asks the mounted layers'
+ * script table for those names and never names this layer. `--work` is the
+ * site build's work directory, `SITE_WORK` when the build runs the step.
+ *
+ * ## The site is built from the cached AST (`ig-build-pipeline` rule 1)
+ *
+ * Owner, 2026-10-14: *"i want AST to be used. it should be in cache
+ * branch"*, and, on this route, *"Yes, fix in platform"*. Nothing here runs
+ * the IG Publisher or reads its `output/`. `ast` restores the AST from the
+ * IG's cache branch (`ig-cache.sh restore`) and judges it
+ * (`ig-ast.ts` `astValidity`); a stale, cannot-tell or absent AST is refused
+ * (rule 2), and `SITE_ACCEPT_STALE_AST=1` accepts a stale one for a preview
+ * only, never for the root. `compose` derives the artefact index from that
+ * AST (`ast-to-artifact-index.ts`) and `publisher-pages` serves the AST's
+ * resources as the data the thin pages draw.
+ *
+ * ## What a layer above leaves for this one: the IG API sidecars
+ *
+ * An IG's per-artefact JSON sidecars (JSON Schema, JSON-LD, displays) are
+ * written by post-processing this layer does not know (`ig-build-pipeline`
+ * §"What this layer refuses to know about"). A layer above that produces them
+ * runs before `compose` and leaves them in the work directory:
+ * `<work>/ig-api/sidecars/` the files, `<work>/ig-api/ig-api.json` what the
+ * IG calls them (`{ "label": "..." }`). This layer binds whatever is there to
+ * the artefacts by the Publisher's file names, labels them as the descriptor
+ * says (`gen-ig-pages --sidecar-label`) and serves them at
+ * `fhir-artifact-index/sidecars/`. Nothing there, nothing is bound, and the
+ * pages say "IG API".
  *
  * ## Why there is no instance here
  *
@@ -42,9 +69,10 @@
  * platform's chrome step wrote (`composeIgSite --at-root`): the IG IS the site.
  * A path both write is refused, never overwritten.
  *
- * The IG's ARTEFACT pages are thin pages built from the Publisher's
- * structured output ({@link artefactPages}: the artefact index reconstructed
- * from `output/`, then `gen-ig-pages.ts --ig-site`), so `artifacts.html`,
+ * The IG's ARTEFACT pages are thin pages built from the AST
+ * ({@link astArtefactPages}: the artefact index derived from the AST, the
+ * grouping kept from the IG's committed `fhir-artifact-index/index.json`
+ * when it holds one, then `gen-ig-pages.ts --ig-site`), so `artifacts.html`,
  * `toc.html` and `artifact/<Type>-<id>.html` are the site's own pages over
  * JSON-LD nodes, and the narrative's links to `<Type>-<id>.html` are pointed
  * at them (`relinkArtifacts`). `ig-render-jekyll` §"Thin pages, the default".
@@ -54,25 +82,26 @@
  * too"): `artifact/<Type>-<id>-definitions.html`, `-mappings.html`, the JSON
  * view (`.json.html`, a profile's `.profile.json.html`) and `-examples.html`
  * where an artefact claims the profile, at the Publisher's file names beside
- * the artefact's page, drawn from the Publisher's `<Type>-<id>.json` the site
- * carries as data. The narrative's links to those names are pointed at them
+ * the artefact's page, drawn from the AST's copy of the resource the site
+ * serves under `ast-data/`. The narrative's links to those names are pointed at them
  * as its links to the artefact pages are. The Publisher's `comparison-v*`
  * directories are not rendered and not published.
  *
- * ## `publisher-pages`: the Publisher's data, never its HTML
+ * ## `publisher-pages`: the AST's data, never the Publisher's HTML
  *
- * The site's pages and the thin artefact pages link the Publisher's DATA by
- * the names the Publisher gives it (`<Type>-<id>.json`, `package.tgz`, the
- * IG API sidecars, images). Every such file of `output/` the built site does
- * not already hold is copied in. The Publisher's finished HTML is NEVER
- * copied (owner, 2026-10-14: "I DO NOT WANT THE IG PUBLISHER HTML";
- * `ig-render-jekyll`: rendered "rather than copying the Publisher's finished
- * HTML into place"), nor its XML and Turtle (§"1. JSON only"); the count not
- * taken is reported. A Publisher page with no rendering here is a dead link
- * the IG's pages make, reported by the site build, not papered over with the
- * Publisher's copy. Then the repeated element ids the composition produces
- * are repaired (`dedupeSiteIds`), and the site's `folio-build.json` is
- * written at its root ({@link igSiteStamp}), as every folio site carries one.
+ * The thin artefact pages draw each resource from `ast-data/` (the AST's
+ * `resources/`, as `gen-ig-pages --compiled-data` names it); the narrative
+ * links a resource's JSON by the Publisher's name, `<Type>-<id>.json`, so
+ * each resource is served under that name at the root as well, unless the
+ * site already holds the path. The artefact index is served at
+ * `fhir-artifact-index/index.json`, and the IG API sidecars a layer above
+ * left at `fhir-artifact-index/sidecars/`. The Publisher's finished HTML is
+ * never published (owner, 2026-10-14: "I DO NOT WANT THE IG PUBLISHER
+ * HTML"): no step here copies it, and the guard below refuses a site that
+ * carries its chrome, whoever put it there. Then the repeated element ids the
+ * composition produces are repaired (`dedupeSiteIds`), and the site's
+ * `folio-build.json` is written at its root ({@link igSiteStamp}), as every
+ * folio site carries one.
  *
  * ## Whose dead links
  *
@@ -84,12 +113,13 @@
  */
 import { spawnSync } from "node:child_process";
 import { appendFileSync, cpSync, writeFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { basename, join, relative, resolve, sep } from "node:path";
+import { homedir, tmpdir } from "node:os";
+import { basename, dirname, join, relative, resolve, sep } from "node:path";
 
 import { parse as parseYaml } from "yaml";
 
 import { conceptOf, profilesOf } from "./ast-to-artifact-index.ts";
+import { astValidity, type AstValidity, readAst } from "./ig-ast.ts";
 import { composeIgSite, dedupeSiteIds, describeStage, IG_THIN_CSS_FILE, stageIgSite, type SitePalette } from "./build-ig-site";
 import { buildMenu } from "./ingest-ig-menu.ts";
 import { siteBuild, type SiteBuild, STAMP_FILE } from "./site-build-stamp.ts";
@@ -119,7 +149,7 @@ export function builtPage(sourcePath: string): string | undefined {
 const THIN_CSS_SOURCE = join(import.meta.dir, "templates", "ig-pages", "ig-artifact.css");
 
 /** The checkout scripts this module provides, by the names the platform asks for. */
-export const IG_SITE_SCRIPTS = { compose: "ig-site:compose", publisherPages: "ig-site:publisher-pages" } as const;
+export const IG_SITE_SCRIPTS = { ast: "ig-site:ast", compose: "ig-site:compose", publisherPages: "ig-site:publisher-pages" } as const;
 
 /**
  * The instances a repository mounts that nothing else it mounts needs: the
@@ -178,12 +208,12 @@ function githubRepo(ig: string): string | undefined {
 
 /**
  * Top-level paths of the checkout that are not the IG's source: the mounts
- * `index.lock.json` lays down, git's own directory, and the Publisher's build
- * products (its `.gitignore` names them too). Copying them would stage the
+ * `index.lock.json` lays down, git's own directory, the Publisher's build
+ * products (its `.gitignore` names them too) and the restored AST. Copying them would stage the
  * platform as if it were the IG.
  */
 export function notSource(root: string): Set<string> {
-  const out = new Set([".git", "node_modules", "output", "temp", "template", "input-cache", "fsh-generated"]);
+  const out = new Set([".git", "node_modules", "output", "output-ast", "temp", "template", "input-cache", "fsh-generated"]);
   const lock = join(root, "index.lock.json");
   if (existsSync(lock)) {
     for (const i of (JSON.parse(readFileSync(lock, "utf-8")) as { instances?: { path?: unknown }[] }).instances ?? []) {
@@ -193,44 +223,104 @@ export function notSource(root: string): Set<string> {
   return out;
 }
 
+/** Where `ig-cache.sh restore` lays the AST down, in the IG checkout. */
+export const AST_DIR = "output-ast";
+/** Where the site serves the AST's resources, for the thin pages to draw (`gen-ig-pages --compiled-data`). */
+export const AST_DATA = "ast-data";
+/** Where the site serves the artefact index: the graph's own name. */
+export const INDEX_SERVED = "fhir-artifact-index";
+/** Where the site serves the IG API sidecars, the `localPath` each is bound at. */
+export const SIDECARS_SERVED = `${INDEX_SERVED}/sidecars`;
 /**
- * The representations of an artefact this site TAKES from the Publisher
- * (`ig-render-jekyll` §"1. JSON only"): its JSON, and its page's address,
- * which the thin page keeps (`artifact/<Type>-<id>.html` names it as where
- * the narrative's other links go). XML and Turtle are not taken; an instance
- * that needs RDF projects the JSON-LD.
+ * Under the site build's work directory: what a layer above leaves for this
+ * one (module doc, §"What a layer above leaves"). `sidecars/` the files,
+ * {@link IG_API_DESCRIPTOR} what the IG calls them.
  */
-const TAKEN_FORMATS = new Set(["json", "html"]);
-/** Publisher output files never copied into the site: its finished pages, and the serialisations the render path refuses. */
-export const NOT_TAKEN = /\.(html?|xml|ttl)$/i;
-/**
- * The Publisher's version comparisons (`comparison-v<version>/`): its own
- * pages and the fonts, stylesheets and images they wear. Not rendered here,
- * so none of it is copied (owner, 2026-10-14: "2a").
- */
-export const NOT_TAKEN_DIR = /^comparison-v[^/]*\//;
+export const IG_API_WORK = "ig-api";
+export const IG_API_DESCRIPTOR = "ig-api.json";
+/** Under the work directory: the artefact index `compose` derived, for `publisher-pages` to serve. */
+export const INDEX_WORK = "ig-site-index";
+/** Set to `1`, a stale AST is accepted for a preview (`ig-build-pipeline` rule 2); never for the root. */
+export const ACCEPT_STALE_ENV = "SITE_ACCEPT_STALE_AST";
+/** The validity verdict `ast` writes under the work directory. */
+export const VALIDITY_FILE = "ig-ast-validity.json";
 
-/** Whether `ig-site:publisher-pages` copies this Publisher output file (a path relative to `output/`). */
-export function takenFromOutput(path: string): boolean {
-  return !NOT_TAKEN.test(path) && !NOT_TAKEN_DIR.test(path);
+/** The IG API sidecars a layer above left, and what it calls them. */
+export interface IgApi {
+  sidecars: string;
+  files: number;
+  label?: string;
 }
 
 /**
- * Drop the representations the site does not take from an ingested index,
- * and say how many: a refusal recorded, not a silent drop.
+ * The IG API sidecars under `work`, or undefined when no layer left any. A
+ * descriptor that is there and says nothing usable is refused, not ignored:
+ * the pages would otherwise carry a label nobody chose.
  */
-export function takeJsonOnly(indexFile: string): Record<string, number> {
-  const ix = JSON.parse(readFileSync(indexFile, "utf-8")) as { artifacts: { published: Record<string, unknown> }[] };
-  const refused: Record<string, number> = {};
-  for (const a of ix.artifacts) {
-    for (const f of Object.keys(a.published)) {
-      if (TAKEN_FORMATS.has(f)) continue;
-      refused[f] = (refused[f] ?? 0) + 1;
-      delete a.published[f];
+export function readIgApi(work: string | undefined): IgApi | undefined {
+  if (!work) return undefined;
+  const dir = join(work, IG_API_WORK);
+  const sidecars = join(dir, "sidecars");
+  if (!existsSync(sidecars) || !statSync(sidecars).isDirectory()) return undefined;
+  const files = readdirSync(sidecars).filter((f) => statSync(join(sidecars, f)).isFile()).length;
+  if (files === 0) return undefined;
+  const desc = join(dir, IG_API_DESCRIPTOR);
+  if (!existsSync(desc)) return { sidecars, files };
+  const d = JSON.parse(readFileSync(desc, "utf-8")) as { label?: unknown };
+  if (d.label !== undefined && (typeof d.label !== "string" || d.label.trim() === "")) throw new Error(`${desc}: "label" must be a non-empty string`);
+  return { sidecars, files, ...(typeof d.label === "string" ? { label: d.label.trim() } : {}) };
+}
+
+/**
+ * Whether the build may go on with an AST of this verdict (`ig-build-pipeline`
+ * rule 2). Valid goes on. Anything else is refused, except that a stale or
+ * cannot-tell AST is accepted for a PREVIEW when the caller says so; the root
+ * never is. Pure.
+ */
+export function astGate(verdict: string, o: { acceptStale: boolean; preview: boolean }): { ok: boolean; said: string } {
+  if (verdict === "valid") return { ok: true, said: "the AST is valid for this checkout" };
+  if (o.acceptStale && o.preview) return { ok: true, said: `the AST is ${verdict}; accepted for this preview (${ACCEPT_STALE_ENV}=1)` };
+  const why = o.acceptStale ? `${ACCEPT_STALE_ENV}=1 accepts a stale AST for a preview only, and this build is the root` : `run the IG's ig-ast-refresh.yml to rebuild it, or set ${ACCEPT_STALE_ENV}=1 for a preview`;
+  return { ok: false, said: `the AST is ${verdict}: the site is not built from it (${why}). It does not fall back to a Publisher run or the Publisher's HTML` };
+}
+
+/** Whether the site build is building a preview: its base path is `/<repo>/STAGING/<branch>`. */
+export function isPreviewBase(baseurl: string | undefined): boolean {
+  return baseurl !== undefined && /\/STAGING\//.test(`${baseurl}/`);
+}
+
+/**
+ * `ast`: restore the IG's AST from its cache branch into the checkout, and
+ * judge it. Throws, saying why, when there is no cache or the gate refuses.
+ */
+export function restoreAst(o: { ig: string; work?: string; acceptStale: boolean; preview: boolean; log?: (s: string) => void }): AstValidity {
+  const log = o.log ?? ((s: string) => console.error(s));
+  const ig = resolve(o.ig);
+  if (!existsSync(join(ig, "sushi-config.yaml"))) throw new Error(`${ig} holds no sushi-config.yaml: not an IG checkout`);
+  const restore = (): AstValidity => {
+    const r = spawnSync("bash", [join(import.meta.dir, "ig-cache.sh"), "restore", "--ig-root", ig], { cwd: ig, stdio: ["ignore", "inherit", "inherit"] });
+    if (r.status !== 0) {
+      throw new Error(`no AST to build from: ig-cache.sh restore exited ${r.status}${r.status === 1 ? " (no cache branch for this IG; run its ig-ast-refresh.yml)" : ""}. The site is never built from the Publisher's HTML`);
     }
+    return astValidity(readAst(join(ig, AST_DIR)), ig);
+  };
+  const had = existsSync(join(ig, AST_DIR));
+  let v = restore();
+  // `restore` keeps an AST already in the checkout. One that is not valid may be
+  // an older restore or a local build, not the cache branch: judge the branch's.
+  if (had && v.verdict !== "valid") {
+    log(`ast: the AST already in the checkout is ${v.verdict}; restoring the cache branch's in its place`);
+    rmSync(join(ig, AST_DIR), { recursive: true, force: true });
+    v = restore();
   }
-  writeFileSync(indexFile, `${JSON.stringify(ix, null, 2)}\n`);
-  return refused;
+  if (o.work) {
+    mkdirSync(o.work, { recursive: true });
+    writeFileSync(join(o.work, VALIDITY_FILE), `${JSON.stringify(v, null, 2)}\n`);
+  }
+  const g = astGate(v.verdict, o);
+  if (!g.ok) throw new Error(g.said);
+  log(`ast: ${g.said} (built from ${v.recorded?.sourceRevision?.slice(0, 7) ?? "an unrecorded revision"} by ${v.recorded?.toolchain ?? "an unrecorded toolchain"})`);
+  return v;
 }
 
 /**
@@ -266,43 +356,75 @@ export function stateFromOutput(indexFile: string, output: string): number {
 
 /**
  * The IG's artefact pages, THIN (`ig-render-jekyll` §"Thin pages, the
- * default"), from the Publisher's STRUCTURED output — never its finished HTML
+ * default"), from the AST — never the Publisher's output or its finished HTML
  * (owner, 2026-10-14: "I DO NOT WANT THE IG PUBLISHER HTML"). The artefact
- * index is reconstructed from `output/` (`ingest-ig-artifacts.ts`: the
- * package's `.index.json`, `canonicals.json`, the manifest, and the category
- * the Publisher's artifact list states, read as data), and `gen-ig-pages.ts`
- * writes one thin page and one JSON-LD node per artefact plus the index node
- * the site's thin `artifacts.html` and `toc.html` draw. Undefined, and said,
- * when there is no Publisher output to read.
+ * index is derived from the AST (`ast-to-artifact-index.ts`), keeping the
+ * grouping of the IG's committed `fhir-artifact-index/index.json` when it holds
+ * one (the AST stops before the Publisher assigns categories), with the IG API
+ * sidecars bound when a layer above left any. Then `gen-ig-pages.ts` writes one
+ * thin page and one JSON-LD node per artefact plus the index node the site's
+ * thin `artifacts.html` and `toc.html` draw. Returns the instance directory the
+ * pages and the index are in.
  */
-export function artefactPages(o: { ig: string; output: string; work: string; name: string; label: string; baseurl: string; log: (s: string) => void }): string | undefined {
-  if (!existsSync(join(o.output, "package.manifest.json")) && !existsSync(join(o.output, "package.tgz"))) {
-    o.log(`${o.name}: no Publisher output at ${o.output} — no artefact pages, and artifacts.html stays a menu item this build does not hold`);
-    return undefined;
+export function astArtefactPages(o: { ig: string; ast: string; work: string; name: string; label: string; igApi?: IgApi; log: (s: string) => void }): string {
+  if (!existsSync(join(o.ast, "manifest.json"))) {
+    throw new Error(`${o.ast}: no AST — run ${IG_SITE_SCRIPTS.ast} first. The site is never built from the Publisher's output`);
   }
   const inst = join(o.work, "artefacts", o.name);
-  mkdirSync(inst, { recursive: true });
+  const index = join(inst, INDEX_SERVED, "index.json");
+  mkdirSync(dirname(index), { recursive: true });
   const bun = (script: string, args: string[]): void => {
     const r = spawnSync("bun", ["run", join(import.meta.dir, script), ...args], { cwd: o.ig, encoding: "utf-8" });
-    if (r.status !== 0) throw new Error(`${script} failed (exit ${r.status}):\n${(r.stderr || r.stdout).trim().split("\n").slice(-15).join("\n")}`);
-    const last = (r.stderr || "").trim().split("\n").slice(0, 3).join("\n  ");
-    if (last) o.log(`  ${last}`);
+    if (r.status !== 0) throw new Error(`${script} failed (exit ${r.status}):\n${`${r.stderr}\n${r.stdout}`.trim().split("\n").slice(-15).join("\n")}`);
+    for (const l of `${r.stdout}`.trim().split("\n").filter(Boolean).slice(0, 12)) o.log(`  ${l}`);
   };
-  // The site's own address: the JSON each node names is served beside the site's pages.
-  bun("ingest-ig-artifacts.ts", ["--source", o.output, "--out", inst, "--id", o.name, "--base", o.baseurl, "--kind", "output"]);
-  const refused = takeJsonOnly(join(inst, "fhir-artifact-index", "index.json"));
-  const said = Object.entries(refused).map(([f, n]) => `${n} ${f}`).join(", ");
-  if (said) o.log(`${o.name}: representations not taken (JSON only; RDF is projected from the JSON-LD): ${said}`);
-  const stated = stateFromOutput(join(inst, "fhir-artifact-index", "index.json"), o.output);
-  o.log(`${o.name}: ${stated} artefact(s) state a profile or a code in their own JSON`);
-  // `--publisher-data .`: the Publisher's `<Type>-<id>.json` is served at the
-  // site root (`publisher-pages` copies it as data), so each thin artefact
-  // page and its tab views draw the resource from there.
-  bun("gen-ig-pages.ts", ["--instance", inst, "--label", o.label, "--ig-site", "--publisher-data", "."]);
+  // Relative to the IG: each artefact's `localPath` is then `output-ast/resources/...`,
+  // which `--compiled-data` serves as `ast-data/resources/...`.
+  const args = ["--ast", relative(o.ig, o.ast) || ".", "--instance-id", o.name, "--out", index];
+  const published = join(o.ig, INDEX_SERVED, "index.json");
+  if (existsSync(published)) args.push("--compare", published, "--keep-published-grouping", "--report", join(o.work, "ast-parity.json"));
+  if (o.igApi) args.push("--sidecars", o.igApi.sidecars, "--sidecars-local", SIDECARS_SERVED);
+  bun("ast-to-artifact-index.ts", args);
+  bun("gen-ig-pages.ts", [
+    "--instance", inst, "--index", index, "--label", o.label, "--ig-site", "--compiled-data", AST_DATA,
+    ...(o.igApi ? ["--ig-api-served", ...(o.igApi.label ? ["--sidecar-label", o.igApi.label] : [])] : []),
+  ]);
   return inst;
 }
 
-export function compose(o: { docs: string; ig: string; baseurl: string; output?: string; plantumlJar?: string; log?: (s: string) => void }): void {
+/**
+ * The PlantUML jar `compose` renders `input/images-source/*.plantuml` with:
+ * the one given, else `PLANTUML_JAR`, else the cached copy of the pinned
+ * release, when it is there. Undefined: the diagrams carry a visible "not
+ * rendered" marker, as `stageIgSite` reports.
+ */
+export const PLANTUML_VERSION = "1.2024.7";
+export function plantumlJarFor(given: string | undefined, env: Record<string, string | undefined>, home: string): string | undefined {
+  for (const j of [given, env.PLANTUML_JAR, join(home, ".cache", "plantuml", `plantuml-${PLANTUML_VERSION}.jar`)]) {
+    if (j && existsSync(j) && statSync(j).size > 0) return j;
+  }
+  return undefined;
+}
+
+/** Fetch the pinned PlantUML release into the cache, as the IG repository recipe did; undefined when it cannot. */
+function fetchPlantuml(home: string, log: (s: string) => void): string | undefined {
+  const jar = join(home, ".cache", "plantuml", `plantuml-${PLANTUML_VERSION}.jar`);
+  mkdirSync(dirname(jar), { recursive: true });
+  const url = `https://repo1.maven.org/maven2/net/sourceforge/plantuml/plantuml/${PLANTUML_VERSION}/plantuml-${PLANTUML_VERSION}.jar`;
+  const r = spawnSync("curl", ["-sSfL", "--retry", "3", "-o", jar, url], { stdio: ["ignore", "ignore", "pipe"] });
+  if (r.status === 0 && existsSync(jar) && statSync(jar).size > 0) return jar;
+  rmSync(jar, { force: true });
+  log(`plantuml: could not fetch ${url} (${r.stderr?.toString().trim() || `exit ${r.status}`}); diagrams are marked "not rendered"`);
+  return undefined;
+}
+
+/** Whether the IG has PlantUML sources to render. */
+function hasPlantuml(ig: string): boolean {
+  const d = join(ig, "input", "images-source");
+  return existsSync(d) && readdirSync(d).some((f) => f.endsWith(".plantuml"));
+}
+
+export function compose(o: { docs: string; ig: string; baseurl: string; ast?: string; work?: string; plantumlJar?: string; log?: (s: string) => void }): void {
   const log = o.log ?? ((s: string) => console.error(s));
   const ig = resolve(o.ig);
   if (!existsSync(join(ig, "sushi-config.yaml"))) throw new Error(`${ig} holds no sushi-config.yaml: not an IG checkout`);
@@ -323,22 +445,32 @@ export function compose(o: { docs: string; ig: string; baseurl: string; output?:
     const site = join(work, "site");
     const baseurl = o.baseurl.replace(/\/$/, "");
     const label = igTitle(ig) ?? name;
-    const inst = artefactPages({ ig, output: resolve(o.output ?? join(ig, "output")), work, name, label, baseurl, log });
+    const igApi = readIgApi(o.work);
+    log(igApi ? `${name}: ${igApi.files} IG API sidecar file(s) left by a layer above${igApi.label ? `, called "${igApi.label}"` : ""}` : `${name}: no IG API sidecars under the work directory — none bound`);
+    const ast = resolve(o.ast ?? join(ig, AST_DIR));
+    const inst = astArtefactPages({ ig, ast, work, name, label, ...(igApi ? { igApi } : {}), log });
+    if (o.work) {
+      // For `publisher-pages`, which serves the index the pages were drawn from.
+      mkdirSync(join(o.work, INDEX_WORK), { recursive: true });
+      cpSync(join(inst, INDEX_SERVED, "index.json"), join(o.work, INDEX_WORK, "index.json"));
+    }
+    const plantumlJar = plantumlJarFor(o.plantumlJar, process.env, homedir()) ?? (hasPlantuml(ig) ? fetchPlantuml(homedir(), log) : undefined);
     const r = stageIgSite(src, site, {
       baseurl,
       menu,
-      ...(inst ? { artifacts: artifactsFor(inst, "artifact/"), footer: footerFor(inst, "") } : {}),
+      // The IG's pages loop site.data.canonicals and site.data["<Type>-<id>"]: drawn from the same AST.
+      ast,
+      artifacts: artifactsFor(inst, "artifact/"),
+      footer: footerFor(inst, ""),
       ...(theme.palette ? { palette: theme.palette } : {}),
-      ...(o.plantumlJar ? { plantumlJar: o.plantumlJar } : {}),
+      ...(plantumlJar ? { plantumlJar } : {}),
       ...(editBase ? { editBase } : {}),
     });
     log(`${name}:\n${describeStage(r)}`);
     if (r.siteData.refused.length) throw new Error(`${name}: the IG's site data was refused (${r.siteData.refused.join(", ")})`);
-    if (inst) {
-      const d = copyDocsInto(join(inst, "docs"), site);
-      log(`${name}: ${d.copied} artefact page and node file(s) built into the site${d.merged.length ? `; front matter laid onto ${d.merged.join(", ")}` : ""}`);
-      if (d.collisions.length) throw new Error(`${name}: ${d.collisions.length} artefact file(s) the IG's own pages already write — refusing two answers for one URL:\n  ${d.collisions.slice(0, 20).join("\n  ")}`);
-    }
+    const d = copyDocsInto(join(inst, "docs"), site);
+    log(`${name}: ${d.copied} artefact page and node file(s) built into the site${d.merged.length ? `; front matter laid onto ${d.merged.join(", ")}` : ""}`);
+    if (d.collisions.length) throw new Error(`${name}: ${d.collisions.length} artefact file(s) the IG's own pages already write — refusing two answers for one URL:\n  ${d.collisions.slice(0, 20).join("\n  ")}`);
     const before = new Set(filesUnder(resolve(o.docs)));
     const c = composeIgSite(site, resolve(o.docs), name, { atRoot: true });
     listUpstream(filesUnder(resolve(o.docs)).filter((f) => !before.has(f)).map(builtPage).filter((p): p is string => p !== undefined));
@@ -368,14 +500,6 @@ function filesUnder(dir: string): string[] {
   };
   walk(dir);
   return out;
-}
-
-/**
- * The Publisher output files a built site lacks. Pure over the two listings:
- * a path the site holds is the site's, whatever the Publisher wrote there.
- */
-export function missingFromSite(publisher: readonly string[], site: ReadonlySet<string>): string[] {
-  return publisher.filter((p) => !site.has(p));
 }
 
 /**
@@ -430,36 +554,70 @@ export function publisherChromePages(site: string): string[] {
   return filesUnder(site).filter((p) => /\.html?$/i.test(p) && PUBLISHER_CHROME.some((re) => re.test(readFileSync(join(site, p), "utf-8"))));
 }
 
-export function publisherPages(o: { site: string; output: string; ig?: string; log?: (s: string) => void }): { copied: number; kept: number; refused: number } {
+/** What `publisher-pages` put in the site. */
+export interface ServedData {
+  /** AST resource files served under `ast-data/`. */
+  resources: number;
+  /** Resources served at the root under the Publisher's name, `<Type>-<id>.json`. */
+  named: number;
+  /** Root paths the site already held, so the AST's copy was not laid over them. */
+  kept: number;
+  /** IG API sidecar files served under `fhir-artifact-index/sidecars/`. */
+  sidecars: number;
+  /** Whether the artefact index is served at `fhir-artifact-index/index.json`. */
+  index: boolean;
+}
+
+/** Copy a file into the site unless the site already holds that path. */
+function serve(from: string, site: string, rel: string): boolean {
+  const to = join(site, rel);
+  if (existsSync(to)) return false;
+  mkdirSync(dirname(to), { recursive: true });
+  cpSync(from, to);
+  return true;
+}
+
+/**
+ * Serve the AST's data in the built site: its resources under `ast-data/` and
+ * by the Publisher's name at the root, the artefact index, and the IG API
+ * sidecars. Never the Publisher's HTML, and never a path the site already holds.
+ */
+export function serveAstData(o: { site: string; ast: string; index?: string; igApi?: IgApi }): ServedData {
+  const manifest = join(o.ast, "manifest.json");
+  if (!existsSync(manifest)) throw new Error(`${o.ast}: no AST to serve — run ${IG_SITE_SCRIPTS.ast} first`);
+  const out: ServedData = { resources: 0, named: 0, kept: 0, sidecars: 0, index: false };
+  const m = JSON.parse(readFileSync(manifest, "utf-8")) as { resources?: { resourceType?: string; id?: string; file?: string }[] };
+  for (const r of m.resources ?? []) {
+    if (!r.file || !r.resourceType || !r.id) continue;
+    const src = join(o.ast, r.file);
+    if (!existsSync(src)) continue;
+    // `resources/<Type>/<id>--<hash>.json`, the path the index's localPath names under `ast-data/`.
+    if (serve(src, o.site, join(AST_DATA, r.file))) out.resources += 1;
+    if (serve(src, o.site, `${r.resourceType}-${r.id}.json`)) out.named += 1;
+    else out.kept += 1;
+  }
+  if (o.index && existsSync(o.index)) out.index = serve(o.index, o.site, join(INDEX_SERVED, "index.json"));
+  if (o.igApi) {
+    for (const f of readdirSync(o.igApi.sidecars).sort()) {
+      const from = join(o.igApi.sidecars, f);
+      if (statSync(from).isFile() && serve(from, o.site, join(SIDECARS_SERVED, f))) out.sidecars += 1;
+    }
+  }
+  return out;
+}
+
+export function publisherPages(o: { site: string; ast: string; work?: string; ig?: string; log?: (s: string) => void }): ServedData {
   const log = o.log ?? ((s: string) => console.error(s));
   if (!existsSync(o.site) || !statSync(o.site).isDirectory()) throw new Error(`${o.site}: no built site`);
-  let copied = 0;
-  let kept = 0;
-  let refused = 0;
-  if (existsSync(o.output) && statSync(o.output).isDirectory()) {
-    // NEVER the Publisher's finished HTML (`ig-render-jekyll`: the IG is
-    // rendered "populated from the Publisher's structured output, rather than
-    // copying the Publisher's finished HTML into place"; owner, 2026-10-14:
-    // "I DO NOT WANT THE IG PUBLISHER HTML"), and not the XML and Turtle the
-    // render path refuses (§"1. JSON only"), and nothing under the
-    // Publisher's `comparison-v*/`, fonts and stylesheets included (owner,
-    // 2026-10-14: "2a"). The artefact pages are the thin
-    // pages `compose` built; what is copied is the data and the files the
-    // site's pages link: the JSON, the package, the images.
-    const all = filesUnder(o.output);
-    const taken = all.filter(takenFromOutput);
-    refused = all.length - taken.length;
-    const missing = missingFromSite(taken, new Set(filesUnder(o.site)));
-    for (const p of missing) {
-      mkdirSync(join(o.site, p, ".."), { recursive: true });
-      cpSync(join(o.output, p), join(o.site, p));
-    }
-    copied = missing.length;
-    kept = taken.length - missing.length;
-    log(`publisher pages: ${copied} file(s) of ${o.output} copied in; ${kept} the site already holds were kept; ${refused} not taken (the Publisher's HTML, XML and Turtle, and everything under comparison-v*/)`);
-  } else {
-    log(`publisher pages: no Publisher output at ${o.output} — the site carries the IG's own pages only, and links to artefact pages do not land`);
-  }
+  const igApi = readIgApi(o.work);
+  const index = o.work ? join(o.work, INDEX_WORK, "index.json") : undefined;
+  const served = serveAstData({ site: o.site, ast: o.ast, ...(index ? { index } : {}), ...(igApi ? { igApi } : {}) });
+  log(
+    `publisher pages: from the AST, ${served.resources} resource(s) under ${AST_DATA}/ and ${served.named} as <Type>-<id>.json at the root` +
+      `${served.kept ? ` (${served.kept} the site already held were kept)` : ""}; ` +
+      `${served.index ? `the artefact index at ${INDEX_SERVED}/index.json` : "no artefact index served"}; ` +
+      `${served.sidecars} IG API sidecar(s) at ${SIDECARS_SERVED}/. The Publisher's HTML is not taken`,
+  );
   // The guard: whatever put it there, a page wearing the Publisher's chrome is not published.
   const chrome = publisherChromePages(o.site);
   if (chrome.length) throw new Error(`${chrome.length} page(s) of the built site carry the IG Publisher's chrome (fhir.css, bootstrap-fhir.css or its "Generated" footer) — the Publisher's HTML is not published:\n  ${chrome.slice(0, 20).join("\n  ")}`);
@@ -470,25 +628,34 @@ export function publisherPages(o: { site: string; output: string; ig?: string; l
     writeFileSync(join(o.site, STAMP_FILE), `${JSON.stringify(stamp, null, 2)}\n`);
     log(`publisher pages: stamped ${STAMP_FILE} — ${stamp.instance}, platform ${stamp.platform.commit.slice(0, 9)}`);
   }
-  return { copied, kept, refused };
+  return served;
 }
 
 if (import.meta.main) {
   const [cmd, target, ...rest] = process.argv.slice(2);
+  const args = cmd === "ast" ? [target, ...rest].filter((x): x is string => x !== undefined) : rest;
   const opt = (k: string): string | undefined => {
-    const i = rest.indexOf(`--${k}`);
-    return i >= 0 ? rest[i + 1] : undefined;
+    const i = args.indexOf(`--${k}`);
+    return i >= 0 ? args[i + 1] : undefined;
   };
   const ig = resolve(opt("ig") ?? ".");
+  // The site build's work directory: where a layer above leaves the IG API sidecars, and `compose` the index.
+  const work = opt("work") ?? process.env.SITE_WORK;
   try {
-    if (cmd === "compose" && target) {
+    if (cmd === "ast") {
+      restoreAst({ ig, ...(work ? { work } : {}), acceptStale: process.env[ACCEPT_STALE_ENV] === "1", preview: isPreviewBase(process.env.SITE_BASEURL ?? process.env.FOLIO_SITE_BASEURL) });
+    } else if (cmd === "compose" && target) {
       const baseurl = opt("baseurl") ?? process.env.FOLIO_SITE_BASEURL;
       if (baseurl === undefined) throw new Error("compose needs --baseurl, or FOLIO_SITE_BASEURL from the site build");
-      compose({ docs: resolve(target), ig, baseurl, ...(opt("plantuml-jar") ? { plantumlJar: opt("plantuml-jar")! } : {}) });
+      compose({ docs: resolve(target), ig, baseurl, ...(work ? { work } : {}), ...(opt("plantuml-jar") ? { plantumlJar: opt("plantuml-jar")! } : {}) });
     } else if (cmd === "publisher-pages" && target) {
-      publisherPages({ site: resolve(target), output: resolve(opt("output") ?? join(ig, "output")), ig });
+      publisherPages({ site: resolve(target), ast: join(ig, AST_DIR), ...(work ? { work } : {}), ig });
     } else {
-      console.error("usage: ig-repo-site.ts compose <site source> [--ig <checkout>] [--baseurl <base>] [--plantuml-jar <jar>]\n       ig-repo-site.ts publisher-pages <built site> [--ig <checkout>] [--output <dir>]");
+      console.error(
+        "usage: ig-repo-site.ts ast [--ig <checkout>] [--work <dir>]\n" +
+          "       ig-repo-site.ts compose <site source> [--ig <checkout>] [--baseurl <base>] [--plantuml-jar <jar>] [--work <dir>]\n" +
+          "       ig-repo-site.ts publisher-pages <built site> [--ig <checkout>] [--work <dir>]",
+      );
       process.exit(2);
     }
   } catch (e) {

@@ -53,7 +53,7 @@ WHAT IT DOES NOT CLAIM. A valid AST is a cache built from these inputs; it is no
       <bpmn:outgoing>Flow_1</bpmn:outgoing>
     </bpmn:startEvent>
     <bpmn:serviceTask id="Task_Restore" name="Restore the AST from its cache&#10;branch and judge it [ig-ast-delta]">
-      <bpmn:documentation>`ig-cache.sh restore --ig-root .` fetches `cat/fhir-harness/fhir-ast/&lt;package id&gt;` into `output-ast/` (with the Publisher's `txcache/`), then `ig-cache.sh verify` runs `ig-ast.ts validity`: exit 0 valid, 1 stale-inputs (naming which input), 2 cannot-tell. A restore that finds no branch is a miss, judged as not valid. In an IG repository's `site.build` this is the first `pre` step.</bpmn:documentation>
+      <bpmn:documentation>`ig-cache.sh restore --ig-root .` fetches `cat/fhir-harness/fhir-ast/&lt;package id&gt;` into `output-ast/` (with the Publisher's `txcache/`), then `ig-cache.sh verify` runs `ig-ast.ts validity`: exit 0 valid, 1 stale-inputs (naming which input), 2 cannot-tell. A restore that finds no branch is a miss, judged as not valid. In an IG repository's site route this is the first `pre` step, `ig-site:ast` (`ig-repo-site.ts ast`).</bpmn:documentation>
       <bpmn:extensionElements>
         <bootstrap.processes:skill ref="ig-ast-delta"/>
         <bootstrap.processes:skill ref="ig-build-pipeline"/>
@@ -63,13 +63,13 @@ WHAT IT DOES NOT CLAIM. A valid AST is a cache built from these inputs; it is no
       <bpmn:outgoing>Flow_2</bpmn:outgoing>
     </bpmn:serviceTask>
     <bpmn:exclusiveGateway id="GW_Valid" name="AST valid for&#10;this commit?">
-      <bpmn:documentation>Answered by Task_Restore's verdict. `valid` takes yes. `stale-inputs`, `cannot-tell` and a miss take no: the publish is refused, never drawn from Publisher HTML or from an AST of other inputs. The override (`SITE_ACCEPT_STALE_AST=1` in an IG repository's `site:ast`) is for a preview only, and the preview says so.</bpmn:documentation>
+      <bpmn:documentation>Answered by Task_Restore's verdict. `valid` takes yes. `stale-inputs`, `cannot-tell` and a miss take no: the publish is refused, never drawn from Publisher HTML or from an AST of other inputs. The override (`SITE_ACCEPT_STALE_AST=1`, read by `ig-site:ast`) is for a preview only: on the root it still refuses.</bpmn:documentation>
       <bpmn:incoming>Flow_2</bpmn:incoming>
       <bpmn:outgoing>Flow_3</bpmn:outgoing>
       <bpmn:outgoing>Flow_4</bpmn:outgoing>
     </bpmn:exclusiveGateway>
     <bpmn:serviceTask id="Task_BuildSite" name="Build and publish the site&#10;from the AST [ig-render-jekyll]">
-      <bpmn:documentation>The IG repository's `site.build` steps, run by `stage-local.ts` → `build-instance-site.ts`: the artefact index from the AST (`ast-to-artifact-index.ts`), the pages (`gen-ig-pages.ts --compiled-data ast-data`), the IG composed at the root (`stage-ig-sites.ts --compose-into`), the AST's resources served as `ast-data/`, the build stamp. Published at the root from the default branch, as a preview otherwise.</bpmn:documentation>
+      <bpmn:documentation>The site route's steps, provided by the mounted layers and run by `stage-local.ts` → `build-instance-site.ts`: the landing layer's IG API sidecars when it has the step (`ig-site:sidecars`), the artefact index from the AST and the thin pages with the IG composed at the root (`ig-site:compose`: `ast-to-artifact-index.ts`, `gen-ig-pages.ts --compiled-data ast-data`), the OpenAPI pages when the IG holds them (`ig-site:openapi`), the AST's resources served as `ast-data/` and the build stamp (`ig-site:publisher-pages`). Published at the root from the default branch, as a preview otherwise.</bpmn:documentation>
       <bpmn:extensionElements>
         <bootstrap.processes:skill ref="ig-render-jekyll"/>
         <bootstrap.processes:skill ref="ig-build-pipeline"/>

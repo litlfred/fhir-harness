@@ -24,12 +24,15 @@
 # What a run does — the agent's own command, `stage-local.ts`, on a runner:
 #   1. mounts the layers index.lock.json pins (cat-harness-tools first, from
 #      the lock, then everything else through it);
-#   2. builds the IG with the steps of the workflow the repository calls (the
-#      IG Publisher in its Docker image, into output/);
-#   3. builds the folio site around it (`build-instance-site.ts`): the chrome
-#      of the landing harness, the IG's pages composed at the root
-#      (`ig-site:compose`), Jekyll, then every Publisher page the site lacks
-#      (`ig-site:publisher-pages`) so artefact links land, and the link check
+#   2. restores the IG's AST from its cache branch and judges it
+#      (`ig-site:ast`); a stale AST refuses the publish, and no IG Publisher
+#      runs (ig-build-pipeline rule 1 and 2);
+#   3. builds the folio site from it (`build-instance-site.ts`): the chrome
+#      of the landing harness, the landing layer's IG API sidecars
+#      (`ig-site:sidecars`, when it has the step), the IG's pages and the
+#      thin artefact pages composed at the root (`ig-site:compose`), Jekyll,
+#      the OpenAPI pages when the IG holds `openapi/` (`ig-site:openapi`),
+#      the AST's data served (`ig-site:publisher-pages`), and the link check
 #      (a dead link in the chrome refuses the publish; one in the IG's own
 #      content is reported);
 #   4. on the default branch publishes the gh-pages ROOT, keeping STAGING/,

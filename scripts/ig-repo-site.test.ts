@@ -1,6 +1,7 @@
 /**
  * An IG repository's own site with no instance declaration: the closure's top,
- * the Publisher fill-in, and what is never staged as the IG's source.
+ * the AST it is built from (restore gate, served data, the IG API sidecars a
+ * layer above leaves), and what is never staged as the IG's source.
  * Driven by synthetic trees, so it names no real IG.
  */
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
@@ -11,7 +12,29 @@ import { parseBuild, STAMP_FILE } from "./site-build-stamp.ts";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { builtPage, IG_SITE_SCRIPTS, igSiteStamp, platformCommit, listedInstances, UPSTREAM_PAGES_ENV, missingFromSite, notSource, PUBLISHER_CHROME, publisherChromePages, publisherPages, takeJsonOnly, takenFromOutput, topMounts } from "./ig-repo-site.ts";
+import {
+  AST_DATA,
+  astGate,
+  builtPage,
+  IG_API_DESCRIPTOR,
+  IG_API_WORK,
+  IG_SITE_SCRIPTS,
+  igSiteStamp,
+  INDEX_WORK,
+  isPreviewBase,
+  platformCommit,
+  listedInstances,
+  notSource,
+  PLANTUML_VERSION,
+  plantumlJarFor,
+  PUBLISHER_CHROME,
+  publisherChromePages,
+  publisherPages,
+  readIgApi,
+  serveAstData,
+  SIDECARS_SERVED,
+  topMounts,
+} from "./ig-repo-site.ts";
 
 let dir: string;
 beforeAll(() => {
@@ -45,97 +68,127 @@ describe("notSource", () => {
     mkdirSync(r, { recursive: true });
     writeFileSync(join(r, "index.lock.json"), JSON.stringify({ instances: [{ path: "base" }, { path: "layer/sub" }, { path: "." }] }));
     const s = notSource(r);
-    for (const p of ["base", "layer", ".git", "output", "temp", "input-cache"]) expect(s.has(p)).toBe(true);
+    for (const p of ["base", "layer", ".git", "output", "output-ast", "temp", "input-cache"]) expect(s.has(p)).toBe(true);
     expect(s.has("input")).toBe(false);
     expect(s.has(".")).toBe(false);
   });
 });
 
-describe("publisher pages", () => {
-  test("missingFromSite keeps every path the site holds", () => {
-    expect(missingFromSite(["index.html", "a.html", "x/b.json"], new Set(["index.html"]))).toEqual(["a.html", "x/b.json"]);
+/** A minimal AST as `ig-cache.sh restore` lays it down: a manifest and its resource files. */
+function fakeAst(root: string, resources: { resourceType: string; id: string }[]): string {
+  const ast = join(root, "output-ast");
+  const listed = resources.map((r) => ({ ...r, key: `${r.resourceType}/${r.id}`, file: `resources/${r.resourceType}/${r.id}--0000.json` }));
+  for (const r of listed) {
+    mkdirSync(join(ast, "resources", r.resourceType), { recursive: true });
+    writeFileSync(join(ast, r.file), JSON.stringify({ resourceType: r.resourceType, id: r.id }));
+  }
+  writeFileSync(join(ast, "manifest.json"), JSON.stringify({ $schema: "ig-ast/v1", resources: listed }));
+  return ast;
+}
+
+describe("the AST gate (ig-build-pipeline rule 2)", () => {
+  test("a valid AST goes on", () => {
+    expect(astGate("valid", { acceptStale: false, preview: false }).ok).toBe(true);
   });
-  test("copies the Publisher's data the site lacks, never its HTML, XML or Turtle, and never replaces a site file", () => {
-    const site = join(dir, "site");
-    const out = join(dir, "output");
-    mkdirSync(site, { recursive: true });
-    mkdirSync(join(out, "sub"), { recursive: true });
-    writeFileSync(join(site, "index.html"), "<p>site</p>");
-    writeFileSync(join(site, "a.json"), "site");
-    writeFileSync(join(out, "index.html"), "<p>publisher</p>");
-    writeFileSync(join(out, "artifacts.html"), "<p>publisher list</p>");
-    writeFileSync(join(out, "StructureDefinition-x.html"), "<p>artefact</p>");
-    writeFileSync(join(out, "StructureDefinition-x.json"), "{}");
-    writeFileSync(join(out, "StructureDefinition-x.xml"), "<x/>");
-    writeFileSync(join(out, "StructureDefinition-x.ttl"), "@prefix");
-    writeFileSync(join(out, "a.json"), "publisher");
-    writeFileSync(join(out, "sub", "package.tgz"), "tgz");
-    const r = publisherPages({ site, output: out, log: () => {} });
-    expect(r).toEqual({ copied: 2, kept: 1, refused: 5 });
-    expect(readFileSync(join(site, "index.html"), "utf-8")).toBe("<p>site</p>");
-    expect(readFileSync(join(site, "a.json"), "utf-8")).toBe("site");
-    for (const f of ["artifacts.html", "StructureDefinition-x.html", "StructureDefinition-x.xml", "StructureDefinition-x.ttl"]) expect(existsSync(join(site, f))).toBe(false);
-    expect(readFileSync(join(site, "StructureDefinition-x.json"), "utf-8")).toBe("{}");
-    expect(readFileSync(join(site, "sub", "package.tgz"), "utf-8")).toBe("tgz");
-  });
-  test("nothing under comparison-v*/ is copied, its fonts and stylesheets included (owner, 2026-10-14: \"2a\")", () => {
-    const site = join(dir, "site4");
-    const out = join(dir, "output4");
-    mkdirSync(site, { recursive: true });
-    mkdirSync(join(out, "comparison-v1.0.0", "assets"), { recursive: true });
-    mkdirSync(join(out, "comparison-v2.1"), { recursive: true });
-    writeFileSync(join(out, "comparison-v1.0.0", "index.html"), "<p>comparison</p>");
-    writeFileSync(join(out, "comparison-v1.0.0", "OpenSans-CondBold-webfont.eot"), "font");
-    writeFileSync(join(out, "comparison-v1.0.0", "assets", "fhir.css"), "css");
-    writeFileSync(join(out, "comparison-v2.1", "sd-1-x.json"), "{}");
-    // A file merely NAMED like one, outside such a directory, is the Publisher's data.
-    writeFileSync(join(out, "comparison-v1.json"), "{}");
-    const r = publisherPages({ site, output: out, log: () => {} });
-    expect(r).toEqual({ copied: 1, kept: 0, refused: 4 });
-    expect(existsSync(join(site, "comparison-v1.0.0"))).toBe(false);
-    expect(existsSync(join(site, "comparison-v2.1"))).toBe(false);
-    expect(existsSync(join(site, "comparison-v1.json"))).toBe(true);
-    expect(takenFromOutput("comparison-v1.0.0/x.css")).toBe(false);
-    expect(takenFromOutput("sub/comparison-v1.0.0/x.css")).toBe(true);
-    expect(takenFromOutput("ValueSet-x.json")).toBe(true);
-  });
-  test("no page the Publisher wrote is listed as the site's: none is copied", () => {
-    const site = join(dir, "site3");
-    const out = join(dir, "output3");
-    mkdirSync(site, { recursive: true });
-    mkdirSync(out, { recursive: true });
-    writeFileSync(join(out, "a.html"), "a");
-    writeFileSync(join(out, "a.json"), "{}");
-    const list = join(dir, "upstream.txt");
-    writeFileSync(list, "");
-    process.env[UPSTREAM_PAGES_ENV] = list;
-    try {
-      publisherPages({ site, output: out, log: () => {} });
-    } finally {
-      delete process.env[UPSTREAM_PAGES_ENV];
+  test("a stale, cannot-tell or other verdict is refused, and never falls back to the Publisher", () => {
+    for (const v of ["stale-inputs", "cannot-tell", "stale-toolchain"]) {
+      const g = astGate(v, { acceptStale: false, preview: true });
+      expect(g.ok).toBe(false);
+      expect(g.said).toContain("does not fall back");
     }
-    expect(readFileSync(list, "utf-8")).toBe("");
-    expect(existsSync(join(site, "a.html"))).toBe(false);
   });
-  test("no Publisher output: nothing copied, and no failure", () => {
-    const site = join(dir, "site2");
-    mkdirSync(site, { recursive: true });
-    const said: string[] = [];
-    expect(publisherPages({ site, output: join(dir, "absent"), log: (s) => said.push(s) })).toEqual({ copied: 0, kept: 0, refused: 0 });
-    expect(said.join("\n")).toContain("no Publisher output");
+  test("SITE_ACCEPT_STALE_AST=1 accepts a stale AST for a preview only, never for the root", () => {
+    expect(astGate("stale-inputs", { acceptStale: true, preview: true }).ok).toBe(true);
+    const root = astGate("stale-inputs", { acceptStale: true, preview: false });
+    expect(root.ok).toBe(false);
+    expect(root.said).toContain("for a preview only");
+  });
+  test("a preview is a base path under STAGING/", () => {
+    expect(isPreviewBase("/smart-x/STAGING/claude-a")).toBe(true);
+    expect(isPreviewBase("/smart-x")).toBe(false);
+    expect(isPreviewBase(undefined)).toBe(false);
   });
 });
 
-test("takeJsonOnly: the index keeps an artefact's JSON and page address, and counts the XML and Turtle it drops", () => {
-  const f = join(dir, "index.json");
-  writeFileSync(f, JSON.stringify({ artifacts: [
-    { key: "A/a", published: { json: { url: "/s/A-a.json" }, xml: { url: "/s/A-a.xml" }, ttl: { url: "/s/A-a.ttl" }, html: { url: "/s/A-a.html" } } },
-    { key: "B/b", published: { xml: { url: "/s/B-b.xml" } } },
-  ] }));
-  expect(takeJsonOnly(f)).toEqual({ xml: 2, ttl: 1 });
-  const ix = JSON.parse(readFileSync(f, "utf-8"));
-  expect(Object.keys(ix.artifacts[0].published).sort()).toEqual(["html", "json"]);
-  expect(ix.artifacts[1].published).toEqual({});
+describe("the IG API sidecars a layer above leaves in the work directory", () => {
+  test("none there, or an empty directory: nothing is bound", () => {
+    const w = join(dir, "work-none");
+    mkdirSync(join(w, IG_API_WORK, "sidecars"), { recursive: true });
+    expect(readIgApi(undefined)).toBeUndefined();
+    expect(readIgApi(join(dir, "absent"))).toBeUndefined();
+    expect(readIgApi(w)).toBeUndefined();
+  });
+  test("the files and the label the descriptor gives; no descriptor, no label", () => {
+    const w = join(dir, "work-api");
+    mkdirSync(join(w, IG_API_WORK, "sidecars"), { recursive: true });
+    writeFileSync(join(w, IG_API_WORK, "sidecars", "ValueSet-x.schema.json"), "{}");
+    expect(readIgApi(w)).toEqual({ sidecars: join(w, IG_API_WORK, "sidecars"), files: 1 });
+    writeFileSync(join(w, IG_API_WORK, IG_API_DESCRIPTOR), JSON.stringify({ label: " My API " }));
+    expect(readIgApi(w)?.label).toBe("My API");
+  });
+  test("a descriptor whose label is not a non-empty string is refused", () => {
+    const w = join(dir, "work-bad");
+    mkdirSync(join(w, IG_API_WORK, "sidecars"), { recursive: true });
+    writeFileSync(join(w, IG_API_WORK, "sidecars", "a.jsonld"), "{}");
+    writeFileSync(join(w, IG_API_WORK, IG_API_DESCRIPTOR), JSON.stringify({ label: "" }));
+    expect(() => readIgApi(w)).toThrow(/label/);
+  });
+});
+
+describe("publisher pages: the AST's data, never the Publisher's HTML", () => {
+  test("serves each resource under ast-data/ and by the Publisher's name, the index and the sidecars; never replaces a site file", () => {
+    const root = join(dir, "serve");
+    const ast = fakeAst(root, [{ resourceType: "ValueSet", id: "x" }, { resourceType: "CodeSystem", id: "y" }]);
+    const site = join(root, "_site");
+    mkdirSync(site, { recursive: true });
+    writeFileSync(join(site, "CodeSystem-y.json"), "site");
+    const index = join(root, "index.json");
+    writeFileSync(index, "{}");
+    const sidecars = join(root, "sidecars");
+    mkdirSync(sidecars);
+    writeFileSync(join(sidecars, "ValueSet-x.schema.json"), "{}");
+    const r = serveAstData({ site, ast, index, igApi: { sidecars, files: 1 } });
+    expect(r).toEqual({ resources: 2, named: 1, kept: 1, sidecars: 1, index: true });
+    expect(existsSync(join(site, AST_DATA, "resources", "ValueSet", "x--0000.json"))).toBe(true);
+    expect(JSON.parse(readFileSync(join(site, "ValueSet-x.json"), "utf-8")).id).toBe("x");
+    expect(readFileSync(join(site, "CodeSystem-y.json"), "utf-8")).toBe("site");
+    expect(existsSync(join(site, "fhir-artifact-index", "index.json"))).toBe(true);
+    expect(existsSync(join(site, SIDECARS_SERVED, "ValueSet-x.schema.json"))).toBe(true);
+  });
+  test("no AST: refused, naming the step that restores it", () => {
+    const site = join(dir, "site-noast");
+    mkdirSync(site, { recursive: true });
+    expect(() => publisherPages({ site, ast: join(dir, "absent"), log: () => {} })).toThrow(new RegExp(`no AST[\\s\\S]*${IG_SITE_SCRIPTS.ast}`));
+  });
+  test("the step reads the index and sidecars compose and the layer above left in the work directory", () => {
+    const root = join(dir, "serve-work");
+    const ast = fakeAst(root, [{ resourceType: "ValueSet", id: "x" }]);
+    const work = join(root, "work");
+    mkdirSync(join(work, INDEX_WORK), { recursive: true });
+    writeFileSync(join(work, INDEX_WORK, "index.json"), "{}");
+    mkdirSync(join(work, IG_API_WORK, "sidecars"), { recursive: true });
+    writeFileSync(join(work, IG_API_WORK, "sidecars", "ValueSet-x.jsonld"), "{}");
+    const site = join(root, "_site");
+    mkdirSync(site, { recursive: true });
+    const said: string[] = [];
+    expect(publisherPages({ site, ast, work, log: (s) => said.push(s) })).toEqual({ resources: 1, named: 1, kept: 0, sidecars: 1, index: true });
+    expect(said.join("\n")).toContain("The Publisher's HTML is not taken");
+  });
+});
+
+describe("the PlantUML jar", () => {
+  test("the one given, else PLANTUML_JAR, else the cached pinned release; none that is not there", () => {
+    const home = join(dir, "home");
+    const given = join(dir, "given.jar");
+    writeFileSync(given, "jar");
+    expect(plantumlJarFor(given, {}, home)).toBe(given);
+    expect(plantumlJarFor(join(dir, "nope.jar"), { PLANTUML_JAR: given }, home)).toBe(given);
+    expect(plantumlJarFor(undefined, {}, home)).toBeUndefined();
+    const cached = join(home, ".cache", "plantuml", `plantuml-${PLANTUML_VERSION}.jar`);
+    mkdirSync(join(cached, ".."), { recursive: true });
+    writeFileSync(cached, "jar");
+    expect(plantumlJarFor(undefined, {}, home)).toBe(cached);
+  });
 });
 
 describe("the guard: no published page wears the IG Publisher's chrome (owner, 2026-10-14)", () => {
@@ -161,7 +214,8 @@ describe("the guard: no published page wears the IG Publisher's chrome (owner, 2
     const site = join(dir, "refused");
     mkdirSync(site, { recursive: true });
     writeFileSync(join(site, "artifacts.html"), PUBLISHER_PAGE);
-    expect(() => publisherPages({ site, output: join(dir, "absent"), log: () => {} })).toThrow(/IG Publisher's chrome[\s\S]*artifacts\.html/);
+    const ast = fakeAst(join(dir, "refused-ig"), [{ resourceType: "ValueSet", id: "x" }]);
+    expect(() => publisherPages({ site, ast, log: () => {} })).toThrow(/IG Publisher's chrome[\s\S]*artifacts\.html/);
   });
 });
 
@@ -175,6 +229,7 @@ test("builtPage: a source page by Jekyll's default permalink; never a file Jekyl
 
 test("the checkout scripts the platform asks for are the ones package.json declares", () => {
   const pkg = JSON.parse(readFileSync(join(import.meta.dir, "..", "package.json"), "utf-8")) as { checkoutScripts: Record<string, string> };
+  expect(pkg.checkoutScripts[IG_SITE_SCRIPTS.ast]).toBe("bun run fhir-harness/scripts/ig-repo-site.ts ast");
   expect(pkg.checkoutScripts[IG_SITE_SCRIPTS.compose]).toBe("bun run fhir-harness/scripts/ig-repo-site.ts compose");
   expect(pkg.checkoutScripts[IG_SITE_SCRIPTS.publisherPages]).toBe("bun run fhir-harness/scripts/ig-repo-site.ts publisher-pages");
 });
@@ -214,7 +269,7 @@ describe("the site's folio-build.json", () => {
     const site = join(r, "_site");
     mkdirSync(site);
     writeFileSync(join(site, "index.html"), "<p>site</p>");
-    publisherPages({ site, output: join(r, "output"), ig: r, log: () => {} });
+    publisherPages({ site, ast: fakeAst(r, [{ resourceType: "ValueSet", id: "x" }]), ig: r, log: () => {} });
     expect(existsSync(join(site, STAMP_FILE))).toBe(true);
     const b = parseBuild(readFileSync(join(site, STAMP_FILE), "utf-8"));
     expect(typeof b === "string" ? b : b.platform.commit).toBe("t1");
