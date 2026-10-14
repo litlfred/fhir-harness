@@ -195,9 +195,9 @@ export function tools(baseUrl?: string): ToolDefinition[] {
     }),
     defineTool({
       id: "ig-repo-site",
-      title: "Compose an IG repository's own site from its checkout, with no instance declaration",
+      title: "Build an IG repository's own site from its cached AST, with no instance declaration",
       description:
-        "The two checkout scripts the platform's site build runs for a repository that holds an IG and only mounts layers (`index.config.json`): `ig-site:compose` stages the IG's `input/` and `sushi-config.yaml` (menu read at build time, palette from the webpage theme of the top layer the repository mounts, edit links from its origin) and composes it at the ROOT of the host site source; `ig-site:publisher-pages` copies every IG Publisher output file the built site lacks, so artefact links land, never replacing a page the site built, and repairs repeated element ids. Both list the pages they put in the site in `FOLIO_SITE_UPSTREAM_PAGES`, so the site build reports the IG's own dead links rather than refusing the publish over them.",
+        "The three checkout scripts the platform's site build runs for a repository that holds an IG and only mounts layers (`index.config.json`): `ig-site:ast` restores the AST from the IG's cache branch (`ig-cache.sh restore`) and judges it, refusing a stale, cannot-tell or absent one (a stale one is accepted for a preview with `SITE_ACCEPT_STALE_AST=1`); `ig-site:compose` derives the artefact index from the AST (binding any IG API sidecars a layer above left in `$SITE_WORK/ig-api/`), writes the thin artefact pages, stages the IG's `input/` and `sushi-config.yaml` (menu read at build time, palette from the webpage theme of the top layer the repository mounts, edit links from its origin) and composes it at the ROOT of the host site source; `ig-site:publisher-pages` serves the AST's resources (`ast-data/` and `<Type>-<id>.json`), the artefact index and the sidecars, refuses a page wearing the IG Publisher's chrome, repairs repeated element ids and stamps `folio-build.json`. Never runs the Publisher and never reads its output. Compose lists the pages it puts in the site in `FOLIO_SITE_UPSTREAM_PAGES`, so the site build reports the IG's own dead links rather than refusing the publish over them.",
       install: { none: true },
       invoke: { shell: "bun run fhir-harness/scripts/ig-repo-site.ts" },
       io: {
@@ -205,19 +205,20 @@ export function tools(baseUrl?: string): ToolDefinition[] {
           { name: "ig", schema: t("RepoPath"), required: false, description: "The IG checkout; the current directory by default." },
           { name: "baseurl", schema: t("RepoPath"), required: false, description: "`compose`: the site's base path; `FOLIO_SITE_BASEURL` from the site build when absent." },
           { name: "plantuml-jar", schema: t("RepoPath"), required: false, description: "`compose`: render `input/images-source/*.plantuml` as the Publisher does." },
-          { name: "output", schema: t("RepoPath"), required: false, description: "`publisher-pages`: the IG Publisher's output; `<ig>/output` by default. Absent on disk, nothing is copied and the run says so." },
+          { name: "work", schema: t("RepoPath"), required: false, description: "The site build's work directory (`SITE_WORK` when absent): where `ast` writes its verdict, a layer above leaves the IG API sidecars, and `compose` the index `publisher-pages` serves." },
         ],
         outputs: [
-          { name: "pages", schema: t("Count"), description: "Pages composed, or Publisher files copied in." },
+          { name: "pages", schema: t("Count"), description: "Pages composed, or AST files served." },
         ],
       },
       satisfies: ["ig-build-pipeline"],
       selection: {
         when: "Publishing an IG repository's own site, as `stage-local.ts` does for a harnessed IG repository.",
-        limits: "Asks the IG's origin for its default branch for edit links (absent, pages carry none). Reads the Publisher's output, never runs the Publisher.",
-        cost: "Seconds to compose; copying a Publisher output is proportional to its size.",
+        limits: "Needs the IG's AST cache branch (`ig-ast-refresh.yml` writes it) and the network to fetch it; asks the IG's origin for its default branch for edit links (absent, pages carry none). Never runs the Publisher.",
+        cost: "Seconds to restore and compose; serving the AST is proportional to its size.",
       },
-      requires: { runtime: ["bun", "git"], network: false },
+      requires: { runtime: ["bun", "git"], network: true },
+      remedies: [{ host: "github.com", none: "The AST IS a fetch of the IG's cache branch; offline, an AST already restored into `output-ast/` is judged and used as it is." }],
     }),
     defineTool({
       id: "ingest-ig-menu",
@@ -896,6 +897,62 @@ export function tools(baseUrl?: string): ToolDefinition[] {
       },
       requires: { runtime: ["bun"], network: true },
       remedies: [{ host: "api.github.com", none: "Pass `--from <releases.json>`, saved where GitHub is reachable." }],
+    }),
+
+    // ── The FSH cone ─────────────────────────────────────────────────────
+    //
+    // Moved here from the tools layer on the owner's ruling of 2026-10-14 (Q3):
+    // FHIR Shorthand is this layer's domain, and its other users —
+    // `ig-rendered-impact.ts`, `measure-logic-layer-edges.ts` and the IG AST's
+    // `-fsh-users` input above — are here. The id is unchanged.
+    //
+    // Group 12 of `d308` (`h588`). `ig-incremental-build · Task_Cone` names
+    // `fsh-cone --changed` in its own task label, so this binding is read off the
+    // diagram rather than inferred.
+    //
+    // **One skill satisfied, two refused on their own contracts.** Measured
+    // 2026-09-20 against `schemas/skills/*/input.schema.json`:
+    //
+    //   fhir-validation     requires igRoot                      → SATISFIABLE
+    //   ig-publication      requires igRoot + versionIncrement    → refused
+    //   l3-fhir-authoring   requires artifactType + sourceModel   → refused
+    //
+    // `fsh-cone` computes a dependency cone over a FSH graph: it publishes
+    // nothing and authors nothing, so it has no version to increment and no
+    // source model to render from. Declaring those edges would put this node
+    // forward as the mechanism for two jobs it does not do — the
+    // `covered-is-not-reachable` shape, manufactured on purpose.
+    //
+    // What is checked without an IG: a missing `<ig-root>` exits 2 with usage,
+    // measured, not assumed. The cone itself is exercised by `fsh-cone.test.ts`
+    // over a fixture tank.
+    defineTool({
+      id: "fsh-cone",
+      title: "FSH dependency cone",
+      description:
+        "Compute the dependency cone over an IG's FSH graph, and the blast radius of a set of changed files. What makes an incremental IG build possible: without it, any edit rebuilds everything.",
+      install: { none: true },
+      invoke: { shell: "bun run fhir-harness/scripts/fsh-cone.ts" },
+      io: {
+        inputs: [
+          { name: "igRoot", schema: t("RepoPath"), required: true, arg: { positional: 0 }, description: "The IG root holding the FSH sources. Absent, the command exits 2 with its usage — could-not-determine, not an empty cone." },
+          { name: "csv", schema: t("RepoPath"), required: false, arg: { flag: "--csv" }, description: "Write the report as CSV to this path instead of printing it." },
+          { name: "top", schema: t("Count"), required: false, arg: { flag: "--top" }, description: "Show only the N largest cones. `0` is a legitimate request for none, which is why `Count` admits zero." },
+          { name: "history", schema: t("Count"), required: false, arg: { flag: "--history" }, description: "Report the blast radius over the last N commits instead of a static cone." },
+          { name: "fileUsers", schema: t("RepoPath"), required: false, arg: { flag: "--file-users" }, description: "Also write `fsh-file-users/v1`: for each FSH file, the files that use what it declares. The IG AST's incremental plan reads it (`AstPlanCli -fsh-users`) so a changed RuleSet- or Alias-only file reaches its users rather than forcing a full build (bean `a9tx`)." },
+          // `--changed f1,f2,…` stays UNDECLARED: it is a comma-separated list
+          // inside ONE argv word. `Slug` forbids the comma, `repeated` would
+          // claim the flag may be given more than once when the script parses a
+          // single list, and `Text` is refused on argv by the injection rule.
+        ],
+        outputs: [
+          { name: "cone", schema: t("Text"), description: "The cone, or the impact of `--changed`. With `--csv` it goes to that path instead." },
+        ],
+      },
+      // ONE skill, not three — see the header for why the other two contracts
+      // refuse this mechanism rather than merely lacking it.
+      satisfies: ["fhir-validation"],
+      requires: { runtime: ["bun"], network: false },
     }),
   ];
 }

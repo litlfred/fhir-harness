@@ -74,9 +74,10 @@ import { resolveLandingInstance } from "../../cat-harness/schemas/harness-config
 import { findDeclarationFile } from "../../cat-harness/schemas/instance-roots.ts";
 import { scriptTable } from "../../cat-harness/schemas/script-table.ts";
 import { buildInstanceSite, keepPinned, lockedMountPaths, siteFields, stagingDir } from "../../cat-harness-tools/scripts/build-instance-site.ts";
+import { igOpenapiGraph } from "../../cat-harness-tools/openapi/scripts/ig-site-openapi.ts";
 import { NAVBAR_ROW_ID } from "../../cat-harness-tools/scripts/lib/harness-rail.ts";
 import { callerInputs, type UsesRef } from "../../cat-harness-tools/scripts/site-publisher.ts";
-import { parityShortfall, siteFeatures } from "../../cat-harness-tools/scripts/site-parity.ts";
+import { type DroppedByRuling, parityShortfall, siteFeatures } from "../../cat-harness-tools/scripts/site-parity.ts";
 import type { Composed, PublisherHost, PublisherRun, SitePublisher, StagePlan, StageResult } from "../../cat-harness-tools/scripts/stage-local.ts";
 
 /** The reusable workflows an IG calls: this layer's, which upstream IG repositories call. */
@@ -610,13 +611,44 @@ export function runIgBuild(repo: string, wf: Workflow, ctx: ExprContext, log: (s
 // ── An IG repository's folio site ──────────────────────────────────────────
 
 /**
- * The checkout scripts that compose an IG repository into the folio site:
- * a source step (before Jekyll, into the site source) and a site step (after
- * it, on the built site). This layer names the SLOTS; a layer above fills them
- * by declaring scripts of these names (`checkoutScripts`), and the script
- * table finds them. Nothing here names that layer.
+ * The checkout scripts an IG repository's folio site is built with. This
+ * layer names the SLOTS; the layers above fill them by declaring scripts of
+ * these names (`checkoutScripts`), and the script table finds them. Nothing
+ * here names those layers.
+ *
+ * Required, all three or the route cannot run: `ast` (a pre step: restore the
+ * IG's AST from its cache branch and judge it; ig-build-pipeline rule 1),
+ * `source` (before Jekyll: the artefact index and thin pages from the AST,
+ * the IG composed at the site root) and `site` (after it: the AST's data
+ * served, the Publisher-chrome guard, the build stamp).
  */
-export const IG_SITE_STEPS = { source: "ig-site:compose", site: "ig-site:publisher-pages" } as const;
+export const IG_SITE_STEPS = { ast: "ig-site:ast", source: "ig-site:compose", site: "ig-site:publisher-pages" } as const;
+
+/**
+ * Optional slots (owner, 2026-10-14: the DAK API pages and the OpenAPI pages
+ * are provided by the layers that own them, the DAK layer and the harness,
+ * not by this one), each run on a condition read off the checkout, never off
+ * a declaration in the IG repository:
+ *
+ * - `sidecars`, a pre step after `ast`: run when the LANDING layer provides it,
+ *   since the site wears that layer's chrome and its API surface; a provider
+ *   elsewhere is not run, and the plan says so;
+ * - `openapi`, a site step before `site`: run when the checkout holds an
+ *   OpenAPI graph (`openapi/cat-openapi.config.json`).
+ */
+export const IG_SITE_OPTIONAL = { sidecars: "ig-site:sidecars", openapi: "ig-site:openapi" } as const;
+
+/**
+ * Top-level directories an IG repository's root used to serve and no longer
+ * does, by the owner's ruling: not a parity shortfall (`site-parity.ts`
+ * `DroppedByRuling`). Nothing else is excused.
+ */
+export const IG_DROPPED: readonly DroppedByRuling[] = [
+  {
+    dir: "comparison-v*",
+    ruling: "owner, 2026-10-14, \"2a\": the IG Publisher's version comparisons (comparison-v*/) are not rendered and not published",
+  },
+];
 
 /**
  * Root entries an IG repository's publish keeps besides the folio's own:
@@ -652,44 +684,78 @@ export interface IgFolioSite {
   scope: string;
   title: string;
   description?: string;
+  pre: string[];
   sourceSteps: string[];
   siteSteps: string[];
   keep: string[];
+  /** Directories the root drops by ruling (`IG_DROPPED`). */
+  dropped: DroppedByRuling[];
+  /** What the plan says about each optional step, run or not. */
+  notes: string[];
 }
 
 /**
  * Whether an IG repository publishes as a folio site, and how. Pure over what
  * the checkout holds. Owner, 2026-10-14: an IG repository needs no harness of
  * its own, only `index.config.json` mounting its base harness, and publishes
- * as the folio's just-the-docs site with the IG composed in, not as bare
- * IG Publisher output. So:
+ * as the folio's just-the-docs site built from its cached AST, not as bare IG
+ * Publisher output. So:
  *
  * - no `index.config.json`: not harnessed — the bare IG route (`why`);
- * - no mounted layer provides {@link IG_SITE_STEPS}: the bare route (`why`),
- *   since nothing can compose the IG;
+ * - no mounted layer provides any of {@link IG_SITE_STEPS}: the bare route
+ *   (`why`), since nothing can build the site;
+ * - some but not all of them: REFUSED, naming the missing ones — the mounts
+ *   are pinned at commits that do not agree on the route;
  * - otherwise the folio route, scoped to the landing instance the index
- *   names; an index that names none is REFUSED, because the chrome cannot be
- *   scoped by guessing among the layers the repository mounts.
+ *   names, with the optional steps {@link IG_SITE_OPTIONAL} their conditions
+ *   admit; an index that names no landing is REFUSED, because the chrome
+ *   cannot be scoped by guessing among the layers the repository mounts.
+ *
+ * `scripts` maps each checkout script to the manifest declaring it;
+ * `landingPath` is the landing instance's mount path (`index.lock.json`).
  */
 export function igFolioSite(o: {
   hasIndexConfig: boolean;
-  scripts: ReadonlySet<string>;
+  scripts: ReadonlyMap<string, { manifest: string }>;
   landing: { kind: string; name?: string; reason?: string };
+  landingPath?: string;
+  hasOpenapi?: boolean;
   identity: { title: string; description?: string };
 }): { site?: IgFolioSite; why?: string } {
   if (!o.hasIndexConfig) return { why: "no index.config.json: this IG mounts no harness, so its site is the IG Publisher's output" };
-  const lacking = Object.values(IG_SITE_STEPS).filter((n) => !o.scripts.has(n));
-  if (lacking.length) return { why: `no mounted layer provides ${lacking.join(" and ")}: nothing here composes the IG into a folio site, so its site is the IG Publisher's output` };
+  const required = Object.values(IG_SITE_STEPS);
+  const lacking = required.filter((n) => !o.scripts.has(n));
+  if (lacking.length === required.length) return { why: `no mounted layer provides ${required.join(", ")}: nothing here builds the IG's folio site, so its site is the IG Publisher's output` };
+  if (lacking.length) throw new Error(`the mounted layers provide ${required.filter((n) => o.scripts.has(n)).join(", ")} but not ${lacking.join(", ")}: re-pin them together (the IG site route needs all of ${required.join(", ")})`);
   if (o.landing.kind !== "instance" || !o.landing.name) {
     throw new Error(`index.config.json names no landing instance (${o.landing.kind}${o.landing.reason ? `: ${o.landing.reason}` : ""}): add "site": { "landing": "<the harness this IG is built on>" } so the site's chrome is scoped to it`);
   }
+  const notes: string[] = [];
+  const pre: string[] = [IG_SITE_STEPS.ast];
+  const side = o.scripts.get(IG_SITE_OPTIONAL.sidecars);
+  if (!side) notes.push(`${IG_SITE_OPTIONAL.sidecars}: no mounted layer provides it — no IG API sidecars`);
+  else if (o.landingPath !== undefined && side.manifest.startsWith(`${o.landingPath}/`)) {
+    pre.push(IG_SITE_OPTIONAL.sidecars);
+    notes.push(`${IG_SITE_OPTIONAL.sidecars}: run, provided by the landing layer ${o.landing.name} (${side.manifest})`);
+  } else notes.push(`${IG_SITE_OPTIONAL.sidecars}: NOT run — provided by ${side.manifest}, not by the landing layer ${o.landing.name}`);
+  const siteSteps: string[] = [];
+  if (!o.hasOpenapi) notes.push(`${IG_SITE_OPTIONAL.openapi}: the checkout holds no openapi/cat-openapi.config.json — no OpenAPI pages`);
+  else if (!o.scripts.has(IG_SITE_OPTIONAL.openapi)) notes.push(`${IG_SITE_OPTIONAL.openapi}: the checkout holds an OpenAPI graph, and no mounted layer provides the step — its pages are NOT built`);
+  else {
+    siteSteps.push(IG_SITE_OPTIONAL.openapi);
+    notes.push(`${IG_SITE_OPTIONAL.openapi}: run, the checkout holds an OpenAPI graph`);
+  }
+  siteSteps.push(IG_SITE_STEPS.site);
   return {
     site: {
       scope: o.landing.name,
       ...o.identity,
+      pre,
       sourceSteps: [IG_SITE_STEPS.source],
-      siteSteps: [IG_SITE_STEPS.site],
+      siteSteps,
       keep: [...IG_KEEP],
+      dropped: [...IG_DROPPED],
+      notes,
     },
   };
 }
@@ -880,12 +946,25 @@ async function stageIg(a: PublisherRun, h: PublisherHost): Promise<StageResult> 
 /** The IG folio-site route for this checkout, read off what it holds ({@link igFolioSite}). */
 function folioSiteFor(repo: string, ownerRepo: string): ReturnType<typeof igFolioSite> {
   const sushi = join(repo, "sushi-config.yaml");
+  const landing = resolveLandingInstance(repo);
+  const landingPath = landing.kind === "instance" && landing.name ? lockedMountPath(repo, landing.name) : undefined;
   return igFolioSite({
     hasIndexConfig: existsSync(join(repo, "index.config.json")),
-    scripts: new Set(scriptTable(repo).keys()),
-    landing: resolveLandingInstance(repo),
+    scripts: scriptTable(repo),
+    landing,
+    ...(landingPath !== undefined ? { landingPath } : {}),
+    hasOpenapi: igOpenapiGraph(repo) !== undefined,
     identity: igIdentity(existsSync(sushi) ? readFileSync(sushi, "utf-8") : undefined, ownerRepo.split("/")[1]!),
   });
+}
+
+/** Where `index.lock.json` mounts an instance in the checkout, or undefined. */
+export function lockedMountPath(repo: string, instance: string): string | undefined {
+  const f = join(repo, "index.lock.json");
+  if (!existsSync(f)) return undefined;
+  const l = JSON.parse(readFileSync(f, "utf-8")) as { instances?: { instance?: unknown; path?: unknown }[] };
+  const e = (l.instances ?? []).find((i) => i.instance === instance && typeof i.path === "string");
+  return e ? (e.path as string) : undefined;
 }
 
 interface IgBuilt {
@@ -900,11 +979,13 @@ interface IgBuilt {
 }
 
 /**
- * An IG repository's folio site: the IG built by its own workflow's steps
- * (the IG Publisher, into the checkout), then the folio site built around it
- * by `build-instance-site.ts`: the chrome of the landing instance the
- * repository mounts, the IG composed at its root, the Publisher's own pages
- * filled in, Jekyll, the link check. The root keeps `STAGING/`,
+ * An IG repository's folio site, built from its cached AST by
+ * `build-instance-site.ts` with the steps the mounted layers provide
+ * ({@link igFolioSite}): the AST restored and judged, the landing layer's IG
+ * API sidecars, the chrome of the landing instance, the IG and its thin
+ * artefact pages composed at the root, Jekyll, the OpenAPI pages, the AST's
+ * data served, the link check. No IG Publisher runs (owner, 2026-10-14: "Yes,
+ * fix in platform"; ig-build-pipeline rule 1), so no Docker is needed. The root keeps `STAGING/`,
  * `_render-log/` and the IG workflow's `branches/`; a preview goes to
  * `STAGING/<branch>/`, as every folio's does. The workflow's own deploy steps
  * are not mirrored: the folio site replaces them.
@@ -924,36 +1005,27 @@ async function stageIgFolio(a: PublisherRun, b: IgBuilt, site: IgFolioSite, h: P
     replaces: staging ? `${staging}/, wholesale` : "the root, as a folio's root publish replaces it",
     preserved: staging ? [`everything outside ${staging}/`] : ["STAGING", "_render-log", ...site.keep],
     build: [
-      `the IG: the runnable steps of ${b.path} below, in its order, in the checkout as on a runner (the IG Publisher writes output/)`,
-      `the folio site "${site.title}": build-instance-site.ts with the chrome of ${site.scope} (index.config.json site.landing)`,
-      `  source ${site.sourceSteps.join(", ")} — the IG's pages at the site root`,
-      `  site   ${site.siteSteps.join(", ")} — the Publisher's own pages the site lacks, and ${IG_SITE_STAMP} at the root (required: a folio root marker)`,
+      `the folio site "${site.title}" from the IG's cached AST, never a Publisher run (ig-build-pipeline rule 1): build-instance-site.ts with the chrome of ${site.scope} (index.config.json site.landing)`,
+      `  pre    ${site.pre.join(", ")} — restore and judge the AST (a stale one is refused; SITE_ACCEPT_STALE_AST=1 for a preview only)${site.pre.length > 1 ? ", then the landing layer's IG API sidecars" : ""}`,
+      `  source ${site.sourceSteps.join(", ")} — the artefact index and thin pages from the AST, the IG's pages at the site root`,
+      `  site   ${site.siteSteps.join(", ")} — ${site.siteSteps.length > 1 ? "the OpenAPI pages, then " : ""}the AST's data served, and ${IG_SITE_STAMP} at the root (required: a folio root marker)`,
+      ...site.notes.map((n) => `  note   ${n}`),
+      ...(staging ? [] : site.dropped.map((d) => `  parity ${d.dir}/ is not a shortfall: ${d.ruling}`)),
       `  out    ${out}`,
     ],
     gate: "build-instance-site's link check: every link the chrome writes must resolve; the IG's own dead links are reported, not gated",
     commit: [message],
-    steps: b.steps.map((s) => ({ name: s.name, action: s.action, ...(s.reason ? { reason: s.reason } : {}) })),
+    steps: [...site.pre.map((n) => ({ name: n, action: "pre" })), ...site.sourceSteps.map((n) => ({ name: n, action: "source" })), ...site.siteSteps.map((n) => ({ name: n, action: "site" }))],
     notRun: [
-      "the workflow's deploy steps: the folio site is published in their place (pass --bare-ig for the Publisher's output as it is)",
+      `the IG Publisher and every step of ${b.path}: the site is built from the AST on the IG's cache branch, which ig-ast-refresh.yml refreshes (pass --bare-ig for the Publisher's output as it is)`,
       ...(u.file !== PAGES_SIBLING ? [`${u.file}'s own job (the build.fhir.org trigger): an external build, not this repository's Pages`] : []),
     ],
-    ...(b.missing.length ? { missing: b.missing } : {}),
   };
   log(h.formatPlan(plan));
   const done = (r: Partial<StageResult>): StageResult => ({ kind: "ig", target, slug: staging ?? branch, url, pushed: false, site: join(out, "_site"), plan, ...r });
   if (o.plan) return done({});
   if (o.artifact) throw new Error("--artifact is not available for an IG's folio site: build-instance-site publishes to the Pages branch only");
-  if (b.missing.length) {
-    if (o.dryRun) {
-      log(`✓ --dry-run: plan only — this machine lacks ${b.missing.length} prerequisite(s) to build, listed above; nothing built, nothing pushed`);
-      return done({});
-    }
-    throw new Error(`cannot build this IG here: missing ${b.missing.join("; ")}`);
-  }
-  log(`· building ${ownerRepo}@${branch} (${sha.slice(0, 7)}) with ${b.path}`);
-  const ctx = runIgBuild(repo, b.wf, { github: b.github, inputs: b.inputs, env: {}, steps: {} }, log);
-  const ranDefault = ctx.env.IS_DEFAULT_BRANCH;
-  if (ranDefault !== undefined && ranDefault !== String(b.isDefault)) throw new Error(`the workflow's own step decided IS_DEFAULT_BRANCH=${ranDefault}, and this run planned ${b.isDefault}; refusing to publish to the wrong place`);
+  log(`· building ${ownerRepo}@${branch} (${sha.slice(0, 7)}) from its cached AST`);
   const publish = !o.dryRun;
   const r = await buildInstanceSite({
     root: repo,
@@ -961,7 +1033,7 @@ async function stageIgFolio(a: PublisherRun, b: IgBuilt, site: IgFolioSite, h: P
     identity: { title: site.title, ...(site.description ? { description: site.description } : {}) },
     linkRoot: "https://litlfred.github.io/folio-assistant",
     out,
-    pre: [],
+    pre: site.pre,
     sourceSteps: site.sourceSteps,
     siteSteps: site.siteSteps,
     ...(target === "preview" ? { staging: branch } : {}),
@@ -970,6 +1042,7 @@ async function stageIgFolio(a: PublisherRun, b: IgBuilt, site: IgFolioSite, h: P
     publish,
     ...(publish ? { remote: h.git(repo, ["config", "--get", "remote.origin.url"]) } : {}),
     keep: site.keep,
+    parityDropped: site.dropped,
     require: [IG_SITE_STAMP],
     message,
   });

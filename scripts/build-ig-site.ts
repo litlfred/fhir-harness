@@ -582,12 +582,28 @@ link(h,"ig-feedback",repo+"/issues/new?title="+encodeURIComponent("Feedback on \
  * can live in an included file (bean `x78e`), and its issue is titled after
  * the section, with the page apart, which the block recipe does not do.
  */
+/**
+ * A script's source, inlined into a Liquid include, kept out of Liquid's reach.
+ *
+ * An include is parsed by Jekyll, and a runtime is JavaScript, which may carry
+ * `{%` or `{{` in a string or a regular expression: the edit-links runtime's
+ * variable pattern (`/\{\{[\s\S]*?\}\}|\{%[\s\S]*?%\}|.../g`, cat-harness-tools'
+ * ✍ suggest) is one, and inlined bare it stopped smart-trust's whole build with
+ * "Liquid syntax error" (2026-10-14). `{% raw %}` keeps the bytes; neutralising
+ * them with a word joiner (`ig-ast`'s `neutralise`) would change the program.
+ * A source that would close the raw block itself is refused, not mangled.
+ */
+export function liquidInertScript(js: string): string {
+  if (/\{%-?\s*endraw/.test(js)) throw new Error("an inlined script carries {% endraw %}: it cannot be kept out of Liquid's reach in a raw block; link it as a file instead");
+  return `{% raw %}${js}{% endraw %}`;
+}
+
 function igEditLines(scriptSrc?: string): string[] {
   return [
     '{% if page.ig_edit_url %}<p class="ig-edit"><a data-fa-link="edit" data-src="{{ page.ig_source_path }}" data-repo="{{ page.ig_source_repo }}" href="{{ page.ig_edit_url }}">Edit this page on GitHub</a></p>{% endif %}',
     '{% if page.ig_source_lines %}<script type="application/json" id="ig-source-lines">{"blob": {{ page.ig_source_blob | jsonify }}, "repo": {{ page.ig_source_repo | jsonify }}, "branch": {{ page.ig_source_branch | jsonify }}, "path": {{ page.ig_source_path | jsonify }}, "lines": {{ page.ig_source_lines | jsonify }}}</script>',
     // Thin: the two runtimes are ONE linked file (`IG_SOURCE_LINKS_FILE`), not inlined into every page.
-    `${scriptSrc ? `<script src="${scriptSrc}"></script>` : `<script>${EDIT_LINKS_RUNTIME}</script><script>${SOURCE_LINKS_JS}</script>`}{% endif %}`,
+    `${scriptSrc ? `<script src="${scriptSrc}"></script>` : `<script>${liquidInertScript(EDIT_LINKS_RUNTIME)}</script><script>${liquidInertScript(SOURCE_LINKS_JS)}</script>`}{% endif %}`,
   ];
 }
 

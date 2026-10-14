@@ -8,6 +8,9 @@ import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, 
 import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
 import { join } from "node:path";
+import { igChromeIncludes, liquidInertScript, SOURCE_LINKS_JS } from "./build-ig-site";
+import { Liquid } from "liquidjs";
+import { EDIT_LINKS_RUNTIME } from "../../cat-harness-tools/src/core/edit-links.js";
 import { ARTIFACT_LIST_TEMPLATE_PATH, artifactListInclude, publisherPlural, FOOTER_TEMPLATE_PATH, ARTIFACTS_TEMPLATE_PATH,IG_FIGURE_IMAGES_STAMP, annexMount, ANNEX_SCRIPT_PATH, artifactVariables, artifactCellLookup, kramdownId, linkTableCells, colourScheme, composeIgSite, contrast, dedupeIds, igTocNav, igTopBar, IG_TOPBAR_CSS, includeTargets, localTemplateIncludes, pageNav, relinkArtifacts, relinkTemplatedArtifacts, relinkOffSite, rubyLiquidStrings, relinkPublisherOutputs, sourceHeadings, dataOverwritesQa, describeStage, RELEASES_TEMPLATE_PATH, releaseVariables, sizeLabel, stageIgSite, tocPage, type StageResult } from "./build-ig-site";
 import { copyDocsInto, igSiteDocs, webpagePalette } from "./stage-ig-sites";
 import type { IgReleases } from "../schemas/ig-releases.ts";
@@ -751,7 +754,8 @@ describe("heading links on an IG's first page, whose headings live in an include
     // The script the layout carries, on the page as Jekyll renders it. The
     // page is titled after its menu entry — "Summary", the first section's name too.
     const layout = readFileSync(join(d, "out", "_layouts", "default.html"), "utf-8");
-    const js = /<script>(\(function\(\)\{var d=document\.getElementById\("ig-source-lines"\)[\s\S]*?)<\/script>/.exec(layout)?.[1];
+    // Inlined in a Liquid raw block (`liquidInertScript`), which Jekyll strips.
+    const js = /<script>(?:\{% raw %\})?(\(function\(\)\{var d=document\.getElementById\("ig-source-lines"\)[\s\S]*?)(?:\{% endraw %\})?<\/script>/.exec(layout)?.[1];
     expect(js).toBeDefined();
     const got = runHeadingLinks(js!, { blob: "https://github.com/o/r/blob/main/input/pagecontent/index.md", lines }, "Summary | X IG", [
       { id: "summary", text: "Summary" },
@@ -1245,5 +1249,25 @@ describe("annexes in a staged page", () => {
     expect(people).not.toContain("fa-annex");
     expect(r.unplaced).toEqual(["nope.md (x.md)"]);
     rmSync(root, { recursive: true, force: true });
+  });
+});
+
+describe("an inlined runtime is kept out of Liquid's reach (smart-trust, 2026-10-14)", () => {
+  // The edit-links runtime's variable pattern carries `{%`; inlined bare into
+  // `_includes/ig/_bottom.html` it was a Liquid syntax error that stopped the build.
+  const liquid = new Liquid({ strictFilters: false });
+  test("a script carrying {% and {{ renders to its own bytes", async () => {
+    const js = "var re = /\\{\\{[\\s\\S]*?\\}\\}|\\{%[\\s\\S]*?%\\}/g; var t = '{{ x }} {% if y %}';";
+    expect(await liquid.parseAndRender(`<script>${liquidInertScript(js)}</script>`, {})).toBe(`<script>${js}</script>`);
+  });
+  test("a script that would close the raw block is refused", () => {
+    expect(() => liquidInertScript("var s = '{% endraw %}';")).toThrow(/endraw/);
+    expect(() => liquidInertScript("var s = '{%- endraw -%}';")).toThrow(/endraw/);
+  });
+  test("the full pages' bottom parses, and carries both runtimes verbatim", async () => {
+    const { bottom } = igChromeIncludes("");
+    const html = await liquid.parseAndRender(bottom, { page: { ig_source_lines: [1], ig_edit_url: "e" } });
+    expect(html).toContain(EDIT_LINKS_RUNTIME);
+    expect(html).toContain(SOURCE_LINKS_JS);
   });
 });
