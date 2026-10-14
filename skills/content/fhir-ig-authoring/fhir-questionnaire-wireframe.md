@@ -181,23 +181,29 @@ by these names:
 
 | export | does |
 |---|---|
-| `open(host, ctx)` → `{ get, dispose }` | `ctx` is `{ text, src, path, label, kind, repo, branch, config, status(msg) }`, `text` the Questionnaire JSON. A panel: which side was edited (the Questionnaire or its L2 wireframe), and a raw-JSON fallback; with `config.suggest.builder`, the self-hosted NLM Form Builder in a window, its `updateQuestionnaire` / `closed` result kept (its API.md hand-back). Progress goes to `ctx.status`. `get()` is awaited on Submit, never polled, and is `ctx.text` itself while nothing was edited; `dispose()` closes the builder window |
+| `open(host, ctx)` → `{ get, dispose }` | `ctx` is `{ text, sourceText, sourcePath, why, src, path, label, kind, repo, branch, config, status(msg) }`: `text` the BUILT Questionnaire JSON (the host's `data-suggest-text`), `sourcePath` / `sourceText` the FSH it was built from, `why` the reader's reason (live). A panel: which side was edited (the Questionnaire or its L2 wireframe), and a raw-JSON fallback; with `config.suggest.builder`, the self-hosted NLM Form Builder in a window, its `updateQuestionnaire` / `closed` result kept (its API.md hand-back). Progress goes to `ctx.status`. `get()` is awaited on Submit, never polled, and is `ctx.text` itself while nothing was edited; `dispose()` closes the builder window |
 | `check(before, after, opts)` | findings `[{ severity, message }]`, from `checkSuggestion` below; an error blocks Submit |
-| `issue(before, after, ctx)` | `{ title, body }` and no `template`: the side edited, the FSH source link, the page, the reader's Why, the item table and the JSON Patch with each operation's `linkId` |
+| `issue(before, after, ctx)` | `{ title, body }` and no `template`: the side edited, the FSH source link (`ctx.sourcePath`, anchored on the `Instance:` line found in `ctx.sourceText`), the page, the item table and the JSON Patch with each operation's `linkId`. **Not** the Why: the runtime appends `**Why:**` to a mode's body that lacks it, so the mode writing one too would file it twice |
 
 The side edited and the builder's round-trip baseline reach `check` and
-`issue` through the session `open` keeps. The runtime's dialog has its own
-Why field and does not hand it to `issue`, so the mode reads it from the
-dialog it sits in.
+`issue` through the session `open` keeps. Everything else is `ctx`'s: the
+mode reads no Why from the dialog's DOM and does not re-derive the source
+path from the page.
 
-**Which path opens it.** The runtime takes a block over only when a profile
-serves its source: `data-suggest-mode` names the profile, and the source must
-end in `.json`, which the runtime reads from the repository. A Questionnaire
-authored as JSON is edited in the runtime's dialog; one built from FSH has no
-JSON in the repository, so the form page's loader
+**Which path opens it.** The form page's host names the profile
+(`data-suggest-mode`), the source in the repository (`data-src`, the `.fsh`
+file) and the URL of the BUILT text the mode edits (`data-suggest-text`,
+`questionnaires/Questionnaire-<id>.source.json`, the unexpanded copy the IG
+compiled; not the copy LHC-Forms renders, whose value sets were expanded).
+A runtime with the mode registry serves any host that names its mode: it
+fetches the built text as `ctx.text`, reads the source as `ctx.sourceText`,
+and its dialog offers a Form | FSH switch: the Form pane is this mode, the
+FSH pane edits the source as text and files a source diff with the reader's
+Why. Without such a runtime, the form page's loader
 (`templates/ig-pages/questionnaire-form.js`) opens the mode itself, with the
-same `ctx`, its own Why field, and `issueUrl` for the link. The loader also
-does so under a runtime without the registry; where the runtime has put its
+same `ctx` (built text fetched from `data-suggest-text`, `sourcePath`, a live
+`why`; no `sourceText`), its own Why field, `withWhy` to append the Why as
+the runtime does, and `issueUrl` for the link. Where the runtime has put its
 ✍ link in the host, the page's own link hands the click to it.
 
 ### The self-hosted Form Builder, and no cross-site call
