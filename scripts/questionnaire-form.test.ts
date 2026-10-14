@@ -124,8 +124,19 @@ describe("the page", () => {
     expect(cfg).toEqual({
       repo: "o/ig",
       branch: "main",
-      suggest: { mode: "questionnaire", module: "assets/js/questionnaire-mode.js", checker: "assets/js/questionnaire-mode.js", source: "input/fsh/intake.fsh", slug: "example.ig" },
+      suggest: {
+        profiles: [{ id: "questionnaire", module: "assets/js/questionnaire-mode.js", extensions: [".json"], kinds: ["questionnaire"] }],
+        fhirVersion: "R5",
+        source: "input/fsh/intake.fsh",
+        slug: "example.ig",
+      },
     });
+    expect(cfg.suggest).not.toHaveProperty("mode");
+    expect(cfg.suggest).not.toHaveProperty("checker");
+  });
+  test("the form host names the mode and the block, for the runtime to match", () => {
+    expect(html).toContain('<div id="fa-qform" class="fa-qform"');
+    expect(/<div id="fa-qform"[^>]*>/.exec(html)![0]).toContain('data-src="input/fsh/intake.fsh" data-block="questionnaire:intake" data-suggest-mode="questionnaire"');
   });
   test("without a repository there is no edit, feedback or suggest link", () => {
     const bare = formPageHtml({ id: "x" }, { json: "questionnaires/Questionnaire-x.json" });

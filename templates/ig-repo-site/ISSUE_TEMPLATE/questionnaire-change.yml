@@ -1,10 +1,12 @@
 # TEMPLATE — copy to `.github/ISSUE_TEMPLATE/questionnaire-change.yml` in an IG
-# repository, unchanged: it has no placeholders. The ✍ suggest editor's
-# Questionnaire mode opens it pre-filled, by field id (`questionnaire`,
-# `edited`, `patch`, `items`, `source`); a person can also fill it by hand.
+# repository, unchanged: it has no placeholders. It is for a person filing a
+# change by hand. The ✍ suggest editor's Questionnaire mode does not open it:
+# GitHub ignores a prefilled `body` when `template=` names an issue form, so it
+# opens a plain issue whose body carries the same fields (`questionnaire`,
+# `edited`, `patch`, `items`, `source`, and the reason).
 # Skill: fhir-harness `fhir-questionnaire-wireframe`, step 7.
 name: Suggest a change to a form (Questionnaire)
-description: Propose a change to a Questionnaire, or to the wireframe it was derived from. The ✍ suggest link on a form page fills this in for you.
+description: Propose a change to a Questionnaire, or to the wireframe it was derived from. To have it written for you, use the ✍ suggest link on the form page instead.
 title: "Suggested edit: Questionnaire/"
 labels: ["questionnaire-change"]
 body:

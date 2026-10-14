@@ -7,7 +7,8 @@
  * carries ✎ (the FSH source), 📣 (feedback) and ✍ (suggest a change, in the
  * Questionnaire mode, `questionnaire-mode.js`), a plain link-out to CSIRO
  * Smart Forms as a rendering cross-check (nothing embedded), and the
- * Publisher's own page.
+ * Publisher's own page. The page config names the mode as a profile of the
+ * ✍ suggest runtime's mode registry (`QUESTIONNAIRE_PROFILE`).
  *
  * Reads the IG's AST, which `build-ig-site` already copies into `_data/`;
  * writes, beside the site's pages:
@@ -58,6 +59,13 @@ const SW_SCRIPT = join(HERE, "terminology-sw.js");
 const SW_MAP = join(HERE, "terminology-map.js");
 /** The Form Builder's directory on the site, and the worker's scope. */
 export const BUILDER_AT = `assets/formbuilder/${FORMBUILDER_VERSION}/`;
+
+/**
+ * The Questionnaire mode as a ✍ suggest runtime profile
+ * (`cfg.suggest.profiles[]`, cat-harness-tools#218): the module relative to
+ * the page, Questionnaire JSON by file ending and by KG kind.
+ */
+export const QUESTIONNAIRE_PROFILE = { id: "questionnaire", module: "assets/js/questionnaire-mode.js", extensions: [".json"], kinds: ["questionnaire"] } as const;
 
 /** CSIRO's Smart Forms playground: a cross-check reached by a plain link, never embedded. */
 export const SMART_FORMS_URL = "https://smartforms.csiro.au/playground";
@@ -115,16 +123,17 @@ export function formPageHtml(q: { id: string; title?: string; name?: string; url
   const cfg = {
     ...(repo ? { repo, branch } : {}),
     suggest: {
-      mode: "questionnaire",
-      module: "assets/js/questionnaire-mode.js",
-      checker: "assets/js/questionnaire-mode.js",
+      profiles: [QUESTIONNAIRE_PROFILE],
+      fhirVersion: lformsFhirVersion(o.fhirVersion),
       ...(o.builder ? { builder: o.builder } : {}),
       ...(o.sw ? { sw: o.sw } : {}),
       ...(o.source ? { source: o.source } : {}),
       ...(o.slug ? { slug: o.slug } : {}),
     },
   };
-  const src = o.source ? ` data-src="${esc(o.source)}"` : "";
+  // The runtime matches the host to the profile by `data-suggest-mode`, and
+  // takes the block over only when its source is a `.json` it can read.
+  const src = `${o.source ? ` data-src="${esc(o.source)}"` : ""} data-block="questionnaire:${esc(q.id)}" data-suggest-mode="${QUESTIONNAIRE_PROFILE.id}"`;
   return [
     "---",
     `title: ${yamlStr(`${title} — form`)}`,
