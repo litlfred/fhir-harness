@@ -17,6 +17,7 @@ import {
   astGate,
   builtPage,
   IG_API_DESCRIPTOR,
+  IG_API_SITE,
   IG_API_WORK,
   IG_SITE_SCRIPTS,
   igSiteStamp,
@@ -148,7 +149,7 @@ describe("publisher pages: the AST's data, never the Publisher's HTML", () => {
     mkdirSync(sidecars);
     writeFileSync(join(sidecars, "ValueSet-x.schema.json"), "{}");
     const r = serveAstData({ site, ast, index, igApi: { sidecars, files: 1 } });
-    expect(r).toEqual({ resources: 2, named: 1, kept: 1, sidecars: 1, index: true });
+    expect(r).toEqual({ resources: 2, named: 1, kept: 1, sidecars: 1, siteFiles: 0, siteKept: [], index: true });
     expect(existsSync(join(site, AST_DATA, "resources", "ValueSet", "x--0000.json"))).toBe(true);
     expect(JSON.parse(readFileSync(join(site, "ValueSet-x.json"), "utf-8")).id).toBe("x");
     expect(readFileSync(join(site, "CodeSystem-y.json"), "utf-8")).toBe("site");
@@ -171,9 +172,33 @@ describe("publisher pages: the AST's data, never the Publisher's HTML", () => {
     const site = join(root, "_site");
     mkdirSync(site, { recursive: true });
     const said: string[] = [];
-    expect(publisherPages({ site, ast, work, log: (s) => said.push(s) })).toEqual({ resources: 1, named: 1, kept: 0, sidecars: 1, index: true });
+    expect(publisherPages({ site, ast, work, log: (s) => said.push(s) })).toEqual({ resources: 1, named: 1, kept: 0, sidecars: 1, siteFiles: 0, siteKept: [], index: true });
     expect(said.join("\n")).toContain("The Publisher's HTML is not taken");
   });
+});
+
+test("what the layer above wrote for the site root is served there, never over a path the site holds", () => {
+  const root = join(dir, "serve-site");
+  const ast = fakeAst(root, [{ resourceType: "ValueSet", id: "x" }]);
+  const work = join(root, "work");
+  const api = join(work, IG_API_WORK);
+  mkdirSync(join(api, "sidecars"), { recursive: true });
+  writeFileSync(join(api, "sidecars", "ValueSet-x.openapi.json"), "{}");
+  mkdirSync(join(api, IG_API_SITE, "openapi"), { recursive: true });
+  writeFileSync(join(api, IG_API_SITE, "openapi", "index.html"), "<p>hub</p>");
+  writeFileSync(join(api, IG_API_SITE, "ValueSet-x.openapi.json"), "{}");
+  writeFileSync(join(api, IG_API_SITE, "index.html"), "<p>overlay</p>");
+  const igApi = readIgApi(work);
+  expect(igApi?.site).toBe(join(api, IG_API_SITE));
+  const site = join(root, "_site");
+  mkdirSync(site, { recursive: true });
+  writeFileSync(join(site, "index.html"), "<p>site</p>");
+  const r = serveAstData({ site, ast, igApi: igApi! });
+  expect(r.siteFiles).toBe(2);
+  expect(r.siteKept).toEqual(["index.html"]);
+  expect(readFileSync(join(site, "openapi", "index.html"), "utf-8")).toBe("<p>hub</p>");
+  expect(existsSync(join(site, "ValueSet-x.openapi.json"))).toBe(true);
+  expect(readFileSync(join(site, "index.html"), "utf-8")).toBe("<p>site</p>");
 });
 
 describe("the PlantUML jar", () => {

@@ -42,7 +42,10 @@
  * the artefacts by the Publisher's file names, labels them as the descriptor
  * says (`gen-ig-pages --sidecar-label`) and serves them at
  * `fhir-artifact-index/sidecars/`. Nothing there, nothing is bound, and the
- * pages say "IG API".
+ * pages say "IG API". Files it leaves in `<work>/ig-api/site/` (its own pages
+ * over the sidecars, such as an OpenAPI page) are served verbatim at the site
+ * root, never over a path the site already holds, and the Publisher-chrome
+ * guard judges them like every other page.
  *
  * ## Why there is no instance here
  *
@@ -238,6 +241,8 @@ export const SIDECARS_SERVED = `${INDEX_SERVED}/sidecars`;
  */
 export const IG_API_WORK = "ig-api";
 export const IG_API_DESCRIPTOR = "ig-api.json";
+/** Under `ig-api/`: files the layer above wrote for the site root, served verbatim (its own pages over the sidecars). */
+export const IG_API_SITE = "site";
 /** Under the work directory: the artefact index `compose` derived, for `publisher-pages` to serve. */
 export const INDEX_WORK = "ig-site-index";
 /** Set to `1`, a stale AST is accepted for a preview (`ig-build-pipeline` rule 2); never for the root. */
@@ -250,6 +255,8 @@ export interface IgApi {
   sidecars: string;
   files: number;
   label?: string;
+  /** Files to serve at the site root, at the paths they hold under this directory. */
+  site?: string;
 }
 
 /**
@@ -264,11 +271,13 @@ export function readIgApi(work: string | undefined): IgApi | undefined {
   if (!existsSync(sidecars) || !statSync(sidecars).isDirectory()) return undefined;
   const files = readdirSync(sidecars).filter((f) => statSync(join(sidecars, f)).isFile()).length;
   if (files === 0) return undefined;
+  const siteDir = join(dir, IG_API_SITE);
+  const site = existsSync(siteDir) && statSync(siteDir).isDirectory() ? { site: siteDir } : {};
   const desc = join(dir, IG_API_DESCRIPTOR);
-  if (!existsSync(desc)) return { sidecars, files };
+  if (!existsSync(desc)) return { sidecars, files, ...site };
   const d = JSON.parse(readFileSync(desc, "utf-8")) as { label?: unknown };
   if (d.label !== undefined && (typeof d.label !== "string" || d.label.trim() === "")) throw new Error(`${desc}: "label" must be a non-empty string`);
-  return { sidecars, files, ...(typeof d.label === "string" ? { label: d.label.trim() } : {}) };
+  return { sidecars, files, ...(typeof d.label === "string" ? { label: d.label.trim() } : {}), ...site };
 }
 
 /**
@@ -564,6 +573,9 @@ export interface ServedData {
   kept: number;
   /** IG API sidecar files served under `fhir-artifact-index/sidecars/`. */
   sidecars: number;
+  /** Files the layer above wrote for the site root, served; and those the site already held, not laid over. */
+  siteFiles: number;
+  siteKept: string[];
   /** Whether the artefact index is served at `fhir-artifact-index/index.json`. */
   index: boolean;
 }
@@ -585,7 +597,7 @@ function serve(from: string, site: string, rel: string): boolean {
 export function serveAstData(o: { site: string; ast: string; index?: string; igApi?: IgApi }): ServedData {
   const manifest = join(o.ast, "manifest.json");
   if (!existsSync(manifest)) throw new Error(`${o.ast}: no AST to serve — run ${IG_SITE_SCRIPTS.ast} first`);
-  const out: ServedData = { resources: 0, named: 0, kept: 0, sidecars: 0, index: false };
+  const out: ServedData = { resources: 0, named: 0, kept: 0, sidecars: 0, siteFiles: 0, siteKept: [], index: false };
   const m = JSON.parse(readFileSync(manifest, "utf-8")) as { resources?: { resourceType?: string; id?: string; file?: string }[] };
   for (const r of m.resources ?? []) {
     if (!r.file || !r.resourceType || !r.id) continue;
@@ -602,6 +614,12 @@ export function serveAstData(o: { site: string; ast: string; index?: string; igA
       const from = join(o.igApi.sidecars, f);
       if (statSync(from).isFile() && serve(from, o.site, join(SIDECARS_SERVED, f))) out.sidecars += 1;
     }
+    if (o.igApi.site) {
+      for (const f of filesUnder(o.igApi.site)) {
+        if (serve(join(o.igApi.site, f), o.site, f)) out.siteFiles += 1;
+        else out.siteKept.push(f);
+      }
+    }
   }
   return out;
 }
@@ -616,8 +634,9 @@ export function publisherPages(o: { site: string; ast: string; work?: string; ig
     `publisher pages: from the AST, ${served.resources} resource(s) under ${AST_DATA}/ and ${served.named} as <Type>-<id>.json at the root` +
       `${served.kept ? ` (${served.kept} the site already held were kept)` : ""}; ` +
       `${served.index ? `the artefact index at ${INDEX_SERVED}/index.json` : "no artefact index served"}; ` +
-      `${served.sidecars} IG API sidecar(s) at ${SIDECARS_SERVED}/. The Publisher's HTML is not taken`,
+      `${served.sidecars} IG API sidecar(s) at ${SIDECARS_SERVED}/; ${served.siteFiles} file(s) the layer above wrote for the site root. The Publisher's HTML is not taken`,
   );
+  if (served.siteKept.length) log(`publisher pages: the site already held ${served.siteKept.length} path(s) the layer above also wrote, kept as the site built them: ${served.siteKept.slice(0, 10).join(", ")}`);
   // The guard: whatever put it there, a page wearing the Publisher's chrome is not published.
   const chrome = publisherChromePages(o.site);
   if (chrome.length) throw new Error(`${chrome.length} page(s) of the built site carry the IG Publisher's chrome (fhir.css, bootstrap-fhir.css or its "Generated" footer) — the Publisher's HTML is not published:\n  ${chrome.slice(0, 20).join("\n  ")}`);

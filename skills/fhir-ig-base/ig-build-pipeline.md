@@ -198,7 +198,11 @@ whatever is there to the artefacts by the Publisher's file names
 (`ast-to-artifact-index.ts --sidecars`), labels the pages with the descriptor's
 label, and serves the files at `fhir-artifact-index/sidecars/`. It knows no
 producer and writes no label down; with nothing there it binds nothing and
-the pages say "IG API".
+the pages say "IG API". Files the layer above leaves in
+`$SITE_WORK/ig-api/site/` (its own pages over the sidecars, such as an
+OpenAPI page at `openapi/index.html`) are served verbatim at the site root,
+never over a path the site already holds, and the Publisher-chrome guard
+judges them like every other page.
 
 **What the site serves from the AST**: each resource under `ast-data/` (the
 thin pages' data, `gen-ig-pages --compiled-data ast-data`) and under the
