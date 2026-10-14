@@ -87,6 +87,11 @@ jobs:
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
+          # The job token is given to git ONCE, as the global header below.
+          # A second copy from the checkout makes git send two Authorization
+          # headers, which GitHub rejects: `ls-remote origin` failed and the
+          # publish could not read the default branch.
+          persist-credentials: false
 
       - uses: oven-sh/setup-bun@v2
         with:
