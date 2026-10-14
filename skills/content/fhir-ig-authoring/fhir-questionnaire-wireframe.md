@@ -130,6 +130,38 @@ workflows beside it. A pre-filled link longer than about 7000 characters is
 too long for GitHub; the editor then copies the body to the clipboard and
 opens a stub issue, as the ✍ runtime already does.
 
+## The form view and the ✍ Questionnaire mode
+
+`build-ig-site` writes one page per Questionnaire in the IG's AST,
+`Questionnaire-<id>-form.html`, through
+[`scripts/questionnaire-form.ts`](../../../scripts/questionnaire-form.ts):
+
+- the form, drawn by the vendored LHC-Forms build
+  (`scripts/assets/vendor/lhc-forms/<version>/`, its NLM `LICENSE.md` beside
+  it, `vendored.json` recording the npm tarball and a SHA-256 per file) from
+  a rendered copy of the built JSON, `questionnaires/Questionnaire-<id>.json`.
+  The source Questionnaire is never changed. Nothing is loaded from another
+  origin;
+- ✎ (the FSH source the AST names), 📣 (feedback) and ✍ (suggest a change),
+  through the platform's edit-links recipe and a `#fa-edit-cfg` block whose
+  `suggest` is `{ mode: "questionnaire", module, checker }`;
+- a plain **open in CSIRO Smart Forms** link-out, as a rendering cross-check
+  (owner, 2026-10-14). Nothing of it is embedded.
+
+The ✍ Questionnaire mode is
+[`scripts/questionnaire-mode.js`](../../../scripts/questionnaire-mode.js), a
+plain ES module with no build step. **Its interface is provisional until the
+cat-harness-tools mode registry merges**:
+
+| export | does |
+|---|---|
+| `open(host, ctx)` → `{ get, edited, dispose }` | a panel: which side was edited (the Questionnaire or its L2 wireframe), the editor's status, and a raw-JSON fallback. With `ctx.builder`, the self-hosted NLM Form Builder is opened in a window and its `updateQuestionnaire` / `closed` result kept (its API.md hand-back). `get()` is the edited Questionnaire as JSON text |
+| `checker(before, after, ctx)` | findings `{ severity, message }`, from `checkSuggestion` below |
+| `issue(before, after, ctx)` | `{ title, body, template: "questionnaire-change.yml", fields }`: the JSON Patch with each operation's `linkId`, the item table, the source, the side edited |
+
+Until the suggest runtime carries the registry, the form page opens the mode
+itself (`templates/ig-pages/questionnaire-form.js`).
+
 ## The suggest checker
 
 `checkSuggestion(before, after, { wireframe })` in

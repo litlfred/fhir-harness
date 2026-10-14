@@ -46,6 +46,7 @@ import { parse as parseYaml } from "yaml";
 import { astImplementationGuide, describeSiteData, igSiteData, type IgSiteDataResult } from "./ig-site-data";
 import { defaultPackageCache, DEPENDENCY_FRAGMENTS, dependencyRows, fromImplementationGuide, fromSushiConfig, type DependencyRow } from "./ig-dependencies.ts";
 import { readAst } from "./ig-ast.ts";
+import { questionnaireFormPages, type FormPage } from "./questionnaire-form.ts";
 import { GLOBALS_FRAGMENT, globalsFromImplementationGuide, globalsFromSushiConfig } from "./ig-globals.ts";
 import { artifactPageName } from "../schemas/fhir-artifact-index.js";
 import { wrapRaw } from "../../cat-harness-tools/scripts/lib/liquid-raw.ts";
@@ -179,6 +180,8 @@ export interface StageResult {
   siteData: IgSiteDataResult;
   /** The AST's resources as `site.data.canonicals` and `site.data["<Type>-<id>"]`; undefined when there is no AST. */
   astData?: { canonicals: number; resources: number } | { why: string };
+  /** One LHC-Forms form-view page per Questionnaire in the AST (skill `fhir-questionnaire-wireframe`, `questionnaire-form.ts`); a reason when the AST could not be read for them. */
+  forms?: FormPage[] | { why: string };
   /** The local template's `includes/` directory (`ig.ini` `template = #<dir>`), relative to the source, and how many files it gave `_includes/`. */
   templateIncludes?: { dir: string; files: number };
   /** `input/data/*` staged into `_data/`, and every `site.data` key two sources defined (bean `yy4u`). */
@@ -1899,6 +1902,19 @@ export function stageIgSite(igSrc: string, out: string, opts: StageOptions = {})
     : undefined;
   writeFileSync(join(out, "_data", "fhir.json"), JSON.stringify({ ...siteData.data, ...(lifted?.vars ?? {}), footer, dependencies: depRows, globals: globalRows }, null, 2) + "\n");
   const astData = astResourceData(opts.ast ?? join(src, "output-ast"), join(out, "_data"));
+  // The Questionnaires' form views, from the same AST (owner, 2026-10-14: LHC-Forms, vendored).
+  let forms: FormPage[] | { why: string } | undefined;
+  if (astData && !("why" in astData)) {
+    try {
+      forms = questionnaireFormPages(opts.ast ?? join(src, "output-ast"), out, {
+        editBase: opts.editBase,
+        fhirVersion: typeof sushi.fhirVersion === "string" ? sushi.fhirVersion : Array.isArray(sushi.fhirVersion) ? String(sushi.fhirVersion[0]) : undefined,
+        slug: typeof sushi.id === "string" ? sushi.id : undefined,
+      });
+    } catch (e) {
+      forms = { why: (e as Error).message };
+    }
+  }
   // After every file this build writes to `_data/`, so a clash is seen (bean `yy4u`).
   const data = stageIgData(join(src, "input", "data"), join(out, "_data"));
   const title = typeof sushi.title === "string" ? sushi.title : String(sushi.id ?? "IG");
@@ -1938,7 +1954,7 @@ export function stageIgSite(igSrc: string, out: string, opts: StageOptions = {})
     ].join("\n"),
   );
   const fillsResult = opts.fills?.length ? { filled, unused: opts.fills.map((x) => x.marker).filter((m) => !usedMarkers.has(m)) } : undefined;
-  return { annexed, unplaced, templateIncludes: templateIncludesResult, pages: pages.sort(), generated, fills: fillsResult, variables: lifted ? { artifacts: Object.keys(lifted.vars.artifacts).length, notSourced: lifted.notSourced } : undefined, unlisted: unlisted.sort(), menuMissing, includes, images, rendered, listed, notRendered, unparseable, relinked, deadLinks: [...dead].sort(), scheme, siteData, data, astData, dependencyTables, dependencies, globals };
+  return { annexed, unplaced, templateIncludes: templateIncludesResult, pages: pages.sort(), generated, fills: fillsResult, variables: lifted ? { artifacts: Object.keys(lifted.vars.artifacts).length, notSourced: lifted.notSourced } : undefined, unlisted: unlisted.sort(), menuMissing, includes, images, rendered, listed, notRendered, unparseable, relinked, deadLinks: [...dead].sort(), scheme, siteData, data, astData, ...(forms ? { forms } : {}), dependencyTables, dependencies, globals };
 }
 
 /**
@@ -2003,6 +2019,13 @@ export function describeStage(r: StageResult): string {
       : "why" in r.astData
         ? [`FHIR AST unreadable, site.data.canonicals not written: ${r.astData.why}`]
         : [`FHIR AST → site.data.canonicals (${r.astData.canonicals}) and site.data["<Type>-<id>"] (${r.astData.resources} resources)`]),
+    ...(r.forms === undefined
+      ? []
+      : "why" in r.forms
+        ? [`Questionnaire form views NOT written: ${r.forms.why}`]
+        : r.forms.length
+          ? [`Questionnaire form views (LHC-Forms): ${r.forms.map((f) => f.page).join(", ")}`]
+          : []),
     ...(r.dependencyTables.length && r.dependencies
       ? [`dependency table(s) ${r.dependencyTables.join(", ")} from ${r.dependencies.from}: ${r.dependencies.rows} row(s)` +
           (r.dependencies.unresolved.length ? `; NOT in the package cache, so their own dependencies are not shown: ${r.dependencies.unresolved.join(", ")}` : "")]
