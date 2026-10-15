@@ -15,7 +15,7 @@
  * reference-direction review) that it moves to the layer that owns IG
  * builds, and that `stage-local.ts` reaches it through a declared publisher
  * slot. This layer declares the slot: `pipeline-plugins/site-publisher-ig.json`
- * names {@link IG_PUBLISHER} through `content/pipeline/plugin-slots.ts`, and
+ * names {@link IG_PUBLISHER} through `pipeline/plugin-slots.ts`, and
  * `stage-local.ts` finds it through the dependencies of the repository it is
  * publishing. It never names this file. The workflows it publishes for
  * ({@link IG_WORKFLOWS}) are declared here, by the layer whose workflows they are.
