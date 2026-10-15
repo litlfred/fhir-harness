@@ -366,6 +366,11 @@ describe("an IG repository's folio site (owner, 2026-10-14)", () => {
     });
   });
 
+  test("the checkout's declared coverage policy reaches the build; absent, none is set (refuse)", () => {
+    expect(igFolioSite({ hasIndexConfig: true, scripts, landing, identity, coverage: "report" }).site?.coverage).toBe("report");
+    expect(igFolioSite({ hasIndexConfig: true, scripts, landing, identity }).site?.coverage).toBeUndefined();
+  });
+
   test("not harnessed, or nothing mounted to build it: the bare IG route, and why", () => {
     expect(igFolioSite({ hasIndexConfig: false, scripts, landing, identity }).why).toMatch(/no index\.config\.json/);
     expect(igFolioSite({ hasIndexConfig: true, scripts: table([]), landing, identity }).why).toMatch(new RegExp(IG_SITE_STEPS.site));
