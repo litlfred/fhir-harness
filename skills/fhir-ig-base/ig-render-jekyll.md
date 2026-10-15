@@ -218,7 +218,38 @@ core, which sits above cat-harness-tools.
   The IG's top bar, edit links, footer and its TOC declaration for the rail
   stay. Measured on iHRIS 5: `index.html` 182 KB to about 11 KB.
 - What the host's chrome added and the thin page does not: the host's search
-  box and the language and QA badges.
+  box and the QA badges. The thin page has its own search box instead, and
+  the language picker's block (below).
+
+### Search and the language picker (owner, 2026-10-15)
+
+Layout "C", chosen from wireframes: the folio rail stands in for the theme's
+side menu (`#site-nav` is dropped by ruling, `IG_DROPPED` in
+`stage-local-ig.ts`), and the IG's top bar carries a search box over the
+IG's pages and artefacts (`ig-search.ts`):
+
+- `ig-repo-site.ts compose` writes the index, `assets/ig-search.json` (each
+  of the IG's own pages, its title and up to 6000 characters of its text;
+  each artefact, its title, id, name, key, canonical and description), and
+  the client, `assets/ig-search.js`, under the docs root. The index is
+  fetched on the first focus of the box, never on page load.
+- The box (`form.ig-search`, input `#search-input`) is in the composed
+  pages' `.ig-topbar` and in the thin pages' `header.iga-top` (artefact
+  pages, their tab views, `artifacts.html`, `toc.html`). It is not `.search`,
+  so docs-ui leaves it in the top bar rather than moving it into its band.
+  A build that does not write the files (`gen-ig-pages` without `--search`,
+  `StageOptions.search` unset) writes no box.
+- *"what happened to search/language select at top of display window?"*:
+  docs-ui draws the language picker from a page's `fa-translation-meta`
+  block, which only a theme-laid-out page carried. `publisher-pages` writes
+  the platform's block for a page Jekyll never laid out
+  (cat-harness-tools `lib/translation-meta.ts`) into every built page that
+  lacks one, from the IG checkout's translation declaration. The site
+  build's `set-html-lang.ts` reads it afterwards.
+
+The root parity guard (cat-harness-tools `site-parity.ts`) requires both:
+a build without the search box or the language block is not published over
+a root that had them.
 
 ### The opt-out
 
