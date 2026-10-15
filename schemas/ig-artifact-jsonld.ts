@@ -43,6 +43,8 @@
  * `$schema` names the family for `check:kind-validators`. It is not a term
  * of the context, so a JSON-LD processor drops it on expansion and it adds no
  * triple.
+ *
+ * @graphNode schema
  */
 import { z } from "zod";
 
