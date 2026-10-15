@@ -137,7 +137,7 @@ export function tools(baseUrl?: string): ToolDefinition[] {
       id: "build-ig-site",
       title: "Stage one IG as its own just-the-docs Jekyll site",
       description:
-        "Turn an IG source repository into ONE Jekyll source for just-the-docs, as the IG Publisher builds one IG per site: `input/pagecontent` pages with title, parent and order from `sushi-config.yaml` `pages:`, the files the Publisher resolves `{% include %}` against, images, `_data/fhir.json` from `ig-site-data`, and a `_config.yml`. The pages render unchanged, `{{ site.data.fhir.* }}` included (bean `bamf`, owner's choice of one site per IG). With the IG's menu, the layout is the one every IG site wears (bean `mftp`): the IG's own top bar, the IG's TOC declared as the folio-assistant navbar's section (added by `rail-standalone-pages`), no sidebar of its own, an edit link per page, and per heading a source-line link and a pre-filled feedback issue.",
+        "Turn an IG source repository into ONE Jekyll source for just-the-docs, as the IG Publisher builds one IG per site: `input/pagecontent` pages with title, parent and order from `sushi-config.yaml` `pages:`, the files the Publisher's include tags resolve against, images, `_data/fhir.json` from `ig-site-data`, and a `_config.yml`. The pages render unchanged, including their references to the IG's site data (bean `bamf`, owner's choice of one site per IG). With the IG's menu, the layout is the one every IG site wears (bean `mftp`): the IG's own top bar, the IG's TOC declared as the folio-assistant navbar's section (added by `rail-standalone-pages`), no sidebar of its own, an edit link per page, and per heading a source-line link and a pre-filled feedback issue.",
       install: { none: true },
       invoke: { shell: "bun run fhir-harness/scripts/build-ig-site.ts" },
       io: {
@@ -647,7 +647,7 @@ export function tools(baseUrl?: string): ToolDefinition[] {
           { name: "base", schema: t("FilesystemPath"), required: true },
           { name: "head", schema: t("FilesystemPath"), required: true },
           { name: "plan", schema: t("FilesystemPath"), required: false },
-          { name: "site", schema: t("FilesystemPath"), required: false, description: "A directory inside the IG's just-the-docs source; pages are wrapped in `{% raw %}` so FHIR narratives' Liquid is not executed." },
+          { name: "site", schema: t("FilesystemPath"), required: false, description: "A directory inside the IG's just-the-docs source; pages are wrapped in Liquid raw blocks so FHIR narratives' Liquid is not executed." },
         ],
         outputs: [
           { name: "changed", schema: t("Count") },
