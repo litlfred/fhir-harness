@@ -636,7 +636,7 @@ export const IG_SITE_STEPS = { ast: "ig-site:ast", source: "ig-site:compose", si
  * - `openapi`, a site step before `site`: run when the checkout holds an
  *   OpenAPI graph (`openapi/cat-openapi.config.json`).
  */
-export const IG_SITE_OPTIONAL = { sidecars: "ig-site:sidecars", openapi: "ig-site:openapi" } as const;
+export const IG_SITE_OPTIONAL = { sidecars: "ig-site:sidecars", openapi: "ig-site:openapi", bar: "ig-site:bar" } as const;
 
 /**
  * What an IG repository's root used to serve and no longer does, by the
@@ -699,6 +699,8 @@ export interface IgFolioSite {
   pre: string[];
   sourceSteps: string[];
   siteSteps: string[];
+  /** Run after the platform's own writers (cat-harness-tools `finalSteps`): the IG's bar on the pages they write. */
+  finalSteps: string[];
   keep: string[];
   /** Directories the root drops by ruling (`IG_DROPPED`). */
   dropped: DroppedByRuling[];
@@ -758,6 +760,9 @@ export function igFolioSite(o: {
     notes.push(`${IG_SITE_OPTIONAL.openapi}: run, the checkout holds an OpenAPI graph`);
   }
   siteSteps.push(IG_SITE_STEPS.site);
+  const finalSteps: string[] = [];
+  if (o.scripts.has(IG_SITE_OPTIONAL.bar)) finalSteps.push(IG_SITE_OPTIONAL.bar);
+  else notes.push(`${IG_SITE_OPTIONAL.bar}: no mounted layer provides it — the identifier lookup and mounted docs pages keep no IG bar`);
   return {
     site: {
       scope: o.landing.name,
@@ -765,6 +770,7 @@ export function igFolioSite(o: {
       pre,
       sourceSteps: [IG_SITE_STEPS.source],
       siteSteps,
+      finalSteps,
       keep: [...IG_KEEP],
       dropped: [...IG_DROPPED],
       notes,
@@ -1021,13 +1027,14 @@ async function stageIgFolio(a: PublisherRun, b: IgBuilt, site: IgFolioSite, h: P
       `  pre    ${site.pre.join(", ")} — restore and judge the AST (a stale one is refused; SITE_ACCEPT_STALE_AST=1 for a preview only)${site.pre.length > 1 ? ", then the landing layer's IG API sidecars" : ""}`,
       `  source ${site.sourceSteps.join(", ")} — the artefact index and thin pages from the AST, the IG's pages at the site root`,
       `  site   ${site.siteSteps.join(", ")} — ${site.siteSteps.length > 1 ? "the OpenAPI pages, then " : ""}the AST's data served, and ${IG_SITE_STAMP} at the root (required: a folio root marker)`,
+      ...(site.finalSteps.length ? [`  final  ${site.finalSteps.join(", ")} — the IG's bar on the pages the platform writes after the site steps`] : []),
       ...site.notes.map((n) => `  note   ${n}`),
       ...(staging ? [] : site.dropped.map((d) => `  parity ${droppedWords(d)} is not a shortfall: ${d.ruling}`)),
       `  out    ${out}`,
     ],
     gate: "build-instance-site's link check: every link the chrome writes must resolve; the IG's own dead links are reported, not gated",
     commit: [message],
-    steps: [...site.pre.map((n) => ({ name: n, action: "pre" })), ...site.sourceSteps.map((n) => ({ name: n, action: "source" })), ...site.siteSteps.map((n) => ({ name: n, action: "site" }))],
+    steps: [...site.pre.map((n) => ({ name: n, action: "pre" })), ...site.sourceSteps.map((n) => ({ name: n, action: "source" })), ...site.siteSteps.map((n) => ({ name: n, action: "site" })), ...site.finalSteps.map((n) => ({ name: n, action: "final" }))],
     notRun: [
       `the IG Publisher and every step of ${b.path}: the site is built from the AST on the IG's cache branch, which ig-ast-refresh.yml refreshes (pass --bare-ig for the Publisher's output as it is)`,
       ...(u.file !== PAGES_SIBLING ? [`${u.file}'s own job (the build.fhir.org trigger): an external build, not this repository's Pages`] : []),
@@ -1048,6 +1055,7 @@ async function stageIgFolio(a: PublisherRun, b: IgBuilt, site: IgFolioSite, h: P
     pre: site.pre,
     sourceSteps: site.sourceSteps,
     siteSteps: site.siteSteps,
+    ...(site.finalSteps.length ? { finalSteps: site.finalSteps } : {}),
     ...(target === "preview" ? { staging: branch } : {}),
     mount: true,
     fresh: false,

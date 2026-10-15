@@ -388,6 +388,14 @@ describe("an IG repository's folio site (owner, 2026-10-14)", () => {
     expect(igFolioSite({ hasIndexConfig: true, scripts, landing, hasOpenapi: true, identity }).site!.notes.join("\n")).toMatch(/NOT built/);
   });
 
+  test("the IG's bar runs as a FINAL step, after the platform's own writers, when a mounted layer provides it", () => {
+    const withBar = new Map([...scripts, [IG_SITE_OPTIONAL.bar, { manifest: "fhir-harness/package.json" }]]);
+    expect(igFolioSite({ hasIndexConfig: true, scripts: withBar, landing, identity }).site!.finalSteps).toEqual([IG_SITE_OPTIONAL.bar]);
+    const without = igFolioSite({ hasIndexConfig: true, scripts, landing, identity }).site!;
+    expect(without.finalSteps).toEqual([]);
+    expect(without.notes.join("\n")).toMatch(/keep no IG bar/);
+  });
+
   test("the root's parity guard excuses exactly what the owner ruled dropped: the comparisons, schemas/ and the theme's side bar", () => {
     expect(IG_DROPPED.map((d) => d.dir ?? `feature:${d.feature}`)).toEqual(["comparison-v*", "schemas", "feature:siteNav"]);
     expect(IG_DROPPED[0]!.ruling).toContain("2a");
