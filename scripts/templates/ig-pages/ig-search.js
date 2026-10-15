@@ -66,6 +66,9 @@
     var list = form.querySelector(".ig-search-results");
     var src = form.getAttribute("data-ig-search-index");
     if (!input || !list || !src) return;
+    // Once per box, however many times the client is loaded on the page.
+    if (form.hasAttribute("data-ig-search-ready")) return;
+    form.setAttribute("data-ig-search-ready", "");
     var indexUrl = new URL(src, document.baseURI);
     var loading = null;
     var entries = null;

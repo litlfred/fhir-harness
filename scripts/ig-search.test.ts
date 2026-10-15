@@ -25,10 +25,10 @@ import {
   igSearchIndex,
   pageSearchEntries,
   plainText,
-  withSearchBar,
+  withIgBar,
 } from "./ig-search.ts";
 import { THIN_PAGE_STYLE, thinArtifactView, thinIndexPage } from "./ig-thin-pages.ts";
-import { stampSearchBox, stampTranslationMeta, writeSearch } from "./ig-repo-site.ts";
+import { stampIgBar, stampTranslationMeta, writeSearch } from "./ig-repo-site.ts";
 import type { FhirArtifact, FhirArtifactIndex } from "../schemas/fhir-artifact-index.js";
 
 const tmp = (p: string) => mkdtempSync(join(tmpdir(), p));
@@ -80,7 +80,7 @@ describe("the top bar carries the box and its script only when the site serves t
     expect(igTopBar(menu, "/b/acme-ig", "ACME IG")).not.toContain("search");
   });
 
-  test("a composed page lifts the whole bar, box and script included", () => {
+  test("a composed page lifts the whole bar, box and script included, into its layout", () => {
     const bar = igTopBar(menu, "/b/acme-ig", "ACME IG", igSearchAt("/b/acme-ig"));
     const staged = tmp("ig-search-staged-");
     put(staged, "_config.yml", 'title: "ACME IG"\n');
@@ -88,10 +88,11 @@ describe("the top bar carries the box and its script only when the site serves t
     put(staged, "index.md", "---\ntitle: Home\n---\nHello\n");
     const docs = tmp("ig-search-docs-");
     composeIgSite(staged, docs, "acme", { atRoot: true });
-    const top = readFileSync(join(docs, "_includes/ig/acme/_top.html"), "utf-8");
-    expect(top).toContain('id="search-input"');
-    expect(top).toContain('data-fa-slot="locale"');
-    expect(top).toContain("assets/ig-search.js");
+    // Thin (the default): the bar is the composed pages' layout's, above the content column.
+    const layout = readFileSync(join(docs, "_layouts/ig-thin-acme.html"), "utf-8");
+    expect(layout).toContain('id="search-input"');
+    expect(layout).toContain('data-fa-slot="locale"');
+    expect(layout).toContain("assets/ig-search.js");
   });
 
   test("the bar's stylesheet styles the box", () => {
@@ -106,7 +107,7 @@ describe("the thin pages' header", () => {
 
   test("an artefact page carries the box in its header and loads the script, when the site serves the search", () => {
     const html = thinArtifactView(ix, a, "content", { ...base, search: REF });
-    const header = /<header class="iga-top">[\s\S]*?<\/header>/.exec(html)![0];
+    const header = /<header class="iga-top fa-page-bar">[\s\S]*?<\/header>/.exec(html)![0];
     expect(header).toContain('id="search-input"');
     expect(header).toContain(IG_LOCALE_SLOT);
     expect(html).toContain('<script src="../assets/ig-search.js" defer></script>');
@@ -118,7 +119,7 @@ describe("the thin pages' header", () => {
 
   test("the artifacts and toc pages too", () => {
     const html = thinIndexPage({ view: "artifacts", heading: "Artifacts", label: "ACME IG", canonical: "artifacts.html", index: "artifact/index.jsonld", pagesHref: "artifact/", assets: "", home: "index.html", artifacts: "artifacts.html", toc: "toc.html", search: { index: "assets/ig-search.json", script: "assets/ig-search.js" } });
-    expect(/<header class="iga-top">[\s\S]*?<\/header>/.exec(html)![0]).toContain('data-ig-search-index="assets/ig-search.json"');
+    expect(/<header class="iga-top fa-page-bar">[\s\S]*?<\/header>/.exec(html)![0]).toContain('data-ig-search-index="assets/ig-search.json"');
     expect(html).toContain('<script src="assets/ig-search.js" defer></script>');
   });
 
@@ -126,6 +127,32 @@ describe("the thin pages' header", () => {
     const css = readFileSync(join(import.meta.dir, "templates", "ig-pages", "ig-artifact.css"), "utf-8");
     expect(THIN_PAGE_STYLE).toBe("assets/ig-artifact.css");
     expect(css).toContain(IG_SEARCH_CSS.trim());
+  });
+
+  test("it is the IG's ONE stylesheet: the top bar's rules are in it, and no page is capped to a centred column (owner, 2026-10-15: \"full width\")", () => {
+    const css = readFileSync(join(import.meta.dir, "templates", "ig-pages", "ig-artifact.css"), "utf-8");
+    for (const line of IG_TOPBAR_CSS.trim().split("\n")) expect(css).toContain(line);
+    expect(css).not.toMatch(/max-width:\s*60rem/);
+    expect(IG_TOPBAR_CSS).not.toMatch(/max-width:\s*60rem/);
+    expect(css).not.toMatch(/margin:0 auto/);
+    // The body is the page layout's, so a page linked for the bar alone (an OpenAPI page) keeps its own.
+    expect(css).not.toMatch(/(^|\n)body\{/);
+  });
+
+  test("every thin page links the shared page layout before the IG's sheet, and wears its classes", () => {
+    const html = thinArtifactView(ix, a, "content", { ...base, search: REF });
+    expect(html.indexOf('href="../assets/page-layout.css"')).toBeGreaterThan(0);
+    expect(html.indexOf("page-layout.css")).toBeLessThan(html.indexOf("ig-artifact.css"));
+    expect(html).toContain('<header class="iga-top fa-page-bar">');
+    expect(html).toContain('<main class="iga fa-page-main">');
+    expect(html).toContain('<footer id="ig-footer" class="fa-page-foot">');
+    const list = thinIndexPage({ view: "toc", heading: "Table of Contents", label: "ACME IG", canonical: "toc.html", index: "artifact/index.jsonld", pagesHref: "artifact/", assets: "", home: "index.html", artifacts: "artifacts.html", toc: "toc.html" });
+    expect(list).toContain('href="assets/page-layout.css"');
+    expect(list).toContain('<main class="iga igi fa-page-main">');
+  });
+
+  test("the client binds a box once, however many times a page loads it", () => {
+    expect(readFileSync(IG_SEARCH_SCRIPT_SOURCE, "utf-8")).toContain('if (form.hasAttribute("data-ig-search-ready")) return;');
   });
 });
 
@@ -243,46 +270,74 @@ describe("compose writes the search; publisher-pages writes the language picker'
   });
 });
 
-describe("publisher-pages gives every other built page the box (owner, 2026-10-15: the API hub and openapi/ pages too)", () => {
+describe("publisher-pages gives every built page the IG's one bar and the shared layout (owner, 2026-10-15: \"please consolidate behaviours/appearance\")", () => {
   const REF2 = { index: "../assets/ig-search.json", script: "../assets/ig-search.js" };
   const PAGE = '<!doctype html><html><head><title>Hub</title></head>\n<body><script type="application/json" id="x">{}</script><main><h1>Hub</h1></main>\n</body>\n</html>\n';
+  const BAR = '<div class="ig-topbar fa-page-bar" role="navigation" aria-label="ACME IG menu"><a class="ig-topbar-home" href="/b/index.html">ACME IG</a><details class="ig-topbar-group"><summary>Home</summary><ul><li><a href="/b/x.html">X</a></li></ul></details><form class="ig-search" role="search" data-ig-search-index="/b/assets/ig-search.json"><input type="search" id="search-input"></form><span class="ig-locale-slot" data-fa-slot="locale"></span><script src="/b/assets/ig-search.js" defer></script></div>';
+  const o = { ref: REF2, label: "ACME IG", home: "../index.html", up: "../" };
 
-  test("a bar at the top of the body, its styles in the head, the client before </body>", () => {
-    const out = withSearchBar(PAGE, { ref: REF2, label: "ACME IG", home: "../index.html" });
+  test("with no IG bar to give, a fallback bar at the top of the body, the layout then the IG's sheet in the head, the client before </body>", () => {
+    const out = withIgBar(PAGE, o);
     const body = out.slice(out.indexOf("<body>") + 6);
-    expect(body.startsWith('\n<header class="ig-search-top"><a class="ig-search-home" href="../index.html">ACME IG</a><form class="ig-search"')).toBe(true);
+    expect(body.startsWith('\n<header class="ig-search-top fa-page-bar"><a class="ig-search-home" href="../index.html">ACME IG</a><form class="ig-search"')).toBe(true);
     expect(body).toContain(IG_LOCALE_SLOT);
-    expect(out.indexOf('<style id="ig-search-style">')).toBeLessThan(out.indexOf("</head>"));
-    expect(out).toContain(IG_SEARCH_CSS.trim());
+    const head = out.slice(0, out.indexOf("</head>"));
+    expect(head).toContain('<link rel="stylesheet" href="../assets/page-layout.css" data-fa-page-layout>');
+    expect(head).toContain('<script src="../assets/page-layout.js" defer data-fa-page-layout></script>');
+    expect(head.indexOf("page-layout.css")).toBeLessThan(head.indexOf('href="../assets/ig-artifact.css"'));
+    expect(out).not.toContain("<style");
     expect(out).toMatch(/<script src="\.\.\/assets\/ig-search\.js" defer><\/script>\n<\/body>/);
     expect(out.match(/id="search-input"/g)!.length).toBe(1);
   });
 
-  test("a page that already has a box, whoever wrote it, or that has no head and body, is left as it is", () => {
-    const once = withSearchBar(PAGE, { ref: REF2, label: "ACME IG", home: "../index.html" });
-    expect(withSearchBar(once, { ref: REF2, label: "ACME IG", home: "../index.html" })).toBe(once);
-    const own = PAGE.replace("<main>", '<main><input id="search-input">');
-    expect(withSearchBar(own, { ref: REF2, label: "ACME IG", home: "../index.html" })).toBe(own);
-    expect(withSearchBar("<p>fragment</p>", { ref: REF2, label: "ACME IG", home: "x" })).toBe("<p>fragment</p>");
+  test("the IG's bar, given: its scripts dropped, the client linked once", () => {
+    const out = withIgBar(PAGE, { ...o, bar: BAR });
+    expect(out).toContain('<div class="ig-topbar fa-page-bar" role="navigation"');
+    expect(out).toContain('<summary>Home</summary>');
+    expect(out).not.toContain('<script src="/b/assets/ig-search.js"');
+    expect(out.match(/assets\/ig-search\.js"/g)!.length).toBe(1);
   });
 
-  test("stampSearchBox: paths relative to each page, nothing under assets/, nothing without an index", () => {
+  test("a thin page's own header is REPLACED by the IG's bar, its client and stylesheets kept, not doubled", () => {
+    const a = { key: "StructureDefinition/acme-patient", resourceType: "StructureDefinition", id: "acme-patient", title: "ACME Patient", published: {}, materialization: { state: "referenced" } } as unknown as FhirArtifact;
+    const thin = thinArtifactView({ count: 1, artifacts: [a] } as unknown as FhirArtifactIndex, a, "content", { label: "ACME IG", home: "../index.html", all: "../artifacts.html", search: REF2 });
+    const out = withIgBar(thin, { ...o, bar: BAR });
+    expect(out).not.toContain('class="iga-top');
+    expect(out).toContain('<div class="ig-topbar fa-page-bar"');
+    expect(out.indexOf('<div class="ig-topbar')).toBeLessThan(out.indexOf('<main class="iga fa-page-main"'));
+    expect(out.match(/id="search-input"/g)!.length).toBe(1);
+    expect(out.match(/assets\/ig-search\.js"/g)!.length).toBe(1);
+    expect(out.match(/page-layout\.css/g)!.length).toBe(1);
+    expect(out.match(/ig-artifact\.css/g)!.length).toBe(1);
+  });
+
+  test("a page that holds the IG's bar, that has a box in a bar of its own, or that has no head and body, is left as it is", () => {
+    const once = withIgBar(PAGE, { ...o, bar: BAR });
+    expect(withIgBar(once, { ...o, bar: BAR })).toBe(once);
+    const own = PAGE.replace("<main>", '<main><input id="search-input">');
+    expect(withIgBar(own, o)).toBe(own);
+    expect(withIgBar("<p>fragment</p>", o)).toBe("<p>fragment</p>");
+  });
+
+  test("stampIgBar: the slim bar, never the menu; paths relative to each page, nothing under assets/, nothing without an index", () => {
     const site = tmp("ig-search-stamp-");
+    put(site, "index.html", PAGE.replace("<body>", `<body>\n${BAR}\n`));
     put(site, "hub.html", PAGE);
     put(site, "openapi/index.html", PAGE);
     put(site, "assets/vendor/viewer.html", PAGE);
     put(site, "boxed.html", PAGE.replace("<main>", '<main><input id="search-input">'));
-    expect(stampSearchBox(site, "ACME IG")).toBe(0);
+    expect(stampIgBar(site, "ACME IG")).toEqual({ pages: 0 });
     put(site, IG_SEARCH_INDEX_FILE, "{}");
-    expect(stampSearchBox(site, "ACME IG")).toBe(2);
+    expect(stampIgBar(site, "ACME IG")).toEqual({ pages: 2 });
     const hub = readFileSync(join(site, "hub.html"), "utf-8");
-    expect(hub).toContain('data-ig-search-index="assets/ig-search.json"');
+    expect(hub).not.toContain('<summary>Home</summary>');
+    expect(hub).toContain('class="ig-search-home" href="index.html">ACME IG</a>');
     expect(hub).toContain('<script src="assets/ig-search.js" defer>');
-    expect(hub).toContain('<a class="ig-search-home" href="index.html">');
+    expect(hub).toContain('href="assets/page-layout.css"');
     const api = readFileSync(join(site, "openapi/index.html"), "utf-8");
-    expect(api).toContain('data-ig-search-index="../assets/ig-search.json"');
-    expect(api).toContain('<a class="ig-search-home" href="../index.html">');
+    expect(api).toContain('<script src="../assets/ig-search.js" defer>');
+    expect(api).toContain('href="../assets/ig-artifact.css"');
     expect(readFileSync(join(site, "assets/vendor/viewer.html"), "utf-8")).toBe(PAGE);
-    expect(stampSearchBox(site, "ACME IG")).toBe(0);
+    expect(stampIgBar(site, "ACME IG")).toEqual({ pages: 0 });
   });
 });

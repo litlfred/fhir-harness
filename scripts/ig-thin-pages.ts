@@ -35,6 +35,7 @@
  * Nothing here may know about WHO (fhir-harness/AGENTS.md).
  */
 import { escHtml, thinPageHtml } from "../../cat-harness-tools/scripts/thin-page.ts";
+import { PAGE_BAR_CLASS, PAGE_FOOT_CLASS, PAGE_MAIN_CLASS } from "../../cat-harness-tools/scripts/page-layout.ts";
 import type { FhirArtifact, FhirArtifactIndex } from "../schemas/fhir-artifact-index.js";
 import { ARTIFACT_DIR, artifactPageName, localResourceHref } from "./ig-artifact-jsonld.ts";
 import { igSearchBox, igSearchScript, type IgSearchRef } from "./ig-search.ts";
@@ -188,6 +189,8 @@ export function thinArtifactView(ix: FhirArtifactIndex, a: FhirArtifact, view: A
     jsonld: node,
     canonical: artifactTabFile(a, view),
     script: `../${THIN_PAGE_SCRIPT}`,
+    // The shared page layout (width, bar, scrolling), then the IG's look.
+    layout: "../",
     stylesheet: `../${THIN_PAGE_STYLE}`,
     configId: THIN_PAGE_CONFIG_ID,
     config,
@@ -195,12 +198,12 @@ export function thinArtifactView(ix: FhirArtifactIndex, a: FhirArtifact, view: A
     // without JavaScript need — and the tab bar, plain links between the
     // artefact's views. Everything else is the node's and the resource's.
     body:
-      `<header class="iga-top"><a class="iga-home" href="${escHtml(o.home)}">${escHtml(o.label)}</a>` +
+      `<header class="iga-top ${PAGE_BAR_CLASS}"><a class="iga-home" href="${escHtml(o.home)}">${escHtml(o.label)}</a>` +
       `<a href="${escHtml(o.all)}">all ${ix.count} artefacts</a>${o.search ? igSearchBox(o.search, o.label) : ""}</header>\n` +
-      `<main class="iga"><h1>${escHtml(name)}${tab ? ` <span class="iga-view">— ${escHtml(tab)}</span>` : ""}</h1><p class="iga-key"><code>${escHtml(a.key)}</code></p>` +
+      `<main class="iga ${PAGE_MAIN_CLASS}"><h1>${escHtml(name)}${tab ? ` <span class="iga-view">— ${escHtml(tab)}</span>` : ""}</h1><p class="iga-key"><code>${escHtml(a.key)}</code></p>` +
       tabBar(o.tabs, view) +
       `<div class="iga-body" aria-live="polite"><p class="iga-state">Loading the artefact…</p></div></main>\n` +
-      `<footer id="ig-footer"></footer>`,
+      `<footer id="ig-footer" class="${PAGE_FOOT_CLASS}"></footer>`,
     noscript,
     ...(o.search ? { tail: igSearchScript(o.search) } : {}),
   });
@@ -271,15 +274,16 @@ export function thinIndexPage(o: ThinIndexOptions): string {
     jsonld: o.index,
     canonical: o.canonical,
     script: `${o.assets}${THIN_PAGE_SCRIPT}`,
+    layout: o.assets,
     stylesheet: `${o.assets}${THIN_PAGE_STYLE}`,
     configId: THIN_INDEX_CONFIG_ID,
     config,
     body:
-      `<header class="iga-top"><a class="iga-home" href="${escHtml(o.home)}">${escHtml(o.label)}</a>` +
+      `<header class="iga-top ${PAGE_BAR_CLASS}"><a class="iga-home" href="${escHtml(o.home)}">${escHtml(o.label)}</a>` +
       `<a href="${escHtml(o.artifacts)}">Artifacts</a><a href="${escHtml(o.toc)}">Table of Contents</a>${o.search ? igSearchBox(o.search, o.label) : ""}</header>\n` +
-      `<main class="iga igi"><h1>${escHtml(o.heading)}</h1>${lead ? `<p>${lead}</p>` : ""}${o.outline ?? ""}` +
+      `<main class="iga igi ${PAGE_MAIN_CLASS}"><h1>${escHtml(o.heading)}</h1>${lead ? `<p>${lead}</p>` : ""}${o.outline ?? ""}` +
       `<div class="iga-body" aria-live="polite"><p class="iga-state">Loading the artefact index…</p></div></main>\n` +
-      `<footer id="ig-footer"></footer>`,
+      `<footer id="ig-footer" class="${PAGE_FOOT_CLASS}"></footer>`,
     noscript:
       `<p>The artefacts on this page are drawn from <a href="${escHtml(o.index)}">the IG's artefact index</a>; ` +
       `it needs JavaScript to draw them. Each artefact's page is <code>${escHtml(o.pagesHref)}&lt;Type&gt;-&lt;id&gt;.html</code>.</p>`,
