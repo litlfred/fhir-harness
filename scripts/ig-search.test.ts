@@ -319,24 +319,25 @@ describe("publisher-pages gives every built page the IG's one bar and the shared
     expect(withIgBar("<p>fragment</p>", o)).toBe("<p>fragment</p>");
   });
 
-  test("stampIgBar: the bar off index.html, paths relative to each page, nothing under assets/, nothing without an index", () => {
+  test("stampIgBar: the slim bar, never the menu; paths relative to each page, nothing under assets/, nothing without an index", () => {
     const site = tmp("ig-search-stamp-");
     put(site, "index.html", PAGE.replace("<body>", `<body>\n${BAR}\n`));
     put(site, "hub.html", PAGE);
     put(site, "openapi/index.html", PAGE);
     put(site, "assets/vendor/viewer.html", PAGE);
     put(site, "boxed.html", PAGE.replace("<main>", '<main><input id="search-input">'));
-    expect(stampIgBar(site, "ACME IG")).toEqual({ pages: 0, bar: false });
+    expect(stampIgBar(site, "ACME IG")).toEqual({ pages: 0 });
     put(site, IG_SEARCH_INDEX_FILE, "{}");
-    expect(stampIgBar(site, "ACME IG")).toEqual({ pages: 2, bar: true });
+    expect(stampIgBar(site, "ACME IG")).toEqual({ pages: 2 });
     const hub = readFileSync(join(site, "hub.html"), "utf-8");
-    expect(hub).toContain('<summary>Home</summary>');
+    expect(hub).not.toContain('<summary>Home</summary>');
+    expect(hub).toContain('class="ig-search-home" href="index.html">ACME IG</a>');
     expect(hub).toContain('<script src="assets/ig-search.js" defer>');
     expect(hub).toContain('href="assets/page-layout.css"');
     const api = readFileSync(join(site, "openapi/index.html"), "utf-8");
     expect(api).toContain('<script src="../assets/ig-search.js" defer>');
     expect(api).toContain('href="../assets/ig-artifact.css"');
     expect(readFileSync(join(site, "assets/vendor/viewer.html"), "utf-8")).toBe(PAGE);
-    expect(stampIgBar(site, "ACME IG")).toEqual({ pages: 0, bar: true });
+    expect(stampIgBar(site, "ACME IG")).toEqual({ pages: 0 });
   });
 });

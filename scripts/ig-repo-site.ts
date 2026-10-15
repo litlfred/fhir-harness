@@ -123,7 +123,7 @@
  * `lib/translation-meta.ts`, as `mount-instance-docs.ts` does) into every
  * built page that lacks one, from the IG checkout's own translation
  * declaration; the site build's `set-html-lang.ts` then reads it. The
- * same step gives every built page the IG's one top bar ({@link stampIgBar}),
+ * same step gives every other built page the IG's slim bar ({@link stampIgBar}),
  * whose box is followed by the slot docs-ui puts the language picker in, so
  * the picker sits in the bar beside it.
  *
@@ -134,9 +134,10 @@
  * the scrollnig and such. please consolidate behaviours/appearance"*.
  * Every page of the site links the shared page layout (cat-harness-tools
  * `page-layout.ts`: full width beside the rail, the window the one scroller,
- * the bar sticky above it, anchors landing below it) and then the IG's one
- * stylesheet, `ig-artifact.css`; and every page carries the same bar, the
- * composed pages' (`stampIgBar`).
+ * the bar sticky above it on a wide screen and scrolling away on a phone,
+ * anchors landing below it) and then the IG's one
+ * stylesheet, `ig-artifact.css`. The composed pages carry the IG's full bar,
+ * and every other page carries its slim bar (`stampIgBar`; owner, "keep slim").
  *
  * ## Whose dead links
  *
@@ -155,7 +156,7 @@ import { parse as parseYaml } from "yaml";
 
 import { conceptOf, profilesOf } from "./ast-to-artifact-index.ts";
 import { astValidity, type AstValidity, readAst } from "./ig-ast.ts";
-import { composeIgSite, dedupeSiteIds, describeStage, IG_THIN_CSS_FILE, IG_TOPBAR_RE, stageIgSite, type SitePalette } from "./build-ig-site";
+import { composeIgSite, dedupeSiteIds, describeStage, IG_THIN_CSS_FILE, stageIgSite, type SitePalette } from "./build-ig-site";
 import { artifactSearchEntries, IG_SEARCH_INDEX_FILE, IG_SEARCH_SCRIPT_FILE, IG_SEARCH_SCRIPT_SOURCE, igSearchIndex, pageSearchEntries, withIgBar } from "./ig-search.ts";
 import { translationMetaBlock, withTranslationMeta } from "../../cat-harness-tools/scripts/lib/translation-meta.ts";
 import type { FhirArtifactIndex } from "../schemas/fhir-artifact-index.js";
@@ -592,35 +593,35 @@ export function stampTranslationMeta(site: string, ig: string): number {
 }
 
 /**
- * The IG's ONE top bar on every page of the built site (`ig-search.ts`
- * {@link withIgBar}): the bar the composed home page carries, given to the
- * thin artefact and list pages in place of their own header, and to the
- * pages a layer above or below wrote with none (an IG API hub page, the
- * OpenAPI pages), with the shared page layout and the IG's stylesheet linked.
- * Owner, 2026-10-15: "please consolidate behaviours/appearance". Paths are
- * relative to each page, and the bar's own hrefs are site-absolute, so it
- * works under any base. Nothing under `assets/` (vendored tools' own pages),
- * and nothing at all when the site serves no search index, so no page names
- * a file the site does not hold. Returns how many pages were changed, and
- * whether the IG's bar was found to give (else the fallback bar was).
+ * The IG's SLIM bar on every page of the built site that does not carry the
+ * composed pages' full bar (`ig-search.ts` {@link withIgBar}): the IG's name
+ * linked home, the search box and the language picker's slot
+ * ({@link igFallbackBar}). It replaces the thin artefact and list pages' own
+ * header and is given to pages that a layer above or below wrote with none
+ * (an IG API hub page, the OpenAPI pages), with the shared page layout and
+ * the IG's stylesheet linked. Owner, 2026-10-15: "please consolidate
+ * behaviours/appearance", then "keep slim". The full menu, inlined, would
+ * cost every one of some two thousand pages about 2.5 KB. Paths are relative
+ * to each page, so it works under any base. Nothing is stamped under
+ * `assets/` (vendored tools' own pages), and nothing at all when the site
+ * serves no search index, so no page names a file the site does not hold.
+ * Returns how many pages were changed.
  */
-export function stampIgBar(site: string, label: string): { pages: number; bar: boolean } {
-  if (!existsSync(join(site, IG_SEARCH_INDEX_FILE))) return { pages: 0, bar: false };
-  const home = join(site, "index.html");
-  const bar = existsSync(home) ? IG_TOPBAR_RE.exec(readFileSync(home, "utf-8"))?.[0] : undefined;
+export function stampIgBar(site: string, label: string): { pages: number } {
+  if (!existsSync(join(site, IG_SEARCH_INDEX_FILE))) return { pages: 0 };
   let n = 0;
   for (const f of filesUnder(site)) {
     if (!/\.html?$/i.test(f) || f.startsWith("assets/")) continue;
     const up = "../".repeat(f.split("/").length - 1);
     const abs = join(site, f);
     const html = readFileSync(abs, "utf-8");
-    const after = withIgBar(html, { ...(bar ? { bar } : {}), ref: { index: `${up}${IG_SEARCH_INDEX_FILE}`, script: `${up}${IG_SEARCH_SCRIPT_FILE}` }, label, home: `${up}index.html`, up });
+    const after = withIgBar(html, { ref: { index: `${up}${IG_SEARCH_INDEX_FILE}`, script: `${up}${IG_SEARCH_SCRIPT_FILE}` }, label, home: `${up}index.html`, up });
     if (after !== html) {
       writeFileSync(abs, after);
       n++;
     }
   }
-  return { pages: n, bar: bar !== undefined };
+  return { pages: n };
 }
 
 /** Every file under `dir`, relative to it, `/`-separated. */
@@ -779,7 +780,7 @@ export function publisherPages(o: { site: string; ast: string; work?: string; ig
     const stamped = stampTranslationMeta(o.site, o.ig);
     log(`publisher pages: the language picker's block (fa-translation-meta) written on ${stamped} page(s) that lacked one`);
     const barred = stampIgBar(o.site, igTitle(o.ig) ?? basename(resolve(o.ig)));
-    log(`publisher pages: ${barred.bar ? "the IG's top bar (from index.html)" : "a fallback bar (no IG bar on index.html)"} given to ${barred.pages} page(s) that had another or none, with the shared page layout`);
+    log(`publisher pages: the IG's slim bar given to ${barred.pages} page(s) that had another or none, with the shared page layout`);
     const stamp = igSiteStamp(o.ig);
     writeFileSync(join(o.site, STAMP_FILE), `${JSON.stringify(stamp, null, 2)}\n`);
     log(`publisher pages: stamped ${STAMP_FILE} — ${stamp.instance}, platform ${stamp.platform.commit.slice(0, 9)}`);
