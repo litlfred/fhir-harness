@@ -229,7 +229,8 @@ side menu (`#site-nav` is dropped by ruling, `IG_DROPPED` in
 IG's pages and artefacts (`ig-search.ts`):
 
 - `ig-repo-site.ts compose` writes the index, `assets/ig-search.json` (each
-  of the IG's own pages, its title and up to 6000 characters of its text;
+  of the IG's own pages, its title and its whole text — owner, 2026-10-15,
+  "index whole pages", where it had been cut at 6000 characters;
   each artefact, its title, id, name, key, canonical and description), and
   the client, `assets/ig-search.js`, under the docs root. The index is
   fetched on the first focus of the box, never on page load.
@@ -239,6 +240,22 @@ IG's pages and artefacts (`ig-search.ts`):
   so docs-ui leaves it in the top bar rather than moving it into its band.
   A build that does not write the files (`gen-ig-pages` without `--search`,
   `StageOptions.search` unset) writes no box.
+- Every other built page without a box gets one: `publisher-pages` puts a
+  bar at the top of its body (`header.ig-search-top`: the IG's name, the
+  box, the picker's slot) with its own styles and the client, paths relative
+  to the page (`stampSearchBox`, `withSearchBar`). These are the pages a
+  layer above or below writes outside the IG's bar, such as an IG API hub
+  page and `openapi/index.html` (owner, 2026-10-15). The pass is keyed on
+  what a page lacks, never on its name, so this layer names none of them;
+  it skips `assets/` and does nothing when the site serves no index. The
+  pages' writers are left alone: cat-harness-tools, below, may not import
+  the box, and the overlay above would have to repeat it per page kind.
+- The language picker sits in the bar, beside the box (owner, 2026-10-15:
+  "move the language picker into the IG top bar"). The box is followed by
+  an empty `<span data-fa-slot="locale">`; docs-ui fills the first such slot
+  on a page and, on a page with none, keeps the picker in its own band. So
+  a folio site with no IG bar is unchanged, and this layer knows nothing of
+  the picker beyond the place it offers.
 - *"what happened to search/language select at top of display window?"*:
   docs-ui draws the language picker from a page's `fa-translation-meta`
   block, which only a theme-laid-out page carried. `publisher-pages` writes

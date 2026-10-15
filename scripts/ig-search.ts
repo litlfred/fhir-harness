@@ -20,9 +20,10 @@
  * ## What it searches, and what it does not
  *
  * - Each of the IG's own pages (the narrative, `input/pagecontent/` and the
- *   pages the build generates with front matter): its title and its text,
- *   with Liquid, HTML and markdown markup taken out, cut at
- *   {@link PAGE_TEXT_LIMIT} characters.
+ *   pages the build generates with front matter): its title and its whole
+ *   text, with Liquid, HTML and markdown markup taken out (owner,
+ *   2026-10-15: "index whole pages"; it was cut at 6000 characters, so a
+ *   word deep in a long page was not found).
  * - Each artefact in the artefact index: its title, name, id, key, canonical
  *   and description, linked to its thin page `artifact/<Type>-<id>.html`.
  *
@@ -58,9 +59,6 @@ export const IG_SEARCH_SCRIPT_FILE = "assets/ig-search.js";
 export const IG_SEARCH_SCRIPT_SOURCE = join(import.meta.dir, "templates", "ig-pages", "ig-search.js");
 /** The index's format, which the client checks. */
 export const IG_SEARCH_FORMAT = "fhir-harness-ig-search/v1";
-/** How much of a page's text is indexed. */
-export const PAGE_TEXT_LIMIT = 6000;
-
 /** One searchable thing. Short keys: the file is downloaded by every reader who searches. */
 export interface IgSearchEntry {
   /** Title, as shown. */
@@ -91,9 +89,20 @@ export interface IgSearchRef {
 }
 
 /**
- * The box. A `<form>` holding the input and an empty result list; the script
- * makes it work. No `<div>`: the composed pages lift the top bar out of the
- * staged layout up to its first closing `</div>` at a line end.
+ * Where docs-ui puts the language picker: beside the box, in the bar that
+ * holds it (owner, 2026-10-15: "move the language picker into the IG top
+ * bar"). docs-ui (cat-harness `docs-ui.js`) fills the first element marked
+ * `data-fa-slot="locale"` and, on a page with none, keeps the picker in its
+ * own band; so this layer names a place, and knows nothing of the picker.
+ * A `<span>`, empty until docs-ui runs.
+ */
+export const IG_LOCALE_SLOT = `<span class="ig-locale-slot" data-fa-slot="locale"></span>`;
+
+/**
+ * The box, and beside it the language picker's slot ({@link IG_LOCALE_SLOT}).
+ * A `<form>` holding the input and an empty result list; the script makes it
+ * work. No `<div>`: the composed pages lift the top bar out of the staged
+ * layout up to its first closing `</div>` at a line end.
  */
 export function igSearchBox(ref: IgSearchRef, label: string): string {
   const name = `Search ${label}`;
@@ -102,7 +111,8 @@ export function igSearchBox(ref: IgSearchRef, label: string): string {
     `<label class="ig-search-label" for="search-input">${escHtml(name)}</label>` +
     `<input type="search" id="search-input" class="ig-search-input" placeholder="Search pages and artefacts" autocomplete="off" aria-controls="ig-search-results" aria-expanded="false">` +
     `<ul id="ig-search-results" class="ig-search-results" hidden></ul>` +
-    `</form>`
+    `</form>` +
+    IG_LOCALE_SLOT
   );
 }
 
@@ -127,6 +137,58 @@ html:not([data-fa-scheme="light"]) .ig-search-results a{color:#cfe0f7}
 html:not([data-fa-scheme="light"]) .ig-search-results a:hover,html:not([data-fa-scheme="light"]) .ig-search-results a[aria-selected="true"]{background:#3a3943}
 html:not([data-fa-scheme="light"]) .ig-search-results small,html:not([data-fa-scheme="light"]) .ig-search-none{color:#9198a1}
 `;
+
+/**
+ * The bar a page gets when it has no box of its own: the IG's name, linked
+ * home, then the box and the picker's slot. For the pages a layer writes
+ * outside the IG's own bar and header, an IG API hub page and the OpenAPI
+ * pages among them ({@link withSearchBar}). The look of the thin pages' header,
+ * written here because those pages load none of this layer's stylesheets.
+ */
+export const IG_SEARCH_BAR_CSS = `
+.ig-search-top{display:flex;flex-wrap:wrap;align-items:center;gap:.25rem 1rem;padding:.5rem 1rem;background:var(--ig-topbar-bg,#1c4b7c);color:#fff;font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+.ig-search-top>.ig-search-home{color:#fff;text-decoration:none;font-weight:600}
+`;
+
+/** The id of the `<style>` {@link withSearchBar} writes, so a page is never given two. */
+export const IG_SEARCH_STYLE_ID = "ig-search-style";
+
+/**
+ * A built page given the IG's search: a bar at the top of its body with the
+ * box ({@link igSearchBox}) and the picker's slot, the styles both need, and
+ * the deferred client. Pure.
+ *
+ * The page is returned as it was when it already carries a box
+ * (`id="search-input"`, whoever wrote it), or when it has no `<head>` and
+ * `<body>` to put them in.
+ *
+ * WHY HERE, AND NOT IN THE PAGES' OWN WRITERS (owner, 2026-10-15: the search
+ * box on the API hub page and the `openapi/` pages too). Those pages are
+ * written by layers this one does not own: the hub by an overlay above this
+ * layer, through cat-harness-tools' thin-page writer, and the OpenAPI pages
+ * by cat-harness-tools and that overlay. The box, its index and its client are this
+ * layer's. A layer below cannot import them (cat-harness-tools AGENTS.md),
+ * and the layer above would have to repeat them per page kind. So the IG's
+ * `publisher-pages` step, which already gives every built page the language
+ * picker's block, gives every built page without a box this bar, the same
+ * way: one pass over the finished site, keyed on what the page lacks, never on
+ * its name.
+ */
+export function withSearchBar(html: string, o: { ref: IgSearchRef; label: string; home: string }): string {
+  if (html.includes('id="search-input"')) return html;
+  const head = html.search(/<\/head>/i);
+  if (head < 0) return html;
+  const open = /<body\b[^>]*>/i.exec(html.slice(head));
+  if (!open) return html;
+  const afterOpen = head + open.index + open[0].length;
+  const close = html.toLowerCase().lastIndexOf("</body>");
+  if (close < afterOpen) return html;
+  const style = html.includes(`id="${IG_SEARCH_STYLE_ID}"`) ? "" : `<style id="${IG_SEARCH_STYLE_ID}">${IG_SEARCH_BAR_CSS.trim()}\n${IG_SEARCH_CSS.trim()}</style>`;
+  const bar = `\n<header class="ig-search-top"><a class="ig-search-home" href="${escHtml(o.home)}">${escHtml(o.label)}</a>${igSearchBox(o.ref, o.label)}</header>`;
+  return (
+    html.slice(0, head) + style + html.slice(head, afterOpen) + bar + html.slice(afterOpen, close) + `${igSearchScript(o.ref)}\n` + html.slice(close)
+  );
+}
 
 /** A page's source made plain text: front matter, Liquid, HTML and markdown markup removed. Pure. */
 export function plainText(source: string): string {
@@ -187,7 +249,7 @@ export function pageSearchEntries(staged: string): IgSearchEntry[] {
       const href = r.replace(/\.(md|markdown|html)$/, ".html");
       const body = plainText(text.slice(end + 4));
       const title = fmValue(fm, "title") ?? href;
-      out.push({ t: title, h: href, k: "page", ...(body ? { x: body.slice(0, PAGE_TEXT_LIMIT) } : {}) });
+      out.push({ t: title, h: href, k: "page", ...(body ? { x: body } : {}) });
     }
   };
   if (existsSync(staged)) walk("");
