@@ -5,5 +5,5 @@
     "kind": "ig-artifact-jsonld",
     "family": "folio-ig-artifact-index-jsonld/v1"
   },
-  "schema": "fhir-harness:schemas/ig-artifact-jsonld.ts#IgArtifactIndexJsonLdSchema"
+  "schema": "fhir-harness:schemas/ig-artifact-jsonld.ts#IgArtifactIndexJsonLdKind"
 }
