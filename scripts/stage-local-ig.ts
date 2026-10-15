@@ -73,7 +73,7 @@ import { siteFileFor } from "../../cat-harness/schemas/cat-harness.ts";
 import { resolveLandingInstance } from "../../cat-harness/schemas/harness-config.ts";
 import { findDeclarationFile } from "../../cat-harness/schemas/instance-roots.ts";
 import { scriptTable } from "../../cat-harness/schemas/script-table.ts";
-import { buildInstanceSite, keepPinned, lockedMountPaths, siteFields, stagingDir } from "../../cat-harness-tools/scripts/build-instance-site.ts";
+import { buildInstanceSite, keepPinned, lockedMountPaths, recipeRead, siteFields, stagingDir } from "../../cat-harness-tools/scripts/build-instance-site.ts";
 import { igOpenapiGraph } from "../../cat-harness-tools/openapi/scripts/ig-site-openapi.ts";
 import { NAVBAR_ROW_ID } from "../../cat-harness-tools/scripts/lib/harness-rail.ts";
 import { callerInputs, type UsesRef } from "../../cat-harness-tools/scripts/site-publisher.ts";
@@ -685,6 +685,18 @@ export function versionedRoots(entries: readonly string[]): string[] {
 }
 
 /**
+ * The root entries the landing instance's `site.build.keep` declares in this
+ * checkout's `index.config.json` entry, read by build-instance-site's own
+ * reader ({@link recipeRead}), so the IG route keeps what a declared recipe
+ * would. An IG repository's Pages root can hold entries no build writes, laid
+ * there by its other workflows; the repository names them, this layer does
+ * not. Empty when the entry declares none.
+ */
+export function declaredKeep(repo: string, instance: string): string[] {
+  return recipeRead(repo, instance).recipe?.keep ?? [];
+}
+
+/**
  * The root file an IG repository's folio site must carry before it is
  * published: `folio-build.json`, which `ig-site:publisher-pages` writes, and
  * by which {@link FOLIO_ROOT_MARKERS} recognises the root as a folio's, so a
@@ -741,7 +753,8 @@ export interface IgFolioSite {
  *   cannot be scoped by guessing among the layers the repository mounts.
  *
  * `scripts` maps each checkout script to the manifest declaring it;
- * `landingPath` is the landing instance's mount path (`index.lock.json`).
+ * `landingPath` is the landing instance's mount path (`index.lock.json`);
+ * `keep` is what the checkout declares kept at the root, besides {@link IG_KEEP}.
  */
 export function igFolioSite(o: {
   hasIndexConfig: boolean;
@@ -750,6 +763,8 @@ export function igFolioSite(o: {
   landingPath?: string;
   hasOpenapi?: boolean;
   identity: { title: string; description?: string };
+  /** Root entries the checkout declares kept ({@link declaredKeep}), merged with {@link IG_KEEP}. */
+  keep?: readonly string[];
 }): { site?: IgFolioSite; why?: string } {
   if (!o.hasIndexConfig) return { why: "no index.config.json: this IG mounts no harness, so its site is the IG Publisher's output" };
   const required = Object.values(IG_SITE_STEPS);
@@ -786,7 +801,7 @@ export function igFolioSite(o: {
       sourceSteps: [IG_SITE_STEPS.source],
       siteSteps,
       finalSteps,
-      keep: [...IG_KEEP],
+      keep: [...new Set([...IG_KEEP, ...(o.keep ?? [])])],
       dropped: [...IG_DROPPED],
       notes,
     },
@@ -981,11 +996,13 @@ function folioSiteFor(repo: string, ownerRepo: string): ReturnType<typeof igFoli
   const sushi = join(repo, "sushi-config.yaml");
   const landing = resolveLandingInstance(repo);
   const landingPath = landing.kind === "instance" && landing.name ? lockedMountPath(repo, landing.name) : undefined;
+  const keep = landing.kind === "instance" && landing.name ? declaredKeep(repo, landing.name) : [];
   return igFolioSite({
     hasIndexConfig: existsSync(join(repo, "index.config.json")),
     scripts: scriptTable(repo),
     landing,
     ...(landingPath !== undefined ? { landingPath } : {}),
+    ...(keep.length ? { keep } : {}),
     hasOpenapi: igOpenapiGraph(repo) !== undefined,
     identity: igIdentity(existsSync(sushi) ? readFileSync(sushi, "utf-8") : undefined, ownerRepo.split("/")[1]!),
   });
@@ -1037,7 +1054,8 @@ interface IgBuilt {
  * artefact pages composed at the root, Jekyll, the OpenAPI pages, the AST's
  * data served, the link check. No IG Publisher runs (owner, 2026-10-14: "Yes,
  * fix in platform"; ig-build-pipeline rule 1), so no Docker is needed. The root keeps `STAGING/`,
- * `_render-log/` and the IG workflow's `branches/`; a preview goes to
+ * `_render-log/`, the IG workflow's `branches/` and every entry the landing
+ * instance's `site.build.keep` declares; a preview goes to
  * `STAGING/<branch>/`, as every folio's does. The workflow's own deploy steps
  * are not mirrored: the folio site replaces them.
  */
