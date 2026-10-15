@@ -431,7 +431,8 @@ describe("an IG repository's folio site (owner, 2026-10-14)", () => {
 
   test("the root keeps what the landing instance's site.build.keep declares, besides the IG's own", () => {
     const r = igFolioSite({ hasIndexConfig: true, scripts, landing, identity, keep: ["ns", "branches", "0.1.0"] }).site!;
-    expect(r.keep).toEqual([...IG_KEEP, "ns", "0.1.0"]);
+    // "ns" and "branches" are the IG's own (IG_KEEP) as well as declared: kept once, not doubled.
+    expect(r.keep).toEqual([...IG_KEEP, "0.1.0"]);
   });
 
   test("the declared keep is read from the landing instance's index.config.json entry; none declared is none kept", () => {
