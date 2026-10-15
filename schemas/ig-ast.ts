@@ -120,11 +120,17 @@ export type AstPlan = z.infer<typeof AstPlanSchema>;
 export const IG_AST_VOCAB = ownNamespace("fhir-harness-ig-ast");
 
 /**
- * The `$id` base of the generated JSON Schemas: under the vocabulary's own
- * address, so it is ours by the same record. An identifier, not a URL the
- * files are served from; they are committed beside this module.
+ * The `$id` base of the generated JSON Schemas: this release's `schemas/`,
+ * where the files are committed beside this module and so where publishing
+ * serves them. Resolved against the vocabulary's own address (`…/0.1.0/ns/ig-ast#`),
+ * so it stays ours by the same record.
+ *
+ * It was the vocabulary's address itself (`…/ns/ig-ast/`) until this instance
+ * declared an `iriBase`; from then `check:node-iris` requires a node's own
+ * identifier to name the path its file sits at, and no file sits under
+ * `ns/ig-ast/` (bean folio-assistant-63q4).
  */
-export const IG_AST_SCHEMA_BASE = IG_AST_VOCAB.replace(/#$/, "/");
+export const IG_AST_SCHEMA_BASE = new URL("../schemas/", IG_AST_VOCAB).href;
 
 /**
  * The JSON Schemas, by file name, generated from the Zod above — as
