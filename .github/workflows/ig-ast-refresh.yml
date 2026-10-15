@@ -184,7 +184,7 @@ jobs:
           # Publisher writes under input/ during a build (it renders
           # input/images-source/*.plantuml into input/images/*.svg, overwriting
           # tracked files and adding untracked ones), so a digest of the work
-          # tree after the build is not the commit's (smart-trust run
+          # tree after the build is not the commit's (an IG repository's run
           # 38609595363: recorded 35047502..., re-hashed 079a4e58...). Plain
           # git, so it works with whichever fhir-harness the caller's lock
           # mounts; a fhir-harness with `validity --at` can check the commit
