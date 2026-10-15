@@ -667,8 +667,9 @@ export const droppedWords = (d: DroppedByRuling): string => (d.feature !== undef
  * `branches/`, where its IG workflow's per-branch previews are, and `ns/`,
  * the instance's JSON-LD context, which `publish-context.yml` publishes on
  * its own schedule. Deleting either is a separate question for the owner,
- * never a side effect of a publish. Owner, 2026-10-15 (smart-base): "Keep
- * both" — `ns/` and the versioned copies ({@link versionedRoots}).
+ * never a side effect of a publish. Owner, 2026-10-15, ruling on a base IG
+ * repository's publish: "Keep both" — `ns/` and the versioned copies
+ * ({@link versionedRoots}).
  */
 export const IG_KEEP = ["branches", "ns"] as const;
 
@@ -678,7 +679,7 @@ const VERSION_DIR = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/;
 /**
  * The published root's version directories (`0.1.0/`): an IG's release
  * copies, which a root publish keeps like `branches/` (owner, 2026-10-15,
- * smart-base: "Keep both"). Pure; `entries` are the root's names.
+ * on a base IG repository: "Keep both"). Pure; `entries` are the root's names.
  */
 export function versionedRoots(entries: readonly string[]): string[] {
   return entries.filter((e) => VERSION_DIR.test(e));
@@ -1018,12 +1019,13 @@ function folioSiteFor(repo: string, ownerRepo: string): ReturnType<typeof igFoli
  * directory the checkout keeps it in. A local instance is not mounted, so the
  * lock does not list it. Undefined when neither names it.
  *
- * The local case is a base harness's own repository: litlfred/smart-base
- * declares `smart-base` as `source.local.at: "smart-base"` and lands its site
- * on it, so without this its own IG API sidecars (`ig-site:sidecars`, from
- * `smart-base/package.json`) read as "not provided by the landing layer" and
- * were not run, where smart-hiv, which mounts smart-base, runs them
- * (owner, 2026-10-15: smart-base republishes "via the same IG route as smart-hiv").
+ * The local case is a base harness's own repository: it declares its own
+ * instance as `source.local.at: "<instance>"` and lands its site on it, so
+ * without this its own IG API sidecars (`ig-site:sidecars`, from
+ * `<instance>/package.json`) read as "not provided by the landing layer" and
+ * were not run, where an IG repository that mounts the base harness runs them
+ * (owner, 2026-10-15: the base republishes "via the same IG route" as an IG
+ * that mounts it).
  */
 export function lockedMountPath(repo: string, instance: string): string | undefined {
   const f = join(repo, "index.lock.json");
