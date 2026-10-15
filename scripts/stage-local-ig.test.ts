@@ -18,12 +18,14 @@ import {
   IG_DROPPED,
   droppedWords,
   IG_KEEP,
+  versionedRoots,
   IG_SITE_OPTIONAL,
   IG_PUBLISHER,
   IG_SITE_STAMP,
   IG_SITE_STEPS,
   declaredKeep,
   igFolioSite,
+  lockedMountPath,
   igIdentity,
   applyIgDeploy,
   branchDirOf,
@@ -418,6 +420,8 @@ describe("an IG repository's folio site (owner, 2026-10-14)", () => {
 
   test("the IG workflow's per-branch previews are kept at the root", () => {
     expect(IG_KEEP).toContain("branches");
+    expect(IG_KEEP).toContain("ns");
+    expect(versionedRoots(["0.1.0", "1.2.3-ballot", "branches", "assets", "v1", "0.1"])).toEqual(["0.1.0", "1.2.3-ballot"]);
   });
 
   test("the root keeps what the landing instance's site.build.keep declares, besides the IG's own", () => {
@@ -445,5 +449,34 @@ describe("an IG repository's folio site (owner, 2026-10-14)", () => {
     writeFileSync(join(pages, "index.html"), "folio");
     const t = { deploy: { branch: "gh-pages", folder: "output", targetFolder: "", message: "", clean: true, cleanExclude: [], singleCommit: false }, dest: "", keep: [".git"], commit: ["m"] };
     expect(() => applyIgDeploy(pages, "output", t, () => {})).toThrow(/folio's site/);
+  });
+});
+
+describe("where the checkout holds the landing instance (lockedMountPath)", () => {
+  const repoWith = (files: Record<string, unknown>) => {
+    const d = mkdtempSync(join(tmpdir(), "locked-mount-path-"));
+    for (const [f, v] of Object.entries(files)) writeFileSync(join(d, f), JSON.stringify(v));
+    return d;
+  };
+  const lock = { instances: [{ instance: "fhir-harness", path: "fhir-harness" }, { instance: "smart-base", path: "smart-base" }] };
+
+  test("a mounted instance: its path in index.lock.json", () => {
+    expect(lockedMountPath(repoWith({ "index.lock.json": lock }), "smart-base")).toBe("smart-base");
+  });
+
+  test("a LOCAL instance (the base harness's own repository): its source.local.at, which the lock does not list", () => {
+    const config = { instances: [{ name: "smart-base", source: { local: { at: "./smart-base/" } } }, { name: "fhir-harness", source: { remote: { repository: "o/fhir-harness", ref: "x" } } }] };
+    const repo = repoWith({ "index.lock.json": { instances: [{ instance: "fhir-harness", path: "fhir-harness" }] }, "index.config.json": config });
+    expect(lockedMountPath(repo, "smart-base")).toBe("smart-base");
+    expect(lockedMountPath(repo, "fhir-harness")).toBe("fhir-harness");
+    expect(lockedMountPath(repo, "absent")).toBeUndefined();
+  });
+
+  test("so a local landing layer's sidecars are its own, and run", () => {
+    const repo = repoWith({ "index.config.json": { instances: [{ name: "smart-base", source: { local: { at: "smart-base" } } }] } });
+    const landingPath = lockedMountPath(repo, "smart-base");
+    const scripts = new Map([...Object.values(IG_SITE_STEPS), IG_SITE_OPTIONAL.sidecars].map((n) => [n, { manifest: n === IG_SITE_OPTIONAL.sidecars ? "smart-base/package.json" : "fhir-harness/package.json" }]));
+    const r = igFolioSite({ hasIndexConfig: true, scripts, landing: { kind: "instance", name: "smart-base" }, ...(landingPath !== undefined ? { landingPath } : {}), identity: { title: "SMART Base" } });
+    expect(r.site?.pre).toEqual([IG_SITE_STEPS.ast, IG_SITE_OPTIONAL.sidecars]);
   });
 });
