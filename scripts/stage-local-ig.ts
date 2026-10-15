@@ -847,7 +847,11 @@ export function composeIg(pages: string, folder: string, t: IgTarget, chromed = 
  * What it does NOT give, and the plan says so: `folio-site.yml` composes the IG
  * INTO a Jekyll shell (`stage-ig-sites --compose-at-root`), so its pages wear
  * the theme's side bar and search box; railed pages wear the harness rail and
- * the icon row, with the platform's UI loaded from the platform's site.
+ * the icon row. The rail's and the row's code (`navbar.js`, `docs-ui.js` and
+ * their stylesheets) is copied into the site from the pinned cat-harness mount
+ * and loaded from there, never live from the platform's site (owner,
+ * 2026-10-15, "pinned copy per site"); only the rail's LINKS point at the
+ * platform's pages.
  */
 export interface IgChrome {
   sync: string;

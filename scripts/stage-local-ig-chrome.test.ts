@@ -12,7 +12,7 @@
  */
 import { describe, expect, test } from "bun:test";
 import { execFileSync } from "node:child_process";
-import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -159,6 +159,21 @@ describe("the real rail leaves the folio path's markers on an IG's pages", () =>
     expect(cwt).toContain('id="fa-navbar-row"');
     expect(cwt).toContain("data-fa-platform-ui");
     expect(cwt).toContain("<h1>CWT</h1><table><tr><td>cell</td></tr></table>");
+  });
+
+  test("PINNED COPY: no IG page loads the platform's chrome live; the files it loads are in the site (owner, 2026-10-15)", () => {
+    const site = tmp("ig-chrome-pinned-");
+    put(site, "index.html", page("<h1>IG home</h1>"));
+    put(site, "branches/x/index.html", page("<p>nested</p>"));
+    const base = DOCS_SITE_BASE.replace(/\/$/, "");
+    railStandalonePages(site, "cat-harness", "cat-harness", [], { platformBase: base, homeLabel: "R Guide", instance: "smart-base" });
+    for (const rel of ["index.html", "branches/x/index.html"]) {
+      const html = readFileSync(join(site, rel), "utf-8");
+      const loaded = [...html.matchAll(/<(?:script|link)\b[^>]*(?:src|href)="([^"]+\.(?:js|css))"/g)].map((m) => m[1]!);
+      expect(loaded.length).toBeGreaterThan(0);
+      expect(loaded.filter((u) => /^[a-z]+:\/\//i.test(u))).toEqual([]);
+      for (const u of loaded) expect(existsSync(join(site, rel, "..", u))).toBe(true);
+    }
   });
 });
 
