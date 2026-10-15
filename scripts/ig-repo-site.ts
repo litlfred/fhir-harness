@@ -122,7 +122,10 @@
  * writes on a page Jekyll never laid out (cat-harness-tools
  * `lib/translation-meta.ts`, as `mount-instance-docs.ts` does) into every
  * built page that lacks one, from the IG checkout's own translation
- * declaration; the site build's `set-html-lang.ts` then reads it.
+ * declaration; the site build's `set-html-lang.ts` then reads it. The
+ * same step gives every built page without a search box the IG's bar with
+ * one ({@link stampSearchBox}), and the box is followed by the slot docs-ui
+ * puts the language picker in, so the picker sits in the bar beside it.
  *
  * ## Whose dead links
  *
@@ -142,7 +145,7 @@ import { parse as parseYaml } from "yaml";
 import { conceptOf, profilesOf } from "./ast-to-artifact-index.ts";
 import { astValidity, type AstValidity, readAst } from "./ig-ast.ts";
 import { composeIgSite, dedupeSiteIds, describeStage, IG_THIN_CSS_FILE, stageIgSite, type SitePalette } from "./build-ig-site";
-import { artifactSearchEntries, IG_SEARCH_INDEX_FILE, IG_SEARCH_SCRIPT_FILE, IG_SEARCH_SCRIPT_SOURCE, igSearchIndex, pageSearchEntries } from "./ig-search.ts";
+import { artifactSearchEntries, IG_SEARCH_INDEX_FILE, IG_SEARCH_SCRIPT_FILE, IG_SEARCH_SCRIPT_SOURCE, igSearchIndex, pageSearchEntries, withSearchBar } from "./ig-search.ts";
 import { translationMetaBlock, withTranslationMeta } from "../../cat-harness-tools/scripts/lib/translation-meta.ts";
 import type { FhirArtifactIndex } from "../schemas/fhir-artifact-index.js";
 import { buildMenu } from "./ingest-ig-menu.ts";
@@ -577,6 +580,32 @@ export function stampTranslationMeta(site: string, ig: string): number {
   return n;
 }
 
+/**
+ * The IG's search box on every page of the built site that lacks one
+ * (`ig-search.ts` {@link withSearchBar}): the pages a layer above or below
+ * wrote outside the IG's own bar and header, such as an IG API hub page and
+ * the OpenAPI pages. Paths are relative to each page, so the bar works under any
+ * base. Nothing under `assets/` (vendored tools' own pages), and nothing at
+ * all when the site serves no search index, so no page names a file the site
+ * does not hold. Returns how many pages were given one.
+ */
+export function stampSearchBox(site: string, label: string): number {
+  if (!existsSync(join(site, IG_SEARCH_INDEX_FILE))) return 0;
+  let n = 0;
+  for (const f of filesUnder(site)) {
+    if (!/\.html?$/i.test(f) || f.startsWith("assets/")) continue;
+    const up = "../".repeat(f.split("/").length - 1);
+    const abs = join(site, f);
+    const html = readFileSync(abs, "utf-8");
+    const after = withSearchBar(html, { ref: { index: `${up}${IG_SEARCH_INDEX_FILE}`, script: `${up}${IG_SEARCH_SCRIPT_FILE}` }, label, home: `${up}index.html` });
+    if (after !== html) {
+      writeFileSync(abs, after);
+      n++;
+    }
+  }
+  return n;
+}
+
 /** Every file under `dir`, relative to it, `/`-separated. */
 function filesUnder(dir: string): string[] {
   const out: string[] = [];
@@ -732,6 +761,8 @@ export function publisherPages(o: { site: string; ast: string; work?: string; ig
   if (o.ig !== undefined) {
     const stamped = stampTranslationMeta(o.site, o.ig);
     log(`publisher pages: the language picker's block (fa-translation-meta) written on ${stamped} page(s) that lacked one`);
+    const boxed = stampSearchBox(o.site, igTitle(o.ig) ?? basename(resolve(o.ig)));
+    log(`publisher pages: the IG's search box written on ${boxed} page(s) that lacked one`);
     const stamp = igSiteStamp(o.ig);
     writeFileSync(join(o.site, STAMP_FILE), `${JSON.stringify(stamp, null, 2)}\n`);
     log(`publisher pages: stamped ${STAMP_FILE} — ${stamp.instance}, platform ${stamp.platform.commit.slice(0, 9)}`);

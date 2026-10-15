@@ -15,6 +15,7 @@ import { runInNewContext } from "node:vm";
 import { composeIgSite, IG_TOPBAR_CSS, igSearchAt, igTopBar } from "./build-ig-site";
 import {
   artifactSearchEntries,
+  IG_LOCALE_SLOT,
   IG_SEARCH_CSS,
   IG_SEARCH_FORMAT,
   IG_SEARCH_INDEX_FILE,
@@ -24,9 +25,10 @@ import {
   igSearchIndex,
   pageSearchEntries,
   plainText,
+  withSearchBar,
 } from "./ig-search.ts";
 import { THIN_PAGE_STYLE, thinArtifactView, thinIndexPage } from "./ig-thin-pages.ts";
-import { stampTranslationMeta, writeSearch } from "./ig-repo-site.ts";
+import { stampSearchBox, stampTranslationMeta, writeSearch } from "./ig-repo-site.ts";
 import type { FhirArtifact, FhirArtifactIndex } from "../schemas/fhir-artifact-index.js";
 
 const tmp = (p: string) => mkdtempSync(join(tmpdir(), p));
@@ -53,6 +55,11 @@ describe("the box", () => {
   test("holds no <div>: a composed page lifts the top bar up to its first </div> at a line end", () => {
     expect(box).not.toContain("<div");
   });
+
+  test("is followed by the language picker's slot, outside the form, empty until docs-ui fills it", () => {
+    expect(IG_LOCALE_SLOT).toBe('<span class="ig-locale-slot" data-fa-slot="locale"></span>');
+    expect(box.endsWith(`</form>${IG_LOCALE_SLOT}`)).toBe(true);
+  });
 });
 
 describe("the top bar carries the box and its script only when the site serves the search", () => {
@@ -64,6 +71,9 @@ describe("the top bar carries the box and its script only when the site serves t
     expect(bar).toContain('<script src="/b/acme-ig/assets/ig-search.js" defer></script>');
     expect(bar.endsWith("</div>")).toBe(true);
     expect(bar.indexOf('id="search-input"')).toBeLessThan(bar.lastIndexOf("</div>"));
+    // The picker's slot is inside the bar too, after the box.
+    expect(bar.indexOf('data-fa-slot="locale"')).toBeGreaterThan(bar.indexOf('id="search-input"'));
+    expect(bar.indexOf('data-fa-slot="locale"')).toBeLessThan(bar.lastIndexOf("</div>"));
   });
 
   test("without: unchanged", () => {
@@ -80,6 +90,7 @@ describe("the top bar carries the box and its script only when the site serves t
     composeIgSite(staged, docs, "acme", { atRoot: true });
     const top = readFileSync(join(docs, "_includes/ig/acme/_top.html"), "utf-8");
     expect(top).toContain('id="search-input"');
+    expect(top).toContain('data-fa-slot="locale"');
     expect(top).toContain("assets/ig-search.js");
   });
 
@@ -97,6 +108,7 @@ describe("the thin pages' header", () => {
     const html = thinArtifactView(ix, a, "content", { ...base, search: REF });
     const header = /<header class="iga-top">[\s\S]*?<\/header>/.exec(html)![0];
     expect(header).toContain('id="search-input"');
+    expect(header).toContain(IG_LOCALE_SLOT);
     expect(html).toContain('<script src="../assets/ig-search.js" defer></script>');
   });
 
@@ -135,6 +147,15 @@ describe("the index", () => {
       { t: "ACME: home", h: "index.html", k: "page", x: "Welcome to the guide." },
       { t: "Nested", h: "sub/page.html", k: "page", x: "Nested text" },
     ]);
+  });
+
+  test("a page's whole text, however long: a word deep in a long page is found", () => {
+    const s = tmp("ig-search-long-");
+    const long = "lorem ipsum dolor sit amet ".repeat(2000);
+    put(s, "long.md", `---\ntitle: Long\n---\n${long}\nzanzibar\n`);
+    const [e] = pageSearchEntries(s);
+    expect(e!.x!.length).toBeGreaterThan(50000);
+    expect(e!.x!.endsWith("zanzibar")).toBe(true);
   });
 
   test("every artefact, linked to its thin page, with its identifiers and a one-line description", () => {
@@ -219,5 +240,49 @@ describe("compose writes the search; publisher-pages writes the language picker'
     expect(readFileSync(join(site, "fr.html"), "utf-8")).toBe(own);
     expect(stampTranslationMeta(site, ig)).toBe(0);
     expect(existsSync(join(site, "data.json"))).toBe(true);
+  });
+});
+
+describe("publisher-pages gives every other built page the box (owner, 2026-10-15: the API hub and openapi/ pages too)", () => {
+  const REF2 = { index: "../assets/ig-search.json", script: "../assets/ig-search.js" };
+  const PAGE = '<!doctype html><html><head><title>Hub</title></head>\n<body><script type="application/json" id="x">{}</script><main><h1>Hub</h1></main>\n</body>\n</html>\n';
+
+  test("a bar at the top of the body, its styles in the head, the client before </body>", () => {
+    const out = withSearchBar(PAGE, { ref: REF2, label: "ACME IG", home: "../index.html" });
+    const body = out.slice(out.indexOf("<body>") + 6);
+    expect(body.startsWith('\n<header class="ig-search-top"><a class="ig-search-home" href="../index.html">ACME IG</a><form class="ig-search"')).toBe(true);
+    expect(body).toContain(IG_LOCALE_SLOT);
+    expect(out.indexOf('<style id="ig-search-style">')).toBeLessThan(out.indexOf("</head>"));
+    expect(out).toContain(IG_SEARCH_CSS.trim());
+    expect(out).toMatch(/<script src="\.\.\/assets\/ig-search\.js" defer><\/script>\n<\/body>/);
+    expect(out.match(/id="search-input"/g)!.length).toBe(1);
+  });
+
+  test("a page that already has a box, whoever wrote it, or that has no head and body, is left as it is", () => {
+    const once = withSearchBar(PAGE, { ref: REF2, label: "ACME IG", home: "../index.html" });
+    expect(withSearchBar(once, { ref: REF2, label: "ACME IG", home: "../index.html" })).toBe(once);
+    const own = PAGE.replace("<main>", '<main><input id="search-input">');
+    expect(withSearchBar(own, { ref: REF2, label: "ACME IG", home: "../index.html" })).toBe(own);
+    expect(withSearchBar("<p>fragment</p>", { ref: REF2, label: "ACME IG", home: "x" })).toBe("<p>fragment</p>");
+  });
+
+  test("stampSearchBox: paths relative to each page, nothing under assets/, nothing without an index", () => {
+    const site = tmp("ig-search-stamp-");
+    put(site, "hub.html", PAGE);
+    put(site, "openapi/index.html", PAGE);
+    put(site, "assets/vendor/viewer.html", PAGE);
+    put(site, "boxed.html", PAGE.replace("<main>", '<main><input id="search-input">'));
+    expect(stampSearchBox(site, "ACME IG")).toBe(0);
+    put(site, IG_SEARCH_INDEX_FILE, "{}");
+    expect(stampSearchBox(site, "ACME IG")).toBe(2);
+    const hub = readFileSync(join(site, "hub.html"), "utf-8");
+    expect(hub).toContain('data-ig-search-index="assets/ig-search.json"');
+    expect(hub).toContain('<script src="assets/ig-search.js" defer>');
+    expect(hub).toContain('<a class="ig-search-home" href="index.html">');
+    const api = readFileSync(join(site, "openapi/index.html"), "utf-8");
+    expect(api).toContain('data-ig-search-index="../assets/ig-search.json"');
+    expect(api).toContain('<a class="ig-search-home" href="../index.html">');
+    expect(readFileSync(join(site, "assets/vendor/viewer.html"), "utf-8")).toBe(PAGE);
+    expect(stampSearchBox(site, "ACME IG")).toBe(0);
   });
 });
