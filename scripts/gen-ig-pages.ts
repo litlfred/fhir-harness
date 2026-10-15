@@ -112,6 +112,7 @@ import { JSON_VIEW_SCRIPT, VIEW_PAGE, examplesPage, hasJsonView, historyPage, js
 import { isDirectoryReadme } from "../../cat-harness/schemas/kg-node.js";
 import { ARTIFACT_INDEX_FILE, artifactJsonLdFiles, localResourceHref } from "./ig-artifact-jsonld.ts";
 import { THIN_PAGE_SCRIPT, THIN_PAGE_STYLE, artifactTabs, thinArtifactPath, thinArtifactView } from "./ig-thin-pages.ts";
+import { PAGE_LAYOUT_CSS_FILE, PAGE_LAYOUT_CSS_SOURCE, PAGE_LAYOUT_JS_FILE, PAGE_LAYOUT_JS_SOURCE } from "../../cat-harness-tools/scripts/page-layout.ts";
 import { IG_SEARCH_INDEX_FILE, IG_SEARCH_SCRIPT_FILE } from "./ig-search.ts";
 
 import { IgMenuSchema, type IgMenu, type IgMenuGroup, menuHref, menuItemCount } from "../schemas/ig-menu.js";
@@ -1632,6 +1633,10 @@ if (existsSync(MENU)) {
     }
     pages.set(THIN_PAGE_SCRIPT, readFileSync(THIN_RENDERER, "utf8"));
     pages.set(THIN_PAGE_STYLE, readFileSync(THIN_STYLE, "utf8"));
+    // The shared page layout every thin page links before its own stylesheet
+    // (cat-harness-tools `page-layout.ts`): one width, one bar, one scroll.
+    pages.set(PAGE_LAYOUT_CSS_FILE, readFileSync(PAGE_LAYOUT_CSS_SOURCE, "utf8"));
+    pages.set(PAGE_LAYOUT_JS_FILE, readFileSync(PAGE_LAYOUT_JS_SOURCE, "utf8"));
   }
 }
 

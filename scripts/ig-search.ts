@@ -48,8 +48,12 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { escHtml } from "../../cat-harness-tools/scripts/thin-page.ts";
+import { PAGE_BAR_CLASS, PAGE_LAYOUT_MARK, pageLayoutTags } from "../../cat-harness-tools/scripts/page-layout.ts";
 import type { FhirArtifact } from "../schemas/fhir-artifact-index.js";
 import { ARTIFACT_DIR, artifactPageName } from "./ig-artifact-jsonld.ts";
+
+/** The IG's one stylesheet, under the docs root (`ig-thin-pages.ts` `THIN_PAGE_STYLE`). */
+export const IG_ARTIFACT_CSS_FILE = "assets/ig-artifact.css";
 
 /** The index, under the IG's docs root. */
 export const IG_SEARCH_INDEX_FILE = "assets/ig-search.json";
@@ -139,43 +143,51 @@ html:not([data-fa-scheme="light"]) .ig-search-results small,html:not([data-fa-sc
 `;
 
 /**
- * The bar a page gets when it has no box of its own: the IG's name, linked
- * home, then the box and the picker's slot. For the pages a layer writes
- * outside the IG's own bar and header, an IG API hub page and the OpenAPI
- * pages among them ({@link withSearchBar}). The look of the thin pages' header,
- * written here because those pages load none of this layer's stylesheets.
+ * The bar a page gets when the site has no IG bar to give it (no composed
+ * home page to take one from): the IG's name, linked home, then the box and
+ * the picker's slot. A page bar of the shared page layout, so its place and
+ * scrolling are every other page's; its look is `ig-artifact.css`'s
+ * (`.ig-search-top`).
  */
-export const IG_SEARCH_BAR_CSS = `
-.ig-search-top{display:flex;flex-wrap:wrap;align-items:center;gap:.25rem 1rem;padding:.5rem 1rem;background:var(--ig-topbar-bg,#1c4b7c);color:#fff;font:16px/1.5 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
-.ig-search-top>.ig-search-home{color:#fff;text-decoration:none;font-weight:600}
-`;
+export function igFallbackBar(ref: IgSearchRef, label: string, home: string): string {
+  return `<header class="ig-search-top ${PAGE_BAR_CLASS}"><a class="ig-search-home" href="${escHtml(home)}">${escHtml(label)}</a>${igSearchBox(ref, label)}</header>`;
+}
 
-/** The id of the `<style>` {@link withSearchBar} writes, so a page is never given two. */
-export const IG_SEARCH_STYLE_ID = "ig-search-style";
+/** A page's own IG header, which {@link withIgBar} replaces with the IG's bar: a thin page's, or a fallback bar. */
+const OWN_HEADER = /<header class="(?:iga-top|ig-search-top)\b[^"]*">[\s\S]*?<\/header>/;
+/** The IG's bar, which a page that holds it keeps. */
+const IG_BAR = /<div class="ig-topbar[ "]/;
 
 /**
- * A built page given the IG's search: a bar at the top of its body with the
- * box ({@link igSearchBox}) and the picker's slot, the styles both need, and
- * the deferred client. Pure.
+ * A built page given the IG's ONE top bar — the bar every composed page
+ * carries (`build-ig-site.ts` `igTopBar`: title, menu, search box, language
+ * picker's slot) — and the two stylesheets that lay it out: the shared page
+ * layout (cat-harness-tools `page-layout.ts`) and `ig-artifact.css`. Pure.
  *
- * The page is returned as it was when it already carries a box
- * (`id="search-input"`, whoever wrote it), or when it has no `<head>` and
- * `<body>` to put them in.
+ * - A page that holds the IG's bar is returned as it was.
+ * - A page with its own IG header (a thin artefact or list page's
+ *   `.iga-top`) has it REPLACED, so the bar is the same on every page.
+ * - A page with neither (an IG API hub page, the OpenAPI pages) is given
+ *   the bar at the top of its body.
+ * - A page with a search box in some other bar, or with no `<head>` and
+ *   `<body>`, is returned as it was.
+ *
+ * `bar` is the IG's bar, site-absolute; undefined, {@link igFallbackBar}.
+ * Its scripts are dropped and the search client is linked once, at the end
+ * of the body, unless the page already loads it. `up` is the path from the
+ * page to the site root.
  *
  * WHY HERE, AND NOT IN THE PAGES' OWN WRITERS (owner, 2026-10-15: the search
- * box on the API hub page and the `openapi/` pages too). Those pages are
- * written by layers this one does not own: the hub by an overlay above this
- * layer, through cat-harness-tools' thin-page writer, and the OpenAPI pages
- * by cat-harness-tools and that overlay. The box, its index and its client are this
- * layer's. A layer below cannot import them (cat-harness-tools AGENTS.md),
- * and the layer above would have to repeat them per page kind. So the IG's
+ * box on the API hub page and the `openapi/` pages too; then "please
+ * consolidate behaviours/appearance"). Those pages are written by layers this
+ * one does not own: the hub by an overlay above this layer, the OpenAPI pages
+ * by cat-harness-tools and that overlay; and the thin artefact pages are
+ * written before the menu the bar shows is laid out. So the IG's
  * `publisher-pages` step, which already gives every built page the language
- * picker's block, gives every built page without a box this bar, the same
- * way: one pass over the finished site, keyed on what the page lacks, never on
- * its name.
+ * picker's block, gives every built page this bar: one pass over the
+ * finished site, keyed on what the page holds, never on its name.
  */
-export function withSearchBar(html: string, o: { ref: IgSearchRef; label: string; home: string }): string {
-  if (html.includes('id="search-input"')) return html;
+export function withIgBar(html: string, o: { bar?: string; ref: IgSearchRef; label: string; home: string; up: string }): string {
   const head = html.search(/<\/head>/i);
   if (head < 0) return html;
   const open = /<body\b[^>]*>/i.exec(html.slice(head));
@@ -183,11 +195,18 @@ export function withSearchBar(html: string, o: { ref: IgSearchRef; label: string
   const afterOpen = head + open.index + open[0].length;
   const close = html.toLowerCase().lastIndexOf("</body>");
   if (close < afterOpen) return html;
-  const style = html.includes(`id="${IG_SEARCH_STYLE_ID}"`) ? "" : `<style id="${IG_SEARCH_STYLE_ID}">${IG_SEARCH_BAR_CSS.trim()}\n${IG_SEARCH_CSS.trim()}</style>`;
-  const bar = `\n<header class="ig-search-top"><a class="ig-search-home" href="${escHtml(o.home)}">${escHtml(o.label)}</a>${igSearchBox(o.ref, o.label)}</header>`;
-  return (
-    html.slice(0, head) + style + html.slice(head, afterOpen) + bar + html.slice(afterOpen, close) + `${igSearchScript(o.ref)}\n` + html.slice(close)
-  );
+  let body = html.slice(afterOpen, close);
+  if (IG_BAR.test(body)) return html;
+  const bar = o.bar ? o.bar.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, "") : igFallbackBar(o.ref, o.label, o.home);
+  const own = OWN_HEADER.exec(body);
+  if (own) body = body.replace(own[0], () => bar);
+  else if (body.includes('id="search-input"')) return html;
+  else body = `\n${bar}${body}`;
+  const script = /assets\/ig-search\.js"/.test(body) ? "" : `${igSearchScript(o.ref)}\n`;
+  const sheet = html.slice(0, head).includes(`${IG_ARTIFACT_CSS_FILE}"`) ? "" : `<link rel="stylesheet" href="${escHtml(o.up)}${IG_ARTIFACT_CSS_FILE}">`;
+  const layout = html.includes(PAGE_LAYOUT_MARK) ? "" : pageLayoutTags(escHtml(o.up));
+  // The layout before the IG's sheet, which builds on it.
+  return html.slice(0, head) + layout + sheet + html.slice(head, afterOpen) + body + script + html.slice(close);
 }
 
 /** A page's source made plain text: front matter, Liquid, HTML and markdown markup removed. Pure. */
