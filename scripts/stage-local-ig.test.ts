@@ -22,6 +22,7 @@ import {
   IG_PUBLISHER,
   IG_SITE_STAMP,
   IG_SITE_STEPS,
+  declaredKeep,
   igFolioSite,
   igIdentity,
   applyIgDeploy,
@@ -417,6 +418,24 @@ describe("an IG repository's folio site (owner, 2026-10-14)", () => {
 
   test("the IG workflow's per-branch previews are kept at the root", () => {
     expect(IG_KEEP).toContain("branches");
+  });
+
+  test("the root keeps what the landing instance's site.build.keep declares, besides the IG's own", () => {
+    const r = igFolioSite({ hasIndexConfig: true, scripts, landing, identity, keep: ["ns", "branches", "0.1.0"] }).site!;
+    expect(r.keep).toEqual([...IG_KEEP, "ns", "0.1.0"]);
+  });
+
+  test("the declared keep is read from the landing instance's index.config.json entry; none declared is none kept", () => {
+    const repo = tmp("ig-declared-keep-");
+    put(repo, "index.config.json", JSON.stringify({
+      $schema: "folio-index-config/v1",
+      instances: [{ name: "base-harness", source: { local: { at: "base-harness" } }, site: { build: { keep: ["ns", "0.1.0"] } } }, { name: "other" }],
+      site: { landing: "base-harness" },
+    }));
+    expect(declaredKeep(repo, "base-harness")).toEqual(["ns", "0.1.0"]);
+    expect(declaredKeep(repo, "other")).toEqual([]);
+    put(repo, "index.config.json", JSON.stringify({ $schema: "folio-index-config/v1", instances: [{ name: "base-harness", site: { build: { keep: ["a/b"] } } }] }));
+    expect(() => declaredKeep(repo, "base-harness")).toThrow(/site\.build\.keep/);
   });
 
   test("the stamp the folio route requires is a folio root marker, so a bare IG deploy refuses that root", () => {
