@@ -456,6 +456,14 @@ if (import.meta.main) {
     if (r.data.overwrites.length) console.error(`${ig.instance}: ${r.data.overwrites.length} site.data overwrite(s) flagged in ${relative(resolve("."), qaOut)}`);
     if (r.siteData.refused.length) process.exit(1);
     if (docs) {
+      // A declared igSite docs directory that is not on disk is not an IG with
+      // no pages (dh4f): its writer has not run. A docs directory declared
+      // builtAtPublish exists only after `derive:publish`; say so, rather
+      // than a bare ENOENT from the walk.
+      if (!existsSync(docs)) {
+        console.error(`${ig.instance}: the declared igSite docs directory ${relative(resolve("."), docs)} is not on disk — its writer has not run (a builtAtPublish directory exists only after \`derive:publish\`). Refusing to build the IG site without its pages.`);
+        process.exit(1);
+      }
       const c = copyDocsInto(docs, site);
       console.error(`${ig.instance}: igSite — ${c.copied} file(s) from ${relative(resolve("."), docs)} built into the IG site at /${ig.instance}/${c.merged.length ? `; front matter laid onto ${c.merged.join(", ")}` : ""}`);
       if (c.collisions.length) {
