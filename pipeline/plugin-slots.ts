@@ -12,10 +12,10 @@
  * `site-publisher-<kind>` slot from the dependencies of the repository it
  * publishes, and names neither this layer nor this file.
  *
- * @module fhir-harness/content/pipeline/plugin-slots
+ * @module fhir-harness/pipeline/plugin-slots
  */
-import type { SitePublisher } from "../../../cat-harness-tools/scripts/stage-local.ts";
-import { IG_PUBLISHER } from "../../scripts/stage-local-ig.ts";
+import type { SitePublisher } from "../../cat-harness-tools/scripts/stage-local.ts";
+import { IG_PUBLISHER } from "../scripts/stage-local-ig.ts";
 
 export const PIPELINE_IMPLEMENTATIONS: Record<`site-publisher-${string}`, SitePublisher> = {
   "site-publisher-ig": IG_PUBLISHER,
