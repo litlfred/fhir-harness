@@ -664,10 +664,25 @@ export const droppedWords = (d: DroppedByRuling): string => (d.feature !== undef
 
 /**
  * Root entries an IG repository's publish keeps besides the folio's own:
- * `branches/`, where its IG workflow's per-branch previews are. Deleting them
- * is a separate question for the owner, never a side effect of a publish.
+ * `branches/`, where its IG workflow's per-branch previews are, and `ns/`,
+ * the instance's JSON-LD context, which `publish-context.yml` publishes on
+ * its own schedule. Deleting either is a separate question for the owner,
+ * never a side effect of a publish. Owner, 2026-10-15 (smart-base): "Keep
+ * both" — `ns/` and the versioned copies ({@link versionedRoots}).
  */
-export const IG_KEEP = ["branches"] as const;
+export const IG_KEEP = ["branches", "ns"] as const;
+
+/** A root entry named as a published IG version, `<major>.<minor>.<patch>[-label]`. */
+const VERSION_DIR = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/;
+
+/**
+ * The published root's version directories (`0.1.0/`): an IG's release
+ * copies, which a root publish keeps like `branches/` (owner, 2026-10-15,
+ * smart-base: "Keep both"). Pure; `entries` are the root's names.
+ */
+export function versionedRoots(entries: readonly string[]): string[] {
+  return entries.filter((e) => VERSION_DIR.test(e));
+}
 
 /**
  * The root file an IG repository's folio site must carry before it is
@@ -1034,12 +1049,24 @@ async function stageIgFolio(a: PublisherRun, b: IgBuilt, site: IgFolioSite, h: P
   const url = `${pagesRoot}/${staging ? `${staging}/` : ""}`;
   const out = join(repo, "..", `${name}-site`);
   const message = `Publish ${name} ${sha.slice(0, 7)}${staging ? ` preview of ${branch}` : ""} (folio site, built locally)`;
+  // A root publish keeps the published root's version directories too; a
+  // root the remote cannot list (no gh-pages yet) has none to keep.
+  let versions: string[] = [];
+  if (!staging) {
+    try {
+      h.git(repo, ["fetch", "-q", "--depth", "1", "origin", "gh-pages"]);
+      versions = versionedRoots(h.git(repo, ["ls-tree", "--name-only", "FETCH_HEAD"]).split("\n"));
+    } catch {
+      versions = [];
+    }
+  }
+  const keep = [...site.keep, ...versions];
   const plan: StagePlan = {
     kind: "ig", caller: a.caller, workflow: `${u.owner}/${u.repo}/${b.path}@${u.ref}`, ...(b.note ? { note: b.note } : {}),
     target, branch, ...(a.defaultBranch ? { defaultBranch: a.defaultBranch } : {}), sha,
     publishBranch: "gh-pages", dest: staging ? `${staging}/` : "/", url,
     replaces: staging ? `${staging}/, wholesale` : "the root, as a folio's root publish replaces it",
-    preserved: staging ? [`everything outside ${staging}/`] : ["STAGING", "_render-log", ...site.keep],
+    preserved: staging ? [`everything outside ${staging}/`] : ["STAGING", "_render-log", ...keep],
     build: [
       `the folio site "${site.title}" from the IG's cached AST, never a Publisher run (ig-build-pipeline rule 1): build-instance-site.ts with the chrome of ${site.scope} (index.config.json site.landing)`,
       `  pre    ${site.pre.join(", ")} — restore and judge the AST (a stale one is refused; SITE_ACCEPT_STALE_AST=1 for a preview only)${site.pre.length > 1 ? ", then the landing layer's IG API sidecars" : ""}`,
@@ -1079,7 +1106,7 @@ async function stageIgFolio(a: PublisherRun, b: IgBuilt, site: IgFolioSite, h: P
     fresh: false,
     publish,
     ...(publish ? { remote: h.git(repo, ["config", "--get", "remote.origin.url"]) } : {}),
-    keep: site.keep,
+    keep,
     parityDropped: site.dropped,
     require: [IG_SITE_STAMP],
     message,

@@ -18,6 +18,7 @@ import {
   IG_DROPPED,
   droppedWords,
   IG_KEEP,
+  versionedRoots,
   IG_SITE_OPTIONAL,
   IG_PUBLISHER,
   IG_SITE_STAMP,
@@ -418,6 +419,8 @@ describe("an IG repository's folio site (owner, 2026-10-14)", () => {
 
   test("the IG workflow's per-branch previews are kept at the root", () => {
     expect(IG_KEEP).toContain("branches");
+    expect(IG_KEEP).toContain("ns");
+    expect(versionedRoots(["0.1.0", "1.2.3-ballot", "branches", "assets", "v1", "0.1"])).toEqual(["0.1.0", "1.2.3-ballot"]);
   });
 
   test("the stamp the folio route requires is a folio root marker, so a bare IG deploy refuses that root", () => {
