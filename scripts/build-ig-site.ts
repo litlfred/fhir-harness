@@ -53,6 +53,7 @@ import { wrapRaw } from "../../cat-harness-tools/scripts/lib/liquid-raw.ts";
 import type { IgReleases } from "../schemas/ig-releases.ts";
 import { igSiteFooter, sushiFooterData, type IgFooterData } from "./ig-footer.ts";
 import { thinIndexPage } from "./ig-thin-pages.ts";
+import { IG_SEARCH_CSS, IG_SEARCH_INDEX_FILE, IG_SEARCH_SCRIPT_FILE, igSearchBox, igSearchScript, type IgSearchRef } from "./ig-search.ts";
 import { withRenderedBy } from "../../cat-harness-tools/scripts/viewer-declarations.js";
 import { NAVBAR_LINKED } from "../../cat-harness-tools/scripts/lib/harness-rail.ts";
 import { DEFAULT_ICON } from "../../cat-harness-tools/scripts/thin-page.ts";
@@ -348,6 +349,9 @@ export function rubyLiquidStrings(text: string): { text: string; count: number }
 const siteHref = (baseurl: string, href: string): string =>
   /^([a-z][a-z0-9+.-]*:|\/|#)/i.test(href) ? href : `${baseurl.replace(/\/$/, "")}/${href}`;
 
+/** The IG's search files, site-absolute under `baseurl`, for the top bar every page shares. */
+export const igSearchAt = (baseurl: string): IgSearchRef => ({ index: siteHref(baseurl, IG_SEARCH_INDEX_FILE), script: siteHref(baseurl, IG_SEARCH_SCRIPT_FILE) });
+
 const escHtml = (s: string): string => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
 /**
@@ -372,8 +376,13 @@ export function igTocNav(menu: IgMenu, baseurl: string, extra: ReadonlyArray<{ l
  * dropdowns, one per group. `<details>`, so it needs no script; and not a
  * `<nav class="fa-nav">`, which the rail pass would read as "already
  * navigated" and skip.
+ *
+ * With `search`, the bar ends in the IG's search box and the script that
+ * runs it (`ig-search.ts`; owner, 2026-10-15, layout "C": "add a search box
+ * to the IG top bar"). Both sit INSIDE the bar's `<div>`, so a composed page,
+ * which lifts the bar out of the staged layout, carries them too.
  */
-export function igTopBar(menu: IgMenu, baseurl: string, title: string): string {
+export function igTopBar(menu: IgMenu, baseurl: string, title: string, search?: IgSearchRef): string {
   const groups = menu.groups
     .map((g) =>
       g.items?.length
@@ -383,7 +392,8 @@ export function igTopBar(menu: IgMenu, baseurl: string, title: string): string {
         : `<span class="ig-topbar-group">${escHtml(g.label)}</span>`,
     )
     .join("");
-  return `<div class="ig-topbar" role="navigation" aria-label="${escHtml(title)} menu"><a class="ig-topbar-home" href="${escHtml(siteHref(baseurl, "index.html"))}">${escHtml(title)}</a>${groups}</div>`;
+  const box = search ? `${igSearchBox(search, title)}${igSearchScript(search)}` : "";
+  return `<div class="ig-topbar" role="navigation" aria-label="${escHtml(title)} menu"><a class="ig-topbar-home" href="${escHtml(siteHref(baseurl, "index.html"))}">${escHtml(title)}</a>${groups}${box}</div>`;
 }
 
 /**
@@ -415,6 +425,7 @@ html:not([data-fa-scheme="light"]) .ig-topbar-group li a:hover{background:#3a394
 .ig-src:hover{opacity:1}
 .ig-feedback{font-size:.7em;text-decoration:none;opacity:.55;margin-left:.15em}
 .ig-feedback:hover{opacity:1}
+${IG_SEARCH_CSS.trim()}
 `;
 
 /**
@@ -1108,6 +1119,13 @@ export interface StageOptions {
   ast?: string;
   /** The FHIR package cache the dependency table reads; default `FHIR_PACKAGE_CACHE` or `~/.fhir/packages`. */
   packageCache?: string;
+  /**
+   * The site serves the IG's search (`ig-search.ts`: `assets/ig-search.json`
+   * and `assets/ig-search.js` under the docs root, which the caller writes).
+   * Given, the top bar and the thin `artifacts` and `toc` pages carry the
+   * search box. Absent, no page names files the site may not hold.
+   */
+  search?: boolean;
 }
 
 /** The fields of a `folio-fhir-artifact/v1` entry this build reads. */
@@ -1877,6 +1895,7 @@ export function stageIgSite(igSrc: string, out: string, opts: StageOptions = {})
         ...(at?.prev ? { prev: at.prev } : {}),
         ...(at?.next ? { next: at.next } : {}),
         ...(stem === "toc" ? { outline } : {}),
+        ...(opts.search ? { search: { index: `${root}${IG_SEARCH_INDEX_FILE}`, script: `${root}${IG_SEARCH_SCRIPT_FILE}` } } : {}),
       });
       // The artefact index's viewer declaration, which the full page took as
       // front matter (`gen-ig-pages`' front-matter-only `artifacts.md`).
@@ -1955,7 +1974,7 @@ export function stageIgSite(igSrc: string, out: string, opts: StageOptions = {})
     // menu: its own table of contents, and the releases page when written.
     const extra = [{ label: "Table of Contents", href: "toc.html" }, ...(generated.includes("releases.md") ? [{ label: "Releases", href: "releases.html" }] : [])];
     mkdirSync(join(out, "_layouts"), { recursive: true });
-    writeFileSync(join(out, "_layouts", "default.html"), harnessLayout(igTopBar(opts.menu, baseurl, title), igTocNav(opts.menu, baseurl, extra), title));
+    writeFileSync(join(out, "_layouts", "default.html"), harnessLayout(igTopBar(opts.menu, baseurl, title, opts.search ? igSearchAt(baseurl) : undefined), igTocNav(opts.menu, baseurl, extra), title));
   }
   writeFileSync(
     join(out, "_config.yml"),

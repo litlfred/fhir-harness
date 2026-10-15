@@ -16,6 +16,7 @@ import { stageLocal } from "../../cat-harness-tools/scripts/stage-local.ts";
 import {
   FOLIO_ROOT_MARKERS,
   IG_DROPPED,
+  droppedWords,
   IG_KEEP,
   IG_SITE_OPTIONAL,
   IG_PUBLISHER,
@@ -387,9 +388,19 @@ describe("an IG repository's folio site (owner, 2026-10-14)", () => {
     expect(igFolioSite({ hasIndexConfig: true, scripts, landing, hasOpenapi: true, identity }).site!.notes.join("\n")).toMatch(/NOT built/);
   });
 
-  test("the Publisher's version comparisons are the one drop the root's parity guard excuses, by the owner's ruling", () => {
-    expect(IG_DROPPED.map((d) => d.dir)).toEqual(["comparison-v*"]);
+  test("the root's parity guard excuses exactly what the owner ruled dropped: the comparisons, schemas/ and the theme's side bar", () => {
+    expect(IG_DROPPED.map((d) => d.dir ?? `feature:${d.feature}`)).toEqual(["comparison-v*", "schemas", "feature:siteNav"]);
     expect(IG_DROPPED[0]!.ruling).toContain("2a");
+    expect(IG_DROPPED[1]!.ruling).toContain("New address only");
+    expect(IG_DROPPED[2]!.ruling).toMatch(/2026-10-15.*layout "C"/);
+    // Each entry names one thing, never both.
+    for (const d of IG_DROPPED) expect((d.dir === undefined) !== (d.feature === undefined)).toBe(true);
+    // Search and the language picker are never excused.
+    expect(IG_DROPPED.map((d) => d.feature).filter(Boolean)).toEqual(["siteNav"]);
+  });
+
+  test("the plan says each drop in words", () => {
+    expect(IG_DROPPED.map(droppedWords)).toEqual(["comparison-v*/", "schemas/", "the page feature siteNav"]);
   });
 
   test("harnessed but no landing named: refused, never guessed among the mounts", () => {
