@@ -137,7 +137,7 @@ export function tools(baseUrl?: string): ToolDefinition[] {
       id: "build-ig-site",
       title: "Stage one IG as its own just-the-docs Jekyll site",
       description:
-        "Turn an IG source repository into ONE Jekyll source for just-the-docs, as the IG Publisher builds one IG per site: `input/pagecontent` pages with title, parent and order from `sushi-config.yaml` `pages:`, the files the Publisher resolves its Liquid includes against, images, `_data/fhir.json` from `ig-site-data`, and a `_config.yml`. The pages render unchanged, their `site.data.fhir` references included (bean `bamf`, owner's choice of one site per IG). With the IG's menu, the layout is the one every IG site wears (bean `mftp`): the IG's own top bar, the IG's TOC declared as the folio-assistant navbar's section (added by `rail-standalone-pages`), no sidebar of its own, an edit link per page, and per heading a source-line link and a pre-filled feedback issue.",
+        "Turn an IG source repository into ONE Jekyll source for just-the-docs, as the IG Publisher builds one IG per site: `input/pagecontent` pages with title, parent and order from `sushi-config.yaml` `pages:`, the files the Publisher's include tags resolve against, images, `_data/fhir.json` from `ig-site-data`, and a `_config.yml`. The pages render unchanged, including their references to the IG's site data (bean `bamf`, owner's choice of one site per IG). With the IG's menu, the layout is the one every IG site wears (bean `mftp`): the IG's own top bar, the IG's TOC declared as the folio-assistant navbar's section (added by `rail-standalone-pages`), no sidebar of its own, an edit link per page, and per heading a source-line link and a pre-filled feedback issue.",
       install: { none: true },
       invoke: { shell: "bun run fhir-harness/scripts/build-ig-site.ts" },
       io: {
@@ -249,7 +249,7 @@ export function tools(baseUrl?: string): ToolDefinition[] {
       id: "ig-pages",
       title: "Generate an IG instance's reader-facing pages from its artefact index",
       description:
-        "Write `<instance>/docs/` — an index page, one page per artefact, a page per over-large category and per menu group — from `fhir-artifact-index/index.json` (and `menu.json` when ingested), styled by the template chrome an owning instance ingested. Moved down to this layer because nothing in it was one IG's own (#1767); with `--summary` it writes an instance's landing page, opening with that instance's harness section. For an instance whose docs declare `igSite` (bean `mftp`) it writes no index, menu or category pages — the IG site's own replace them — and only a front-matter `artifacts.md` naming the Tool that drew it. Where an instance declares a visualiser `renderedBy: ig-pages`, it also writes that visualiser's route page, `<base>/<instance>/<id>/`, which opens the artefact index; with `--site <dir>` it writes only those route pages, under that site. For an IG whose SOURCE is at hand, `build-ig-site` renders the IG's own pages instead; this is for an IG known only by what it published.",
+        "Write `<instance>/docs/` — an index page, one page per artefact, a page per over-large category and per menu group — from `fhir-artifact-index/index.json` (and `menu.json` when ingested), styled by the template chrome an owning instance ingested. Moved down to this layer because nothing in it was one IG's own (#1767); with `--summary` it writes an instance's landing page, opening with that instance's harness section. For an instance whose docs declare `igSite` (bean `mftp`) it writes no index, menu or category pages — the IG site's own replace them — and only a front-matter `artifacts.md` naming the Tool that drew it. Where an instance declares a visualiser `renderedBy: ig-pages`, it also writes that visualiser's route page, `<base>/<instance>/<id>/`, which opens the artefact index. For an IG whose SOURCE is at hand, `build-ig-site` renders the IG's own pages instead; this is for an IG known only by what it published.",
       install: { none: true },
       invoke: { shell: "bun run fhir-harness/scripts/gen-ig-pages.ts" },
       // What this Tool CAN draw. An instance declares that it DOES, in its
@@ -258,8 +258,7 @@ export function tools(baseUrl?: string): ToolDefinition[] {
       renders: ["fhir-artifact-index"],
       io: {
         inputs: [
-          { name: "instance", schema: t("RepoPath"), required: true, arg: { flag: "--instance" }, description: "The instance directory: holds `fhir-artifact-index/` and receives `docs/`." },
-          { name: "site", schema: t("RepoPath"), required: false, arg: { flag: "--site" }, description: "A site being built: write ONLY the route pages of the visualisers declared `renderedBy: ig-pages` (`<locale>/<harness>/<id>/` and, per instance, `…/<instance>/`) under it, and nothing else: not `docs/`, not the instance. Each opens the IG's artefact index where the site carries it, and is that index otherwise. A repository's own site build passes it (`visualiser-writers.ts` in cat-harness-tools), since the instance is a pinned mount." },
+          { name: "instance", schema: t("RepoPath"), required: true, description: "The instance directory: holds `fhir-artifact-index/` and receives `docs/`." },
           { name: "label", schema: t("Text"), required: false, description: "The IG's display name. The index carries only the package id, which stands in when this is absent." },
           { name: "chrome-owner", schema: t("Text"), required: false, description: "The instance whose `chrome.json` styles the pages. Absent, the pages are unstyled and the build says so. The banner's identity is always the index's; a chrome ingested from another IG lends its tokens, never its status." },
           { name: "summary", schema: t("Flag"), required: false, description: "Open the index page with the instance's own declaration (`harness_details.html` with `instance=`), making it the instance's landing page." },
@@ -648,7 +647,7 @@ export function tools(baseUrl?: string): ToolDefinition[] {
           { name: "base", schema: t("FilesystemPath"), required: true },
           { name: "head", schema: t("FilesystemPath"), required: true },
           { name: "plan", schema: t("FilesystemPath"), required: false },
-          { name: "site", schema: t("FilesystemPath"), required: false, description: "A directory inside the IG's just-the-docs source; pages are wrapped in `{% raw %}` so FHIR narratives' Liquid is not executed." },
+          { name: "site", schema: t("FilesystemPath"), required: false, description: "A directory inside the IG's just-the-docs source; pages are wrapped in Liquid raw blocks so FHIR narratives' Liquid is not executed." },
         ],
         outputs: [
           { name: "changed", schema: t("Count") },
