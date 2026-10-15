@@ -7,10 +7,13 @@
  * step 7. It exports the three roles the runtime calls, by these names:
  *
  * - `open(host, ctx)` → `{ get(), dispose() }`. `ctx` is
- *   `{ text, src, path, label, kind, repo, branch, config, status(msg) }`;
- *   `ctx.text` is the Questionnaire JSON and `ctx.config.suggest` carries the
- *   site's Form Builder (`builder`), its service worker (`sw`), the FSH
- *   `source` and the IG's `slug`. The panel in `host` asks which side was
+ *   `{ text, sourceText, sourcePath, why, src, path, label, kind, repo,
+ *   branch, config, status(msg) }`; `ctx.text` is the BUILT Questionnaire
+ *   JSON (the host's `data-suggest-text`, the `.source.json` the IG compiled
+ *   from FSH), `ctx.sourcePath` / `ctx.sourceText` the FSH it was built from,
+ *   `ctx.why` the reader's reason as it stands (a live getter), and
+ *   `ctx.config.suggest` carries the site's Form Builder (`builder`), its
+ *   service worker (`sw`), the FSH `source` and the IG's `slug`. The panel in `host` asks which side was
  *   edited (the Questionnaire, or its L2 wireframe), opens the self-hosted
  *   NLM Form Builder in a window and keeps its hand-back, and offers a
  *   raw-JSON fallback. `get()` is awaited on Submit, never polled;
@@ -20,8 +23,9 @@
  *   introduces (`checkSuggestion` in `check-wireframe-questionnaire`).
  * - `issue(before, after, ctx)` → `{ title, body }`: everything in the body
  *   (an RFC 6902 JSON Patch over the built Questionnaire, a before/after item
- *   table, the side that was edited, the FSH source link and the reader's
- *   Why), and NO `template`: GitHub ignores `body` when `template=` names an
+ *   table, the side that was edited and the FSH source link) but the
+ *   reader's Why, which the host appends as `**Why:**` (the runtime does so
+ *   when a mode's body lacks it), and NO `template`: GitHub ignores `body` when `template=` names an
  *   issue form, so the patch would be lost. The `questionnaire-change.yml`
  *   form stays for people filing by hand.
  *
@@ -31,7 +35,8 @@
  * A plain ES module with no build step and no dependency but the vendored
  * NLM tools the page already serves. Under a runtime without the registry the
  * form page's loader (`templates/ig-pages/questionnaire-form.js`) opens it
- * itself, with the same `ctx`, and builds the issue link with `issueUrl`.
+ * itself, with the same `ctx`, appends the Why with `withWhy` as the runtime
+ * does, and builds the issue link with `issueUrl`.
  */
 import { checkSuggestion } from "./check-wireframe-questionnaire.js";
 
@@ -171,6 +176,27 @@ export function check(before, after, opts = {}) {
   return [...r.errors.map((message) => ({ severity: "error", message })), ...r.warnings.map((message) => ({ severity: "warning", message }))];
 }
 
+/**
+ * The line of `sourceText` that declares the Questionnaire `id`
+ * (`Instance: <id>`), 1-based, or undefined.
+ */
+export function instanceLine(sourceText, id) {
+  if (typeof sourceText !== "string" || !id) return undefined;
+  const i = sourceText.split(/\r?\n/).findIndex((l) => l.trim().split(/\s+/).join(" ") === `Instance: ${id}`);
+  return i < 0 ? undefined : i + 1;
+}
+
+/**
+ * The issue body with the reader's Why appended as `**Why:**`, exactly as the
+ * ✍ runtime appends it to a mode's body: only when there is one and the body
+ * does not already carry it. The form page's loader uses it when no runtime
+ * with the mode registry is on the page.
+ */
+export function withWhy(body, why) {
+  const w = String(why ?? "").trim();
+  return w && body.indexOf(w) < 0 ? `${body}\n\n**Why:**\n${w}\n` : body;
+}
+
 /** A file in the IG repository, as a GitHub link (a `#L12` anchor kept). */
 function sourceLink(source, repo, branch) {
   if (!repo) return `\`${source}\``;
@@ -180,10 +206,12 @@ function sourceLink(source, repo, branch) {
 
 /**
  * The change request, `{ title, body }`, with no `template` (see the module
- * comment). The runtime's `ctx` is read for `repo`, `branch` and
- * `config.suggest.{source, slug}`; the side edited and the reader's Why come
- * from the session `open` keeps, unless `ctx.edited` / `ctx.why` say.
- * `ctx.page` is the form page's URL.
+ * comment). The runtime's `ctx` is read for `repo`, `branch`, `sourcePath`
+ * (else `config.suggest.source`), `sourceText` (to anchor the source link on
+ * the `Instance:` line) and `config.suggest.slug`; the side edited comes from
+ * the session `open` keeps, unless `ctx.edited` says. The reader's Why is
+ * not written here: the host appends it (`withWhy`). `ctx.page` is the form
+ * page's URL.
  */
 export function issue(before, after, ctx = {}) {
   const s = sessionOf(ctx, before);
@@ -193,13 +221,14 @@ export function issue(before, after, ctx = {}) {
   const cfg = ctx.config?.suggest ?? {};
   const repo = ctx.repo ?? ctx.config?.repo;
   const branch = ctx.branch ?? ctx.config?.branch ?? "main";
-  const source = ctx.source ?? cfg.source;
+  const given = ctx.sourcePath ?? ctx.source ?? cfg.source;
   const slug = ctx.slug ?? cfg.slug;
   const page = ctx.page ?? (typeof location === "object" && location ? String(location.href).split("#")[0] : undefined);
   const id = b.id ?? a.id ?? "?";
   const ref = b.url ?? a.url ?? `Questionnaire/${id}`;
   const edited = (ctx.edited ?? s?.edited()) === "wireframe" ? "wireframe" : "questionnaire";
-  const why = String(ctx.why ?? s?.why() ?? "").trim();
+  const line = given && !given.includes("#") ? instanceLine(ctx.sourceText, id) : undefined;
+  const source = given && line ? `${given}#L${line}` : given;
   const patch = JSON.stringify(annotatedPatch(a, b), null, 2);
   const items = itemTable(a, b);
   const findings = ctx.findings ?? check(base, after);
@@ -208,10 +237,6 @@ export function issue(before, after, ctx = {}) {
     `**Edited:** ${edited === "wireframe" ? "the L2 wireframe — bring the Questionnaire in line with it" : "the Questionnaire — bring the L2 wireframe in line with it"}`,
     ...(source ? [`**Source:** ${sourceLink(source, repo, branch)}`] : []),
     ...(page ? [`**Page:** ${page}`] : []),
-    "",
-    "### Why",
-    "",
-    why || "_Not given._",
     "",
     "### Items, before and after",
     "",
@@ -290,7 +315,7 @@ const STATUS = {
 };
 
 /**
- * The editor, in `host`. `ctx.text` is the Questionnaire as JSON;
+ * The editor, in `host`. `ctx.text` is the built Questionnaire as JSON;
  * `ctx.config.suggest` may name the self-hosted Form Builder (`builder`),
  * the service worker it needs (`sw`) and the FHIR version LHC-Forms reads
  * (`fhirVersion`); `ctx.status(msg)` is where progress is said, else a line
@@ -365,9 +390,6 @@ export function open(host, ctx = {}) {
     text,
     roundTrip: () => state.roundTrip,
     edited: () => panel.querySelector('input[name="fa-q-edited"]:checked')?.value ?? "questionnaire",
-    // The runtime's dialog has its own Why field and does not pass it to a
-    // mode's issue(); read it from the dialog the panel sits in.
-    why: () => panel.closest?.("dialog")?.querySelector(".fa-sg-why textarea")?.value ?? "",
   };
   sessions.set(ctx, session);
   last = session;

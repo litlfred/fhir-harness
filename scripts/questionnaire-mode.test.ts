@@ -6,7 +6,7 @@
 import { describe, expect, test } from "bun:test";
 
 // @ts-expect-error -- a plain ES module, deliberately untyped (no build step).
-import { annotatedPatch, builderStep, builderUrl, check, issue, issueUrl, itemTable, jsonPatch, open, URL_CAP } from "./questionnaire-mode.js";
+import { annotatedPatch, builderStep, builderUrl, check, instanceLine, issue, issueUrl, itemTable, jsonPatch, open, URL_CAP, withWhy } from "./questionnaire-mode.js";
 
 const q = (...item: object[]) => ({ resourceType: "Questionnaire", id: "intake", url: "http://example.org/ig/Questionnaire/intake", item });
 const name = { linkId: "1", type: "string", text: "Name", definition: "http://example.org/ig/StructureDefinition/Client#name" };
@@ -56,16 +56,30 @@ describe("issue: the change request", () => {
     expect(r.body).toContain("the L2 wireframe — bring the Questionnaire in line with it");
     expect(r.body).toContain("**Source:** [input/fsh/intake.fsh#L12](https://github.com/o/ig/blob/dev/input/fsh/intake.fsh#L12)");
     expect(r.body).toContain("**Page:** https://o.github.io/ig/Questionnaire-intake-form.html");
-    expect(r.body).toContain("### Why\n\nBirth date is mandatory.");
+    // The Why is the host's to append (the runtime does), never the mode's.
+    expect(r.body).not.toContain("Birth date is mandatory.");
+    expect(r.body).not.toContain("Why");
     expect(r.body).toContain("| `2` | date · Date of birth | date · Date of birth · required |");
     const patch = /```json\n([\s\S]*?)\n```/.exec(r.body)![1]!;
     expect(JSON.parse(patch)).toEqual([{ op: "add", path: "/item/1/required", value: true, linkId: "2" }]);
   });
-  test("the side defaults to the Questionnaire, and a missing Why says so", () => {
+  test("the side defaults to the Questionnaire", () => {
     const r = issue(text(q(name)), text(q({ ...name, text: "Full name" })));
     expect(r.body).toContain("the Questionnaire — bring the L2 wireframe in line with it");
-    expect(r.body).toContain("### Why\n\n_Not given._");
     expect(r.title).toBe("Suggested edit: Questionnaire/intake");
+  });
+  test("ctx.sourcePath names the source, anchored on the Instance line of ctx.sourceText", () => {
+    const fsh = "Alias: $x = http://x\n\nInstance:   intake\nInstanceOf: Questionnaire\n";
+    const r = issue(text(q(name)), text(q({ ...name, text: "Full name" })), { repo: "o/ig", branch: "main", config: cfg, sourcePath: "input/fsh/q.fsh", sourceText: fsh });
+    expect(r.body).toContain("**Source:** [input/fsh/q.fsh#L3](https://github.com/o/ig/blob/main/input/fsh/q.fsh#L3)");
+    const plain = issue(text(q(name)), text(q({ ...name, text: "Full name" })), { repo: "o/ig", sourcePath: "input/fsh/q.fsh", sourceText: "Instance: other\n" });
+    expect(plain.body).toContain("**Source:** [input/fsh/q.fsh](https://github.com/o/ig/blob/main/input/fsh/q.fsh)");
+    expect(instanceLine(undefined, "intake")).toBeUndefined();
+  });
+  test("withWhy appends the Why as the runtime does, once", () => {
+    expect(withWhy("body", "  Reads better.  ")).toBe("body\n\n**Why:**\nReads better.\n");
+    expect(withWhy("body", "")).toBe("body");
+    expect(withWhy(withWhy("body", "Reads better."), "Reads better.")).toBe("body\n\n**Why:**\nReads better.\n");
   });
   test("an unchanged item list says so", () => {
     expect(itemTable(q(name), { ...q(name), title: "New" })).toStartWith("No item changed");
@@ -103,7 +117,6 @@ class El {
   all(): El[] { return this.kids.flatMap((k) => [k, ...k.all()]); }
   querySelector(sel: string) {
     if (sel === 'input[name="fa-q-edited"]:checked') return this.all().find((e) => e.tagName === "input" && e.checked) ?? null;
-    if (sel === ".fa-sg-why textarea") return this.all().find((e) => e.tagName === "textarea" && e.why) ?? null;
     return null;
   }
   closest(sel: string): El | null { return sel === "dialog" ? (this.tagName === "dialog" ? this : (this.parent?.closest(sel) ?? null)) : null; }
@@ -112,10 +125,6 @@ function page() {
   const win = { location: { href: "https://o.github.io/ig/Questionnaire-intake-form.html#x" }, addEventListener() {}, removeEventListener() {}, open: () => null, navigator: {} };
   const doc = { defaultView: win, createElement: (t: string) => new El(t, doc) };
   const dialog = new El("dialog", doc);
-  const why = new El("textarea", doc);
-  why.why = true;
-  why.value = "  Reads better.  ";
-  dialog.append(why);
   const host = new El("div", doc);
   dialog.append(host);
   return { host, dialog };
@@ -132,9 +141,9 @@ describe("open: the mode the runtime calls", () => {
     h.dispose();
     expect(host.kids).toHaveLength(0);
   });
-  test("the raw JSON edit, the side chosen and the dialog's Why reach issue() through the session", async () => {
+  test("the raw JSON edit and the side chosen reach issue() through the session; the Why is ctx's, not the DOM's", async () => {
     const { host } = page();
-    const ctx = { text: original, status: () => {}, config: { suggest: {} } };
+    const ctx = { text: original, sourcePath: "input/fsh/intake.fsh", sourceText: "Instance: intake\n", why: "Reads better.", repo: "o/ig", status: () => {}, config: { suggest: {} } };
     const h = open(host, ctx);
     const panel = host.kids[0]!;
     const [rawBtn] = panel.all().filter((e) => e.tagName === "button" && e.textContent === "Edit the JSON");
@@ -147,7 +156,9 @@ describe("open: the mode the runtime calls", () => {
     expect(check(original, after)).toEqual([]);
     const r = issue(original, after, ctx);
     expect(r.body).toContain("the L2 wireframe — bring the Questionnaire in line with it");
-    expect(r.body).toContain("### Why\n\nReads better.");
+    expect(r.body).toContain("input/fsh/intake.fsh#L1");
+    expect(r.body).not.toContain("Reads better.");
+    expect(withWhy(r.body, ctx.why).match(/\*\*Why:\*\*/g)).toHaveLength(1);
     expect(r.body).toContain('"path": "/item/1/text"');
     h.dispose();
   });

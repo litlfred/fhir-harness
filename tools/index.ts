@@ -756,6 +756,7 @@ export function tools(baseUrl?: string): ToolDefinition[] {
         cost: "One GitHub runner for the Publisher build: about 25 minutes cold for a ~700-resource IG, less with the restored txcache.",
       },
       requires: { runtime: ["gh"], network: true },
+      remedies: [{ host: "github.com", none: "The Tool IS a workflow dispatch on GitHub, and the build it starts runs on a GitHub runner; offline there is no arm. `ig-cache` restores an AST already seeded." }],
     }),
 
     defineTool({
