@@ -72,7 +72,7 @@ a{color:var(--iga-link)}
 .iga-only{display:block;margin:.5rem 0}
 .iga-constraints{margin:0;padding-left:1.1rem}
 /* The IG's search box in the header (ig-search.ts IG_SEARCH_CSS, kept identical by its test). */
-.ig-search{position:relative;margin-left:auto;flex:0 1 18rem;min-width:10rem}
+.ig-search{position:relative;z-index:1000;margin-left:auto;flex:0 1 18rem;min-width:10rem}
 .ig-search-label{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
 .ig-search-input{width:100%;box-sizing:border-box;padding:.3rem .6rem;font:inherit;font-size:.9rem;color:#1f2328;background:#fff;border:1px solid #c8d1dc;border-radius:4px}
 .ig-search-results{position:absolute;right:0;z-index:30;width:min(32rem,90vw);max-height:70vh;overflow:auto;margin:.25rem 0 0;padding:.25rem 0;list-style:none;background:#fff;color:#1f2328;border:1px solid #ccc;box-shadow:0 2px 6px rgba(0,0,0,.15);text-align:left}
