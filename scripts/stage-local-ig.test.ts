@@ -16,6 +16,7 @@ import { stageLocal } from "../../cat-harness-tools/scripts/stage-local.ts";
 import {
   FOLIO_ROOT_MARKERS,
   IG_DROPPED,
+  droppedWords,
   IG_KEEP,
   IG_SITE_OPTIONAL,
   IG_PUBLISHER,
@@ -48,15 +49,15 @@ const IG_CALLER = `on:
   workflow_dispatch:
 jobs:
   call_build:
-    uses: example-org/ig-base/.github/workflows/fhirbuild.yml@main
+    uses: example-org/ig-template/.github/workflows/fhirbuild.yml@main
 `;
 const IG_PAGES_CALLER = IG_CALLER.replace("fhirbuild.yml", "ghbuild.yml").replace("call_build", "build");
 
-/** The shape of an IG base's reusable ghbuild.yml, cut to the parts the plan reads. */
+/** The shape of an IG template's ghbuild.yml, cut to the parts the plan reads. */
 const IG_WORKFLOW = `on:
   workflow_call:
     inputs:
-      do_overlay:
+      do_preprocess:
         type: boolean
         default: true
       deploy:
@@ -80,11 +81,11 @@ jobs:
       - name: Comment on PR
         if: steps.find_pr.outputs.IS_PR == 'true'
         run: echo comment
-      - name: Check for overlay configuration
+      - name: Check for preprocessing configuration
         run: |
-          if [ -f overlay.json ]; then echo "OVERLAY_ENABLED=true" >> "$GITHUB_ENV"; fi
-      - name: Overlay preprocessing
-        if: inputs.do_overlay != 'false' && env.OVERLAY_ENABLED == 'true'
+          if [ -f preprocess.json ]; then echo "PREPROCESS_ENABLED=true" >> "$GITHUB_ENV"; fi
+      - name: Preprocessing
+        if: inputs.do_preprocess != 'false' && env.PREPROCESS_ENABLED == 'true'
         run: python3 input/scripts/preprocess.py
       - name: Update the image to the latest publisher
         uses: docker://hl7fhir/ig-publisher-base:latest
@@ -134,7 +135,7 @@ jobs:
 
 const ctx = (env: Record<string, string> = {}): ExprContext => ({
   github: { repository: "o/r", ref: "refs/heads/feat", ref_name: "feat", head_ref: "", sha: "abc", event_name: "workflow_dispatch" },
-  inputs: { do_overlay: true, deploy: true },
+  inputs: { do_preprocess: true, deploy: true },
   env,
   steps: {},
 });
@@ -155,7 +156,7 @@ describe("stage-local: an IG lands where its workflow's deploy step puts it", ()
   test("the deploy steps are read, retries ignored", () => {
     expect(deploys.candidate).toEqual({ branch: "gh-pages", folder: "output", targetFolder: "branches/${{ env.BRANCH_DIR }}", message: "Deploy candidate branch", clean: false, cleanExclude: [], singleCommit: true });
     expect(deploys.main).toMatchObject({ targetFolder: "", message: "Deploy main branch", clean: true, cleanExclude: ["branches", "sitepreview"] });
-    expect(wf.inputs).toEqual({ do_overlay: true, deploy: true });
+    expect(wf.inputs).toEqual({ do_preprocess: true, deploy: true });
   });
 
   test("default branch → the root, kept paths are the action's own and clean-exclude; other branches → branches/<last component>", () => {
@@ -224,8 +225,8 @@ describe("stage-local: the IG build is the workflow's own steps, planned", () =>
     expect(by["Setup Python"]!.action).toBe("venv");
     expect(by["Find PR number"]).toMatchObject({ action: "skip", reason: expect.stringMatching(/secret/) });
     expect(by["Comment on PR"]).toMatchObject({ action: "skip", reason: expect.stringMatching(/false here/) });
-    expect(by["Check for overlay configuration"]!.action).toBe("run");
-    expect(by["Overlay preprocessing"]).toMatchObject({ action: "run", reason: expect.stringMatching(/decided when the run reaches it/) });
+    expect(by["Check for preprocessing configuration"]!.action).toBe("run");
+    expect(by["Preprocessing"]).toMatchObject({ action: "run", reason: expect.stringMatching(/decided when the run reaches it/) });
     expect(by["Update the image to the latest publisher"]!.action).toBe("docker");
     expect(by["Upload qa.json artifact"]!.action).toBe("skip");
     expect(by["Deploy main"]!.action).toBe("deploy");
@@ -239,8 +240,8 @@ describe("stage-local: the IG build is the workflow's own steps, planned", () =>
   });
 
   test("expressions read as the runner reads them", () => {
-    const c = ctx({ OVERLAY_ENABLED: "true" });
-    expect(evalExpr("inputs.do_overlay != 'false' && env.OVERLAY_ENABLED == 'true'", c)).toBe(true);
+    const c = ctx({ PREPROCESS_ENABLED: "true" });
+    expect(evalExpr("inputs.do_preprocess != 'false' && env.PREPROCESS_ENABLED == 'true'", c)).toBe(true);
     expect(evalExpr("${{ inputs.deploy != false }}", c)).toBe(true);
     expect(evalExpr("steps.find_pr.outputs.IS_PR == 'true'", c)).toBe(false);
     expect(evalExpr("github.head_ref || github.ref_name", c)).toBe("feat");
@@ -267,7 +268,7 @@ describe("stage-local end to end: an IG published to a local origin, preview the
     sh(repo, "config", "user.email", "t@example.org");
     sh(repo, "remote", "add", "origin", "https://github.com/o/r");
     sh(repo, "config", `url.file://${bare}.insteadOf`, "https://github.com/o/r");
-    put(repo, ".github/workflows/fhirbuild.yml", IG_CALLER.replace("example-org/ig-base", "o/sb"));
+    put(repo, ".github/workflows/fhirbuild.yml", IG_CALLER.replace("example-org/ig-template", "o/sb"));
     // The platform's chrome scripts, as a mount lays them (stand-ins: stage-local-ig-chrome.test.ts runs the real rail).
     put(repo, "cat-harness-tools/scripts/sync-docs-harness.ts", FAKE_SYNC);
     put(repo, "cat-harness-tools/scripts/rail-standalone-pages.ts", FAKE_RAIL);
@@ -387,9 +388,19 @@ describe("an IG repository's folio site (owner, 2026-10-14)", () => {
     expect(igFolioSite({ hasIndexConfig: true, scripts, landing, hasOpenapi: true, identity }).site!.notes.join("\n")).toMatch(/NOT built/);
   });
 
-  test("the Publisher's version comparisons are the one drop the root's parity guard excuses, by the owner's ruling", () => {
-    expect(IG_DROPPED.map((d) => d.dir)).toEqual(["comparison-v*"]);
+  test("the root's parity guard excuses exactly what the owner ruled dropped: the comparisons, schemas/ and the theme's side bar", () => {
+    expect(IG_DROPPED.map((d) => d.dir ?? `feature:${d.feature}`)).toEqual(["comparison-v*", "schemas", "feature:siteNav"]);
     expect(IG_DROPPED[0]!.ruling).toContain("2a");
+    expect(IG_DROPPED[1]!.ruling).toContain("New address only");
+    expect(IG_DROPPED[2]!.ruling).toMatch(/2026-10-15.*layout "C"/);
+    // Each entry names one thing, never both.
+    for (const d of IG_DROPPED) expect((d.dir === undefined) !== (d.feature === undefined)).toBe(true);
+    // Search and the language picker are never excused.
+    expect(IG_DROPPED.map((d) => d.feature).filter(Boolean)).toEqual(["siteNav"]);
+  });
+
+  test("the plan says each drop in words", () => {
+    expect(IG_DROPPED.map(droppedWords)).toEqual(["comparison-v*/", "schemas/", "the page feature siteNav"]);
   });
 
   test("harnessed but no landing named: refused, never guessed among the mounts", () => {

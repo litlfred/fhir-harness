@@ -53,9 +53,11 @@ import { wrapRaw } from "../../cat-harness-tools/scripts/lib/liquid-raw.ts";
 import type { IgReleases } from "../schemas/ig-releases.ts";
 import { igSiteFooter, sushiFooterData, type IgFooterData } from "./ig-footer.ts";
 import { thinIndexPage } from "./ig-thin-pages.ts";
+import { IG_SEARCH_CSS, IG_SEARCH_INDEX_FILE, IG_SEARCH_SCRIPT_FILE, igSearchBox, igSearchScript, type IgSearchRef } from "./ig-search.ts";
 import { withRenderedBy } from "../../cat-harness-tools/scripts/viewer-declarations.js";
 import { NAVBAR_LINKED } from "../../cat-harness-tools/scripts/lib/harness-rail.ts";
 import { DEFAULT_ICON } from "../../cat-harness-tools/scripts/thin-page.ts";
+import { PAGE_BAR_CLASS, PAGE_LAYOUT_CSS_FILE, PAGE_LAYOUT_CSS_SOURCE, PAGE_LAYOUT_JS_FILE, PAGE_LAYOUT_JS_SOURCE, PAGE_LAYOUT_MARK, PAGE_MAIN_CLASS } from "../../cat-harness-tools/scripts/page-layout.ts";
 
 /** One page's navigation, from `sushi-config.yaml` `pages:`. */
 export interface PageNav {
@@ -348,6 +350,9 @@ export function rubyLiquidStrings(text: string): { text: string; count: number }
 const siteHref = (baseurl: string, href: string): string =>
   /^([a-z][a-z0-9+.-]*:|\/|#)/i.test(href) ? href : `${baseurl.replace(/\/$/, "")}/${href}`;
 
+/** The IG's search files, site-absolute under `baseurl`, for the top bar every page shares. */
+export const igSearchAt = (baseurl: string): IgSearchRef => ({ index: siteHref(baseurl, IG_SEARCH_INDEX_FILE), script: siteHref(baseurl, IG_SEARCH_SCRIPT_FILE) });
+
 const escHtml = (s: string): string => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
 
 /**
@@ -372,8 +377,20 @@ export function igTocNav(menu: IgMenu, baseurl: string, extra: ReadonlyArray<{ l
  * dropdowns, one per group. `<details>`, so it needs no script; and not a
  * `<nav class="fa-nav">`, which the rail pass would read as "already
  * navigated" and skip.
+ *
+ * With `search`, the bar ends in the IG's search box and the script that
+ * runs it (`ig-search.ts`; owner, 2026-10-15, layout "C": "add a search box
+ * to the IG top bar"). Both sit INSIDE the bar's `<div>`, so a composed page,
+ * which lifts the bar out of the staged layout, carries them too.
+ *
+ * It is the page bar of the shared page layout (cat-harness-tools
+ * `page-layout.ts`, `PAGE_BAR_CLASS`): full width beside the rail, sticky as
+ * folio-assistant's band is (owner, 2026-10-15: "please consolidate
+ * behaviours/appearance"). Its hrefs are site-absolute, so the same bytes
+ * serve every page of the site, which is how `publisher-pages` gives this one
+ * bar to the pages other generators wrote (`ig-search.ts` `withIgBar`).
  */
-export function igTopBar(menu: IgMenu, baseurl: string, title: string): string {
+export function igTopBar(menu: IgMenu, baseurl: string, title: string, search?: IgSearchRef): string {
   const groups = menu.groups
     .map((g) =>
       g.items?.length
@@ -383,19 +400,25 @@ export function igTopBar(menu: IgMenu, baseurl: string, title: string): string {
         : `<span class="ig-topbar-group">${escHtml(g.label)}</span>`,
     )
     .join("");
-  return `<div class="ig-topbar" role="navigation" aria-label="${escHtml(title)} menu"><a class="ig-topbar-home" href="${escHtml(siteHref(baseurl, "index.html"))}">${escHtml(title)}</a>${groups}</div>`;
+  const box = search ? `${igSearchBox(search, title)}${igSearchScript(search)}` : "";
+  return `<div class="ig-topbar ${PAGE_BAR_CLASS}" role="navigation" aria-label="${escHtml(title)} menu"><a class="ig-topbar-home" href="${escHtml(siteHref(baseurl, "index.html"))}">${escHtml(title)}</a>${groups}${box}</div>`;
 }
 
 /**
  * The top bar's style: the IG's title on a line of its own, its menu on the
- * line below as a row of dropdowns that overlay the page. Owner, 2026-10-14,
+ * line below as a row of dropdowns that overlay the page. Its place, width and
+ * stickiness are the shared page layout's (`page-layout.css`), which this
+ * repeats only so far as the full layout, which does not link it, needs; the
+ * content is never capped to a centred column (owner, 2026-10-15: "full width.
+ * keep it on the other pages as well"). `ig-artifact.css` carries every rule
+ * here, so a thin page links one IG stylesheet. Owner, 2026-10-14,
  * on smart-hiv: *"also need line break between IG title and top menu"* — on
  * one wrapping row the title shared the line with the menu, and the last
  * group dropped under the title. The break is the title's full-width flex
  * basis, so the markup ({@link igTopBar}) stays one `<div>`.
  */
 export const IG_TOPBAR_CSS = `
-.ig-topbar{display:flex;flex-wrap:wrap;align-items:center;gap:.25rem 1rem;padding:.5rem 1rem;background:var(--ig-topbar-bg,#1c4b7c);color:#fff;font-size:.95rem}
+.ig-topbar{display:flex;flex-wrap:wrap;align-items:center;gap:.25rem 1rem;padding:.5rem 1.5rem;background:var(--ig-topbar-bg,#1c4b7c);color:#fff;font-size:.95rem}
 .ig-topbar a{color:#fff;text-decoration:none}
 .ig-topbar-home{flex:0 0 100%;font-weight:600}
 .ig-topbar-group{position:relative}
@@ -409,12 +432,13 @@ export const IG_TOPBAR_CSS = `
 html:not([data-fa-scheme="light"]) .ig-topbar-group ul{background:#2f2e35;border-color:#44434d;box-shadow:0 2px 8px rgba(0,0,0,.5)}
 html:not([data-fa-scheme="light"]) .ig-topbar-group li a{color:#cfe0f7}
 html:not([data-fa-scheme="light"]) .ig-topbar-group li a:hover{background:#3a3943}
-.ig-main{max-width:60rem;padding:1rem 1.5rem 3rem}
+.ig-main{max-width:none;padding:1rem 1.5rem 3rem}
 .ig-edit{margin-top:2rem;font-size:.85rem}
 .ig-src{font-size:.7em;text-decoration:none;opacity:.45;margin-left:.25em}
 .ig-src:hover{opacity:1}
 .ig-feedback{font-size:.7em;text-decoration:none;opacity:.55;margin-left:.15em}
 .ig-feedback:hover{opacity:1}
+${IG_SEARCH_CSS.trim()}
 `;
 
 /**
@@ -609,8 +633,8 @@ function igEditLines(scriptSrc?: string): string[] {
 
 /** The edit-link and source-link runtimes as one file, linked by a thin page's bottom. */
 export const IG_SOURCE_LINKS_FILE = "assets/ig-source-links.js";
-/** The IG top bar's style as a file, linked by the thin layout. */
-export const IG_TOPBAR_CSS_FILE = "assets/ig-topbar.css";
+/** The IG's top bar as the staged layout holds it, on a line of its own: what `composeIgSite` lifts out. */
+export const IG_TOPBAR_RE = /<div class="ig-topbar[ "][\s\S]*?<\/div>(?=\n|$)/;
 /** The thin narrative layout's stylesheet: the one every thin IG page links (`gen-ig-pages` writes it). */
 export const IG_THIN_CSS_FILE = "assets/ig-artifact.css";
 
@@ -626,7 +650,7 @@ export const IG_THIN_CSS_FILE = "assets/ig-artifact.css";
  * The IG's TOC declaration and section label, when the staged layout carries
  * them, keep the IG's menu in the rail as the full layout does.
  */
-export function thinIgLayout(assetsAt: string, tocNav = "", sectionLabel?: string): string {
+export function thinIgLayout(assetsAt: string, tocNav = "", sectionLabel?: string, topBar = ""): string {
   const asset = (f: string) => `{{ '${assetsAt}${f}' | relative_url }}`;
   return [
     "<!doctype html>",
@@ -639,12 +663,16 @@ export function thinIgLayout(assetsAt: string, tocNav = "", sectionLabel?: strin
     `<link rel="icon" href="${escHtml(DEFAULT_ICON)}">`,
     NAVBAR_LINKED,
     ...(sectionLabel ? [`<meta name="fa-visualiser-label" content="${escHtml(sectionLabel)}">`] : []),
+    // The shared page layout first (width, bar, scrolling), then the IG's one stylesheet.
+    `<link rel="stylesheet" href="${asset(PAGE_LAYOUT_CSS_FILE)}" ${PAGE_LAYOUT_MARK}>`,
+    `<script src="${asset(PAGE_LAYOUT_JS_FILE)}" defer ${PAGE_LAYOUT_MARK}></script>`,
     `<link rel="stylesheet" href="${asset(IG_THIN_CSS_FILE)}">`,
-    `<link rel="stylesheet" href="${asset(IG_TOPBAR_CSS_FILE)}">`,
     "</head>",
     "<body>",
     ...(tocNav ? [tocNav] : []),
-    '<main class="ig-main main-content" id="main-content">',
+    // The bar OUTSIDE the content column, so it spans the page beside the rail.
+    ...(topBar ? [topBar] : []),
+    `<main class="ig-main main-content ${PAGE_MAIN_CLASS}" id="main-content">`,
     "{{ content }}",
     "</main>",
     "</body>",
@@ -661,8 +689,9 @@ export function editBaseParts(editBase: string, path: string): { ig_source_repo?
 
 export function igChromeIncludes(topBar: string, thin?: { assetsAt: string }): { top: string; bottom: string } {
   return {
-    // Thin: the top bar's style is the linked `IG_TOPBAR_CSS_FILE`.
-    top: `${thin ? "" : `<style>${IG_TOPBAR_CSS.trim()}</style>\n`}${topBar}\n${IG_FIGURE_IMAGES_STAMP}\n`,
+    // Thin: the bar is the thin layout's, above the content column, and its
+    // style is the linked `IG_THIN_CSS_FILE`; the page's own top is the stamp.
+    top: thin ? `${IG_FIGURE_IMAGES_STAMP}\n` : `<style>${IG_TOPBAR_CSS.trim()}</style>\n${topBar}\n${IG_FIGURE_IMAGES_STAMP}\n`,
     bottom: [
       ...igEditLines(thin ? `{{ '${thin.assetsAt}${IG_SOURCE_LINKS_FILE}' | relative_url }}` : undefined),
       "",
@@ -742,7 +771,7 @@ export function composeIgSite(
     } else put(join(dataDest, f), readFileSync(from));
   }
   const stagedLayout = existsSync(join(staged, "_layouts", "default.html")) ? readFileSync(join(staged, "_layouts", "default.html"), "utf-8") : "";
-  const topBar = /<div class="ig-topbar"[\s\S]*?<\/div>(?=\n|$)/.exec(stagedLayout)?.[0] ?? "";
+  const topBar = IG_TOPBAR_RE.exec(stagedLayout)?.[0] ?? "";
   // THIN, the default (owner, 2026-10-12: "make thin default"): the IG's pages
   // wear `thinIgLayout` rather than the host's layout, so none of the host's
   // chrome is written into them; their own top bar, edit links and footer stay,
@@ -759,8 +788,12 @@ export function composeIgSite(
   if (thin) {
     const tocNav = /<script type="application\/json" data-fa-visualiser-nav>[\s\S]*?<\/script>/.exec(stagedLayout)?.[0];
     const label = /<meta name="fa-visualiser-label" content="([^"]*)">/.exec(stagedLayout)?.[1];
-    put(join(docsRoot, "_layouts", `${layoutName}.html`), thinIgLayout(assetsAt, tocNav, label?.replace(/&quot;/g, '"').replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&")));
-    put(join(dest, IG_TOPBAR_CSS_FILE), `${IG_TOPBAR_CSS.trim()}\n`);
+    put(join(docsRoot, "_layouts", `${layoutName}.html`), thinIgLayout(assetsAt, tocNav, label?.replace(/&quot;/g, '"').replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&"), topBar));
+    // The shared page layout's two files, unless the staged site brings them
+    // (the artefact pages' generator writes them beside `ig-artifact.css`).
+    for (const [rel, src] of [[PAGE_LAYOUT_CSS_FILE, PAGE_LAYOUT_CSS_SOURCE], [PAGE_LAYOUT_JS_FILE, PAGE_LAYOUT_JS_SOURCE]] as const) {
+      if (!existsSync(join(staged, rel))) put(join(dest, rel), readFileSync(src));
+    }
     put(join(dest, IG_SOURCE_LINKS_FILE), `${EDIT_LINKS_RUNTIME}\n${SOURCE_LINKS_JS}\n`);
   }
   let pages = 0;
@@ -1108,6 +1141,13 @@ export interface StageOptions {
   ast?: string;
   /** The FHIR package cache the dependency table reads; default `FHIR_PACKAGE_CACHE` or `~/.fhir/packages`. */
   packageCache?: string;
+  /**
+   * The site serves the IG's search (`ig-search.ts`: `assets/ig-search.json`
+   * and `assets/ig-search.js` under the docs root, which the caller writes).
+   * Given, the top bar and the thin `artifacts` and `toc` pages carry the
+   * search box. Absent, no page names files the site may not hold.
+   */
+  search?: boolean;
 }
 
 /** The fields of a `folio-fhir-artifact/v1` entry this build reads. */
@@ -1877,6 +1917,7 @@ export function stageIgSite(igSrc: string, out: string, opts: StageOptions = {})
         ...(at?.prev ? { prev: at.prev } : {}),
         ...(at?.next ? { next: at.next } : {}),
         ...(stem === "toc" ? { outline } : {}),
+        ...(opts.search ? { search: { index: `${root}${IG_SEARCH_INDEX_FILE}`, script: `${root}${IG_SEARCH_SCRIPT_FILE}` } } : {}),
       });
       // The artefact index's viewer declaration, which the full page took as
       // front matter (`gen-ig-pages`' front-matter-only `artifacts.md`).
@@ -1955,7 +1996,7 @@ export function stageIgSite(igSrc: string, out: string, opts: StageOptions = {})
     // menu: its own table of contents, and the releases page when written.
     const extra = [{ label: "Table of Contents", href: "toc.html" }, ...(generated.includes("releases.md") ? [{ label: "Releases", href: "releases.html" }] : [])];
     mkdirSync(join(out, "_layouts"), { recursive: true });
-    writeFileSync(join(out, "_layouts", "default.html"), harnessLayout(igTopBar(opts.menu, baseurl, title), igTocNav(opts.menu, baseurl, extra), title));
+    writeFileSync(join(out, "_layouts", "default.html"), harnessLayout(igTopBar(opts.menu, baseurl, title, opts.search ? igSearchAt(baseurl) : undefined), igTocNav(opts.menu, baseurl, extra), title));
   }
   writeFileSync(
     join(out, "_config.yml"),

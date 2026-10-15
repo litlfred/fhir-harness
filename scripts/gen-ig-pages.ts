@@ -112,6 +112,8 @@ import { JSON_VIEW_SCRIPT, VIEW_PAGE, examplesPage, hasJsonView, historyPage, js
 import { isDirectoryReadme } from "../../cat-harness/schemas/kg-node.js";
 import { ARTIFACT_INDEX_FILE, artifactJsonLdFiles, localResourceHref } from "./ig-artifact-jsonld.ts";
 import { THIN_PAGE_SCRIPT, THIN_PAGE_STYLE, artifactTabs, thinArtifactPath, thinArtifactView } from "./ig-thin-pages.ts";
+import { PAGE_LAYOUT_CSS_FILE, PAGE_LAYOUT_CSS_SOURCE, PAGE_LAYOUT_JS_FILE, PAGE_LAYOUT_JS_SOURCE } from "../../cat-harness-tools/scripts/page-layout.ts";
+import { IG_SEARCH_INDEX_FILE, IG_SEARCH_SCRIPT_FILE } from "./ig-search.ts";
 
 import { IgMenuSchema, type IgMenu, type IgMenuGroup, menuHref, menuItemCount } from "../schemas/ig-menu.js";
 import {
@@ -201,6 +203,13 @@ if (FULL_PAGES && process.argv.includes("--thin")) {
   process.exit(2);
 }
 const THIN = !FULL_PAGES;
+/**
+ * `--search`: the site serves the IG's search under the docs root
+ * (`ig-search.ts`: `assets/ig-search.json` and `assets/ig-search.js`, which
+ * `ig-repo-site.ts compose` writes), so every thin artefact page's header
+ * carries the search box. Absent, no page names files the site may not hold.
+ */
+const SEARCH = THIN && process.argv.includes("--search");
 const JSONLD_BASE = (() => {
   const b = arg("--jsonld-base");
   return b === undefined ? undefined : b.endsWith("/") ? b : `${b}/`;
@@ -1599,6 +1608,7 @@ if (existsSync(MENU)) {
         ...(COMPILED_DATA ? { compiledData: COMPILED_DATA } : {}),
         ...(resource ? { resource } : {}),
         ...(tabs.length ? { tabs, index: ARTIFACT_INDEX_FILE } : {}),
+        ...(SEARCH ? { search: { index: `../${IG_SEARCH_INDEX_FILE}`, script: `../${IG_SEARCH_SCRIPT_FILE}` } } : {}),
       };
       if (resource) served += 1;
       pages.set(thinArtifactPath(a), thinArtifactView(ix, a, "content", opts));
@@ -1623,6 +1633,10 @@ if (existsSync(MENU)) {
     }
     pages.set(THIN_PAGE_SCRIPT, readFileSync(THIN_RENDERER, "utf8"));
     pages.set(THIN_PAGE_STYLE, readFileSync(THIN_STYLE, "utf8"));
+    // The shared page layout every thin page links before its own stylesheet
+    // (cat-harness-tools `page-layout.ts`): one width, one bar, one scroll.
+    pages.set(PAGE_LAYOUT_CSS_FILE, readFileSync(PAGE_LAYOUT_CSS_SOURCE, "utf8"));
+    pages.set(PAGE_LAYOUT_JS_FILE, readFileSync(PAGE_LAYOUT_JS_SOURCE, "utf8"));
   }
 }
 

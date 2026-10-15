@@ -537,16 +537,26 @@ describe("the IG site, thin by default: stageIgSite, composeIgSite and artifacts
     expect(page).toContain("{% include ig/x/_bottom.html %}");
     const layout = readFileSync(join(host, "_layouts", "ig-thin-x.html"), "utf8");
     expect(layout).toContain('<meta name="folio-navbar" content="linked">');
+    // The shared page layout first, then the IG's ONE stylesheet (owner, 2026-10-15: "please consolidate behaviours/appearance").
+    expect(layout).toContain("{{ '/assets/page-layout.css' | relative_url }}");
+    expect(layout).toContain("{{ '/assets/page-layout.js' | relative_url }}");
     expect(layout).toContain("{{ '/assets/ig-artifact.css' | relative_url }}");
-    expect(layout).toContain("{{ '/assets/ig-topbar.css' | relative_url }}");
+    expect(layout.indexOf("page-layout.css")).toBeLessThan(layout.indexOf("ig-artifact.css"));
+    expect(layout).not.toContain("ig-topbar.css");
     expect(layout).toContain("data-fa-visualiser-nav");
     expect(layout).not.toMatch(/<style|<svg/);
+    // The bar is the layout's, ABOVE the content column, so it spans the page; the column is the layout's full-width one.
+    expect(layout).toContain('class="ig-topbar fa-page-bar"');
+    expect(layout.indexOf('class="ig-topbar fa-page-bar"')).toBeLessThan(layout.indexOf("<main"));
+    expect(layout).toContain('<main class="ig-main main-content fa-page-main" id="main-content">');
     const top = readFileSync(join(host, "_includes", "ig", "x", "_top.html"), "utf8");
-    expect(top).toContain('class="ig-topbar"');
+    expect(top).not.toContain("ig-topbar");
     expect(top).not.toContain("<style");
     const bottom = readFileSync(join(host, "_includes", "ig", "x", "_bottom.html"), "utf8");
     expect(bottom).toContain("<script src=\"{{ '/assets/ig-source-links.js' | relative_url }}\"></script>");
-    expect(existsSync(join(host, "assets", "ig-topbar.css"))).toBe(true);
+    expect(existsSync(join(host, "assets", "ig-topbar.css"))).toBe(false);
+    expect(existsSync(join(host, "assets", "page-layout.css"))).toBe(true);
+    expect(existsSync(join(host, "assets", "page-layout.js"))).toBe(true);
     expect(existsSync(join(host, "assets", "ig-source-links.js"))).toBe(true);
     // The thin list pages carry no front matter, so they are copied as they are.
     expect(readFileSync(join(host, "artifacts.html"), "utf8").startsWith("<!doctype html>")).toBe(true);
