@@ -48,15 +48,15 @@ const IG_CALLER = `on:
   workflow_dispatch:
 jobs:
   call_build:
-    uses: WorldHealthOrganization/smart-base/.github/workflows/fhirbuild.yml@main
+    uses: example-org/ig-base/.github/workflows/fhirbuild.yml@main
 `;
 const IG_PAGES_CALLER = IG_CALLER.replace("fhirbuild.yml", "ghbuild.yml").replace("call_build", "build");
 
-/** The shape of smart-base's ghbuild.yml, cut to the parts the plan reads. */
+/** The shape of an IG base's reusable ghbuild.yml, cut to the parts the plan reads. */
 const IG_WORKFLOW = `on:
   workflow_call:
     inputs:
-      do_dak:
+      do_overlay:
         type: boolean
         default: true
       deploy:
@@ -80,12 +80,12 @@ jobs:
       - name: Comment on PR
         if: steps.find_pr.outputs.IS_PR == 'true'
         run: echo comment
-      - name: Check for DAK configuration
+      - name: Check for overlay configuration
         run: |
-          if [ -f dak.json ]; then echo "DAK_ENABLED=true" >> "$GITHUB_ENV"; fi
-      - name: DAK Preprocessing
-        if: inputs.do_dak != 'false' && env.DAK_ENABLED == 'true'
-        run: python3 input/scripts/transform_dmn.py
+          if [ -f overlay.json ]; then echo "OVERLAY_ENABLED=true" >> "$GITHUB_ENV"; fi
+      - name: Overlay preprocessing
+        if: inputs.do_overlay != 'false' && env.OVERLAY_ENABLED == 'true'
+        run: python3 input/scripts/preprocess.py
       - name: Update the image to the latest publisher
         uses: docker://hl7fhir/ig-publisher-base:latest
         with:
@@ -134,7 +134,7 @@ jobs:
 
 const ctx = (env: Record<string, string> = {}): ExprContext => ({
   github: { repository: "o/r", ref: "refs/heads/feat", ref_name: "feat", head_ref: "", sha: "abc", event_name: "workflow_dispatch" },
-  inputs: { do_dak: true, deploy: true },
+  inputs: { do_overlay: true, deploy: true },
   env,
   steps: {},
 });
@@ -155,7 +155,7 @@ describe("stage-local: an IG lands where its workflow's deploy step puts it", ()
   test("the deploy steps are read, retries ignored", () => {
     expect(deploys.candidate).toEqual({ branch: "gh-pages", folder: "output", targetFolder: "branches/${{ env.BRANCH_DIR }}", message: "Deploy candidate branch", clean: false, cleanExclude: [], singleCommit: true });
     expect(deploys.main).toMatchObject({ targetFolder: "", message: "Deploy main branch", clean: true, cleanExclude: ["branches", "sitepreview"] });
-    expect(wf.inputs).toEqual({ do_dak: true, deploy: true });
+    expect(wf.inputs).toEqual({ do_overlay: true, deploy: true });
   });
 
   test("default branch → the root, kept paths are the action's own and clean-exclude; other branches → branches/<last component>", () => {
@@ -207,7 +207,7 @@ describe("stage-local: an IG lands where its workflow's deploy step puts it", ()
 
   test("so is one over the folio site an IG repository's folio-site.yml deployed, known by its build stamp", () => {
     const pages = tmp("stage-local-ig-pages-");
-    put(pages, "index.html", "<title>WHO SMART Trust | folio-assistant</title>");
+    put(pages, "index.html", "<title>Example IG | folio-assistant</title>");
     put(pages, "folio-build.json", "{}");
     const out = tmp("stage-local-ig-out-");
     put(out, "index.html");
@@ -224,8 +224,8 @@ describe("stage-local: the IG build is the workflow's own steps, planned", () =>
     expect(by["Setup Python"]!.action).toBe("venv");
     expect(by["Find PR number"]).toMatchObject({ action: "skip", reason: expect.stringMatching(/secret/) });
     expect(by["Comment on PR"]).toMatchObject({ action: "skip", reason: expect.stringMatching(/false here/) });
-    expect(by["Check for DAK configuration"]!.action).toBe("run");
-    expect(by["DAK Preprocessing"]).toMatchObject({ action: "run", reason: expect.stringMatching(/decided when the run reaches it/) });
+    expect(by["Check for overlay configuration"]!.action).toBe("run");
+    expect(by["Overlay preprocessing"]).toMatchObject({ action: "run", reason: expect.stringMatching(/decided when the run reaches it/) });
     expect(by["Update the image to the latest publisher"]!.action).toBe("docker");
     expect(by["Upload qa.json artifact"]!.action).toBe("skip");
     expect(by["Deploy main"]!.action).toBe("deploy");
@@ -239,8 +239,8 @@ describe("stage-local: the IG build is the workflow's own steps, planned", () =>
   });
 
   test("expressions read as the runner reads them", () => {
-    const c = ctx({ DAK_ENABLED: "true" });
-    expect(evalExpr("inputs.do_dak != 'false' && env.DAK_ENABLED == 'true'", c)).toBe(true);
+    const c = ctx({ OVERLAY_ENABLED: "true" });
+    expect(evalExpr("inputs.do_overlay != 'false' && env.OVERLAY_ENABLED == 'true'", c)).toBe(true);
     expect(evalExpr("${{ inputs.deploy != false }}", c)).toBe(true);
     expect(evalExpr("steps.find_pr.outputs.IS_PR == 'true'", c)).toBe(false);
     expect(evalExpr("github.head_ref || github.ref_name", c)).toBe("feat");
@@ -267,7 +267,7 @@ describe("stage-local end to end: an IG published to a local origin, preview the
     sh(repo, "config", "user.email", "t@example.org");
     sh(repo, "remote", "add", "origin", "https://github.com/o/r");
     sh(repo, "config", `url.file://${bare}.insteadOf`, "https://github.com/o/r");
-    put(repo, ".github/workflows/fhirbuild.yml", IG_CALLER.replace("WorldHealthOrganization/smart-base", "o/sb"));
+    put(repo, ".github/workflows/fhirbuild.yml", IG_CALLER.replace("example-org/ig-base", "o/sb"));
     // The platform's chrome scripts, as a mount lays them (stand-ins: stage-local-ig-chrome.test.ts runs the real rail).
     put(repo, "cat-harness-tools/scripts/sync-docs-harness.ts", FAKE_SYNC);
     put(repo, "cat-harness-tools/scripts/rail-standalone-pages.ts", FAKE_RAIL);
