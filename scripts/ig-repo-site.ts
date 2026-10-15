@@ -188,7 +188,7 @@ export function builtPage(sourcePath: string): string | undefined {
 const THIN_CSS_SOURCE = join(import.meta.dir, "templates", "ig-pages", "ig-artifact.css");
 
 /** The checkout scripts this module provides, by the names the platform asks for. */
-export const IG_SITE_SCRIPTS = { ast: "ig-site:ast", compose: "ig-site:compose", publisherPages: "ig-site:publisher-pages" } as const;
+export const IG_SITE_SCRIPTS = { ast: "ig-site:ast", compose: "ig-site:compose", publisherPages: "ig-site:publisher-pages", bar: "ig-site:bar" } as const;
 
 /**
  * The instances a repository mounts that nothing else it mounts needs: the
@@ -788,6 +788,21 @@ export function publisherPages(o: { site: string; ast: string; work?: string; ig
   return served;
 }
 
+/**
+ * `ig-site:bar`, a FINAL step of the site build (cat-harness-tools
+ * `build-instance-site.ts` `finalSteps`): the language picker's block and the
+ * IG's slim bar ({@link stampIgBar}) on the pages the platform writes AFTER
+ * `publisher-pages` — the identifier lookup page and the mounted instance
+ * docs. Owner, 2026-10-15: those pages get the search box too. Both stamps
+ * leave a page that already carries them as it was, so the pages
+ * `publisher-pages` stamped are untouched.
+ */
+export function lateBar(site: string, ig: string): { lang: number; pages: number } {
+  const lang = stampTranslationMeta(site, ig);
+  const { pages } = stampIgBar(site, igTitle(ig) ?? basename(resolve(ig)));
+  return { lang, pages };
+}
+
 if (import.meta.main) {
   const [cmd, target, ...rest] = process.argv.slice(2);
   const args = cmd === "ast" ? [target, ...rest].filter((x): x is string => x !== undefined) : rest;
@@ -807,11 +822,15 @@ if (import.meta.main) {
       compose({ docs: resolve(target), ig, baseurl, ...(work ? { work } : {}), ...(opt("plantuml-jar") ? { plantumlJar: opt("plantuml-jar")! } : {}) });
     } else if (cmd === "publisher-pages" && target) {
       publisherPages({ site: resolve(target), ast: join(ig, AST_DIR), ...(work ? { work } : {}), ig });
+    } else if (cmd === "bar" && target) {
+      const r = lateBar(resolve(target), ig);
+      console.log(`bar: the language picker's block on ${r.lang} and the IG's slim bar on ${r.pages} page(s) the platform wrote after publisher-pages`);
     } else {
       console.error(
         "usage: ig-repo-site.ts ast [--ig <checkout>] [--work <dir>]\n" +
           "       ig-repo-site.ts compose <site source> [--ig <checkout>] [--baseurl <base>] [--plantuml-jar <jar>] [--work <dir>]\n" +
-          "       ig-repo-site.ts publisher-pages <built site> [--ig <checkout>] [--work <dir>]",
+          "       ig-repo-site.ts publisher-pages <built site> [--ig <checkout>] [--work <dir>]\n" +
+          "       ig-repo-site.ts bar <built site> [--ig <checkout>]",
       );
       process.exit(2);
     }
