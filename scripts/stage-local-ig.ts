@@ -976,13 +976,31 @@ function folioSiteFor(repo: string, ownerRepo: string): ReturnType<typeof igFoli
   });
 }
 
-/** Where `index.lock.json` mounts an instance in the checkout, or undefined. */
+/**
+ * Where the checkout holds an instance: its mount path in `index.lock.json`,
+ * or, for a LOCAL instance (`index.config.json` `source.local.at`), the
+ * directory the checkout keeps it in. A local instance is not mounted, so the
+ * lock does not list it. Undefined when neither names it.
+ *
+ * The local case is a base harness's own repository: litlfred/smart-base
+ * declares `smart-base` as `source.local.at: "smart-base"` and lands its site
+ * on it, so without this its own IG API sidecars (`ig-site:sidecars`, from
+ * `smart-base/package.json`) read as "not provided by the landing layer" and
+ * were not run, where smart-hiv, which mounts smart-base, runs them
+ * (owner, 2026-10-15: smart-base republishes "via the same IG route as smart-hiv").
+ */
 export function lockedMountPath(repo: string, instance: string): string | undefined {
   const f = join(repo, "index.lock.json");
-  if (!existsSync(f)) return undefined;
-  const l = JSON.parse(readFileSync(f, "utf-8")) as { instances?: { instance?: unknown; path?: unknown }[] };
-  const e = (l.instances ?? []).find((i) => i.instance === instance && typeof i.path === "string");
-  return e ? (e.path as string) : undefined;
+  if (existsSync(f)) {
+    const l = JSON.parse(readFileSync(f, "utf-8")) as { instances?: { instance?: unknown; path?: unknown }[] };
+    const e = (l.instances ?? []).find((i) => i.instance === instance && typeof i.path === "string");
+    if (e) return e.path as string;
+  }
+  const c = join(repo, "index.config.json");
+  if (!existsSync(c)) return undefined;
+  const idx = JSON.parse(readFileSync(c, "utf-8")) as { instances?: { name?: unknown; source?: { local?: { at?: unknown } } }[] };
+  const at = (idx.instances ?? []).find((i) => i.name === instance)?.source?.local?.at;
+  return typeof at === "string" && at !== "" ? at.replace(/^\.\//, "").replace(/\/+$/, "") : undefined;
 }
 
 interface IgBuilt {
