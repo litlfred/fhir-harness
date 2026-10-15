@@ -541,7 +541,7 @@ describe("every IG site: the IG's top bar, and its TOC declared for the navbar",
     stageIgSite(src, join(d, "out"), { menu, baseurl: "/b/x" });
     const layout = readFileSync(join(d, "out", "_layouts", "default.html"), "utf-8");
     expect(layout).toContain("data-fa-visualiser-nav");
-    expect(layout).toContain('class="ig-topbar"');
+    expect(layout).toContain('class="ig-topbar fa-page-bar"');
     expect(layout).not.toContain("site-nav");
     expect(layout).toContain('<meta name="fa-visualiser-label" content="X IG">');
     rmSync(d, { recursive: true, force: true });
@@ -826,7 +826,7 @@ describe("composeIgSite: a staged IG moved into a host Jekyll source", () => {
     expect(group).toContain('parent: "X IG"');
     expect(existsSync(join(host, "_includes", "ig", "x", "note.md"))).toBe(true);
     expect(existsSync(join(host, "_data", "ig", "x", "fhir.json"))).toBe(true);
-    expect(readFileSync(join(host, "_includes", "ig", "x", "_top.html"), "utf-8")).toContain('class="ig-topbar"');
+    expect(readFileSync(join(host, "_includes", "ig", "x", "_top.html"), "utf-8")).toContain('class="ig-topbar fa-page-bar"');
     // Every composed IG page opts its raster images into the shared figure viewer (bean n7f8).
     expect(readFileSync(join(host, "_includes", "ig", "x", "_top.html"), "utf-8")).toContain(IG_FIGURE_IMAGES_STAMP);
     // ...through the attribute the platform's viewer actually reads: the contract is docs-ui.js's.

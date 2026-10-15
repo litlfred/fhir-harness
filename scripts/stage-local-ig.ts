@@ -639,16 +639,28 @@ export const IG_SITE_STEPS = { ast: "ig-site:ast", source: "ig-site:compose", si
 export const IG_SITE_OPTIONAL = { sidecars: "ig-site:sidecars", openapi: "ig-site:openapi" } as const;
 
 /**
- * Top-level directories an IG repository's root used to serve and no longer
- * does, by the owner's ruling: not a parity shortfall (`site-parity.ts`
- * `DroppedByRuling`). Nothing else is excused.
+ * What an IG repository's root used to serve and no longer does, by the
+ * owner's ruling: not a parity shortfall (`site-parity.ts` `DroppedByRuling`).
+ * Top-level directories, and one page feature. Nothing else is excused: the
+ * search box, the language picker, the rail and the icon row stay required.
  */
 export const IG_DROPPED: readonly DroppedByRuling[] = [
   {
     dir: "comparison-v*",
     ruling: "owner, 2026-10-14, \"2a\": the IG Publisher's version comparisons (comparison-v*/) are not rendered and not published",
   },
+  {
+    dir: "schemas",
+    ruling: "owner, 2026-10-15, \"New address only\": the IG API sidecars are served at fhir-artifact-index/sidecars/ and no copy is made at schemas/",
+  },
+  {
+    feature: "siteNav",
+    ruling: "owner, 2026-10-15, layout \"C\" (chosen from wireframes): the folio rail stands in for the theme's side menu, so #site-nav is not carried; the IG's top bar carries the search box",
+  },
 ];
+
+/** What a dropped entry names, as the plan says it. */
+export const droppedWords = (d: DroppedByRuling): string => (d.feature !== undefined ? `the page feature ${d.feature}` : `${d.dir}/`);
 
 /**
  * Root entries an IG repository's publish keeps besides the folio's own:
@@ -1010,7 +1022,7 @@ async function stageIgFolio(a: PublisherRun, b: IgBuilt, site: IgFolioSite, h: P
       `  source ${site.sourceSteps.join(", ")} — the artefact index and thin pages from the AST, the IG's pages at the site root`,
       `  site   ${site.siteSteps.join(", ")} — ${site.siteSteps.length > 1 ? "the OpenAPI pages, then " : ""}the AST's data served, and ${IG_SITE_STAMP} at the root (required: a folio root marker)`,
       ...site.notes.map((n) => `  note   ${n}`),
-      ...(staging ? [] : site.dropped.map((d) => `  parity ${d.dir}/ is not a shortfall: ${d.ruling}`)),
+      ...(staging ? [] : site.dropped.map((d) => `  parity ${droppedWords(d)} is not a shortfall: ${d.ruling}`)),
       `  out    ${out}`,
     ],
     gate: "build-instance-site's link check: every link the chrome writes must resolve; the IG's own dead links are reported, not gated",

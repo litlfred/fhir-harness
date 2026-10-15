@@ -109,6 +109,36 @@
  * `folio-build.json` is written at its root ({@link igSiteStamp}), as every
  * folio site carries one.
  *
+ * ## The IG's search and the language picker (owner, 2026-10-15)
+ *
+ * Layout "C": the folio rail stands in for the theme's side menu, and the
+ * IG's top bar carries a search box over the IG's pages and artefacts. So
+ * `compose` writes the search index and its client under the docs root
+ * (`ig-search.ts`), and both the composed pages' top bar and the thin pages'
+ * header carry the box. And the language picker the live pages had (*"what
+ * happened to search/language select at top of display window?"*): docs-ui
+ * draws it from a page's `fa-translation-meta` block, which only a page the
+ * theme laid out carried. `publisher-pages` writes the block the platform
+ * writes on a page Jekyll never laid out (cat-harness-tools
+ * `lib/translation-meta.ts`, as `mount-instance-docs.ts` does) into every
+ * built page that lacks one, from the IG checkout's own translation
+ * declaration; the site build's `set-html-lang.ts` then reads it. The
+ * same step gives every other built page the IG's slim bar ({@link stampIgBar}),
+ * whose box is followed by the slot docs-ui puts the language picker in, so
+ * the picker sits in the bar beside it.
+ *
+ * ## One layout (owner, 2026-10-15)
+ *
+ * The owner asked for the full width of the overlay's hub page *"on the other
+ * pages as well... also can you make it match how folio-assistnat does with
+ * the scrollnig and such. please consolidate behaviours/appearance"*.
+ * Every page of the site links the shared page layout (cat-harness-tools
+ * `page-layout.ts`: full width beside the rail, the window the one scroller,
+ * the bar sticky above it on a wide screen and scrolling away on a phone,
+ * anchors landing below it) and then the IG's one
+ * stylesheet, `ig-artifact.css`. The composed pages carry the IG's full bar,
+ * and every other page carries its slim bar (`stampIgBar`; owner, "keep slim").
+ *
  * ## Whose dead links
  *
  * Both steps list the built pages they put in the site in the file the site
@@ -127,6 +157,9 @@ import { parse as parseYaml } from "yaml";
 import { conceptOf, profilesOf } from "./ast-to-artifact-index.ts";
 import { astValidity, type AstValidity, readAst } from "./ig-ast.ts";
 import { composeIgSite, dedupeSiteIds, describeStage, IG_THIN_CSS_FILE, stageIgSite, type SitePalette } from "./build-ig-site";
+import { artifactSearchEntries, IG_SEARCH_INDEX_FILE, IG_SEARCH_SCRIPT_FILE, IG_SEARCH_SCRIPT_SOURCE, igSearchIndex, pageSearchEntries, withIgBar } from "./ig-search.ts";
+import { translationMetaBlock, withTranslationMeta } from "../../cat-harness-tools/scripts/lib/translation-meta.ts";
+import type { FhirArtifactIndex } from "../schemas/fhir-artifact-index.js";
 import { buildMenu } from "./ingest-ig-menu.ts";
 import { siteBuild, type SiteBuild, STAMP_FILE } from "./site-build-stamp.ts";
 import { artifactsFor, copyDocsInto, footerFor, githubEditBase, instanceNeeds, webpagePalette } from "./stage-ig-sites.ts";
@@ -411,7 +444,7 @@ export function astArtefactPages(o: { ig: string; ast: string; work: string; nam
   if (o.igApi) args.push("--sidecars", o.igApi.sidecars, "--sidecars-local", SIDECARS_SERVED);
   bun("ast-to-artifact-index.ts", args);
   bun("gen-ig-pages.ts", [
-    "--instance", inst, "--index", index, "--label", o.label, "--ig-site", "--compiled-data", AST_DATA,
+    "--instance", inst, "--index", index, "--label", o.label, "--ig-site", "--compiled-data", AST_DATA, "--search",
     ...(o.igApi ? ["--ig-api-served", ...(o.igApi.label ? ["--sidecar-label", o.igApi.label] : [])] : []),
   ]);
   return inst;
@@ -490,6 +523,7 @@ export function compose(o: { docs: string; ig: string; baseurl: string; ast?: st
       ...(theme.palette ? { palette: theme.palette } : {}),
       ...(plantumlJar ? { plantumlJar } : {}),
       ...(editBase ? { editBase } : {}),
+      search: true,
     });
     log(`${name}:\n${describeStage(r)}`);
     if (r.siteData.refused.length) throw new Error(`${name}: the IG's site data was refused (${r.siteData.refused.join(", ")})`);
@@ -508,9 +542,86 @@ export function compose(o: { docs: string; ig: string; baseurl: string; ast?: st
       cpSync(THIN_CSS_SOURCE, thinCss);
     }
     if (c.collisions.length) throw new Error(`${name}: ${c.collisions.length} path(s) the host source already holds — refusing two answers for one URL:\n  ${c.collisions.slice(0, 20).join("\n  ")}`);
+    const s = writeSearch(resolve(o.docs), site, JSON.parse(readFileSync(join(inst, INDEX_SERVED, "index.json"), "utf-8")) as FhirArtifactIndex);
+    log(`${name}: search over ${s.pages} page(s) and ${s.artifacts} artefact(s) at ${IG_SEARCH_INDEX_FILE} (${Math.round(s.bytes / 1024)} KB, fetched on the first search)`);
   } finally {
     rmSync(work, { recursive: true, force: true });
   }
+}
+
+/**
+ * The IG's search under the docs root: the index of the staged site's pages
+ * and the artefact index's artefacts, and the client every box loads
+ * (`ig-search.ts`). A path the host source already holds is refused, as
+ * every other file `compose` writes is.
+ */
+export function writeSearch(docs: string, staged: string, ix: Pick<FhirArtifactIndex, "artifacts">): { pages: number; artifacts: number; bytes: number } {
+  const pages = pageSearchEntries(staged);
+  const artifacts = artifactSearchEntries(ix.artifacts);
+  const body = `${JSON.stringify(igSearchIndex(pages, artifacts))}\n`;
+  for (const [rel, text] of [[IG_SEARCH_INDEX_FILE, body], [IG_SEARCH_SCRIPT_FILE, readFileSync(IG_SEARCH_SCRIPT_SOURCE, "utf-8")]] as const) {
+    const to = join(docs, rel);
+    if (existsSync(to)) throw new Error(`${rel}: the host source already holds it — refusing two answers for one URL`);
+    mkdirSync(dirname(to), { recursive: true });
+    writeFileSync(to, text);
+  }
+  return { pages: pages.length, artifacts: artifacts.length, bytes: Buffer.byteLength(body) };
+}
+
+/**
+ * The language picker's block (`fa-translation-meta`) on every page of the
+ * built site that lacks one: the block the platform writes on a page Jekyll
+ * never laid out (cat-harness-tools `lib/translation-meta.ts`), from the IG
+ * checkout's translation declaration (the six UN languages, source `en`,
+ * when it declares none). A page with its own block, or with no `<head>`, is
+ * left as it is. Returns how many pages were given one.
+ */
+export function stampTranslationMeta(site: string, ig: string): number {
+  const block = translationMetaBlock(ig);
+  let n = 0;
+  for (const f of filesUnder(site)) {
+    if (!/\.html?$/i.test(f)) continue;
+    const abs = join(site, f);
+    const html = readFileSync(abs, "utf-8");
+    const after = withTranslationMeta(html, block);
+    if (after !== html) {
+      writeFileSync(abs, after);
+      n++;
+    }
+  }
+  return n;
+}
+
+/**
+ * The IG's SLIM bar on every page of the built site that does not carry the
+ * composed pages' full bar (`ig-search.ts` {@link withIgBar}): the IG's name
+ * linked home, the search box and the language picker's slot
+ * ({@link igFallbackBar}). It replaces the thin artefact and list pages' own
+ * header and is given to pages that a layer above or below wrote with none
+ * (an IG API hub page, the OpenAPI pages), with the shared page layout and
+ * the IG's stylesheet linked. Owner, 2026-10-15: "please consolidate
+ * behaviours/appearance", then "keep slim". The full menu, inlined, would
+ * cost every one of some two thousand pages about 2.5 KB. Paths are relative
+ * to each page, so it works under any base. Nothing is stamped under
+ * `assets/` (vendored tools' own pages), and nothing at all when the site
+ * serves no search index, so no page names a file the site does not hold.
+ * Returns how many pages were changed.
+ */
+export function stampIgBar(site: string, label: string): { pages: number } {
+  if (!existsSync(join(site, IG_SEARCH_INDEX_FILE))) return { pages: 0 };
+  let n = 0;
+  for (const f of filesUnder(site)) {
+    if (!/\.html?$/i.test(f) || f.startsWith("assets/")) continue;
+    const up = "../".repeat(f.split("/").length - 1);
+    const abs = join(site, f);
+    const html = readFileSync(abs, "utf-8");
+    const after = withIgBar(html, { ref: { index: `${up}${IG_SEARCH_INDEX_FILE}`, script: `${up}${IG_SEARCH_SCRIPT_FILE}` }, label, home: `${up}index.html`, up });
+    if (after !== html) {
+      writeFileSync(abs, after);
+      n++;
+    }
+  }
+  return { pages: n };
 }
 
 /** Every file under `dir`, relative to it, `/`-separated. */
@@ -666,6 +777,10 @@ export function publisherPages(o: { site: string; ast: string; work?: string; ig
   const renamed = dedupeSiteIds(o.site);
   if (renamed.size) log(`publisher pages: repeated element ids repaired on ${renamed.size} page(s)`);
   if (o.ig !== undefined) {
+    const stamped = stampTranslationMeta(o.site, o.ig);
+    log(`publisher pages: the language picker's block (fa-translation-meta) written on ${stamped} page(s) that lacked one`);
+    const barred = stampIgBar(o.site, igTitle(o.ig) ?? basename(resolve(o.ig)));
+    log(`publisher pages: the IG's slim bar given to ${barred.pages} page(s) that had another or none, with the shared page layout`);
     const stamp = igSiteStamp(o.ig);
     writeFileSync(join(o.site, STAMP_FILE), `${JSON.stringify(stamp, null, 2)}\n`);
     log(`publisher pages: stamped ${STAMP_FILE} — ${stamp.instance}, platform ${stamp.platform.commit.slice(0, 9)}`);
