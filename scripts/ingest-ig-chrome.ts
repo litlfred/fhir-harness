@@ -9,10 +9,10 @@
  *
  * ```sh
  * bun run cat-harness/scripts/ingest-ig-chrome.ts \
- *   --ig /path/to/smart-trust \
+ *   --ig /path/to/<ig> \
  *   --layer /path/to/HL7/ig-template-base \
  *   --layer /path/to/WorldHealthOrganization/smart-ig-template \
- *   --out smart-base/fhir-artifact-index
+ *   --out <chrome-owner>/fhir-artifact-index
  * bun run cat-harness/scripts/ingest-ig-chrome.ts --out … --check
  * ```
  *

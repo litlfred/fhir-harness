@@ -114,8 +114,8 @@ Terms:
 (the [template](../../templates/ig-repo-site/site-publish.yml)) calls it as its
 first job, `ast`, so a publish refreshes the cache before it builds: a no-op
 when the cache is valid for the commit. No IG repository carries a workflow of
-its own for it (owner, 2026-10-14: "this all should be a part of fhir-harness
-via smart-base"). A repository whose owner wants the cache refreshed on every
+its own for it (owner, 2026-10-14, paraphrased: all of this should be part of
+fhir-harness, reached through the IG overlay above it). A repository whose owner wants the cache refreshed on every
 push to its IG sources may add the optional caller
 [`templates/ig-repo-site/ig-ast-refresh.yml`](../../templates/ig-repo-site/ig-ast-refresh.yml). One run:
 
@@ -163,12 +163,12 @@ three are stale by revision even under point 3:
 
 | repository | cache built from | `main` | input files that differ |
 |---|---|---|---|
-| smart-trust | `dab31ed` (Publisher 2.3.4), 678 resources | `0dae5c4` | 3 |
-| smart-immunizations | `6004ec5` (Publisher 3.0.0), 748 resources | `91f7cdb` | 0 |
-| smart-base | `b1e00c5` (Publisher 2.3.4), 162 resources | `a710c5d` | 51 |
+| the WHO SMART Trust IG | `dab31ed` (Publisher 2.3.4), 678 resources | `0dae5c4` | 3 |
+| the WHO SMART Immunizations IG | `6004ec5` (Publisher 3.0.0), 748 resources | `91f7cdb` | 0 |
+| the WHO SMART Base IG | `b1e00c5` (Publisher 2.3.4), 162 resources | `a710c5d` | 51 |
 
 Until 2026-10-14 nothing refreshed these branches when the source changed.
-Each was seeded once, on 2026-10-12, by hand or by smart-trust's
+Each was seeded once, on 2026-10-12, by hand or by the WHO SMART Trust IG's
 `folio-site.yml` on its branch `claude/seed-smart-base`. That workflow built
 from its own branch, and the same run also published gh-pages.
 
@@ -180,9 +180,9 @@ building and seeding are here.
 ## The IG repository's site route: the layers supply the steps
 
 Owner, 2026-10-14, on an IG repository that lost its OpenAPI pages, its DAK
-API sidecars and its artefact index when it dropped its own declaration:
-*"that should already be there in smart-base (dak api) and cat-harness or so
-for openapi"*. So an IG repository declares no `site.build`. It holds
+API sidecars and its artefact index when it dropped its own declaration
+(paraphrased): those steps should already be supplied by the layers, the DAK
+API by the IG overlay above this one and the OpenAPI pages by the harness. So an IG repository declares no `site.build`. It holds
 `index.config.json` with `"site": {"landing": "<layer>"}`, and the site route
 (`stage-local.ts`, cat-harness-tools) asks the mounted layers' script table
 for these step names, never naming a layer:
@@ -336,7 +336,7 @@ Rules that hold whichever option is chosen:
   [`index-config`](../../../cat-harness/skills/kg/kg-core/index-config.md)
   ("A harnessed repository runs its checks on its own pull requests"). It stays
   on whatever the answer is. On 2026-10-06 the answer "manual only" was
-  applied to every workflow in smart-base, smart-trust and smart-immunizations,
+  applied to every workflow in the WHO SMART Base IG, the WHO SMART Trust IG and the WHO SMART Immunizations IG,
   so their harness gates went off together with their builds, and nothing
   judged those repositories until an index re-pinned them (owner, 2026-10-14:
   "There should be CI running").
@@ -375,14 +375,14 @@ On yes:
 1. **The repository needs no harness of its own.** No `<repo>.json`
    declaration and no `folio-assistant/` submodule. Its `index.config.json`
    names the layer it builds on as a remote instance, with consent: this
-   layer for a bare IG, or the overlay above it (smart-base, for an IG that
+   layer for a bare IG, or the overlay above it (the WHO SMART Base IG, for an IG that
    wants the DAK surface). `remote-mount.ts --seed` writes the entry and
    `remote-mount.ts` the `index.lock.json`; the layer's closure comes with
-   it. The owner's ruling, 2026-10-14: *"It can just define
-   index.config.json and reference smart-base as a dependency. This is
-   preferred and expected behavior."*
+   it. The owner's ruling, 2026-10-14 (paraphrased): the IG repository
+   can just define `index.config.json` and reference the overlay layer as a
+   dependency, and that is the preferred and expected behaviour.
    `index.config.json` also says which mounted layer's chrome the site
-   wears: `"site": {"landing": "<that layer>"}` (`smart-base` for a WHO
+   wears: `"site": {"landing": "<that layer>"}` (the WHO SMART Base IG for a WHO
    SMART IG). Without it the route refuses rather than guess among the
    mounted layers.
 2. Keep one workflow that calls the overlay's IG build (`ghbuild.yml` or
@@ -533,7 +533,7 @@ declared in `fhir-harness/tools/`.
 ## Upgrading to the overlay
 
 An IG that wants the DAK surface does not change this pipeline; the WHO harness
-above it (smart-base, whose DAK document kind carries the pre/post steps)
+above it (the WHO SMART Base IG, whose DAK document kind carries the pre/post steps)
 supplies them as an **overlay**. The base takes no
 position on whether an overlay exists, and must not gain a flag for one — a
 `do_dak` input at this layer would be this layer knowing about DAKs.

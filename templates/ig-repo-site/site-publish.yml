@@ -67,8 +67,9 @@ jobs:
   # The AST the site is built from, kept current by fhir-harness itself: a
   # no-op when the cache on `cat/fhir-harness/fhir-ast/<package id>` is valid
   # for this commit, the Publisher AST export when it is missing or stale
-  # (owner, 2026-10-14: "this all should be a part of fhir-harness via
-  # smart-base" — no IG repository carries a workflow of its own for it).
+  # (owner, 2026-10-14, paraphrased: all of this belongs to fhir-harness,
+  # reached through the IG overlay above it — no IG repository carries a
+  # workflow of its own for it).
   ast:
     if: ${{ !inputs.plan }}
     uses: litlfred/fhir-harness/.github/workflows/ig-ast-refresh.yml@main

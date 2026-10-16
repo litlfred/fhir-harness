@@ -6,7 +6,7 @@
  *
  * ## Two build tools, and they are here because the layering rule put them here
  *
- * Both arrive from `WorldHealthOrganization/smart-base`'s build labelled
+ * Both arrive from the WHO SMART Base IG repository's build labelled
  * **"DAK Postprocessing"**, and neither is DAK-shaped: ANY implementation
  * guide depending on `hl7.fhir.uv.cql` produces `Library` resources carrying
  * base64 payloads and inline CQL/ELM, and the same build's own

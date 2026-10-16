@@ -18,7 +18,7 @@
  * ## Why a snapshot rather than a fetch at check time
  *
  * Three reasons, and the first is the ruling itself. "This code exists in
- * smart-base v1.0.0" is a claim about a fixed artefact; resolving it against
+ * the WHO SMART Base IG v1.0.0" is a claim about a fixed artefact; resolving it against
  * whatever a host serves today would quietly turn it back into the live-
  * collection claim the owner did not choose.
  *

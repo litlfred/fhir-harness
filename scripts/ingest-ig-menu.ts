@@ -10,7 +10,7 @@
  *
  * ```sh
  * bun run cat-harness/scripts/ingest-ig-menu.ts \
- *   --source /path/to/smart-trust --out smart-trust/fhir-artifact-index
+ *   --source /path/to/<ig> --out <ig>/fhir-artifact-index
  * bun run cat-harness/scripts/ingest-ig-menu.ts --out … --check
  * ```
  *

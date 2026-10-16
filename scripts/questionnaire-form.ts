@@ -51,7 +51,7 @@ import { buildIndex, expansionsOf, preExpand, ucumRows, writeIndex } from "./ter
  * `assets/js/edit-links.js`: that path is the platform chrome's own copy, and
  * an IG repository's folio site composes the IG at the chrome's root
  * (`composeIgSite`, `atRoot`), where the two met and the compose refused "two
- * answers for one URL" (smart-immunizations, 2026-10-14). The two copies come
+ * answers for one URL" (the WHO SMART Immunizations IG, 2026-10-14). The two copies come
  * from different layers at different pins, so they need not be equal.
  */
 export const QFORM_EDIT_LINKS = "assets/js/questionnaire-edit-links.js";

@@ -11,7 +11,7 @@
  *
  * `ingest:ig:check` re-derives an index from the IG's published output and
  * fails if the committed copy differs. That is the stronger check and it needs
- * the source — smart-trust's `gh-pages` is 342,656 files — which no CI runner
+ * the source — the WHO SMART Trust IG's `gh-pages` is 342,656 files — which no CI runner
  * here carries. Exempted from the gate set for that reason, with the exemption
  * written down in `gates.ts` rather than left as a silence.
  *
@@ -22,7 +22,7 @@
  *
  * That is not the whole of what `ingest:ig:check` would catch, and this file
  * does not pretend otherwise. What it does catch is the failure that is
- * actually likely: a hand-edit. `smart-trust/AGENTS.md` says nothing under the
+ * actually likely: a hand-edit. The WHO SMART Trust IG's `AGENTS.md` says nothing under the
  * graph is authored, and a gate is how that stops being a request.
  *
  * ## Three outcomes

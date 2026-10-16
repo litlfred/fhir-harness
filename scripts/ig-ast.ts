@@ -146,7 +146,7 @@ export function listAst(ast: Ast): AstListing {
  * gitignored `.DS_Store` or Publisher scratch file under `input/` makes the
  * digest of a working checkout differ from a clean clone of the same commit,
  * and a seeded cache can never verify anywhere else (bean wnhh, 2026-10-02:
- * smart-trust recorded `b2bbbfc4…`, a clean clone computes `c1023d82…`).
+ * the WHO SMART Trust IG recorded `b2bbbfc4…`, a clean clone computes `c1023d82…`).
  * Outside a work tree every file is hashed, as before. The Java
  * `InputDigest` must apply the same filter.
  */
@@ -171,7 +171,7 @@ export function inputDigest(igRoot: string): string {
  * `git ls-tree` lists under `sushi-config.yaml`, `ig.ini` and `input/`, with
  * their committed bytes. Nothing in the work tree is read.
  *
- * Why it exists (2026-10-14, smart-trust run 38609595363): the Publisher
+ * Why it exists (2026-10-14, the WHO SMART Trust IG run 38609595363): the Publisher
  * writes under `input/` during a build — it renders
  * `input/images-source/*.plantuml` into `input/images/*.svg`, overwriting the
  * tracked ones and adding untracked ones git does not ignore — so the

@@ -12,7 +12,7 @@
  * stands in for the theme's side menu, and the IG's top bar gets a search box
  * that searches the IG's pages and artefacts. The live roots had the theme's
  * search (`#search-input`) on every page; the IG route's pages are thin, laid
- * out by no theme, and had none (smart-immunizations: on 1386 of 1386 live
+ * out by no theme, and had none (the WHO SMART Immunizations IG: on 1386 of 1386 live
  * pages, on 0 of 2021 built). The box carries `id="search-input"`, the id
  * the root parity guard (cat-harness-tools `site-parity.ts`) looks for, and
  * it is that id because the box really searches, not to satisfy the guard.
