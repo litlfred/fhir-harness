@@ -71,8 +71,17 @@ export interface PageNav {
 
 /** An IG's published navigation, as `folio-ig-menu/v1` records it. */
 export interface IgMenu {
-  groups: Array<{ label: string; items?: Array<{ label: string; href: string }> }>;
+  /**
+   * A group with `href` and no items is a top-level PAGE (`Home: index.html`
+   * in `sushi-config.yaml`), which `ingest-ig-menu.ts` records as such: it is
+   * drawn as a link, not as a dropdown, and gets no section page.
+   */
+  groups: Array<{ label: string; href?: string; items?: Array<{ label: string; href: string }> }>;
 }
+
+/** A top-level menu entry that is itself a page: an href and no children. */
+const isMenuPage = (g: IgMenu["groups"][number]): g is IgMenu["groups"][number] & { href: string } =>
+  typeof g.href === "string" && g.href.length > 0 && !(g.items?.length);
 
 export interface MenuNav {
   nav: Map<string, PageNav>;
@@ -92,6 +101,13 @@ export function menuNav(menu: IgMenu): MenuNav {
   const nav = new Map<string, PageNav>();
   const groups: MenuNav["groups"] = [];
   menu.groups.forEach((g, gi) => {
+    if (isMenuPage(g)) {
+      // The entry IS a page: it takes the menu's place in the navigation,
+      // and no section page stands in for it.
+      const page = basename(g.href, extname(g.href));
+      if (!nav.has(page)) nav.set(page, { title: g.label, navOrder: gi + 1 });
+      return;
+    }
     const stem = `menu-${slug(g.label)}`;
     nav.set(stem, { title: g.label, navOrder: gi + 1, hasChildren: true });
     groups.push({ stem, label: g.label, items: g.items ?? [] });
@@ -365,7 +381,11 @@ export function igTocNav(menu: IgMenu, baseurl: string, extra: ReadonlyArray<{ l
   const rows = [
     ...menu.groups.map((g) => ({
       label: g.label,
-      ...(g.items?.length ? { items: g.items.map((it) => ({ label: it.label, href: siteHref(baseurl, it.href) })) } : {}),
+      ...(g.items?.length
+        ? { items: g.items.map((it) => ({ label: it.label, href: siteHref(baseurl, it.href) })) }
+        : isMenuPage(g)
+          ? { href: siteHref(baseurl, g.href) }
+          : {}),
     })),
     ...extra.map((e) => ({ label: e.label, href: siteHref(baseurl, e.href) })),
   ];
@@ -397,7 +417,9 @@ export function igTopBar(menu: IgMenu, baseurl: string, title: string, search?: 
         ? `<details class="ig-topbar-group"><summary>${escHtml(g.label)}</summary><ul>${g.items
             .map((it) => `<li><a href="${escHtml(siteHref(baseurl, it.href))}">${escHtml(it.label)}</a></li>`)
             .join("")}</ul></details>`
-        : `<span class="ig-topbar-group">${escHtml(g.label)}</span>`,
+        : isMenuPage(g)
+          ? `<a class="ig-topbar-group ig-topbar-link" href="${escHtml(siteHref(baseurl, g.href))}">${escHtml(g.label)}</a>`
+          : `<span class="ig-topbar-group">${escHtml(g.label)}</span>`,
     )
     .join("");
   const box = search ? `${igSearchBox(search, title)}${igSearchScript(search)}` : "";
