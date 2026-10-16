@@ -5,7 +5,7 @@
  *
  * The owner, 2026-09-23, with a screenshot of WHO SMART Trust's published top
  * bar: *"navar menu is now on LHS"*. The menu could not be rendered anywhere,
- * because it was **not held**: `smart-trust/fhir-artifact-index/index.json`
+ * because it was **not held**: the WHO SMART Trust IG's `fhir-artifact-index/index.json`
  * carries 674 artefacts harvested from gh-pages and no `menu`, and no raw HTML
  * was retained. Measured the same day, the twelve labels visible in that
  * screenshot matched **0 of 674** artefact titles — the harvest kept the IG's

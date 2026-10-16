@@ -21,7 +21,7 @@ export const JSON_VIEW_SCRIPT = "assets/resource-json.js";
 
 /**
  * Whether the Publisher writes a `<Name>.json.html` for this artefact.
- * Measured on smart-trust 2026-10-01: every artefact except the
+ * Measured on the WHO SMART Trust IG 2026-10-01: every artefact except the
  * ImplementationGuide (no view at all) and StructureDefinitions (which get
  * `.profile.json.html` instead — the profile tabs, a different page kind).
  */
@@ -147,7 +147,7 @@ export interface TabPageData {
  * No XML or TTL tab (owner, 2026-10-09: *"i dont want links to *.xml / *.ttl,
  * only the json(ld)+schema and .html"*). The Publisher wrote both; this site
  * renders neither, so each was an absolute link to a file the site root does
- * not hold -- 4,288 of them on smart-trust's gh-pages, measured 2026-10-09.
+ * not hold -- 4,288 of them on the WHO SMART Trust IG's gh-pages, measured 2026-10-09.
  * JSON-LD and the JSON Schema arrive as `extraTabs` from the IG API views.
  */
 export function resourceTabs(a: FhirArtifact, extraTabs: Tab[], jsonLocal: boolean, active?: string): Tab[] {
@@ -157,7 +157,7 @@ export function resourceTabs(a: FhirArtifact, extraTabs: Tab[], jsonLocal: boole
     // The SD family's own bar: Content, Mappings, then the representations.
     // No "Detailed Descriptions" (owner, 2026-10-09): it linked the
     // Publisher's `-definitions.html`, which this site does not write -- 67
-    // dead links on smart-trust's gh-pages, measured 2026-10-09.
+    // dead links on the WHO SMART Trust IG's gh-pages, measured 2026-10-09.
     const site = pub("json")?.replace(/[^/]*$/, "") ?? "";
     return [
       { label: "Content", href: `${stem}.html`, active: active === "Content" },
@@ -177,7 +177,7 @@ export function resourceTabs(a: FhirArtifact, extraTabs: Tab[], jsonLocal: boole
  * `<Name>.change.history.html` (and a StructureDefinition's
  * `.profile.history.html`). The Publisher's page states no history — none is
  * exported to it — only a heading and one sentence, measured on all 672 of
- * smart-trust's: the heading names `name ?? title ?? id`, the sentence `id`.
+ * the WHO SMART Trust IG's: the heading names `name ?? title ?? id`, the sentence `id`.
  */
 export function historyPage(a: FhirArtifact, f: ResourceFacts, tabs: Tab[]): TabPageData | undefined {
   if (f.resourceType === "StructureDefinition") {
@@ -284,7 +284,7 @@ export interface MappingTable {
  * identities and each snapshot element's `mapping` (no core package needed,
  * unlike `-definitions`, whose base-type text is `hl7.fhir.r5.core`'s).
  *
- * Rows as the Publisher writes them, measured on smart-trust's 5 logical
+ * Rows as the Publisher writes them, measured on the WHO SMART Trust IG's 5 logical
  * models: every snapshot element; the root by its full name, others by their
  * last path segment, an element's `id` child as `@id`, a slice as
  * `name:slice`; the value is that element's maps for the identity, joined.

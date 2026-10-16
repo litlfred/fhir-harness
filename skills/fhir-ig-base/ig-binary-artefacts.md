@@ -37,7 +37,7 @@ is the list, not this paragraph. They fall into three groups:
 
 A pages deploy copies `output/` as it is. Each **branch preview** is another
 full copy, and git keeps every byte for good. Measured with
-`ig-binary-audit` on `litlfred/smart-base` `gh-pages` (`64ed896d`,
+`ig-binary-audit` on the WHO SMART Base IG fork's `gh-pages` (`64ed896d`,
 2026-10-02):
 
 | | bytes | files |

@@ -701,7 +701,7 @@ export function declaredKeep(repo: string, instance: string): string[] {
  * The landing entry's `site.build.coverage`, read the same way: an IG repository
  * whose root already lacks a declared visualiser page says so with "report",
  * as a folio does, rather than the IG route ignoring the recipe (2026-10-15:
- * smart-trust and smart-immunizations could not publish).
+ * the WHO SMART Trust and Immunizations IGs could not publish).
  */
 export function declaredCoverage(repo: string, instance: string): "refuse" | "report" | undefined {
   return recipeRead(repo, instance).recipe?.coverage;

@@ -4,7 +4,7 @@
  * split between the published IG and its branch previews.
  *
  * Owner, 2026-10-02: *"see what happens on smart-base with binary artefacts on
- * release. add to skills/tools"*. Measured that day on `litlfred/smart-base`
+ * release. add to skills/tools"*. Measured that day on the WHO SMART Base IG fork's
  * `gh-pages` (64ed896d): 5.0 GB in all, 966.5 MB of it Publisher binaries, and
  * 907.1 MB of those under `branches/` — 29 preview copies of the same files.
  * `full-ig.zip` alone was 644.7 MB in 30 copies. Skill:

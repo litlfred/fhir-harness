@@ -42,7 +42,7 @@ const REASON =
 /**
  * The Publisher's view page for a representation: StructureDefinitions get
  * `.profile.<rep>.html`, and the ImplementationGuide none — its XML and Turtle
- * files are published with no page (measured on smart-trust, 2026-10-01: the
+ * files are published with no page (measured on the WHO SMART Trust IG, 2026-10-01: the
  * record then names exactly the Publisher's 1,354 XML/TTL view pages).
  */
 export function publisherViewPage(a: { resourceType: string; id: string }, rep: "xml" | "ttl"): string | undefined {

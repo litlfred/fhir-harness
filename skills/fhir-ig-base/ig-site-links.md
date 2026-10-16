@@ -21,7 +21,7 @@ archives, and whatever its template copies. Our site renders the same pages
 inside just-the-docs and holds only some of that. **Every link a page makes
 therefore resolves somewhere specific, or is said to resolve nowhere.**
 Measured on 2026-10-05 before this existed: 408 dead links across the three
-smart-* IG sections of the main site, 395 on the smart-immunizations fork. After:
+smart-* IG sections of the main site, 395 on the WHO SMART Immunizations IG fork. After:
 one, which is the IG's own.
 
 ## Where each link goes
@@ -36,7 +36,7 @@ one, which is the IG's own.
 | `openapi/index.html` (Swagger's deep links too) | the OpenAPI graph's own index, which forwards `#/<tag>/<operationId>` — on an IG repository's own site too, where `publish-served` puts the graph at `openapi/` | `gen-openapi-pages`, `publish-served` |
 | a `.html` page nothing serves | **left as written and reported** — `DEAD in the IG's own source` in the stage log | `relinkOffSite` |
 
-The last row is deliberate. smart-trust links `video_tutorial.html`, which is
+The last row is deliberate. The WHO SMART Trust IG links `video_tutorial.html`, which is
 in no source anywhere: it is dead on WHO's own site too. Pointing it at the
 published site would trade our visible dead link for WHO's invisible one.
 Report it to the IG instead.
@@ -47,7 +47,7 @@ The Publisher's Liquid (Java) reads `"<a href=\"x.html\">X</a>"` with escaped
 quotes; Ruby Liquid has no escapes and ends the string at the first `\"`.
 `rubyLiquidStrings` writes such an `{% assign %}` single-quoted with plain
 quotes — the same string in both engines — and leaves one holding an
-apostrophe as written, since it has no faithful Ruby form. Found as smart-base's
+apostrophe as written, since it has no faithful Ruby form. Found as the WHO SMART Base IG's
 `smart.liquid` page showing `<a href=\` for every link variable.
 
 ## The gate: a generator never links what it does not write
@@ -87,7 +87,7 @@ IG repository's own site they come from the platform's `_data/harness.json`,
 which `compose-docs --shell --instance <ig>` scopes to that IG: its own paths
 resolve under its baseurl, the platform's graphs link to the platform's site,
 and no other instance's state graph or count is shown. Owner, 2026-10-06, on
-smart-trust: *"the beans and todos badges seems to be countts from
+the WHO SMART Trust IG: *"the beans and todos badges seems to be countts from
 folio-assistant and not litlfred/smart-trust as expected. links to beans and
 todos dont work."* The rule, and why an undeclared graph shows no number
 rather than zero, is in

@@ -20,7 +20,7 @@
  * No IG publishes an artefact index — see the module doc on
  * `folio-assistant-core/schemas/fhir-artifact-index.ts`. What it publishes is
  * four partial views, and the coverage gaps between them are not incidental.
- * Measured on smart-trust v1.8.0:
+ * Measured on the WHO SMART Trust IG v1.8.0:
  *
  * | file | entries | holds |
  * |---|---|---|
@@ -235,7 +235,7 @@ function main(): void {
 
   // ── IG API detection ──────────────────────────────────────────────────
   // Keyed off the ENUMERATION SCHEMAS at the published root. Never off the
-  // presence of `openapi/`, which in smart-trust holds the DDCC Gateway API —
+  // presence of `openapi/`, which in the WHO SMART Trust IG holds the DDCC Gateway API —
   // a domain API that merely lives there.
   const enumerations = readdirSync(source).filter((f) => /^[A-Za-z]+\.schema\.json$/.test(f)).sort();
   const sidecarApi = enumerations.length > 0 ? "present" : "absent";
@@ -281,7 +281,7 @@ function main(): void {
    * The five materialisation gates for an IG API sidecar.
    *
    * `size.basis` is MEASURED from this IG's own surface at ingest time. It was
-   * a hardcoded sentence quoting smart-trust's 332K/71 files and 7.1M corpus,
+   * a hardcoded sentence quoting the WHO SMART Trust IG's 332K/71 files and 7.1M corpus,
    * which every other IG's index would then have asserted about itself — a
    * basis that is wrong for its subject is worse than none, because it reads
    * as though somebody checked.
@@ -307,8 +307,8 @@ function main(): void {
   // RESOLVED THROUGH THE ENUMERATION, not composed from the artefact's id.
   //
   // The first version keyed sidecars off `<ResourceType>-<id>`, and that held
-  // for smart-trust only because its ids happen to equal the published stems.
-  // smart-immunizations names a Logical Model's sidecar after the model's
+  // for the WHO SMART Trust IG only because its ids happen to equal the published stems.
+  // The WHO SMART Immunizations IG names a Logical Model's sidecar after the model's
   // TITLE — `StructureDefinition-IMMZ_C4_Create_client_record` for the
   // artefact `StructureDefinition/IMMZC4` — so ten of its 198 schemas bound to
   // nothing and the census came out ten short, in silence.
@@ -321,7 +321,7 @@ function main(): void {
   //   3. the title, against an artefact's `title` or `name`
   //
   // Each is a fact the PUBLISHER wrote down; none is a guess about layout. The
-  // asymmetry is real and no single field can carry it: smart-immunizations
+  // asymmetry is real and no single field can carry it: the WHO SMART Immunizations IG
   // fills `valueSetUrl` on 190 of 191 ValueSets and `logicalModelUrl` on NONE
   // of 11 Logical Models, though its own schema declares that field.
   //
@@ -361,9 +361,9 @@ function main(): void {
   /** Attach the four sidecars named by `stem`, materialising if asked. Returns whether any landed. */
   const attach = (a: FhirArtifact, stem: string, counts?: EnumEntry): boolean => {
     // THE ROOT COPY FIRST, `schemas/` only as a fallback. Measured 2026-10-01
-    // on litlfred/smart-trust gh-pages 9bd9643: all 52 schema, displays and
+    // on the WHO SMART Trust IG's repository gh-pages 9bd9643: all 52 schema, displays and
     // OpenAPI sidecars exist in BOTH places and EVERY pair differs. The root
-    // copy is what smart-base's current generator writes (Coding-shaped
+    // copy is what the WHO SMART Base IG's current generator writes (Coding-shaped
     // values), what the IG's own API hub page, its artefact pages' Endpoints
     // section and its `.schema.json.html` view pages all link, and what a
     // reader of the published IG therefore sees; `schemas/` holds an older
@@ -463,7 +463,7 @@ function main(): void {
       // file that was never written — a record asserting bytes that are not
       // there, which `check-materialized-fixity` reports as `absent`.
       //
-      // Measured 2026-09-22 on smart-immunizations: `IMMZ.D.DE19` and
+      // Measured 2026-09-22 on the WHO SMART Immunizations IG: `IMMZ.D.DE19` and
       // `IMMZ.Z.VS`, both `sidecars: { jsonld }` only, both declaring a
       // `.schema.json` that does not exist and never did. 198 schema files on
       // disk against 200 materialized claims.

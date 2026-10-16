@@ -116,7 +116,7 @@ block the publish that reads it. A recorded commit the checkout cannot see
 Publisher writes under `input/` during a build: it renders
 `input/images-source/*.plantuml` into `input/images/*.svg`, which overwrites
 tracked files and adds untracked ones. A work-tree digest taken after the
-build is therefore not the commit's. On 2026-10-14 smart-trust run
+build is therefore not the commit's. On 2026-10-14 the WHO SMART Trust IG run
 38609595363 recorded `35047502…` before its build and re-hashed `079a4e58…`
 after it, so the AST it had just built failed its own check.
 `validity --at HEAD` (and `digest --at HEAD`) hashes the inputs as committed
@@ -192,7 +192,7 @@ produced. The steps, in order:
    is a missed coupling** in the cone rules, not a curiosity. File it on bean
    `a9tx`, W8.
 
-**Measured 2026-10-01** on smart-trust (678 resources, one CodeSystem
+**Measured 2026-10-01** on the WHO SMART Trust IG (678 resources, one CodeSystem
 changed): the planner correctly identified a **2-resource cone** (0.3%) —
 `CodeSystem/Domains` and its dependent `ValueSet/Domains` — in 0.2 seconds.
 

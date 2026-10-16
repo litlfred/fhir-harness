@@ -7,9 +7,9 @@
  * (`templates/ig-repo-site/folio-site.yml`, since replaced by `site-publish.yml`) is that instance alone, at the
  * site root, and copied exactly one served directory by hand —
  * `fhir-artifact-index`. Every other one was missing, and the first casualty
- * was the `openapi` graph: smart-trust's pages link `openapi/index.html`
+ * was the `openapi` graph: the WHO SMART Trust IG's pages link `openapi/index.html`
  * (deep links `#/<tag>/<operationId>` too), which `gen-openapi-pages` writes
- * into that graph, and 43 links on smart-trust's gh-pages led nowhere
+ * into that graph, and 43 links on the WHO SMART Trust IG's gh-pages led nowhere
  * (measured 2026-10-09). Owner, same day: *"openapi fix links so point to new
  * openapi render pipeline"*.
  *
