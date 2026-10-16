@@ -9,4 +9,5 @@ node_modules/
 # Owner, 2026-10-14 (B1): computed at the checkout's pins, so no commit of this
 # instance can hold it current.
 /ns/context/v1.jsonld
+/docs/en/fhir-harness/ig-ast/
 # END built at publish
