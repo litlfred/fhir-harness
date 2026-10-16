@@ -523,6 +523,26 @@ describe("every IG site: the IG's top bar, and its TOC declared for the navbar",
     expect(bar).not.toContain("fa-nav");
     expect(bar).not.toContain('id="site-nav"');
   });
+  test("a top-level entry that is a page (`Home: index.html`) is a link in the bar and the TOC, with no section page", () => {
+    const pageMenu = { groups: [{ label: "Home", href: "index.html", items: [] }, { label: "Logic", items: [{ label: "Testing", href: "testing.html" }] }, { label: "Artifacts", href: "artifacts.html", items: [] }] };
+    const bar = igTopBar(pageMenu, "/b/acme-ig", "ACME Example IG");
+    expect(bar).toContain('<a class="ig-topbar-group ig-topbar-link" href="/b/acme-ig/index.html">Home</a>');
+    expect(bar).toContain('<a class="ig-topbar-group ig-topbar-link" href="/b/acme-ig/artifacts.html">Artifacts</a>');
+    expect(bar).not.toContain('<span class="ig-topbar-group">');
+    const rows = JSON.parse(igTocNav(pageMenu, "/b/acme-ig").replace(/^<script[^>]*>/, "").replace(/<\/script>$/, ""));
+    expect(rows[0]).toEqual({ label: "Home", href: "/b/acme-ig/index.html" });
+    expect(rows[2]).toEqual({ label: "Artifacts", href: "/b/acme-ig/artifacts.html" });
+    const d = mkdtempSync(join(tmpdir(), "ig-menu-page-"));
+    const src = join(d, "src");
+    mkdirSync(join(src, "input", "pagecontent"), { recursive: true });
+    writeFileSync(join(src, "sushi-config.yaml"), "id: x.ig\ntitle: X IG\n");
+    writeFileSync(join(src, "input", "pagecontent", "index.md"), "# Hi\n");
+    writeFileSync(join(src, "input", "pagecontent", "testing.md"), "# T\n");
+    stageIgSite(src, join(d, "out"), { menu: pageMenu, baseurl: "/b/x" });
+    expect(existsSync(join(d, "out", "menu-home.md"))).toBe(false);
+    expect(existsSync(join(d, "out", "menu-artifacts.md"))).toBe(false);
+    expect(existsSync(join(d, "out", "menu-logic.md"))).toBe(true);
+  });
   test("the title sits on its own line, the menu on the line below (owner, 2026-10-14)", () => {
     const bar = igTopBar(menu, "/b/acme-ig", "ACME Example IG");
     // The title comes first in the bar, before every group.
