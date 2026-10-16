@@ -114,8 +114,8 @@ Terms:
 (the [template](../../templates/ig-repo-site/site-publish.yml)) calls it as its
 first job, `ast`, so a publish refreshes the cache before it builds: a no-op
 when the cache is valid for the commit. No IG repository carries a workflow of
-its own for it (owner, 2026-10-14: "this all should be a part of fhir-harness
-via smart-base"). A repository whose owner wants the cache refreshed on every
+its own for it (owner, 2026-10-14, paraphrased: all of this should be part of
+fhir-harness, reached through the IG overlay above it). A repository whose owner wants the cache refreshed on every
 push to its IG sources may add the optional caller
 [`templates/ig-repo-site/ig-ast-refresh.yml`](../../templates/ig-repo-site/ig-ast-refresh.yml). One run:
 
@@ -180,9 +180,9 @@ building and seeding are here.
 ## The IG repository's site route: the layers supply the steps
 
 Owner, 2026-10-14, on an IG repository that lost its OpenAPI pages, its DAK
-API sidecars and its artefact index when it dropped its own declaration:
-*"that should already be there in smart-base (dak api) and cat-harness or so
-for openapi"*. So an IG repository declares no `site.build`. It holds
+API sidecars and its artefact index when it dropped its own declaration
+(paraphrased): those steps should already be supplied by the layers, the DAK
+API by the IG overlay above this one and the OpenAPI pages by the harness. So an IG repository declares no `site.build`. It holds
 `index.config.json` with `"site": {"landing": "<layer>"}`, and the site route
 (`stage-local.ts`, cat-harness-tools) asks the mounted layers' script table
 for these step names, never naming a layer:
@@ -378,9 +378,9 @@ On yes:
    layer for a bare IG, or the overlay above it (the WHO SMART Base IG, for an IG that
    wants the DAK surface). `remote-mount.ts --seed` writes the entry and
    `remote-mount.ts` the `index.lock.json`; the layer's closure comes with
-   it. The owner's ruling, 2026-10-14: *"It can just define
-   index.config.json and reference smart-base as a dependency. This is
-   preferred and expected behavior."*
+   it. The owner's ruling, 2026-10-14 (paraphrased): the IG repository
+   can just define `index.config.json` and reference the overlay layer as a
+   dependency, and that is the preferred and expected behaviour.
    `index.config.json` also says which mounted layer's chrome the site
    wears: `"site": {"landing": "<that layer>"}` (the WHO SMART Base IG for a WHO
    SMART IG). Without it the route refuses rather than guess among the

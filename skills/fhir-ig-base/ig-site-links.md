@@ -87,9 +87,9 @@ IG repository's own site they come from the platform's `_data/harness.json`,
 which `compose-docs --shell --instance <ig>` scopes to that IG: its own paths
 resolve under its baseurl, the platform's graphs link to the platform's site,
 and no other instance's state graph or count is shown. Owner, 2026-10-06, on
-the WHO SMART Trust IG: *"the beans and todos badges seems to be countts from
-folio-assistant and not litlfred/smart-trust as expected. links to beans and
-todos dont work."* The rule, and why an undeclared graph shows no number
+the WHO SMART Trust IG (paraphrased): the beans and todos badges showed the
+platform's counts rather than the IG repository's own, and their links did not
+work. The rule, and why an undeclared graph shows no number
 rather than zero, is in
 [`harness-tiles`](../../../cat-harness/skills/ui/ui-core/harness-tiles.md)
 §"On a folio's own site, a tile describes the FOLIO" (issue #2263).
