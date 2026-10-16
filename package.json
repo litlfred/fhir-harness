@@ -24,8 +24,5 @@
     "ig-site:compose": "bun run fhir-harness/scripts/ig-repo-site.ts compose",
     "ig-site:publisher-pages": "bun run fhir-harness/scripts/ig-repo-site.ts publisher-pages",
     "ig-site:bar": "bun run fhir-harness/scripts/ig-repo-site.ts bar"
-  },
-  "overrides": {
-    "expo": "58.0.10"
   }
 }
