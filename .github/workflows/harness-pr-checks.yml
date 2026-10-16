@@ -6,6 +6,11 @@ name: Harness PR checks
 on:
   pull_request:
     types: [opened, synchronize, reopened, closed]
+  # main's own run keeps main's answer, the gate seconds and the cone records
+  # in caches every PR can read (cat-harness-tools#406, #411); a run on a PR
+  # can only read caches saved from its own PR or from main.
+  push:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
