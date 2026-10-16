@@ -16,12 +16,16 @@ import { stageLocal } from "../../cat-harness-tools/scripts/stage-local.ts";
 import {
   FOLIO_ROOT_MARKERS,
   IG_DROPPED,
+  droppedWords,
   IG_KEEP,
+  versionedRoots,
   IG_SITE_OPTIONAL,
   IG_PUBLISHER,
   IG_SITE_STAMP,
   IG_SITE_STEPS,
+  declaredKeep,
   igFolioSite,
+  lockedMountPath,
   igIdentity,
   applyIgDeploy,
   branchDirOf,
@@ -48,15 +52,15 @@ const IG_CALLER = `on:
   workflow_dispatch:
 jobs:
   call_build:
-    uses: WorldHealthOrganization/smart-base/.github/workflows/fhirbuild.yml@main
+    uses: example-org/ig-template/.github/workflows/fhirbuild.yml@main
 `;
 const IG_PAGES_CALLER = IG_CALLER.replace("fhirbuild.yml", "ghbuild.yml").replace("call_build", "build");
 
-/** The shape of smart-base's ghbuild.yml, cut to the parts the plan reads. */
+/** The shape of an IG template's ghbuild.yml, cut to the parts the plan reads. */
 const IG_WORKFLOW = `on:
   workflow_call:
     inputs:
-      do_dak:
+      do_preprocess:
         type: boolean
         default: true
       deploy:
@@ -80,12 +84,12 @@ jobs:
       - name: Comment on PR
         if: steps.find_pr.outputs.IS_PR == 'true'
         run: echo comment
-      - name: Check for DAK configuration
+      - name: Check for preprocessing configuration
         run: |
-          if [ -f dak.json ]; then echo "DAK_ENABLED=true" >> "$GITHUB_ENV"; fi
-      - name: DAK Preprocessing
-        if: inputs.do_dak != 'false' && env.DAK_ENABLED == 'true'
-        run: python3 input/scripts/transform_dmn.py
+          if [ -f preprocess.json ]; then echo "PREPROCESS_ENABLED=true" >> "$GITHUB_ENV"; fi
+      - name: Preprocessing
+        if: inputs.do_preprocess != 'false' && env.PREPROCESS_ENABLED == 'true'
+        run: python3 input/scripts/preprocess.py
       - name: Update the image to the latest publisher
         uses: docker://hl7fhir/ig-publisher-base:latest
         with:
@@ -134,7 +138,7 @@ jobs:
 
 const ctx = (env: Record<string, string> = {}): ExprContext => ({
   github: { repository: "o/r", ref: "refs/heads/feat", ref_name: "feat", head_ref: "", sha: "abc", event_name: "workflow_dispatch" },
-  inputs: { do_dak: true, deploy: true },
+  inputs: { do_preprocess: true, deploy: true },
   env,
   steps: {},
 });
@@ -155,7 +159,7 @@ describe("stage-local: an IG lands where its workflow's deploy step puts it", ()
   test("the deploy steps are read, retries ignored", () => {
     expect(deploys.candidate).toEqual({ branch: "gh-pages", folder: "output", targetFolder: "branches/${{ env.BRANCH_DIR }}", message: "Deploy candidate branch", clean: false, cleanExclude: [], singleCommit: true });
     expect(deploys.main).toMatchObject({ targetFolder: "", message: "Deploy main branch", clean: true, cleanExclude: ["branches", "sitepreview"] });
-    expect(wf.inputs).toEqual({ do_dak: true, deploy: true });
+    expect(wf.inputs).toEqual({ do_preprocess: true, deploy: true });
   });
 
   test("default branch → the root, kept paths are the action's own and clean-exclude; other branches → branches/<last component>", () => {
@@ -207,7 +211,7 @@ describe("stage-local: an IG lands where its workflow's deploy step puts it", ()
 
   test("so is one over the folio site an IG repository's folio-site.yml deployed, known by its build stamp", () => {
     const pages = tmp("stage-local-ig-pages-");
-    put(pages, "index.html", "<title>WHO SMART Trust | folio-assistant</title>");
+    put(pages, "index.html", "<title>Example IG | folio-assistant</title>");
     put(pages, "folio-build.json", "{}");
     const out = tmp("stage-local-ig-out-");
     put(out, "index.html");
@@ -224,8 +228,8 @@ describe("stage-local: the IG build is the workflow's own steps, planned", () =>
     expect(by["Setup Python"]!.action).toBe("venv");
     expect(by["Find PR number"]).toMatchObject({ action: "skip", reason: expect.stringMatching(/secret/) });
     expect(by["Comment on PR"]).toMatchObject({ action: "skip", reason: expect.stringMatching(/false here/) });
-    expect(by["Check for DAK configuration"]!.action).toBe("run");
-    expect(by["DAK Preprocessing"]).toMatchObject({ action: "run", reason: expect.stringMatching(/decided when the run reaches it/) });
+    expect(by["Check for preprocessing configuration"]!.action).toBe("run");
+    expect(by["Preprocessing"]).toMatchObject({ action: "run", reason: expect.stringMatching(/decided when the run reaches it/) });
     expect(by["Update the image to the latest publisher"]!.action).toBe("docker");
     expect(by["Upload qa.json artifact"]!.action).toBe("skip");
     expect(by["Deploy main"]!.action).toBe("deploy");
@@ -239,8 +243,8 @@ describe("stage-local: the IG build is the workflow's own steps, planned", () =>
   });
 
   test("expressions read as the runner reads them", () => {
-    const c = ctx({ DAK_ENABLED: "true" });
-    expect(evalExpr("inputs.do_dak != 'false' && env.DAK_ENABLED == 'true'", c)).toBe(true);
+    const c = ctx({ PREPROCESS_ENABLED: "true" });
+    expect(evalExpr("inputs.do_preprocess != 'false' && env.PREPROCESS_ENABLED == 'true'", c)).toBe(true);
     expect(evalExpr("${{ inputs.deploy != false }}", c)).toBe(true);
     expect(evalExpr("steps.find_pr.outputs.IS_PR == 'true'", c)).toBe(false);
     expect(evalExpr("github.head_ref || github.ref_name", c)).toBe("feat");
@@ -267,7 +271,7 @@ describe("stage-local end to end: an IG published to a local origin, preview the
     sh(repo, "config", "user.email", "t@example.org");
     sh(repo, "remote", "add", "origin", "https://github.com/o/r");
     sh(repo, "config", `url.file://${bare}.insteadOf`, "https://github.com/o/r");
-    put(repo, ".github/workflows/fhirbuild.yml", IG_CALLER.replace("WorldHealthOrganization/smart-base", "o/sb"));
+    put(repo, ".github/workflows/fhirbuild.yml", IG_CALLER.replace("example-org/ig-template", "o/sb"));
     // The platform's chrome scripts, as a mount lays them (stand-ins: stage-local-ig-chrome.test.ts runs the real rail).
     put(repo, "cat-harness-tools/scripts/sync-docs-harness.ts", FAKE_SYNC);
     put(repo, "cat-harness-tools/scripts/rail-standalone-pages.ts", FAKE_RAIL);
@@ -362,6 +366,11 @@ describe("an IG repository's folio site (owner, 2026-10-14)", () => {
     });
   });
 
+  test("the checkout's declared coverage policy reaches the build; absent, none is set (refuse)", () => {
+    expect(igFolioSite({ hasIndexConfig: true, scripts, landing, identity, coverage: "report" }).site?.coverage).toBe("report");
+    expect(igFolioSite({ hasIndexConfig: true, scripts, landing, identity }).site?.coverage).toBeUndefined();
+  });
+
   test("not harnessed, or nothing mounted to build it: the bare IG route, and why", () => {
     expect(igFolioSite({ hasIndexConfig: false, scripts, landing, identity }).why).toMatch(/no index\.config\.json/);
     expect(igFolioSite({ hasIndexConfig: true, scripts: table([]), landing, identity }).why).toMatch(new RegExp(IG_SITE_STEPS.site));
@@ -387,9 +396,27 @@ describe("an IG repository's folio site (owner, 2026-10-14)", () => {
     expect(igFolioSite({ hasIndexConfig: true, scripts, landing, hasOpenapi: true, identity }).site!.notes.join("\n")).toMatch(/NOT built/);
   });
 
-  test("the Publisher's version comparisons are the one drop the root's parity guard excuses, by the owner's ruling", () => {
-    expect(IG_DROPPED.map((d) => d.dir)).toEqual(["comparison-v*"]);
+  test("the IG's bar runs as a FINAL step, after the platform's own writers, when a mounted layer provides it", () => {
+    const withBar = new Map([...scripts, [IG_SITE_OPTIONAL.bar, { manifest: "fhir-harness/package.json" }]]);
+    expect(igFolioSite({ hasIndexConfig: true, scripts: withBar, landing, identity }).site!.finalSteps).toEqual([IG_SITE_OPTIONAL.bar]);
+    const without = igFolioSite({ hasIndexConfig: true, scripts, landing, identity }).site!;
+    expect(without.finalSteps).toEqual([]);
+    expect(without.notes.join("\n")).toMatch(/keep no IG bar/);
+  });
+
+  test("the root's parity guard excuses exactly what the owner ruled dropped: the comparisons, schemas/ and the theme's side bar", () => {
+    expect(IG_DROPPED.map((d) => d.dir ?? `feature:${d.feature}`)).toEqual(["comparison-v*", "schemas", "feature:siteNav"]);
     expect(IG_DROPPED[0]!.ruling).toContain("2a");
+    expect(IG_DROPPED[1]!.ruling).toContain("New address only");
+    expect(IG_DROPPED[2]!.ruling).toMatch(/2026-10-15.*layout "C"/);
+    // Each entry names one thing, never both.
+    for (const d of IG_DROPPED) expect((d.dir === undefined) !== (d.feature === undefined)).toBe(true);
+    // Search and the language picker are never excused.
+    expect(IG_DROPPED.map((d) => d.feature).filter(Boolean)).toEqual(["siteNav"]);
+  });
+
+  test("the plan says each drop in words", () => {
+    expect(IG_DROPPED.map(droppedWords)).toEqual(["comparison-v*/", "schemas/", "the page feature siteNav"]);
   });
 
   test("harnessed but no landing named: refused, never guessed among the mounts", () => {
@@ -398,6 +425,27 @@ describe("an IG repository's folio site (owner, 2026-10-14)", () => {
 
   test("the IG workflow's per-branch previews are kept at the root", () => {
     expect(IG_KEEP).toContain("branches");
+    expect(IG_KEEP).toContain("ns");
+    expect(versionedRoots(["0.1.0", "1.2.3-ballot", "branches", "assets", "v1", "0.1"])).toEqual(["0.1.0", "1.2.3-ballot"]);
+  });
+
+  test("the root keeps what the landing instance's site.build.keep declares, besides the IG's own", () => {
+    const r = igFolioSite({ hasIndexConfig: true, scripts, landing, identity, keep: ["ns", "branches", "0.1.0"] }).site!;
+    // "ns" and "branches" are the IG's own (IG_KEEP) as well as declared: kept once, not doubled.
+    expect(r.keep).toEqual([...IG_KEEP, "0.1.0"]);
+  });
+
+  test("the declared keep is read from the landing instance's index.config.json entry; none declared is none kept", () => {
+    const repo = tmp("ig-declared-keep-");
+    put(repo, "index.config.json", JSON.stringify({
+      $schema: "folio-index-config/v1",
+      instances: [{ name: "base-harness", source: { local: { at: "base-harness" } }, site: { build: { keep: ["ns", "0.1.0"] } } }, { name: "other" }],
+      site: { landing: "base-harness" },
+    }));
+    expect(declaredKeep(repo, "base-harness")).toEqual(["ns", "0.1.0"]);
+    expect(declaredKeep(repo, "other")).toEqual([]);
+    put(repo, "index.config.json", JSON.stringify({ $schema: "folio-index-config/v1", instances: [{ name: "base-harness", site: { build: { keep: ["a/b"] } } }] }));
+    expect(() => declaredKeep(repo, "base-harness")).toThrow(/site\.build\.keep/);
   });
 
   test("the stamp the folio route requires is a folio root marker, so a bare IG deploy refuses that root", () => {
@@ -407,5 +455,34 @@ describe("an IG repository's folio site (owner, 2026-10-14)", () => {
     writeFileSync(join(pages, "index.html"), "folio");
     const t = { deploy: { branch: "gh-pages", folder: "output", targetFolder: "", message: "", clean: true, cleanExclude: [], singleCommit: false }, dest: "", keep: [".git"], commit: ["m"] };
     expect(() => applyIgDeploy(pages, "output", t, () => {})).toThrow(/folio's site/);
+  });
+});
+
+describe("where the checkout holds the landing instance (lockedMountPath)", () => {
+  const repoWith = (files: Record<string, unknown>) => {
+    const d = mkdtempSync(join(tmpdir(), "locked-mount-path-"));
+    for (const [f, v] of Object.entries(files)) writeFileSync(join(d, f), JSON.stringify(v));
+    return d;
+  };
+  const lock = { instances: [{ instance: "fhir-harness", path: "fhir-harness" }, { instance: "base-ig", path: "base-ig" }] };
+
+  test("a mounted instance: its path in index.lock.json", () => {
+    expect(lockedMountPath(repoWith({ "index.lock.json": lock }), "base-ig")).toBe("base-ig");
+  });
+
+  test("a LOCAL instance (the base harness's own repository): its source.local.at, which the lock does not list", () => {
+    const config = { instances: [{ name: "base-ig", source: { local: { at: "./base-ig/" } } }, { name: "fhir-harness", source: { remote: { repository: "o/fhir-harness", ref: "x" } } }] };
+    const repo = repoWith({ "index.lock.json": { instances: [{ instance: "fhir-harness", path: "fhir-harness" }] }, "index.config.json": config });
+    expect(lockedMountPath(repo, "base-ig")).toBe("base-ig");
+    expect(lockedMountPath(repo, "fhir-harness")).toBe("fhir-harness");
+    expect(lockedMountPath(repo, "absent")).toBeUndefined();
+  });
+
+  test("so a local landing layer's sidecars are its own, and run", () => {
+    const repo = repoWith({ "index.config.json": { instances: [{ name: "base-ig", source: { local: { at: "base-ig" } } }] } });
+    const landingPath = lockedMountPath(repo, "base-ig");
+    const scripts = new Map([...Object.values(IG_SITE_STEPS), IG_SITE_OPTIONAL.sidecars].map((n) => [n, { manifest: n === IG_SITE_OPTIONAL.sidecars ? "base-ig/package.json" : "fhir-harness/package.json" }]));
+    const r = igFolioSite({ hasIndexConfig: true, scripts, landing: { kind: "instance", name: "base-ig" }, ...(landingPath !== undefined ? { landingPath } : {}), identity: { title: "Base IG" } });
+    expect(r.site?.pre).toEqual([IG_SITE_STEPS.ast, IG_SITE_OPTIONAL.sidecars]);
   });
 });

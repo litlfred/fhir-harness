@@ -21,7 +21,8 @@
  * @module fhir-harness/scripts/gen-ig-pages.test
  */
 import { afterAll, describe, expect, it } from "bun:test";
-import { existsSync, readFileSync, rmSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
 import { IPA, IPS, IPS_IDENTITY, artifactIndex, scratchRepo } from "../test/support/ig-fixture";
@@ -218,5 +219,73 @@ describe("gen-ig-pages: an AST build's revision is printed once, on the index (b
 
   it("an artefact built at a different revision still names its own", () => {
     expect(read("built1", "artifact/StructureDefinition-Patient-uv-ips.md")).toContain("`" + "9".repeat(12) + "`");
+  });
+});
+
+describe("gen-ig-pages --site: only the declared route pages, under the site", () => {
+  // An instance that declares the artefact-index visualiser, per instance, as
+  // a harness does (`renderedBy: ig-pages`, `subgraphs: "instance"`).
+  const siteRepo = scratchRepo({ sited: { index: artifactIndex(IPS, "sited") } });
+  const decl = join(siteRepo, "sited", "sited.json");
+  writeFileSync(decl, JSON.stringify({
+    ...JSON.parse(readFileSync(decl, "utf8")),
+    visualisers: [{ id: "artifact-index", renderedBy: "ig-pages", coversKinds: ["fhir-artifact-index"], subgraphs: "instance", title: "Artefact index" }],
+  }));
+  const site = mkdtempSync(join(tmpdir(), "fhir-harness-site-"));
+  const withIndex = mkdtempSync(join(tmpdir(), "fhir-harness-site-"));
+  afterAll(() => [siteRepo, site, withIndex].forEach((d) => rmSync(d, { recursive: true, force: true })));
+  const run = (...args: string[]) => Bun.spawnSync(["bun", "run", SCRIPT, "--instance", join(siteRepo, "sited"), ...args], { cwd: ROOT });
+  const files = (dir: string): string[] => (readdirSync(dir, { recursive: true }) as string[]).filter((f) => !statSync(join(dir, f)).isDirectory()).sort();
+  const full = join("en", "sited", "artifact-index", "index.html");
+  const sub = join("en", "sited", "artifact-index", "sited", "index.html");
+
+  const first = run("--site", site, "--label", "Sited IG");
+  mkdirSync(join(withIndex, "sited"), { recursive: true });
+  writeFileSync(join(withIndex, "sited", "index.md"), "---\ntitle: held\n---\n");
+  const second = run("--site", withIndex);
+
+  it("the Tool declares the flags a site build passes: --instance and --site", async () => {
+    const { tools } = await import("../tools/index.ts");
+    const t = tools().find((x) => x.id === "ig-pages")!;
+    const flag = (n: string): string | undefined => {
+      const a = t.io?.inputs?.find((i) => i.name === n)?.arg;
+      return a !== undefined && "flag" in a ? a.flag : undefined;
+    };
+    expect(flag("instance")).toBe("--instance");
+    expect(flag("site")).toBe("--site");
+  });
+
+  it("writes the full view and the instance's sub-graph view at the localised route, and nothing else", () => {
+    expect(first.exitCode).toBe(0);
+    expect(files(site)).toEqual([full, sub].sort());
+  });
+
+  it("writes nothing into the instance: no docs/", () => {
+    expect(existsSync(join(siteRepo, "sited", "docs"))).toBe(false);
+    expect(existsSync(join(siteRepo, "_site"))).toBe(false);
+  });
+
+  it("a site without the IG's index gets the index itself, every artefact linked upstream", () => {
+    const html = readFileSync(join(site, full), "utf8");
+    expect(html).toContain('<meta name="rendered-by" content="ig-pages">');
+    expect(html).toContain("<title>Sited IG — artefact index</title>");
+    expect(html).toContain(`href="${IPS.published}/StructureDefinition-Composition-uv-ips.html"`);
+    expect(html).not.toContain("http-equiv=\"refresh\"");
+    expect(readFileSync(join(site, sub), "utf8")).toBe(html);
+  });
+
+  it("a site that carries the index gets a redirect to it, relative to the route", () => {
+    expect(second.exitCode).toBe(0);
+    expect(readFileSync(join(withIndex, full), "utf8")).toContain('content="0; url=../../../sited/"');
+    expect(readFileSync(join(withIndex, sub), "utf8")).toContain('content="0; url=../../../../sited/"');
+  });
+
+  it("--check with --site judges the route pages under the site", () => {
+    expect(run("--site", site, "--label", "Sited IG", "--check").exitCode).toBe(0);
+    expect(run("--site", site, "--label", "Another", "--check").exitCode).toBe(1);
+  });
+
+  it("--site and --out together are refused", () => {
+    expect(run("--site", site, "--out", join(site, "x")).exitCode).toBe(2);
   });
 });

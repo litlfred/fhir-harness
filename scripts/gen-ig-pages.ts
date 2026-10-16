@@ -65,6 +65,14 @@
  * Usage:
  *   bun run fhir-harness/scripts/gen-ig-pages.ts --instance <dir> --label "<IG display name>"
  *     [--chrome-owner <instance>] [--summary] [--check]
+ *   bun run fhir-harness/scripts/gen-ig-pages.ts --instance <dir> --site <site dir> [--label "<name>"] [--check]
+ *
+ * `--site <dir>` is a site being built (`visualiser-writers.ts`, cat-harness-tools):
+ * the run writes ONLY the route pages of the visualisers declared `renderedBy:
+ * ig-pages` — `<locale>/<harness>/<id>/` and, for a `subgraphs: "instance"`
+ * view, `…/<instance>/` — under that directory, and nothing in the instance or
+ * its `docs/`. Each page opens the IG's artefact index where the site carries
+ * it, and is that index (every artefact, linked upstream) where it does not.
  *
  * THIN IS THE DEFAULT (owner, 2026-10-11, option A: "tiny html w/ dynamic
  * load from json(ld) KG"; 2026-10-12: "make thin default"). Each ARTEFACT page
@@ -112,6 +120,8 @@ import { JSON_VIEW_SCRIPT, VIEW_PAGE, examplesPage, hasJsonView, historyPage, js
 import { isDirectoryReadme } from "../../cat-harness/schemas/kg-node.js";
 import { ARTIFACT_INDEX_FILE, artifactJsonLdFiles, localResourceHref } from "./ig-artifact-jsonld.ts";
 import { THIN_PAGE_SCRIPT, THIN_PAGE_STYLE, artifactTabs, thinArtifactPath, thinArtifactView } from "./ig-thin-pages.ts";
+import { PAGE_LAYOUT_CSS_FILE, PAGE_LAYOUT_CSS_SOURCE, PAGE_LAYOUT_JS_FILE, PAGE_LAYOUT_JS_SOURCE } from "../../cat-harness-tools/scripts/page-layout.ts";
+import { IG_SEARCH_INDEX_FILE, IG_SEARCH_SCRIPT_FILE } from "./ig-search.ts";
 
 import { IgMenuSchema, type IgMenu, type IgMenuGroup, menuHref, menuItemCount } from "../schemas/ig-menu.js";
 import {
@@ -122,7 +132,8 @@ import {
   type IgChrome,
 } from "../schemas/ig-chrome.js";
 import { readIgIdentity, statusOf, type IgIdentity } from "../schemas/ig-identity.js";
-import { declaredVisualisers, siteOwnerDir, withRenderedBy, withRenderedByFrontMatter } from "../../cat-harness-tools/scripts/viewer-declarations.js";
+import { declaredVisualisers, pageParts, siteOwnerDir, visualiserPageDir, withRenderedBy, withRenderedByFrontMatter } from "../../cat-harness-tools/scripts/viewer-declarations.js";
+import { siteArg, sitePageAt } from "../../cat-harness-tools/scripts/lib/site-target.ts";
 import { siteRootFrom, visualiserRoute } from "../../cat-harness/schemas/visualiser-route.js";
 import {
   declarationPathIn,
@@ -149,7 +160,7 @@ function arg(name: string): string | undefined {
 
 const INSTANCE_ARG = arg("--instance");
 if (!INSTANCE_ARG) {
-  console.error("usage: gen-ig-pages.ts --instance <dir> --label <name> [--chrome-owner <instance>] [--index <index.json>] [--out <dir>] [--summary] [--full-pages | --jsonld-base <url>] [--publisher-data <dir>] [--ig-site] [--ig-api-served] [--check]");
+  console.error("usage: gen-ig-pages.ts --instance <dir> --label <name> [--chrome-owner <instance>] [--index <index.json>] [--out <dir>] [--summary] [--full-pages | --jsonld-base <url>] [--publisher-data <dir>] [--ig-site] [--ig-api-served] [--site <dir>] [--check]");
   process.exit(2);
 }
 const INSTANCE = resolve(process.cwd(), INSTANCE_ARG);
@@ -201,6 +212,13 @@ if (FULL_PAGES && process.argv.includes("--thin")) {
   process.exit(2);
 }
 const THIN = !FULL_PAGES;
+/**
+ * `--search`: the site serves the IG's search under the docs root
+ * (`ig-search.ts`: `assets/ig-search.json` and `assets/ig-search.js`, which
+ * `ig-repo-site.ts compose` writes), so every thin artefact page's header
+ * carries the search box. Absent, no page names files the site may not hold.
+ */
+const SEARCH = THIN && process.argv.includes("--search");
 const JSONLD_BASE = (() => {
   const b = arg("--jsonld-base");
   return b === undefined ? undefined : b.endsWith("/") ? b : `${b}/`;
@@ -219,6 +237,18 @@ const THIN_STYLE = join(import.meta.dir, "templates", "ig-pages", "ig-artifact.c
 /** `--out` writes the pages somewhere other than the instance's committed `docs/`. */
 const OUT_ARG = arg("--out");
 const OUT = OUT_ARG ? resolve(process.cwd(), OUT_ARG) : join(INSTANCE, "docs");
+/**
+ * `--site <dir>`: a site being built (`visualiser-writers.ts`, which reads the
+ * flag off this Tool's `site` input). The run writes ONLY the declared route
+ * pages, at `<locale>/<harness>/<id>/` under that directory — never `docs/`,
+ * never anything in the instance, which in a repository's own site build is a
+ * pinned mount. See {@link declaredRoutePages}.
+ */
+const SITE = siteArg();
+if (SITE !== undefined && OUT_ARG !== undefined) {
+  console.error("gen-ig-pages: --site and --out together — --site writes only the declared route pages, --out the docs; pick one");
+  process.exit(2);
+}
 /**
  * Whether these pages build INTO the instance's own IG site, served at
  * `/<instance>/` (`igSite` on the docs directory, bean `mftp`), rather than
@@ -1311,6 +1341,27 @@ if (LABEL_ARG === undefined && ix.packageId) {
   INDEX_TITLE = titleFor(LABEL);
 }
 
+// `--site`: THE ROUTE PAGES AND NOTHING ELSE. Before a single docs page is
+// built, so nothing below can reach the instance or a committed docs tree.
+if (SITE !== undefined) {
+  const routes = declaredRoutePages(SITE);
+  if (CHECK) {
+    const stale = routes.filter((r) => !existsSync(r.abs) || readFileSync(r.abs, "utf8") !== r.html);
+    for (const r of stale) console.error(`✗ ${relative(SITE, r.abs)} — a declared route's page — is stale or missing under ${SITE}.`);
+    if (stale.length > 0) process.exit(1);
+    console.log(`✓ ${routes.length} declared route page(s) current under ${SITE}`);
+  } else {
+    for (const r of routes) {
+      mkdirSync(join(r.abs, ".."), { recursive: true });
+      writeFileSync(r.abs, r.html);
+      console.log(`  declared route → ${relative(SITE, r.abs)}`);
+    }
+    console.log(`${INSTANCE_NAME}: ${routes.length} declared route page(s) written into the site; docs/ not written (--site)`);
+  }
+  if (routes.length === 0) console.log(`  · ${INSTANCE_NAME} declares no visualiser rendered by ig-pages that covers it — nothing to write`);
+  process.exit(0);
+}
+
 const pages = new Map<string, string>();
 // WRITTEN AS `.md`, LINKED AS `.html` — and the mismatch is correct. Jekyll
 // renders `index.md` to `index.html`, so every in-page href above keeps
@@ -1599,6 +1650,7 @@ if (existsSync(MENU)) {
         ...(COMPILED_DATA ? { compiledData: COMPILED_DATA } : {}),
         ...(resource ? { resource } : {}),
         ...(tabs.length ? { tabs, index: ARTIFACT_INDEX_FILE } : {}),
+        ...(SEARCH ? { search: { index: `../${IG_SEARCH_INDEX_FILE}`, script: `../${IG_SEARCH_SCRIPT_FILE}` } } : {}),
       };
       if (resource) served += 1;
       pages.set(thinArtifactPath(a), thinArtifactView(ix, a, "content", opts));
@@ -1623,6 +1675,10 @@ if (existsSync(MENU)) {
     }
     pages.set(THIN_PAGE_SCRIPT, readFileSync(THIN_RENDERER, "utf8"));
     pages.set(THIN_PAGE_STYLE, readFileSync(THIN_STYLE, "utf8"));
+    // The shared page layout every thin page links before its own stylesheet
+    // (cat-harness-tools `page-layout.ts`): one width, one bar, one scroll.
+    pages.set(PAGE_LAYOUT_CSS_FILE, readFileSync(PAGE_LAYOUT_CSS_SOURCE, "utf8"));
+    pages.set(PAGE_LAYOUT_JS_FILE, readFileSync(PAGE_LAYOUT_JS_SOURCE, "utf8"));
   }
 }
 
@@ -1724,29 +1780,82 @@ function docsDirectoryId(): string | undefined {
 // `artifacts.html`, or this instance's index. The index stays where the IG
 // puts it; the route is where the declaration says it is, and it always works.
 const ROUTE_REPO = checkoutRootFor(INSTANCE);
-const ROUTE_SITE = siteOwnerDir(ROUTE_REPO);
-const IG_VISUALISERS = declaredVisualisers(ROUTE_REPO).filter((v) => v.renderedBy === "ig-pages");
-const routePages: { abs: string; html: string }[] = [];
-for (const v of IG_VISUALISERS) {
-  const parts = { harness: v.harness, visualiser: v.id };
+const routePages = declaredRoutePages();
+
+/**
+ * The page at each declared route of a visualiser `renderedBy: ig-pages`.
+ *
+ * Without a site: under the checkout's own site directory, at the route as
+ * declared, each a redirect to the artefact index this generator (or, for an
+ * IG site, the Publisher) draws at `<instance>/`.
+ *
+ * With `site` (`--site`): under that site, at the route WITH its locale
+ * (`pageParts`, the one place a page's locale is supplied), placed by the
+ * shared `visualiserPageDir`. Each redirects to the IG's artefact index when
+ * the site carries it; otherwise it IS the index — every artefact, linked to
+ * where the IG publishes it — because a redirect to a page the site does not
+ * hold is a dead link, and an unresolved link refuses the site's publish.
+ */
+function declaredRoutePages(site?: string): { abs: string; html: string }[] {
+  const out: { abs: string; html: string }[] = [];
+  // Resolved here, not read from `ROUTE_REPO`: the `--site` run calls this
+  // before that constant is initialised.
+  const repo = checkoutRootFor(INSTANCE);
   const here = IG_SITE ? "artifacts.html" : "";
-  // Its own harness: the full view at `<base>/<harness>/<id>/` opens this
-  // instance's artefact index.
-  if (v.harness === INSTANCE_NAME) {
-    routePages.push({
-      abs: join(ROUTE_SITE, ...visualiserRoute(parts).split("/").filter(Boolean), "index.html"),
-      html: routeRedirect(`${siteRootFrom(parts)}${INSTANCE_NAME}/${here}`, `${LABEL} — artefact index`),
-    });
+  const title = `${LABEL} — artefact index`;
+  const place = (parts: { harness: string; visualiser: string; subgraph?: string }): { abs: string; html: string } => {
+    if (site === undefined) {
+      return {
+        abs: join(siteOwnerDir(repo), ...visualiserRoute(parts).split("/").filter(Boolean), "index.html"),
+        html: routeRedirect(`${siteRootFrom(parts)}${INSTANCE_NAME}/${here}`, title),
+      };
+    }
+    const local = pageParts(parts);
+    const abs = join(visualiserPageDir(site, local), "index.html");
+    const indexHref = `${INSTANCE_NAME}/${here}`;
+    return { abs, html: sitePageAt(site, indexHref) ? routeRedirect(`${siteRootFrom(local)}${indexHref}`, title) : artefactIndexPage(IX, title) };
+  };
+  for (const v of declaredVisualisers(repo).filter((d) => d.renderedBy === "ig-pages")) {
+    const parts = { harness: v.harness, visualiser: v.id };
+    // Its own harness: the full view at `<base>/<harness>/<id>/` opens this
+    // instance's artefact index.
+    if (v.harness === INSTANCE_NAME) out.push(place(parts));
+    // A harness covering the KIND per instance (`subgraphs: "instance"`):
+    // this instance's sub-graph view, `<base>/<harness>/<id>/<instance>/`.
+    if (v.subgraphs === "instance" && (v.coversKinds ?? []).includes("fhir-artifact-index") && directoriesForGraph(INSTANCE, "fhir-artifact-index").length > 0) {
+      out.push(place({ ...parts, subgraph: INSTANCE_NAME }));
+    }
   }
-  // A harness covering the KIND per instance (`subgraphs: "instance"`):
-  // this instance's sub-graph view, `<base>/<harness>/<id>/<instance>/`.
-  if (v.subgraphs === "instance" && (v.coversKinds ?? []).includes("fhir-artifact-index") && directoriesForGraph(INSTANCE, "fhir-artifact-index").length > 0) {
-    const sub = { ...parts, subgraph: INSTANCE_NAME };
-    routePages.push({
-      abs: join(ROUTE_SITE, ...visualiserRoute(sub).split("/").filter(Boolean), "index.html"),
-      html: routeRedirect(`${siteRootFrom(sub)}${INSTANCE_NAME}/${here}`, `${LABEL} — artefact index`),
+  return out;
+}
+
+/**
+ * The IG's artefact index as one standalone page, for a site that does not
+ * carry the index itself: every artefact by type, each linked to the page the
+ * IG publishes it at (its canonical URL where it names none). Every link is
+ * absolute and upstream, so the page holds no link the site must resolve.
+ */
+function artefactIndexPage(ix: FhirArtifactIndex, title: string): string {
+  const e = (v: string): string => v.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+  const link = (href: string | undefined, text: string): string => (href !== undefined && /^https?:\/\//.test(href) ? `<a href="${e(href)}">${e(text)}</a>` : e(text));
+  const rows = [...ix.artifacts]
+    .sort((a, b) => a.resourceType.localeCompare(b.resourceType) || a.id.localeCompare(b.id))
+    .map((a) => {
+      const label = a.title ?? a.name ?? a.id;
+      return `<tr><td>${e(a.resourceType)}</td><td>${link(a.published?.html?.url ?? a.canonical, label)}</td><td><code>${e(a.id)}</code></td><td>${e(a.materialization.state)}</td></tr>`;
     });
-  }
+  const about = [
+    ix.packageId === undefined ? undefined : `<code>${e(ix.packageId)}</code>${ix.version === undefined ? "" : ` ${e(ix.version)}`}`,
+    ix.canonicalBase === undefined ? undefined : `canonical base ${link(ix.canonicalBase, ix.canonicalBase)}`,
+  ].filter((x): x is string => x !== undefined);
+  return withRenderedBy(
+    `<!doctype html>\n<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>${e(title)}</title></head>\n<body>\n` +
+      `<h1>${e(title)}</h1>\n` +
+      `<p>${ix.count} artefact(s)${about.length ? ` of ${about.join(", ")}` : ""}. Each links to where the IG publishes it; the state says whether this index holds its bytes or only refers to them.</p>\n` +
+      `<table>\n<thead><tr><th>Type</th><th>Artefact</th><th>Id</th><th>State</th></tr></thead>\n<tbody>\n${rows.join("\n")}\n</tbody>\n</table>\n` +
+      `</body></html>\n`,
+    "ig-pages",
+  );
 }
 
 /** A one-file redirect at the declared route, naming the Tool that drew it. */

@@ -15,7 +15,7 @@
  * reference-direction review) that it moves to the layer that owns IG
  * builds, and that `stage-local.ts` reaches it through a declared publisher
  * slot. This layer declares the slot: `pipeline-plugins/site-publisher-ig.json`
- * names {@link IG_PUBLISHER} through `content/pipeline/plugin-slots.ts`, and
+ * names {@link IG_PUBLISHER} through `pipeline/plugin-slots.ts`, and
  * `stage-local.ts` finds it through the dependencies of the repository it is
  * publishing. It never names this file. The workflows it publishes for
  * ({@link IG_WORKFLOWS}) are declared here, by the layer whose workflows they are.
@@ -73,7 +73,7 @@ import { siteFileFor } from "../../cat-harness/schemas/cat-harness.ts";
 import { resolveLandingInstance } from "../../cat-harness/schemas/harness-config.ts";
 import { findDeclarationFile } from "../../cat-harness/schemas/instance-roots.ts";
 import { scriptTable } from "../../cat-harness/schemas/script-table.ts";
-import { buildInstanceSite, keepPinned, lockedMountPaths, siteFields, stagingDir } from "../../cat-harness-tools/scripts/build-instance-site.ts";
+import { buildInstanceSite, keepPinned, lockedMountPaths, recipeRead, siteFields, stagingDir } from "../../cat-harness-tools/scripts/build-instance-site.ts";
 import { igOpenapiGraph } from "../../cat-harness-tools/openapi/scripts/ig-site-openapi.ts";
 import { NAVBAR_ROW_ID } from "../../cat-harness-tools/scripts/lib/harness-rail.ts";
 import { callerInputs, type UsesRef } from "../../cat-harness-tools/scripts/site-publisher.ts";
@@ -636,26 +636,76 @@ export const IG_SITE_STEPS = { ast: "ig-site:ast", source: "ig-site:compose", si
  * - `openapi`, a site step before `site`: run when the checkout holds an
  *   OpenAPI graph (`openapi/cat-openapi.config.json`).
  */
-export const IG_SITE_OPTIONAL = { sidecars: "ig-site:sidecars", openapi: "ig-site:openapi" } as const;
+export const IG_SITE_OPTIONAL = { sidecars: "ig-site:sidecars", openapi: "ig-site:openapi", bar: "ig-site:bar" } as const;
 
 /**
- * Top-level directories an IG repository's root used to serve and no longer
- * does, by the owner's ruling: not a parity shortfall (`site-parity.ts`
- * `DroppedByRuling`). Nothing else is excused.
+ * What an IG repository's root used to serve and no longer does, by the
+ * owner's ruling: not a parity shortfall (`site-parity.ts` `DroppedByRuling`).
+ * Top-level directories, and one page feature. Nothing else is excused: the
+ * search box, the language picker, the rail and the icon row stay required.
  */
 export const IG_DROPPED: readonly DroppedByRuling[] = [
   {
     dir: "comparison-v*",
     ruling: "owner, 2026-10-14, \"2a\": the IG Publisher's version comparisons (comparison-v*/) are not rendered and not published",
   },
+  {
+    dir: "schemas",
+    ruling: "owner, 2026-10-15, \"New address only\": the IG API sidecars are served at fhir-artifact-index/sidecars/ and no copy is made at schemas/",
+  },
+  {
+    feature: "siteNav",
+    ruling: "owner, 2026-10-15, layout \"C\" (chosen from wireframes): the folio rail stands in for the theme's side menu, so #site-nav is not carried; the IG's top bar carries the search box",
+  },
 ];
+
+/** What a dropped entry names, as the plan says it. */
+export const droppedWords = (d: DroppedByRuling): string => (d.feature !== undefined ? `the page feature ${d.feature}` : `${d.dir}/`);
 
 /**
  * Root entries an IG repository's publish keeps besides the folio's own:
- * `branches/`, where its IG workflow's per-branch previews are. Deleting them
- * is a separate question for the owner, never a side effect of a publish.
+ * `branches/`, where its IG workflow's per-branch previews are, and `ns/`,
+ * the instance's JSON-LD context, which `publish-context.yml` publishes on
+ * its own schedule. Deleting either is a separate question for the owner,
+ * never a side effect of a publish. Owner, 2026-10-15, ruling on a base IG
+ * repository's publish: "Keep both" — `ns/` and the versioned copies
+ * ({@link versionedRoots}).
  */
-export const IG_KEEP = ["branches"] as const;
+export const IG_KEEP = ["branches", "ns"] as const;
+
+/** A root entry named as a published IG version, `<major>.<minor>.<patch>[-label]`. */
+const VERSION_DIR = /^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?$/;
+
+/**
+ * The published root's version directories (`0.1.0/`): an IG's release
+ * copies, which a root publish keeps like `branches/` (owner, 2026-10-15,
+ * on a base IG repository: "Keep both"). Pure; `entries` are the root's names.
+ */
+export function versionedRoots(entries: readonly string[]): string[] {
+  return entries.filter((e) => VERSION_DIR.test(e));
+}
+
+/**
+ * The root entries the landing instance's `site.build.keep` declares in this
+ * checkout's `index.config.json` entry, read by build-instance-site's own
+ * reader ({@link recipeRead}), so the IG route keeps what a declared recipe
+ * would. An IG repository's Pages root can hold entries no build writes, laid
+ * there by its other workflows; the repository names them, this layer does
+ * not. Empty when the entry declares none.
+ */
+export function declaredKeep(repo: string, instance: string): string[] {
+  return recipeRead(repo, instance).recipe?.keep ?? [];
+}
+
+/**
+ * The landing entry's `site.build.coverage`, read the same way: an IG repository
+ * whose root already lacks a declared visualiser page says so with "report",
+ * as a folio does, rather than the IG route ignoring the recipe (2026-10-15:
+ * smart-trust and smart-immunizations could not publish).
+ */
+export function declaredCoverage(repo: string, instance: string): "refuse" | "report" | undefined {
+  return recipeRead(repo, instance).recipe?.coverage;
+}
 
 /**
  * The root file an IG repository's folio site must carry before it is
@@ -687,7 +737,11 @@ export interface IgFolioSite {
   pre: string[];
   sourceSteps: string[];
   siteSteps: string[];
+  /** Run after the platform's own writers (cat-harness-tools `finalSteps`): the IG's bar on the pages they write. */
+  finalSteps: string[];
   keep: string[];
+  /** The landing entry's `site.build.coverage` ({@link declaredCoverage}); absent means refuse. */
+  coverage?: "refuse" | "report";
   /** Directories the root drops by ruling (`IG_DROPPED`). */
   dropped: DroppedByRuling[];
   /** What the plan says about each optional step, run or not. */
@@ -712,7 +766,8 @@ export interface IgFolioSite {
  *   cannot be scoped by guessing among the layers the repository mounts.
  *
  * `scripts` maps each checkout script to the manifest declaring it;
- * `landingPath` is the landing instance's mount path (`index.lock.json`).
+ * `landingPath` is the landing instance's mount path (`index.lock.json`);
+ * `keep` is what the checkout declares kept at the root, besides {@link IG_KEEP}.
  */
 export function igFolioSite(o: {
   hasIndexConfig: boolean;
@@ -721,6 +776,10 @@ export function igFolioSite(o: {
   landingPath?: string;
   hasOpenapi?: boolean;
   identity: { title: string; description?: string };
+  /** Root entries the checkout declares kept ({@link declaredKeep}), merged with {@link IG_KEEP}. */
+  keep?: readonly string[];
+  /** The checkout's declared coverage policy ({@link declaredCoverage}). */
+  coverage?: "refuse" | "report";
 }): { site?: IgFolioSite; why?: string } {
   if (!o.hasIndexConfig) return { why: "no index.config.json: this IG mounts no harness, so its site is the IG Publisher's output" };
   const required = Object.values(IG_SITE_STEPS);
@@ -746,6 +805,9 @@ export function igFolioSite(o: {
     notes.push(`${IG_SITE_OPTIONAL.openapi}: run, the checkout holds an OpenAPI graph`);
   }
   siteSteps.push(IG_SITE_STEPS.site);
+  const finalSteps: string[] = [];
+  if (o.scripts.has(IG_SITE_OPTIONAL.bar)) finalSteps.push(IG_SITE_OPTIONAL.bar);
+  else notes.push(`${IG_SITE_OPTIONAL.bar}: no mounted layer provides it — the identifier lookup and mounted docs pages keep no IG bar`);
   return {
     site: {
       scope: o.landing.name,
@@ -753,7 +815,9 @@ export function igFolioSite(o: {
       pre,
       sourceSteps: [IG_SITE_STEPS.source],
       siteSteps,
-      keep: [...IG_KEEP],
+      finalSteps,
+      keep: [...new Set([...IG_KEEP, ...(o.keep ?? [])])],
+      ...(o.coverage ? { coverage: o.coverage } : {}),
       dropped: [...IG_DROPPED],
       notes,
     },
@@ -799,7 +863,11 @@ export function composeIg(pages: string, folder: string, t: IgTarget, chromed = 
  * What it does NOT give, and the plan says so: `folio-site.yml` composes the IG
  * INTO a Jekyll shell (`stage-ig-sites --compose-at-root`), so its pages wear
  * the theme's side bar and search box; railed pages wear the harness rail and
- * the icon row, with the platform's UI loaded from the platform's site.
+ * the icon row. The rail's and the row's code (`navbar.js`, `docs-ui.js` and
+ * their stylesheets) is copied into the site from the pinned cat-harness mount
+ * and loaded from there, never live from the platform's site (owner,
+ * 2026-10-15, "pinned copy per site"); only the rail's LINKS point at the
+ * platform's pages.
  */
 export interface IgChrome {
   sync: string;
@@ -948,23 +1016,46 @@ function folioSiteFor(repo: string, ownerRepo: string): ReturnType<typeof igFoli
   const sushi = join(repo, "sushi-config.yaml");
   const landing = resolveLandingInstance(repo);
   const landingPath = landing.kind === "instance" && landing.name ? lockedMountPath(repo, landing.name) : undefined;
+  const keep = landing.kind === "instance" && landing.name ? declaredKeep(repo, landing.name) : [];
+  const coverage = landing.kind === "instance" && landing.name ? declaredCoverage(repo, landing.name) : undefined;
   return igFolioSite({
     hasIndexConfig: existsSync(join(repo, "index.config.json")),
     scripts: scriptTable(repo),
     landing,
     ...(landingPath !== undefined ? { landingPath } : {}),
+    ...(keep.length ? { keep } : {}),
+    ...(coverage ? { coverage } : {}),
     hasOpenapi: igOpenapiGraph(repo) !== undefined,
     identity: igIdentity(existsSync(sushi) ? readFileSync(sushi, "utf-8") : undefined, ownerRepo.split("/")[1]!),
   });
 }
 
-/** Where `index.lock.json` mounts an instance in the checkout, or undefined. */
+/**
+ * Where the checkout holds an instance: its mount path in `index.lock.json`,
+ * or, for a LOCAL instance (`index.config.json` `source.local.at`), the
+ * directory the checkout keeps it in. A local instance is not mounted, so the
+ * lock does not list it. Undefined when neither names it.
+ *
+ * The local case is a base harness's own repository: it declares its own
+ * instance as `source.local.at: "<instance>"` and lands its site on it, so
+ * without this its own IG API sidecars (`ig-site:sidecars`, from
+ * `<instance>/package.json`) read as "not provided by the landing layer" and
+ * were not run, where an IG repository that mounts the base harness runs them
+ * (owner, 2026-10-15: the base republishes "via the same IG route" as an IG
+ * that mounts it).
+ */
 export function lockedMountPath(repo: string, instance: string): string | undefined {
   const f = join(repo, "index.lock.json");
-  if (!existsSync(f)) return undefined;
-  const l = JSON.parse(readFileSync(f, "utf-8")) as { instances?: { instance?: unknown; path?: unknown }[] };
-  const e = (l.instances ?? []).find((i) => i.instance === instance && typeof i.path === "string");
-  return e ? (e.path as string) : undefined;
+  if (existsSync(f)) {
+    const l = JSON.parse(readFileSync(f, "utf-8")) as { instances?: { instance?: unknown; path?: unknown }[] };
+    const e = (l.instances ?? []).find((i) => i.instance === instance && typeof i.path === "string");
+    if (e) return e.path as string;
+  }
+  const c = join(repo, "index.config.json");
+  if (!existsSync(c)) return undefined;
+  const idx = JSON.parse(readFileSync(c, "utf-8")) as { instances?: { name?: unknown; source?: { local?: { at?: unknown } } }[] };
+  const at = (idx.instances ?? []).find((i) => i.name === instance)?.source?.local?.at;
+  return typeof at === "string" && at !== "" ? at.replace(/^\.\//, "").replace(/\/+$/, "") : undefined;
 }
 
 interface IgBuilt {
@@ -986,7 +1077,8 @@ interface IgBuilt {
  * artefact pages composed at the root, Jekyll, the OpenAPI pages, the AST's
  * data served, the link check. No IG Publisher runs (owner, 2026-10-14: "Yes,
  * fix in platform"; ig-build-pipeline rule 1), so no Docker is needed. The root keeps `STAGING/`,
- * `_render-log/` and the IG workflow's `branches/`; a preview goes to
+ * `_render-log/`, the IG workflow's `branches/` and every entry the landing
+ * instance's `site.build.keep` declares; a preview goes to
  * `STAGING/<branch>/`, as every folio's does. The workflow's own deploy steps
  * are not mirrored: the folio site replaces them.
  */
@@ -998,24 +1090,37 @@ async function stageIgFolio(a: PublisherRun, b: IgBuilt, site: IgFolioSite, h: P
   const url = `${pagesRoot}/${staging ? `${staging}/` : ""}`;
   const out = join(repo, "..", `${name}-site`);
   const message = `Publish ${name} ${sha.slice(0, 7)}${staging ? ` preview of ${branch}` : ""} (folio site, built locally)`;
+  // A root publish keeps the published root's version directories too; a
+  // root the remote cannot list (no gh-pages yet) has none to keep.
+  let versions: string[] = [];
+  if (!staging) {
+    try {
+      h.git(repo, ["fetch", "-q", "--depth", "1", "origin", "gh-pages"]);
+      versions = versionedRoots(h.git(repo, ["ls-tree", "--name-only", "FETCH_HEAD"]).split("\n"));
+    } catch {
+      versions = [];
+    }
+  }
+  const keep = [...site.keep, ...versions];
   const plan: StagePlan = {
     kind: "ig", caller: a.caller, workflow: `${u.owner}/${u.repo}/${b.path}@${u.ref}`, ...(b.note ? { note: b.note } : {}),
     target, branch, ...(a.defaultBranch ? { defaultBranch: a.defaultBranch } : {}), sha,
     publishBranch: "gh-pages", dest: staging ? `${staging}/` : "/", url,
     replaces: staging ? `${staging}/, wholesale` : "the root, as a folio's root publish replaces it",
-    preserved: staging ? [`everything outside ${staging}/`] : ["STAGING", "_render-log", ...site.keep],
+    preserved: staging ? [`everything outside ${staging}/`] : ["STAGING", "_render-log", ...keep],
     build: [
       `the folio site "${site.title}" from the IG's cached AST, never a Publisher run (ig-build-pipeline rule 1): build-instance-site.ts with the chrome of ${site.scope} (index.config.json site.landing)`,
       `  pre    ${site.pre.join(", ")} — restore and judge the AST (a stale one is refused; SITE_ACCEPT_STALE_AST=1 for a preview only)${site.pre.length > 1 ? ", then the landing layer's IG API sidecars" : ""}`,
       `  source ${site.sourceSteps.join(", ")} — the artefact index and thin pages from the AST, the IG's pages at the site root`,
       `  site   ${site.siteSteps.join(", ")} — ${site.siteSteps.length > 1 ? "the OpenAPI pages, then " : ""}the AST's data served, and ${IG_SITE_STAMP} at the root (required: a folio root marker)`,
+      ...(site.finalSteps.length ? [`  final  ${site.finalSteps.join(", ")} — the IG's bar on the pages the platform writes after the site steps`] : []),
       ...site.notes.map((n) => `  note   ${n}`),
-      ...(staging ? [] : site.dropped.map((d) => `  parity ${d.dir}/ is not a shortfall: ${d.ruling}`)),
+      ...(staging ? [] : site.dropped.map((d) => `  parity ${droppedWords(d)} is not a shortfall: ${d.ruling}`)),
       `  out    ${out}`,
     ],
     gate: "build-instance-site's link check: every link the chrome writes must resolve; the IG's own dead links are reported, not gated",
     commit: [message],
-    steps: [...site.pre.map((n) => ({ name: n, action: "pre" })), ...site.sourceSteps.map((n) => ({ name: n, action: "source" })), ...site.siteSteps.map((n) => ({ name: n, action: "site" }))],
+    steps: [...site.pre.map((n) => ({ name: n, action: "pre" })), ...site.sourceSteps.map((n) => ({ name: n, action: "source" })), ...site.siteSteps.map((n) => ({ name: n, action: "site" })), ...site.finalSteps.map((n) => ({ name: n, action: "final" }))],
     notRun: [
       `the IG Publisher and every step of ${b.path}: the site is built from the AST on the IG's cache branch, which ig-ast-refresh.yml refreshes (pass --bare-ig for the Publisher's output as it is)`,
       ...(u.file !== PAGES_SIBLING ? [`${u.file}'s own job (the build.fhir.org trigger): an external build, not this repository's Pages`] : []),
@@ -1036,12 +1141,14 @@ async function stageIgFolio(a: PublisherRun, b: IgBuilt, site: IgFolioSite, h: P
     pre: site.pre,
     sourceSteps: site.sourceSteps,
     siteSteps: site.siteSteps,
+    ...(site.finalSteps.length ? { finalSteps: site.finalSteps } : {}),
     ...(target === "preview" ? { staging: branch } : {}),
     mount: true,
     fresh: false,
     publish,
     ...(publish ? { remote: h.git(repo, ["config", "--get", "remote.origin.url"]) } : {}),
-    keep: site.keep,
+    keep,
+    ...(site.coverage ? { coverage: site.coverage } : {}),
     parityDropped: site.dropped,
     require: [IG_SITE_STAMP],
     message,

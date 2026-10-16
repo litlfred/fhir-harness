@@ -43,8 +43,12 @@
  * `$schema` names the family for `check:kind-validators`. It is not a term
  * of the context, so a JSON-LD processor drops it on expansion and it adds no
  * triple.
+ *
+ * @graphNode schema
  */
 import { z } from "zod";
+
+import { nodeKind } from "../../cat-harness/schemas/node-kind.ts";
 
 export const IG_ARTIFACT_JSONLD_SCHEMA_TAG = "folio-ig-artifact-jsonld/v1";
 
@@ -87,6 +91,17 @@ export const IgArtifactEncodingSchema = z
   .strict();
 export type IgArtifactEncoding = z.infer<typeof IgArtifactEncodingSchema>;
 
+/**
+ * The type and the key are two statements of one fact; a node whose two
+ * disagree is a generator bug, not a choice. Named so the schema and its node
+ * kind run the same check.
+ */
+const typeMatchesKey = (n: { "@type": string; "dcterms:identifier": string }, ctx: z.RefinementCtx): void => {
+  if (n["@type"] !== `fhir:${n["dcterms:identifier"].split("/")[0]}`) {
+    ctx.addIssue({ code: "custom", path: ["@type"], message: `${n["@type"]} does not match the key ${n["dcterms:identifier"]}` });
+  }
+};
+
 export const IgArtifactJsonLdSchema = z
   .object({
     "@context": z.object({ fhir: z.literal(IG_ARTIFACT_JSONLD_CONTEXT.fhir), dcterms: z.string(), schema: z.string(), prov: z.string() }).strict(),
@@ -122,14 +137,17 @@ export const IgArtifactJsonLdSchema = z
     "dcterms:subject": IgSubjectSchema.optional(),
   })
   .strict()
-  .superRefine((n, ctx) => {
-    // The type and the key are two statements of one fact; a node whose two
-    // disagree is a generator bug, not a choice.
-    if (n["@type"] !== `fhir:${n["dcterms:identifier"].split("/")[0]}`) {
-      ctx.addIssue({ code: "custom", path: ["@type"], message: `${n["@type"]} does not match the key ${n["dcterms:identifier"]}` });
-    }
-  });
+  .superRefine(typeMatchesKey);
 export type IgArtifactJsonLd = z.infer<typeof IgArtifactJsonLdSchema>;
+
+/**
+ * `folio-ig-artifact-jsonld/v1` as a node kind (issue #2195), so
+ * `validators/ig-artifact-jsonld.json` names a kind and `node-kinds:check`
+ * files the family under it. Unversioned: the family's tag is not SemVer, so
+ * the `$schema` literal stays a field of the shape. Strict and refined exactly
+ * as {@link IgArtifactJsonLdSchema} is.
+ */
+export const IgArtifactJsonLdKind = nodeKind("folio-ig-artifact-jsonld", [], IgArtifactJsonLdSchema.shape, { strict: true, refine: typeMatchesKey });
 
 /**
  * The IG's artefact INDEX as one JSON-LD node: the list the thin `artifacts`
@@ -168,6 +186,21 @@ export const IgArtifactIndexEntrySchema = z
   .strict();
 export type IgArtifactIndexEntry = z.infer<typeof IgArtifactIndexEntrySchema>;
 
+/** The count is the list's length, and every entry's type agrees with its key. Shared by the schema and its node kind. */
+const indexAgrees = (
+  n: { "schema:numberOfItems": number; "schema:hasPart": { "@type": string; "dcterms:identifier": string }[] },
+  ctx: z.RefinementCtx,
+): void => {
+  if (n["schema:hasPart"].length !== n["schema:numberOfItems"]) {
+    ctx.addIssue({ code: "custom", path: ["schema:numberOfItems"], message: `says ${n["schema:numberOfItems"]}, lists ${n["schema:hasPart"].length}` });
+  }
+  n["schema:hasPart"].forEach((e, i) => {
+    if (e["@type"] !== `fhir:${e["dcterms:identifier"].split("/")[0]}`) {
+      ctx.addIssue({ code: "custom", path: ["schema:hasPart", i, "@type"], message: `${e["@type"]} does not match the key ${e["dcterms:identifier"]}` });
+    }
+  });
+};
+
 export const IgArtifactIndexJsonLdSchema = z
   .object({
     "@context": z.object({ fhir: z.literal(IG_ARTIFACT_JSONLD_CONTEXT.fhir), dcterms: z.string(), schema: z.string(), prov: z.string() }).strict(),
@@ -182,14 +215,8 @@ export const IgArtifactIndexJsonLdSchema = z
     "schema:hasPart": z.array(IgArtifactIndexEntrySchema),
   })
   .strict()
-  .superRefine((n, ctx) => {
-    if (n["schema:hasPart"].length !== n["schema:numberOfItems"]) {
-      ctx.addIssue({ code: "custom", path: ["schema:numberOfItems"], message: `says ${n["schema:numberOfItems"]}, lists ${n["schema:hasPart"].length}` });
-    }
-    n["schema:hasPart"].forEach((e, i) => {
-      if (e["@type"] !== `fhir:${e["dcterms:identifier"].split("/")[0]}`) {
-        ctx.addIssue({ code: "custom", path: ["schema:hasPart", i, "@type"], message: `${e["@type"]} does not match the key ${e["dcterms:identifier"]}` });
-      }
-    });
-  });
+  .superRefine(indexAgrees);
 export type IgArtifactIndexJsonLd = z.infer<typeof IgArtifactIndexJsonLdSchema>;
+
+/** `folio-ig-artifact-index-jsonld/v1` as a node kind: strict and refined exactly as {@link IgArtifactIndexJsonLdSchema} is. */
+export const IgArtifactIndexJsonLdKind = nodeKind("folio-ig-artifact-index-jsonld", [], IgArtifactIndexJsonLdSchema.shape, { strict: true, refine: indexAgrees });
