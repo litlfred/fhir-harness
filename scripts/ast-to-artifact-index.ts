@@ -159,7 +159,7 @@ function publishedFor(base: string | undefined, type: string, id: string, hasPag
  * `undefined` for null, empty, whitespace-only, or not a string: the index's
  * strings are non-empty. Not a string is real data, not a hypothetical: a
  * Patient's `name` is an array of HumanName, and a SUSHI-compiled
- * smart-immunizations (bean `c65n`) crashed here on its example Patients.
+ * the WHO SMART Immunizations IG (bean `c65n`) crashed here on its example Patients.
  */
 const nonEmpty = (s: unknown): string | undefined => (typeof s === "string" && s.trim() ? s : undefined);
 
@@ -173,7 +173,7 @@ export interface AstIndexOptions {
   /**
    * The keys (`Type/id`) the PUBLISHED IG actually has. When given, an
    * artefact outside it gets no `published` URL: the AST can hold artefacts
-   * newer than the last publish (smart-trust's Ireland participant,
+   * newer than the last publish (the WHO SMART Trust IG's Ireland participant,
    * 2026-10-02), and a link composed for one of those resolves for nobody.
    * Absent means not known, and every artefact is linked as before.
    */
@@ -190,7 +190,7 @@ const XVER = /^http:\/\/hl7\.org\/fhir\/[\d.]+\/StructureDefinition\/extension-(
  * An R4 IG cannot hold an R5 `ActorDefinition`, so the Publisher writes it as
  * a `Basic` whose `code` names the type and whose `url`, `title`,
  * `description`… sit in `extension-ActorDefinition.<field>` extensions. The
- * manifest still calls it an ActorDefinition. Without this, smart-base's 63
+ * manifest still calls it an ActorDefinition. Without this, the WHO SMART Base IG's 63
  * personas and skills lost their canonical, title and category (2026-10-02).
  * Top-level fields win; only absent ones are filled.
  */
@@ -256,7 +256,7 @@ export function astToArtifactIndex(ast: Ast, opts: AstIndexOptions): AstIndexRes
     // The index keys every artefact `<resourceType>/<id>`. The AST manifest
     // keys a canonical resource `<url>|<version>` instead, so its key is NOT
     // reused: doing so made all 70 canonical artefacts look added AND removed
-    // in the first smart-trust parity run (2026-10-02).
+    // in the first parity run on the WHO SMART Trust IG (2026-10-02).
     const key = `${r.resourceType}/${r.id}`;
     // A resource with no canonical URL (Endpoint, Organization, an example)
     // has no `title` and its `name` is free text, not a computable name. The
@@ -265,7 +265,7 @@ export function astToArtifactIndex(ast: Ast, opts: AstIndexOptions): AstIndexRes
     // a difference reported below is a real one and not a naming convention.
     const canonicalResource = nonEmpty(json.url) !== undefined;
     // The Publisher's list shows an untitled canonical resource under its
-    // `name` (smart-base's `LinkIdExt`), and an instance under its id.
+    // `name` (the WHO SMART Base IG's `LinkIdExt`), and an instance under its id.
     const title = nonEmpty(json.title) ?? (canonicalResource ? nonEmpty(json.name) : r.id);
     const description = nonEmpty(json.description) ?? (canonicalResource ? undefined : nonEmpty(json.name)?.replace(/\s+/g, " ").trim());
     const name = canonicalResource ? nonEmpty(json.name) : undefined;

@@ -30,11 +30,11 @@ dependency.
 ## Where the layer sits
 
 ```
-folio-assistant-core → fhir-harness → smart-base (L1 and DAK document kinds) → smart-ig
+folio-assistant-core → fhir-harness → the WHO SMART Base IG (L1 and DAK document kinds) → smart-ig
 ```
 
 The owner's ruling, 2026-09-22. An IG that wants the DAK surface does not
-change this pipeline — the DAK document kind in `smart-base` supplies the
+change this pipeline — the DAK document kind in the WHO SMART Base IG supplies the
 pre/post steps as an **overlay**. (Owner's stack ruling 2026-09-22, revised
 2026-10-01: `smart-l1` and `smart-dak` became document kinds, #1767.) This
 layer must not gain a `do_dak` flag: that would be this layer knowing about

@@ -7,13 +7,13 @@
  *
  * ## Why it lives in fhir-harness
  *
- * This was `smart-trust/scripts/gen-smart-trust-pages.ts`. Nothing in it was
- * about smart-trust except the instance directory, a display label and the
+ * This was the WHO SMART Trust IG's `scripts/gen-smart-trust-pages.ts`. Nothing in it was
+ * about the WHO SMART Trust IG except the instance directory, a display label and the
  * instance that owns the template chrome: it reads `fhir-artifact-index/`
  * (`index.json`, optionally `menu.json`), which every ingested IG holds in the
  * same shape. Owner, 2026-10-01 (#1767): *"push generic stuff as much as
  * possible into fhir-harness first"* — so the second IG to want pages
- * (smart-base, for its `/smart-base/` landing page) reuses this rather than
+ * (the WHO SMART Base IG, for its own landing page) reuses this rather than
  * copying it, and the generator travels with the layer that owns the index's
  * pipeline when the smart-* instances leave for their own repositories.
  *
@@ -21,7 +21,7 @@
  *
  * `fhir-artifact-index` is registered `renderable: false`, so an instance
  * whose only declared graph of that kind is the index publishes its artefacts
- * at no URL. The owner found it by asking where `/smart-trust` was. Only two
+ * at no URL. The owner found it by asking where the WHO SMART Trust IG's page was. Only two
  * of this repository's graph typologies are renderable (`docs` and `folio`); this
  * generator writes an instance's `docs/` from its index.
  *
@@ -52,7 +52,7 @@
  * **The banner's identity is the INDEX's, never the chrome's.** `chrome.json`
  * is ingested once, at the chrome owner, from ONE IG's template chain; its
  * tokens and rules are the TEMPLATE's and hold for every IG built on it, but
- * its `id`/`version`/`status` are that one IG's. Bean `bamf` found smart-base's
+ * its `id`/`version`/`status` are that one IG's. Bean `bamf` found the WHO SMART Base IG's
  * chrome describing `smart.who.int.trust` 1.8.0. So the banner names the
  * index's `packageId`, `version` and `canonicalBase`, and takes `status` from
  * the chrome ONLY when the chrome's `id` is this IG's — otherwise the status
@@ -107,7 +107,7 @@
  * `--summary` puts the instance's own declaration — its description and every
  * declared graph with its viewer — above the artefact index, via the
  * `harness_details.html` include (with `instance=`), which reads `site.data.harness` at build
- * time. It is how an instance that holds MORE than an IG's artefacts (smart-base:
+ * time. It is how an instance that holds MORE than an IG's artefacts (the WHO SMART Base IG:
  * a library, methodologies, voices) gets a landing page that says so without a
  * word of it being typed here.
  */
@@ -167,11 +167,11 @@ const INSTANCE = resolve(process.cwd(), INSTANCE_ARG);
 /**
  * The instance's IDENTITY: the `name` its declaration gives, and only
  * without one the directory's name. The two differ in a separated IG
- * repository, where every IG keeps its data under `smart-base/` (owner,
+ * repository, where every IG keeps its data under the DAK layer's directory name (owner,
  * 2026-10-02, choosing the plan's layout) but must still publish under its
  * own name. Keyed on the directory, every such IG would publish under
- * `/smart-base/` and collide once one site subscribes to several (bean
- * `rbz3`, measured on the litlfred/smart-trust rehearsal: 2,153 pages
+ * that one directory's URL and collide once one site subscribes to several (bean
+ * `rbz3`, measured on the rehearsal in the WHO SMART Trust IG's fork: 2,153 pages
  * changed by the rename alone).
  */
 const INSTANCE_NAME = readDeclaration(INSTANCE)?.name ?? basename(INSTANCE);
@@ -374,7 +374,7 @@ function declaredName(root: string): string | undefined {
   try {
     return (JSON.parse(readFileSync(decl, "utf8")) as { name?: string }).name;
   } catch {
-    // Unparseable is "could not determine", never "not smart-base": returning
+    // Unparseable is "could not determine", never "not the chrome owner": returning
     // a name here would make a broken sibling silently supply the chrome.
     return undefined;
   }
@@ -446,7 +446,7 @@ const CHROME_SCOPE = `.${IG_CHROME_SCOPE}`;
  *
  * `#ig-status`'s class comes from the IG's OWN `status` (`draft` here), read
  * from `sushi-config.yaml` by the ingest, exactly as the template's
- * `fragment-pagebegin.html` does it. Nothing here decides that smart-trust is
+ * `fragment-pagebegin.html` does it. Nothing here decides that the WHO SMART Trust IG is
  * a draft.
  */
 function igBanner(ix: FhirArtifactIndex): string {
@@ -550,7 +550,7 @@ function pageName(a: FhirArtifact): string {
  * What the uncategorised bucket is called — on its section
  * and, if it ever outgrows the index, its page. Never "Other": the IG HAS a
  * literal "Other" category (`byCategory`), and a coined second one put two
- * sections named "Other" on smart-trust's index, the second holding the IG's
+ * sections named "Other" on the WHO SMART Trust IG's index, the second holding the IG's
  * own ImplementationGuide resource.
  */
 const UNCATEGORISED = "Uncategorised";
@@ -588,7 +588,7 @@ function categoryAnchor(label: string | undefined): string {
  * The owner's call, 2026-09-21, on measuring the first build: the index page
  * came to 524KB and one category was 90% of it.
  *
- * **The number is not load-bearing, and that is the point.** smart-trust's
+ * **The number is not load-bearing, and that is the point.** The WHO SMART Trust IG's
  * categories measure 604, 29, 15, 14, 5, 5, 1 — a 20x gap between the largest
  * and the next. Any threshold in 30..603 separates them identically, so 100 is
  * a round number inside a wide gap rather than a tuned constant. If a future
@@ -596,7 +596,7 @@ function categoryAnchor(label: string | undefined): string {
  * distribution, not to nudge this.
  *
  * What makes linking out lossless HERE, checked rather than assumed: every one
- * of smart-trust's 604 `Other` artefacts is an Endpoint or an Organization and
+ * of the WHO SMART Trust IG's 604 `Other` artefacts is an Endpoint or an Organization and
  * NONE carries an IG API sidecar, so none would have had an artefact page to link
  * to. The summary reports the sidecar count it actually finds, so a future
  * category that does carry sidecars says so instead of hiding them.
@@ -684,7 +684,7 @@ const CSS = `
  * It was `depth = 0 | 1`, and one number was carrying two different facts: a
  * CATEGORY page and an ARTEFACT page both passed `1`, so the `nav_exclude`
  * written for the 674 leaves swept out the 7 category pages with them. The
- * sidebar showed exactly ONE smart-trust row — the index — and the structure
+ * sidebar showed exactly ONE row for the WHO SMART Trust IG — the index — and the structure
  * this index is grouped by was invisible in the one place a reader navigates
  * from.
  *
@@ -776,7 +776,7 @@ function shell(
   // The remaining styling — the handful of rules just-the-docs has no opinion
   // about, and the mirrored chrome — is LINKED, from one stylesheet each
   // under the instance's `assets/` (bean `680p`). It was inlined into every
-  // page: 3.1 KB x 2,153 pages = 6.7 MB of smart-trust's 12.2 MB of generated
+  // page: 3.1 KB x 2,153 pages = 6.7 MB of the WHO SMART Trust IG's 12.2 MB of generated
   // pages (measured 2026-10-01), the same bytes 2,153 times. `relative_url`
   // keeps the link right under any baseurl, staging previews included.
   // The chrome is mirrored only when it was actually ingested. Absent, the
@@ -1151,7 +1151,7 @@ const BUILD_REVISION_ID = "build-revision";
  * What an artefact page says it was compiled from. The revision is printed
  * ONCE, on the index page, and an artefact built at that same revision links
  * to it: printed on every page, it made each commit rewrite all of them
- * (722 on smart-immunizations, bean `c65n`), so an incremental re-render
+ * (722 on the WHO SMART Immunizations IG, bean `c65n`), so an incremental re-render
  * redid every artefact page for a one-resource change. An artefact built at
  * a DIFFERENT revision than the index records still names its own, as does
  * every page when the index page carrying the note is not the one written
@@ -1181,7 +1181,7 @@ function artifactPage(ix: FhirArtifactIndex, a: FhirArtifact): string {
     const label = { schema: "JSON Schema", displays: "Displays", openapi: "OpenAPI", jsonld: "JSON-LD" }[k];
     if (!r) return `| ${label} | *not published for this artefact* | |`;
     // `view` only where the view page IS written: the same condition as the
-    // IG API VIEW PAGES loop below. smart-immunizations' index is not served,
+    // IG API VIEW PAGES loop below. The WHO SMART Immunizations IG's index is not served,
     // so 388 of its artefact pages linked a page that did not exist.
     const view = (k === "schema" || k === "jsonld") && r.localPath && igApiServable().ok ? ` · [view](${mdCell(r.localPath.split("/").pop()!)}.html)` : "";
     const held = r.localPath ? `\`${mdCell(r.localPath)}\`${view}` : "*by reference*";
@@ -1401,7 +1401,7 @@ if ([...pages.values()].some((p) => p.includes("data-ast-src="))) {
 }
 
 // THE IG API VIEW PAGES — the Publisher's `<Name>.schema.json.html` and
-// `<Name>.jsonld.html` (bean `jut3`'s parity table: 33 on smart-trust). Each is
+// `<Name>.jsonld.html` (bean `jut3`'s parity table: 33 on the WHO SMART Trust IG). Each is
 // the raw file, published beside its page so Raw and Download resolve where
 // the Publisher's do, plus a page that is the Liquid template over data
 // `ig-api-views.ts` computed. The file's text is fetched in the browser by one
@@ -1438,7 +1438,7 @@ for (const a of igApiServing.ok ? ix.artifacts : []) {
 if (igApiViewCount > 0) pages.set(IG_API_VIEW_SCRIPT, readFileSync(IG_API_VIEW_LOADER, "utf8"));
 
 // THE JSON VIEW PAGES — the Publisher's `<Name>.json.html` (672 on
-// smart-trust). Each reads its resource out of the IG's package.tgz, held in
+// the WHO SMART Trust IG). Each reads its resource out of the IG's package.tgz, held in
 // the served graph, in the browser; no resource is copied (bean `680p`).
 // Without a held package, or a served graph, none is written and the run says so.
 let jsonViewCount = 0;
@@ -1460,7 +1460,7 @@ if (ix.artifacts.some(hasJsonView)) {
   }
 }
 
-// THE TAB PAGES — `.change.history` (672 on smart-trust), `-testing` (69) and a
+// THE TAB PAGES — `.change.history` (672 on the WHO SMART Trust IG), `-testing` (69) and a
 // logical model's `.profile.history`, `.profile.json` and `-examples` — from
 // the resource itself, read out of the same held package at generation time.
 // Each states only what the Publisher's states; a page whose Publisher form
@@ -1747,7 +1747,7 @@ function docsDirectoryId(): string | undefined {
 
 // EVERY SAME-DIRECTORY LINK A GENERATED PAGE MAKES IS TO A PAGE THIS RUN
 // WRITES. A generator that links a page it decided not to write ships a dead
-// link on every artefact page — 388 on smart-immunizations, measured on its
+// link on every artefact page — 388 on the WHO SMART Immunizations IG, measured on its
 // published site, 2026-10-05 — and nothing downstream says so: the IG's own
 // pages are not this generator's, so only links within `artifact/` (and the
 // root) are judged here, where every target is one of `pages`.

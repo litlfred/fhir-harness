@@ -23,7 +23,7 @@
  * ## The index is RECONSTRUCTED, never downloaded
  *
  * This is the finding that shaped the module, measured 2026-09-21 against the
- * `gh-pages` branch of `WorldHealthOrganization/smart-trust` (342,656 files;
+ * `gh-pages` branch of the WHO SMART Trust IG's repository (342,656 files;
  * IG v1.8.0; FHIR 5.0.0):
  *
  * > **No IG publishes an artefact-index instance document.**
@@ -53,13 +53,13 @@
  *
  * ## Two traps, recorded so no pipeline re-learns them
  *
- * **`openapi/openapi.json` is not the IG API.** In smart-trust that path
+ * **`openapi/openapi.json` is not the IG API.** In the WHO SMART Trust IG that path
  * holds the *DDCC Gateway* API — a domain API about certificate exchange that
  * merely lives there. A pipeline globbing for `openapi` will file a subject-
  * matter API as an artefact descriptor. {@link SidecarOverlaySchema.openapi} is
  * therefore keyed off the ARTEFACT's name, never off a directory scan.
  *
- * **`.index.json` is lossy.** Its Organization entries in smart-trust carry a
+ * **`.index.json` is lossy.** Its Organization entries in the WHO SMART Trust IG carry a
  * truncated `"type": "["`. `canonicals.json` gives `id`/`type`/`url`/`version`/
  * `name` and is the better spine for anything canonical; `.index.json` is the
  * better spine for the rest, because it is the only file listing artefacts
@@ -182,7 +182,7 @@ export type PublishedFormats = z.infer<typeof PublishedFormatsSchema>;
  *
  * This is the half the request is actually about: "recreate artefact index
  * linking to json/jsonschema". An artefact with no `sidecars` is not a defect; it
- * is an artefact the IG API does not cover, and in smart-trust that is 655 of
+ * is an artefact the IG API does not cover, and in the WHO SMART Trust IG that is 655 of
  * 674.
  *
  * `codeCount` and `propertyCount` are the two fields the published enumeration
@@ -293,7 +293,7 @@ export type FhirArtifact = z.infer<typeof FhirArtifactSchema>;
  * A JSON-LD context the IG publishes for its own consumers.
  *
  * Indexed at the IG level rather than per artefact because a context is shared
- * — smart-trust's `tng-context/v1.jsonld` binds terms drawn from four separate
+ * — the WHO SMART Trust IG's `tng-context/v1.jsonld` binds terms drawn from four separate
  * ValueSets — so hanging it off any one artefact would misstate what it covers.
  */
 export const JsonLdContextSchema = z
@@ -318,7 +318,7 @@ export type JsonLdContext = z.infer<typeof JsonLdContextSchema>;
  * An IG API sidecar the enumeration lists that could not be bound to an artefact.
  *
  * RECORDED RATHER THAN DROPPED, and that is the whole reason this type exists.
- * smart-immunizations publishes 198 JSON Schemas and the first ingest bound
+ * The WHO SMART Immunizations IG publishes 198 JSON Schemas and the first ingest bound
  * 188 — the ten Logical Models are named after the model's TITLE
  * (`StructureDefinition-IMMZ_C4_Create_client_record`) while the artefact's id
  * is `IMMZC4`, so a filename composed as `<ResourceType>-<id>` missed every
@@ -348,7 +348,7 @@ export type SidecarApiState = (typeof SIDECAR_API_STATES)[number];
 export const FhirArtifactIndexSchema = z
   .object({
     $schema: z.literal(FHIR_ARTIFACT_INDEX_SCHEMA_TAG),
-    /** Instance id — the directory this index lives in, e.g. `smart-trust`. */
+    /** Instance id — the directory this index lives in, e.g. `<ig>`. */
     id: z.string().min(1),
     title: z.string().min(1),
     /** NPM-style package id, e.g. `smart.who.int.trust`. */
@@ -432,7 +432,7 @@ export function materializationCensus(artifacts: FhirArtifact[]): Record<string,
  * How many artefacts carry each part of the IG API overlay.
  *
  * Reported per SIDECAR rather than as one "has sidecars" tally, because the four
- * are independently published: smart-trust emits `.displays.json` for every
+ * are independently published: the WHO SMART Trust IG emits `.displays.json` for every
  * ValueSet but for no logical model, and a single count would hide that.
  */
 export function sidecarCensus(artifacts: FhirArtifact[]): Record<string, number> {
@@ -471,7 +471,7 @@ export function artifactPageName(a: { resourceType: string; id: string }): strin
  * In the Publisher's order, read off `listedAt` rather than restated (#1901):
  * categories by their first artefact's position on `artifacts.html`, artefacts
  * within one by their own, the uncategorised bucket last. An alphabetical sort
- * put Terminology: Code Systems ahead of Requirements on smart-trust, which is
+ * put Terminology: Code Systems ahead of Requirements on the WHO SMART Trust IG, which is
  * the opposite of the page it mirrors. Ties (no `listedAt`) keep input order.
  */
 export function byCategory(artifacts: FhirArtifact[]): Map<string | undefined, FhirArtifact[]> {

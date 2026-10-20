@@ -15,7 +15,7 @@
  * beneath it:
  *
  * ```
- *   smart-trust local-template  →  who.template.root 0.5.0  →  fhir.base.template 1.0.0
+ *   the WHO SMART Trust IG's local-template  →  who.template.root 0.5.0  →  fhir.base.template 1.0.0
  * ```
  *
  * Measured 2026-09-23 from `local-template/package/package.json` and
@@ -58,7 +58,7 @@
  * v1 also carried `id`, `canonical`, `status` and `version` from the IG it was
  * ingested beside. Every IG building with the same chain wears the same
  * chrome, so that identity became a claim about IGs it did not describe: the
- * one committed chrome sat in smart-base and said `smart.who.int.trust` 1.8.0,
+ * one committed chrome sat in the WHO SMART Base IG and said `smart.who.int.trust` 1.8.0,
  * `draft` (stage A, #1767). v2 is keyed by the chain's top layer, and an IG's
  * own identity and status are read into `ig-identity.json` beside its index
  * ({@link "./ig-identity"}). Stage D of the smart-* separation, bean `kg83`.
@@ -264,13 +264,13 @@ export const CHROME_GRAPHS = ["themes", "fhir-artifact-index"] as const;
  *
  * ## Why the instance is NAMED rather than walked to
  *
- * The owner placed the chrome at `smart-base` so every WHO SMART IG (through
+ * The owner placed the chrome at the WHO SMART Base IG so every WHO SMART IG (through
  * `smart-ig`) inherits it instead of each re-copying it. The obvious
  * implementation is to walk `needs` from the consumer upward. When this was
- * written that did not work: `smart-trust` needed `smart-ig`, `smart-base`
+ * written that did not work: the WHO SMART Trust IG needed `smart-ig`, the WHO SMART Base IG
  * needed `fhir-harness`, and there was no `needs` path between them.
  *
- * **That gap has since closed** — `smart-ig` now needs `smart-base`, so
+ * **That gap has since closed** — `smart-ig` now needs the WHO SMART Base IG, so
  * smart-trust → smart-ig → smart-base resolves, and `check:derived-from`
  * resolves each IG page set's `derivedFrom: smart-base-themes` across it (bean
  * `nama`, measured 2026-10-04). The instance is still NAMED, for the other
@@ -290,8 +290,8 @@ export function chromeFileFor(
   },
 ): string | undefined {
   // A PATH names the owning instance's root directly, relative to the repository
-  // root (n3ni stage E). In a fork the platform is a submodule, so smart-base sits
-  // at `folio-assistant/smart-base`: two levels down, where `instanceRootsIn`
+  // root (n3ni stage E). In a fork the platform is a submodule, so the chrome owner sits
+  // at `folio-assistant/<instance>`: two levels down, where `instanceRootsIn`
   // (one level, by design) cannot see it. Naming it by path keeps the choice
   // explicit, as above, rather than widening a walk until something matches.
   const roots = instanceName.includes("/")
@@ -299,7 +299,7 @@ export function chromeFileFor(
     : deps.instanceRootsIn(repoRoot).filter((r) => deps.declarationNameOf(r) === instanceName);
   for (const root of roots) {
     // The chrome is the TEMPLATE's styling, so it ships with the harness that
-    // carries the template's theme (plan Q4; rehearsed on litlfred/smart-base,
+    // carries the template's theme (plan Q4; rehearsed on the WHO SMART Base IG's repository,
     // bean `rbz3`): a `themes` directory first, then, for an instance that
     // keeps it beside its artefact index, `fhir-artifact-index`.
     for (const dir of CHROME_GRAPHS.flatMap((g) => deps.directoriesForGraph(root, g))) {

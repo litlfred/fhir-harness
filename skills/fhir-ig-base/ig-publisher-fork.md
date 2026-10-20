@@ -66,7 +66,7 @@ In the fork, under `ast-export/`:
 
 | tool | what | network |
 |---|---|---|
-| `scripts/run-real-igs.sh [work] [--byte-identical]` | W1/W2 on smart-trust and smart-immunizations, W2 per resource type | packages.fhir.org, tx.fhir.org |
+| `scripts/run-real-igs.sh [work] [--byte-identical]` | W1/W2 on the WHO SMART Trust IG and the WHO SMART Immunizations IG, W2 per resource type | packages.fhir.org, tx.fhir.org |
 | `scripts/w7-round.sh <work>` | one incremental round on a one-CQL-file change | same |
 | `AstExportCli`, `AstPlanCli`, `IncrementalBuildCli` | export, plan a delta, rebuild the cone | export and rebuild: yes; plan: no |
 
@@ -139,7 +139,7 @@ not something fhir-harness may know.
 From bean `nsbb`, using the Publisher's current metadata exports as an AST
 proxy across two real IGs:
 
-| export | smart-trust | smart-immunizations |
+| export | the WHO SMART Trust IG | the WHO SMART Immunizations IG |
 |---|---|---|
 | `valueset-ref-list.json` ValueSet→CodeSystem edges | 17 over 14 | 431 over 252 |
 | `codesystem-ref-list.json` `uses` populated | 0 of 15 | 0 of 14 |
@@ -149,7 +149,7 @@ Two findings:
 
 1. **`uses` is declared and never populated** — in *both* IGs.
 2. **Nothing exports Library / PlanDefinition / Measure dependencies** — 458
-   artefacts, **61 % of smart-immunizations**, the decision-logic core, with
+   artefacts, **61 % of the WHO SMART Immunizations IG**, the decision-logic core, with
    zero edges.
 
 Re-derive both before quoting them. They are the reason for the fork; if a
@@ -163,7 +163,7 @@ The AST must carry:
 - [ ] **one structured record per resource**, keyed by canonical URL *and*
       version — an id alone collides across versions
 - [ ] **dependency edges among Library, PlanDefinition and Measure** — the gap
-      above. Built as `LogicEdges`; **not yet measured** on smart-immunizations
+      above. Built as `LogicEdges`; **not yet measured** on the WHO SMART Immunizations IG
 - [ ] **`uses` actually populated**, or an explicit statement that it cannot be
       — a declared-and-empty field is worse than an absent one, because a
       consumer cannot tell "no dependencies" from "not computed"
@@ -211,5 +211,5 @@ And the fork itself must satisfy:
 A fork round reports: which repositories at which commits, which criteria are
 met, which are not, and **what was measured rather than what was implemented**.
 A criterion is met when an AST from a real IG is shown to carry the thing —
-smart-immunizations is the right subject, because it is the IG whose 61 % gap
+the WHO SMART Immunizations IG is the right subject, because it is the IG whose 61 % gap
 motivated the work.

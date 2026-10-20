@@ -214,12 +214,12 @@ export interface StageResult {
  * under `pagesHref` (`artifact/`), so those links 404 unless rewritten.
  * Only a bare relative link whose page name IS an artefact page is touched —
  * in a markdown link target or an `href` — so a narrative page that happens
- * to share a name is never redirected. Measured on smart-trust at `25771f6`
+ * to share a name is never redirected. Measured on the WHO SMART Trust IG at `25771f6`
  * (bean `mftp`): 34 such links over 4 artefacts.
  */
 export function relinkArtifacts(text: string, pageNames: ReadonlySet<string>, pagesHref: string): { text: string; count: number } {
   let count = 0;
-  // A CASE-ONLY mismatch resolves to the one page it can mean. smart-trust's
+  // A CASE-ONLY mismatch resolves to the one page it can mean. The WHO SMART Trust IG's
   // `hcert_spec.md` links `StructureDefinition-hcert.html` where the artefact
   // is `HCert`: dead on any case-sensitive host, the IG's own included (6 links,
   // #2235). Only a UNIQUE case-insensitive match is taken; two candidates
@@ -239,7 +239,7 @@ export function relinkArtifacts(text: string, pageNames: ReadonlySet<string>, pa
  * The same, for a link a TEMPLATE builds: `href="Requirements-{{requirement.id}}.html"`
  * has no page name to look up until Liquid runs, so it is matched on the
  * resource type before the `{{`. Only a type that has artefact pages here is
- * touched. Measured on smart-trust's local template (2026-10-09): links to
+ * touched. Measured on the WHO SMART Trust IG's local template (2026-10-09): links to
  * `Requirements-…` and `CapabilityStatement-…` pages, written this way.
  */
 export function relinkTemplatedArtifacts(text: string, types: ReadonlySet<string>, pagesHref: string): { text: string; count: number } {
@@ -256,7 +256,7 @@ export function relinkTemplatedArtifacts(text: string, types: ReadonlySet<string
  * The IG Publisher's LOCAL template's includes, when `ig.ini` names one
  * (`template = #<dir>`). The Publisher puts a template's `includes/` in
  * `_includes/` under the IG's own `input/includes`, so a page can include a
- * template fragment by name. smart-trust's `system-actors.md` includes
+ * template fragment by name. The WHO SMART Trust IG's `system-actors.md` includes
  * `actordefinition-short-summary.liquid` from `local-template/includes/`, and
  * that fragment reads the AST's `site.data`. Until this, it was a "not
  * rendered" marker although its source was in the checkout (2026-10-09).
@@ -279,7 +279,7 @@ export function localTemplateIncludes(src: string): string | undefined {
  * site. `downloads.md` links `package.tgz` and `definitions.json.zip` beside
  * itself because the Publisher writes them there; this build renders pages,
  * not packages, so those links resolved to nothing (7 per IG, measured on
- * litlfred/smart-immunizations' site, 2026-10-05). The published IG at the
+ * the WHO SMART Immunizations IG fork's site, 2026-10-05). The published IG at the
  * sushi `canonical` serves the same files. Only a bare relative `.zip`/`.tgz`
  * name is touched: an archive is a Publisher output by construction here,
  * and a path, a query or an absolute URL is the author's and is left alone.
@@ -298,7 +298,7 @@ export function relinkPublisherOutputs(text: string, publishedBase: string): { t
  * Pages only the IG Publisher writes, beside the IG's own (its QA report, the
  * full TOC, the search form). This build does not produce them; the published
  * IG at the sushi `canonical` does, so a link to one goes there (#2235:
- * smart-trust's `support.md` links `qa.html`).
+ * the WHO SMART Trust IG's `support.md` links `qa.html`).
  */
 export const PUBLISHER_PAGES: ReadonlySet<string> = new Set(["qa.html", "qa-tx.html", "qa-ipreview.html", "qa-eslintcompare.html", "toc.html", "searchform.html"]);
 
@@ -306,12 +306,12 @@ export const PUBLISHER_PAGES: ReadonlySet<string> = new Set(["qa.html", "qa-tx.h
  * Point a page's links that THIS build cannot serve somewhere that can:
  *
  * - a Publisher-only page ({@link PUBLISHER_PAGES}) → the published IG;
- * - a FILE of the IG's repository that is not published as a page (smart-base
+ * - a FILE of the IG's repository that is not published as a page (the WHO SMART Base IG
  *   links `.github/skills/bpmn_layout/skills.yaml` and `bpmn/<name>.bpmn`,
  *   the latter from `input/bpmn/`) → that file on GitHub, at `sourceBlob`.
  *   A target is looked for at `<path>` and `input/<path>` in the checkout.
  *
- * A link nothing can serve (smart-trust's `video_tutorial.html`, in no
+ * A link nothing can serve (the WHO SMART Trust IG's `video_tutorial.html`, in no
  * source) is left as written and RETURNED, so the stage reports an upstream
  * dead link rather than hiding it.
  */
@@ -346,7 +346,7 @@ export function relinkOffSite(
  *
  * The Publisher's Liquid (Java) reads `"<a href=\\"x.html\\">X</a>"` as one
  * string with escaped quotes; Ruby Liquid has no escapes, ends the string at
- * the first `\\"`, and the page shows `<a href=\\` (smart-base's
+ * the first `\\"`, and the page shows `<a href=\\` (the WHO SMART Base IG's
  * `smart.liquid`, every `…__link__html` value, #2235). A double-quoted
  * `{% assign %}` value holding `\\"` and no `'` is written single-quoted,
  * with plain `"` inside — the same string in both engines. One that also
@@ -634,7 +634,7 @@ link(h,"ig-feedback",repo+"/issues/new?title="+encodeURIComponent("Feedback on \
  * An include is parsed by Jekyll, and a runtime is JavaScript, which may carry
  * `{%` or `{{` in a string or a regular expression: the edit-links runtime's
  * variable pattern (`/\{\{[\s\S]*?\}\}|\{%[\s\S]*?%\}|.../g`, cat-harness-tools'
- * ✍ suggest) is one, and inlined bare it stopped smart-trust's whole build with
+ * ✍ suggest) is one, and inlined bare it stopped the WHO SMART Trust IG's whole build with
  * "Liquid syntax error" (2026-10-14). `{% raw %}` keeps the bytes; neutralising
  * them with a word joiner (`ig-ast`'s `neutralise`) would change the program.
  * A source that would close the raw block itself is refused, not mangled.
@@ -873,7 +873,7 @@ const entries = (dir: string) => (existsSync(dir) ? readdirSync(dir).sort() : []
  * `url`, `version`, `name`) and one `_data/<Type>-<id>.json` per resource,
  * its JSON verbatim.
  *
- * Why: an IG's own pages read them. smart-trust's `system-actors.md` loops
+ * Why: an IG's own pages read them. The WHO SMART Trust IG's `system-actors.md` loops
  * `site.data.canonicals | where: 'type', 'ActorDefinition'` and reads each one
  * as `site.data[<Type>-<id>]`; with neither supplied, the loop rendered its
  * actor list EMPTY with no word anywhere (measured on its gh-pages 63303eb,
@@ -931,7 +931,7 @@ export interface DataOverwrite {
  * pages may say `{{ site.data.features.github.repo_owner }}` against its own
  * `input/data/features.yaml`. Not staged, every such reference rendered as
  * the empty string — four `raw.githubusercontent.com///main/...` links on
- * smart-immunizations' `testing.html`, measured 2026-10-09.
+ * the WHO SMART Immunizations IG's `testing.html`, measured 2026-10-09.
  *
  * Called AFTER the harness writes its own data (`fhir`, `ig_releases`), and
  * the harness's file is KEPT on a clash, as the Publisher's own
@@ -1283,7 +1283,7 @@ export function artifactVariables(list: ReadonlyArray<IndexedArtifact>, pagesHre
       reference: `${a.resourceType}/${a.id}`,
     };
     // An artefact's category comes FROM the Publisher's `artifacts.html`, so
-    // one with none is one that page does not list (smart-trust: the
+    // one with none is one that page does not list (the WHO SMART Trust IG: the
     // ImplementationGuide itself). Its variables are written; it is not
     // grouped, so the template lists exactly what the Publisher's page does.
     if (a.category === undefined) continue;
@@ -1523,7 +1523,7 @@ export const SIDEBAR_SCSS = [
 /**
  * TABLE CELLS THAT NAME SOMETHING THIS SITE SERVES BECOME LINKS.
  *
- * Owner, 2026-10-10: on smart-immunizations, the decision-logic table's
+ * Owner, 2026-10-10: on the WHO SMART Immunizations IG, the decision-logic table's
  * `IMMZ.D2.DT.BCG`, the business-processes table's process name and id, and the
  * indicators table's `IMMZ.IND.01` should be clickable. The IG's markdown writes
  * them as bare text, because on WHO's own site nothing pairs them up either.

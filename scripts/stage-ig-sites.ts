@@ -88,8 +88,8 @@ export interface IgToBuild {
  *
  * An instance that declares no webpage theme INHERITS the nearest one along
  * its `needs` chain, breadth-first — as it inherits its dependencies'
- * directories. smart-trust is the case (bean `mftp`): its WHO theme moved to
- * `smart-base/themes/` in the smart-* separation (`kg83`), because the theme
+ * directories. The WHO SMART Trust IG is the case (bean `mftp`): its WHO theme moved to
+ * the WHO SMART Base IG's `themes/` in the smart-* separation (`kg83`), because the theme
  * is the WHO template's rather than one IG's, and from then on the IG site
  * built in just-the-docs' default scheme. Two webpage themes at the same
  * distance are refused, as two in one instance are: nothing says which.
@@ -239,7 +239,7 @@ export function footerFor(root: string, prefix = "../"): StageOptions["footer"] 
  * The instance's docs directory when it declares `igSite` (bean `mftp`):
  * built INTO the IG's own site at `/<instance>/`. Undefined otherwise — the
  * IG site then sits at `/<instance>/ig/` beside it. Read off the declaration,
- * never inferred from the menu: smart-base holds a menu too, and its root is
+ * never inferred from the menu: the WHO SMART Base IG holds a menu too, and its root is
  * a harness landing page.
  */
 export function igSiteDocs(root: string): string | undefined {
@@ -385,7 +385,7 @@ if (import.meta.main) {
     process.exit(2);
   }
   // By directory name or by declared name: an instance declared at its checkout's
-  // root (an IG repository's own, as smart-trust's main declares it) has a
+  // root (an IG repository's own, as the WHO SMART Trust IG's main declares it) has a
   // directory named after the checkout, not after the instance.
   const build = only ? all.build.filter((b) => b.instance === only || b.declaredAs === only) : all.build;
   const skipped = all.skipped;

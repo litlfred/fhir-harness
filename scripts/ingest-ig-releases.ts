@@ -33,7 +33,7 @@ export function instanceRepo(root: string): string | undefined {
     if (of && repoSlug(of)) return repoSlug(of);
   }
   // The declaration is the file whose stem equals its own `name`, not
-  // `<directory>.json`: a separated IG keeps its data under `smart-base/`.
+  // `<directory>.json`: a separated IG keeps its data under the DAK layer's directory name.
   const decl = declarationPathIn(root);
   if (decl !== undefined) {
     const r = (JSON.parse(readFileSync(decl, "utf-8")) as { repository?: string }).repository;
