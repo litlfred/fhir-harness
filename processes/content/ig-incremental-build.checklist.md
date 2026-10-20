@@ -76,7 +76,7 @@ A proposed incremental build for a WHO SMART Implementation Guide: compile, vali
 
 - Who: the `Incremental build (system)` lane (role `build-pipeline`).
 - Skill: `ig-publication`, `ig-publication`, `ig-publication`.
-- What: git sparse-checkout of the cone's files plus sushi-config.yaml, ig.ini and the alias files — a median of three files, p90 eleven, on the WHO SMART Immunizations IG.
+- What: git sparse-checkout of the cone's files plus sushi-config.yaml, ig.ini and the alias files — a median of three files, p90 eleven, on smart-immunizations.
 - Record it: `workflow_complete` with `node: "Task_Checkout"`.
 - next: → `Task_Sushi` (SUSHI on the restricted tank)
 
