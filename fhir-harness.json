@@ -206,8 +206,8 @@
           "extensions": [
             ".md"
           ],
-          "extractModule": "content/pipeline/pot-extract.ts",
-          "injectModule": "content/pipeline/po-inject.ts"
+          "extractModule": "pipeline/pot-extract.ts",
+          "injectModule": "pipeline/po-inject.ts"
         },
         {
           "id": "fsh",
