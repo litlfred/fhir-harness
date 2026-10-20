@@ -181,13 +181,16 @@ describe("fhir-harness declares the viewer it draws", () => {
     visualisers?: { id: string; renderedBy: string; coversKinds?: string[]; subgraphs?: string }[];
     builtAtPublish?: { path: string; writer: string[] }[];
   };
-  it("a visualiser rendered by ig-ast-pages, covering ig-ast per instance, built at publish and ignored", () => {
+  // Not `builtAtPublish`: the pages are written under the SITE OWNER's site
+  // directory (`siteOwnerDir`, cat-harness's in an index checkout), never
+  // under this instance, so an entry here names a directory that stays empty
+  // and `derive:publish` refuses it ("built nothing there"). The site build
+  // runs the writer as a declared visualiser's (`visualiser-writers.ts`).
+  it("a visualiser rendered by ig-ast-pages, covering ig-ast per instance, whose writer is a checkout script and not declared built at publish here", () => {
     const v = decl.visualisers?.find((x) => x.renderedBy === "ig-ast-pages");
     expect(v).toMatchObject({ id: "ig-ast", coversKinds: ["ig-ast"], subgraphs: "instance" });
-    const b = decl.builtAtPublish?.find((x) => x.path === `docs/en/fhir-harness/${v!.id}/`);
-    expect(b?.writer).toEqual(["ig-ast:pages"]);
     const pkg = JSON.parse(readFileSync(join(import.meta.dir, "..", "package.json"), "utf8")) as { checkoutScripts: Record<string, string> };
     expect(pkg.checkoutScripts["ig-ast:pages"]).toContain("gen-ig-ast-pages.ts");
-    expect(readFileSync(join(import.meta.dir, "..", ".gitignore"), "utf8").split("\n")).toContain(`/${b!.path}`);
+    expect(decl.builtAtPublish?.some((x) => x.writer.includes("ig-ast:pages")) ?? false).toBe(false);
   });
 });
