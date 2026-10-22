@@ -60,15 +60,15 @@ template's own CSS, ingested with its conflicts — and is not a palette.
 ## Verify on the built CSS, not on a log line
 
 A staged site's theme is checked by finding the palette's hex values in the
-built stylesheet, e.g. for smart-trust's `who-smart-ig` (`accent #00477d`):
+built stylesheet, e.g. for the WHO SMART Trust IG's `who-smart-ig` (`accent #00477d`):
 
 ```sh
-git show <gh-pages>:STAGING/<slug>/smart-trust/ig/assets/css/just-the-docs-default.css \
+git show <gh-pages>:STAGING/<slug>/<ig>/ig/assets/css/just-the-docs-default.css \
   | grep -c '#00477d'
 ```
 
 **Measured 2026-10-01:** 15 occurrences of `#00477d` and 8 of `#f6f7f9` on
-smart-trust's staged IG site.
+the WHO SMART Trust IG's staged IG site.
 
 **The trap this section exists for.** Calling `stageIgSite` directly with no
 `palette` option prints `colour scheme: NONE` — truthfully, for that call. Read

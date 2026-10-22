@@ -14,8 +14,8 @@ description: >
 > Skill id: `ig-binary-artefacts` · Package: `fhir-ig-base` · Instance:
 > `fhir-harness` · Tool `ig-binary-audit` · Bean `b8ip`
 
-Owner, 2026-10-02: *"see what happens on smart-base with binary artefacts on
-release. add to skills/tools"*.
+Owner, 2026-10-02 (paraphrased): look at what happens to the binary artefacts
+of a release on an IG overlay above this layer, and add it to skills and tools.
 
 ## What the Publisher writes
 
@@ -37,7 +37,7 @@ is the list, not this paragraph. They fall into three groups:
 
 A pages deploy copies `output/` as it is. Each **branch preview** is another
 full copy, and git keeps every byte for good. Measured with
-`ig-binary-audit` on `litlfred/smart-base` `gh-pages` (`64ed896d`,
+`ig-binary-audit` on the WHO SMART Base IG fork's `gh-pages` (`64ed896d`,
 2026-10-02):
 
 | | bytes | files |

@@ -366,6 +366,11 @@ describe("an IG repository's folio site (owner, 2026-10-14)", () => {
     });
   });
 
+  test("the checkout's declared coverage policy reaches the build; absent, none is set (refuse)", () => {
+    expect(igFolioSite({ hasIndexConfig: true, scripts, landing, identity, coverage: "report" }).site?.coverage).toBe("report");
+    expect(igFolioSite({ hasIndexConfig: true, scripts, landing, identity }).site?.coverage).toBeUndefined();
+  });
+
   test("not harnessed, or nothing mounted to build it: the bare IG route, and why", () => {
     expect(igFolioSite({ hasIndexConfig: false, scripts, landing, identity }).why).toMatch(/no index\.config\.json/);
     expect(igFolioSite({ hasIndexConfig: true, scripts: table([]), landing, identity }).why).toMatch(new RegExp(IG_SITE_STEPS.site));
@@ -426,7 +431,8 @@ describe("an IG repository's folio site (owner, 2026-10-14)", () => {
 
   test("the root keeps what the landing instance's site.build.keep declares, besides the IG's own", () => {
     const r = igFolioSite({ hasIndexConfig: true, scripts, landing, identity, keep: ["ns", "branches", "0.1.0"] }).site!;
-    expect(r.keep).toEqual([...IG_KEEP, "ns", "0.1.0"]);
+    // "ns" and "branches" are the IG's own (IG_KEEP) as well as declared: kept once, not doubled.
+    expect(r.keep).toEqual([...IG_KEEP, "0.1.0"]);
   });
 
   test("the declared keep is read from the landing instance's index.config.json entry; none declared is none kept", () => {

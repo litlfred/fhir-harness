@@ -132,7 +132,7 @@ From there the IG grows in place, and leaves only through
    [`agent-handoff`](../../../cat-harness/skills/sdlc/sdlc-core/agent-handoff.md).
 2. **Mount, don't declare.** The repository gets an `index.config.json`
    naming the layer it builds on (this one, or an overlay above it such as
-   smart-base) as a remote instance with consent, and the `index.lock.json`
+   the WHO SMART Base IG) as a remote instance with consent, and the `index.lock.json`
    `remote-mount.ts` writes. No `<repo>.json` and no submodule: an IG
    repository needs no harness of its own (owner, 2026-10-14).
 3. Then steps 3 to 5 of `in-repo`, at the root.

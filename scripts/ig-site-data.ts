@@ -47,7 +47,7 @@
  *    `fhir-artifact-index/ig-identity.json` supplies `status` ONLY when it
  *    names the same package. It used to come from `chrome.json`, which
  *    measured 2026-09-30 described `smart.who.int.trust` 1.8.0 under
- *    smart-base's `smart.who.int.base` 0.3.0; stage D (#1767) keyed the chrome
+ *    the WHO SMART Base IG's `smart.who.int.base` 0.3.0; stage D (#1767) keyed the chrome
  *    by its template and gave each IG an identity file of its own.
  *
  * Usage:

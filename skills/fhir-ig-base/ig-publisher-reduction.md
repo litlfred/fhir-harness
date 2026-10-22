@@ -40,7 +40,7 @@ State this before any phase, because it is what stops the transition becoming
 - **Profile validation** against the declared FHIR version.
 - **Dependency-closure resolution** with version pinning —
   `hl7.terminology`, `hl7.fhir.uv.cql`, `hl7.fhir.uv.cpg`,
-  `hl7.fhir.uv.crmi`, `hl7.fhir.uv.sdc` for smart-base.
+  `hl7.fhir.uv.crmi`, `hl7.fhir.uv.sdc` for the WHO SMART Base IG.
 - **Terminology expansion** against a `tx` server.
 
 None is reproducible from its own output. The end state is the Publisher
@@ -50,7 +50,7 @@ invoked *for these*, not the Publisher gone.
 
 | | does | exit criterion — MEASURED |
 |---|---|---|
-| **P0** | re-point the metadata→variables bridge; render one IG's `input/pages/` through just-the-docs | **smart-trust**'s pages render with Publisher metadata populating the Jekyll variables, and every page the Publisher renders for that IG is accounted for as **exactly one** of: **matched** (this site renders it), **refused under P2** (an XML/Turtle view, in P2's refusal record), or **on the fork's ask** (rendered from data the Publisher does not export, listed with the data it needs). A page in none is a **gap**; P0 passes with zero gaps |
+| **P0** | re-point the metadata→variables bridge; render one IG's `input/pages/` through just-the-docs | the **WHO SMART Trust IG**'s pages render with Publisher metadata populating the Jekyll variables, and every page the Publisher renders for that IG is accounted for as **exactly one** of: **matched** (this site renders it), **refused under P2** (an XML/Turtle view, in P2's refusal record), or **on the fork's ask** (rendered from data the Publisher does not export, listed with the data it needs). A page in none is a **gap**; P0 passes with zero gaps |
 | **P1** | derive navigation from `sushi-config.yaml`'s `pages:` and `menu:` | the derived navigation is diffed against the Publisher's, **one diff per IG**, and each difference is **empty or explained entry by entry**; the per-IG diffs are also reported **together**, answering "what are the differences in IG1, IG2, … IGN?" |
 | **P2** | JSON-only representations; XML/TTL dropped from the render path | every dropped representation is **recorded as a refusal**, per IG with the same combined view as P1, so "publishes no Turtle" and "we ignored its Turtle" stay distinguishable |
 | **P3** | AST dump behind a flag on the fork; staging renders from cached AST | a staging page built from cache carries a **visible** stale-until-full-run mark, and a reader can tell which facts are provisional — the AST comes **from the fork**, which is a prerequisite |
@@ -61,7 +61,7 @@ invoked *for these*, not the Publisher gone.
 All five phases were put to the owner one at a time, with the criteria above
 (bean `kn0t`). Three answers changed the wording, and the table carries them:
 
-- **P0** — approved with smart-trust as the named IG, and the page-set match
+- **P0** — approved with the WHO SMART Trust IG as the named IG, and the page-set match
   kept **strict**. The looser option (list data-limited page kinds as
   exceptions) was offered and not taken.
 - **P1** — approved with a change in the owner's words: *"each IG should have
@@ -138,7 +138,7 @@ like one that does not.
 
 Measured, from `nsbb`, re-derived 2026-09-23 and it **holds exactly**: nothing in
 the Publisher's current exports carries dependencies among Libraries,
-PlanDefinitions or Measures — **458 artefacts, 61 % of smart-immunizations**
+PlanDefinitions or Measures — **458 artefacts, 61 % of the WHO SMART Immunizations IG**
 (Library 279 + PlanDefinition 138 + Measure 41 of 748), the CQL and
 decision-logic core, with no dependency edges at all. The index's field set is
 `canonical, category, dak, description, id, key, materialization, name,
@@ -153,7 +153,7 @@ of an IG that actually changes. Re-derive that 61 % before quoting it.
 `scripts/fsh-cone.ts` (merged, from `267x`) builds the same IG's graph
 from **source** — `.fsh` + `.cql` — where the export side is the Publisher's
 output. Both are true at once: 2,478 source edges, 0 export edges. Measured on
-smart-immunizations 2026-09-23 (`f4gj`, reproduce with
+the WHO SMART Immunizations IG 2026-09-23 (`f4gj`, reproduce with
 `scripts/measure-logic-layer-edges.ts`):
 
 - The 458 map onto FSH source **1:1, zero unmatched ids**.
@@ -192,7 +192,7 @@ attributed to the RuleSet. `buildFshGraph` now substitutes a RuleSet's
 positional arguments into its body before scanning, tagging what it finds
 `insert (parameter expanded)` so the two claims stay distinguishable.
 
-Re-measured on smart-immunizations at each step:
+Re-measured on the WHO SMART Immunizations IG at each step:
 
 | | as merged | after (a) | after (b) |
 |---|---|---|---|

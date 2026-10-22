@@ -1,6 +1,6 @@
 {
   "$schema": "cat-harness-declaration/1.0.0",
-  "_comment": "THE BARE FHIR IG LAYER, staged as a top-level directory on the path who-iris, smart-trust, smart-immunizations and smart-base are already on. Created 2026-09-22 on the owner's stack ruling: `core->fhir-harness-> smart-base->siblings{smart-l1, smart-dak, smart-ig}`, no smart-guidelines. It is bean `nsbb`'s 'base', now named: run the FHIR IG Publisher with NO pre-processing and NO post-processing and publish the result, which is how SMART Guidelines were built BEFORE the DAK phases were added -- a shape that demonstrably worked rather than one being invented. IT MUST STAY WHO-FREE. The package here may be referenced BY `authoring-who-smart-guidelines` and may never reference it; a violation fails nothing, the layer simply stops being usable by the non-WHO IG it exists for, which is why `ig-build-pipeline` states the refusal as a checkable list rather than as an intention. DECLARES ONLY `skills/`, because that is all that exists: a declared-but-absent directory is the `dh4f` defect, where every consumer scans nothing and reports a clean run over it.",
+  "_comment": "THE BARE FHIR IG LAYER, staged as a top-level directory on the path who-iris, the WHO SMART Trust IG, the WHO SMART Immunizations IG and the WHO SMART Base IG are already on. Created 2026-09-22 on the owner's stack ruling: `core->fhir-harness-> smart-base->siblings{smart-l1, smart-dak, smart-ig}`, no smart-guidelines. It is bean `nsbb`'s 'base', now named: run the FHIR IG Publisher with NO pre-processing and NO post-processing and publish the result, which is how SMART Guidelines were built BEFORE the DAK phases were added -- a shape that demonstrably worked rather than one being invented. IT MUST STAY WHO-FREE. The package here may be referenced BY `authoring-who-smart-guidelines` and may never reference it; a violation fails nothing, the layer simply stops being usable by the non-WHO IG it exists for, which is why `ig-build-pipeline` states the refusal as a checkable list rather than as an intention. DECLARES ONLY `skills/`, because that is all that exists: a declared-but-absent directory is the `dh4f` defect, where every consumer scans nothing and reports a clean run over it.",
   "name": "fhir-harness",
   "repository": "litlfred/fhir-harness",
   "version": "0.1.0",
@@ -42,7 +42,7 @@
     {
       "id": "library",
       "path": "library/",
-      "description": "L1 source content for the TEST side of a FHIR implementation guide -- what the repo taxonomy's Test repos define (FHIR test plans, the Gherkin test-language dialect, configuration for the Interoperability Test Bed) -- with no WHO, DAK or SMART assumption. First entries (bean `y4uj`, issue #1614 item 4): the R5 TestPlan resource's source (`hl7-2023-fhir-r5-testplan`, CC0), the Cucumber Gherkin reference (`cucumber-2024-gherkin-reference`, MIT) and the EC Interoperability Test Bed's README (`isaitb-2026-interoperability-test-bed-readme`, EUPL-1.2). Here and not in `smart-base/library/` because nothing about them is WHO's; not in `cat-harness/library/` because that library holds ONLY sources a platform methodology cites (`library-ref.test.ts`), and none cites these. The id is the conventional `library`, so this entry OVERRIDES the default rather than joining it. Declared WITH its entries in one commit, per bean dh4f.",
+      "description": "L1 source content for the TEST side of a FHIR implementation guide -- what the repo taxonomy's Test repos define (FHIR test plans, the Gherkin test-language dialect, configuration for the Interoperability Test Bed) -- with no WHO, DAK or SMART assumption. First entries (bean `y4uj`, issue #1614 item 4): the R5 TestPlan resource's source (`hl7-2023-fhir-r5-testplan`, CC0), the Cucumber Gherkin reference (`cucumber-2024-gherkin-reference`, MIT) and the EC Interoperability Test Bed's README (`isaitb-2026-interoperability-test-bed-readme`, EUPL-1.2). Here and not in the WHO SMART Base IG's `library/` because nothing about them is WHO's; not in `cat-harness/library/` because that library holds ONLY sources a platform methodology cites (`library-ref.test.ts`), and none cites these. The id is the conventional `library`, so this entry OVERRIDES the default rather than joining it. Declared WITH its entries in one commit, per bean dh4f.",
       "graphTypologies": [
         "library"
       ]
@@ -123,6 +123,13 @@
       "role": "instance-readme",
       "title": "fhir-harness",
       "description": "What the layer is, what it deliberately excludes, and which two steps came down into it from the WHO build."
+    },
+    {
+      "id": "unkinded-baseline",
+      "src": "node-kinds.baseline.json",
+      "role": "unkinded-baseline",
+      "title": "Unkinded families — fhir-harness",
+      "description": "The families whose typology THIS instance declares (in its typologies/ graph) that predate node kinds and may stay unkinded; `node-kinds:check` fails on any other. Owner, 2026-10-15: split out of cat-harness's docs/_data/node-kinds.json, which spanned every layer and is now built at publish, so this layer's families are judged by its own commit. Written by `bun run cat node-kinds`, which only shrinks it; `--accept-unkinded` grows it deliberately."
     }
   ],
   "_needs_comment": "It sits directly on core. NOT on cat-harness: the harness layer is inherited through core rather than declared twice, in the same shape folio-assistant-core uses. Owner's ordering, 2026-09-20: bootstrap, cat-harness, f-a-core, then the layers above.",
@@ -199,8 +206,8 @@
           "extensions": [
             ".md"
           ],
-          "extractModule": "content/pipeline/pot-extract.ts",
-          "injectModule": "content/pipeline/po-inject.ts"
+          "extractModule": "pipeline/pot-extract.ts",
+          "injectModule": "pipeline/po-inject.ts"
         },
         {
           "id": "fsh",

@@ -698,6 +698,16 @@ export function declaredKeep(repo: string, instance: string): string[] {
 }
 
 /**
+ * The landing entry's `site.build.coverage`, read the same way: an IG repository
+ * whose root already lacks a declared visualiser page says so with "report",
+ * as a folio does, rather than the IG route ignoring the recipe (2026-10-15:
+ * the WHO SMART Trust and Immunizations IGs could not publish).
+ */
+export function declaredCoverage(repo: string, instance: string): "refuse" | "report" | undefined {
+  return recipeRead(repo, instance).recipe?.coverage;
+}
+
+/**
  * The root file an IG repository's folio site must carry before it is
  * published: `folio-build.json`, which `ig-site:publisher-pages` writes, and
  * by which {@link FOLIO_ROOT_MARKERS} recognises the root as a folio's, so a
@@ -730,6 +740,8 @@ export interface IgFolioSite {
   /** Run after the platform's own writers (cat-harness-tools `finalSteps`): the IG's bar on the pages they write. */
   finalSteps: string[];
   keep: string[];
+  /** The landing entry's `site.build.coverage` ({@link declaredCoverage}); absent means refuse. */
+  coverage?: "refuse" | "report";
   /** Directories the root drops by ruling (`IG_DROPPED`). */
   dropped: DroppedByRuling[];
   /** What the plan says about each optional step, run or not. */
@@ -766,6 +778,8 @@ export function igFolioSite(o: {
   identity: { title: string; description?: string };
   /** Root entries the checkout declares kept ({@link declaredKeep}), merged with {@link IG_KEEP}. */
   keep?: readonly string[];
+  /** The checkout's declared coverage policy ({@link declaredCoverage}). */
+  coverage?: "refuse" | "report";
 }): { site?: IgFolioSite; why?: string } {
   if (!o.hasIndexConfig) return { why: "no index.config.json: this IG mounts no harness, so its site is the IG Publisher's output" };
   const required = Object.values(IG_SITE_STEPS);
@@ -803,6 +817,7 @@ export function igFolioSite(o: {
       siteSteps,
       finalSteps,
       keep: [...new Set([...IG_KEEP, ...(o.keep ?? [])])],
+      ...(o.coverage ? { coverage: o.coverage } : {}),
       dropped: [...IG_DROPPED],
       notes,
     },
@@ -1002,12 +1017,14 @@ function folioSiteFor(repo: string, ownerRepo: string): ReturnType<typeof igFoli
   const landing = resolveLandingInstance(repo);
   const landingPath = landing.kind === "instance" && landing.name ? lockedMountPath(repo, landing.name) : undefined;
   const keep = landing.kind === "instance" && landing.name ? declaredKeep(repo, landing.name) : [];
+  const coverage = landing.kind === "instance" && landing.name ? declaredCoverage(repo, landing.name) : undefined;
   return igFolioSite({
     hasIndexConfig: existsSync(join(repo, "index.config.json")),
     scripts: scriptTable(repo),
     landing,
     ...(landingPath !== undefined ? { landingPath } : {}),
     ...(keep.length ? { keep } : {}),
+    ...(coverage ? { coverage } : {}),
     hasOpenapi: igOpenapiGraph(repo) !== undefined,
     identity: igIdentity(existsSync(sushi) ? readFileSync(sushi, "utf-8") : undefined, ownerRepo.split("/")[1]!),
   });
@@ -1131,6 +1148,7 @@ async function stageIgFolio(a: PublisherRun, b: IgBuilt, site: IgFolioSite, h: P
     publish,
     ...(publish ? { remote: h.git(repo, ["config", "--get", "remote.origin.url"]) } : {}),
     keep,
+    ...(site.coverage ? { coverage: site.coverage } : {}),
     parityDropped: site.dropped,
     require: [IG_SITE_STAMP],
     message,

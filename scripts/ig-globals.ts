@@ -4,7 +4,7 @@
  * must conform to, or a sentence saying there are none.
  *
  * The Publisher generates the fragment, so an IG site built without it showed
- * a "not rendered" marker in its place (smart-base `index.md`, 2026-10-09).
+ * a "not rendered" marker in its place (the WHO SMART Base IG `index.md`, 2026-10-09).
  * This computes the rows; `templates/ig-site/globals-table.liquid` only lays
  * them out. The declaration is the AST's ImplementationGuide `global` first,
  * `sushi-config.yaml`'s `global` map where there is no AST — the same order

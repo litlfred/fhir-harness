@@ -5,7 +5,7 @@
  * on.
  *
  * The Publisher generates the fragment, so an IG site built without it showed
- * a "not rendered" marker where the table was (smart-trust `dependencies.html`
+ * a "not rendered" marker where the table was (the WHO SMART Trust IG `dependencies.html`
  * and the `-short` form on its index page; bean `4475`). This computes the
  * rows; `templates/ig-site/dependency-table.liquid` only lays them out.
  *
