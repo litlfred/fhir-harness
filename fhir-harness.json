@@ -97,6 +97,15 @@
       ]
     },
     {
+      "id": "fhir-harness-docs",
+      "path": "docs/",
+      "dependents": "skip",
+      "description": "This layer's own documentation. Today only `wireframes/`: the wireframe of each visualiser this layer declares (`ig-ast`), with its intent, checks and an `index.json` of the route keys it covers, which `check:wireframes` reads from every declared `docs` directory. Kept beside the viewer it draws so the two land in one pull request, rather than in the platform's docs where a ref to this layer's route would name a layer above the platform. Declared WITH its files in one commit, per bean `dh4f`.",
+      "graphTypologies": [
+        "docs"
+      ]
+    },
+    {
       "id": "qa",
       "path": "test/results/",
       "storage": {
