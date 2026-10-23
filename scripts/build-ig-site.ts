@@ -1222,7 +1222,7 @@ export const variableKey = (a: { resourceType: string; id: string }) => `${a.res
 export interface ArtifactVariables {
   /** `site.data.fhir.artifacts.<key>.{url,text,link,elements}` — one entry per artefact. */
   artifacts: Record<string, {
-    url: { canonical?: string; page: string; json?: string; xml?: string; ttl?: string };
+    url: { canonical?: string; page: string; json?: string };
     /**
      * `display` as WHO computes it; `label` is the same text escaped for a
      * markdown link label; `description_cell` is the artefact's description as
@@ -1267,9 +1267,10 @@ export interface ArtifactVariables {
  *   converge; `_data/` is read by the same Jekyll run.
  *
  * Source: the instance's artefact index — the Publisher's post-processed
- * output. `url.page` is this site's page; `url.json/xml/ttl` are where the
- * Publisher published them (under P2 only JSON is rendered here; XML and
- * Turtle remain links to the Publisher's copy).
+ * output. `url.page` is this site's page; `url.json` is where the Publisher
+ * published the resource's JSON. There is no `url.xml` or `url.ttl`: under P2
+ * only JSON is rendered, and since 2026-10-23 XML and Turtle are not linked
+ * either (owner: "excise XML and ttl everywhere for now").
  */
 export function artifactVariables(list: ReadonlyArray<IndexedArtifact>, pagesHref: string): { vars: ArtifactVariables; notSourced: string[] } {
   const artifacts: ArtifactVariables["artifacts"] = {};
@@ -1291,7 +1292,7 @@ export function artifactVariables(list: ReadonlyArray<IndexedArtifact>, pagesHre
       }
     }
     artifacts[key] = {
-      url: { canonical: a.canonical, page, json: a.published?.json?.url, xml: a.published?.xml?.url, ttl: a.published?.ttl?.url },
+      url: { canonical: a.canonical, page, json: a.published?.json?.url },
       text: { display, label: mdLabel(display), description_cell: mdCell(a.description ?? "") },
       link: { html: `<a href="${page}">${display.replace(/&/g, "&amp;").replace(/</g, "&lt;")}</a>` },
       elements,
