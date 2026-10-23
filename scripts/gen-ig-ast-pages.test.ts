@@ -19,11 +19,7 @@ import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, wr
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
-<<<<<<< HEAD
 import { AST_FAMILY_PREFIXES, astsIn, directoryVerdict, inheritedSubjects, needing, subjectPage, type BranchLister, type InstanceFacts } from "./gen-ig-ast-pages.ts";
-=======
-import { astsIn, directoryVerdict } from "./gen-ig-ast-pages.ts";
->>>>>>> origin/main
 
 const ROOT = resolve(import.meta.dir, "..", "..");
 const SCRIPT = join(import.meta.dir, "gen-ig-ast-pages.ts");
@@ -198,7 +194,6 @@ describe("fhir-harness declares the viewer it draws", () => {
     expect(decl.builtAtPublish?.some((x) => x.writer.includes("ig-ast:pages")) ?? false).toBe(false);
   });
 });
-<<<<<<< HEAD
 
 describe("an IG repository inherits its AST listing from needing this layer", () => {
   // `ig` needs fhir-harness directly, `overlay-ig` through `overlay`; `held`
@@ -246,5 +241,3 @@ describe("an IG repository inherits its AST listing from needing this layer", ()
     expect(html).toContain("<strong>unknown</strong>, not none");
   });
 });
-=======
->>>>>>> origin/main
