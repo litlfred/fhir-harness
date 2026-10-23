@@ -8,9 +8,9 @@ export default toolFactory((t) =>
     description:
       "A JSON Schema per ValueSet, plus the enumeration-response schemas published at the IG root.",
     install: { none: true },
-    invoke: { shell: "python3 input/scripts/generate_valueset_schemas.py" },
+    invoke: { shell: "bun run fhir-harness/scripts/ig-api-gen.ts --ast output-ast --out <sidecars> --site <site>" },
     io: {
-      inputs: [{ name: "igOutput", schema: t("RepoPath"), required: true }],
+      inputs: [{ name: "ast", schema: t("RepoPath"), required: true, description: "The IG's AST (`output-ast/`, with the build's `expansions.json`)." }],
       // Named for what it is (#1168, B9a): as `schemas` it matched
       // `logical-model-schemas` port for port, and the two would derive as
       // alternatives when they write different schema families.
@@ -23,6 +23,6 @@ export default toolFactory((t) =>
         "The root `ValueSets.schema.json` it writes is a SCHEMA describing an enumeration response, carrying an `example` that holds the list. It is not an index instance, and reading it as one is the trap `qsf5` recorded — no FHIR IG publishes an artefact-index instance.",
       cost: "Seconds. Output size scales with the IG — measured at 19 against 198 across two published IGs — so re-derive rather than assume.",
     },
-    requires: { runtime: ["python3"], network: false },
+    requires: { runtime: ["bun"], network: false },
   }),
 );

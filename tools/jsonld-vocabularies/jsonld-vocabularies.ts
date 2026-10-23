@@ -7,9 +7,9 @@ export default toolFactory((t) =>
     title: "ValueSet expansions → JSON-LD",
     description: "JSON-LD vocabularies built from the ValueSet expansions in the published output.",
     install: { none: true },
-    invoke: { shell: "python3 input/scripts/generate_jsonld_vocabularies.py" },
+    invoke: { shell: "bun run fhir-harness/scripts/ig-api-gen.ts --ast output-ast --out <sidecars> --site <site>" },
     io: {
-      inputs: [{ name: "igOutput", schema: t("RepoPath"), required: true }],
+      inputs: [{ name: "ast", schema: t("RepoPath"), required: true, description: "The IG's AST (`output-ast/`, with the build's `expansions.json`)." }],
       outputs: [{ name: "vocabularies", schema: t("RepoPath"), description: "`*.jsonld` at the published root." }],
     },
     satisfies: ["ig-build-pipeline"],
@@ -19,6 +19,6 @@ export default toolFactory((t) =>
         "IT DEPENDS ON EXPANSION, which depends on the terminology server the build was given. An IG built against a dead or restricted `tx` produces fewer vocabularies and FAILS NOTHING — the step warns and continues. A thin output is therefore not evidence of a thin ValueSet; check the expansion before concluding anything.",
       cost: "Seconds locally; the expansion it depends on is the expensive part and happens in the Publisher run.",
     },
-    requires: { runtime: ["python3"], network: false },
+    requires: { runtime: ["bun"], network: false },
   }),
 );
