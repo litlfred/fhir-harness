@@ -11,10 +11,11 @@
  */
 import { afterAll, describe, expect, it } from "bun:test";
 import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { carryFromCommitted, igTargets, publishedBase } from "./build-ig-indexes.ts";
+import { carryFromCommitted, contextsFrom, fhirVersionsOf, igTargets, packFromAst, publishedBase } from "./build-ig-indexes.ts";
 import type { BranchLister } from "./gen-ig-ast-pages.ts";
 
 const instances = [
@@ -57,19 +58,18 @@ describe("igTargets", () => {
 describe("carryFromCommitted", () => {
   const dir = mkdtempSync(join(tmpdir(), "ig-index-carry-"));
   mkdirSync(join(dir, "fhir-artifact-index"), { recursive: true });
-  writeFileSync(join(dir, "fhir-artifact-index", "package.tgz"), "x");
+  writeFileSync(join(dir, "fhir-artifact-index", "hub.json"), "{}");
   afterAll(() => rmSync(dir, { recursive: true, force: true }));
 
   it("keeps what the AST does not supply, only when its files are on disk, and never overwrites the build", () => {
-    const built: Record<string, unknown> = { packageId: "ex.ig", fhirVersion: "5.0.0" };
-    const committed = {
-      fhirVersion: "4.0.1",
-      package: { url: "https://example.org/package.tgz", localPath: "fhir-artifact-index/package.tgz" },
-      igApiHub: { url: "https://example.org/hub.html", localPath: "fhir-artifact-index/gone/hub.json" },
-    };
-    expect(carryFromCommitted(built, committed, dir)).toEqual(["package"]);
-    expect(built["fhirVersion"]).toBe("5.0.0");
-    expect(built["igApiHub"]).toBeUndefined();
+    const committed = { igApiHub: { url: "https://example.org/hub.html", localPath: "fhir-artifact-index/hub.json" } };
+    const built: Record<string, unknown> = { packageId: "ex.ig" };
+    expect(carryFromCommitted(built, committed, dir)).toEqual(["igApiHub"]);
+    const own = { igApiHub: { url: "https://example.org/own.html" } };
+    expect(carryFromCommitted(own, committed, dir)).toEqual([]);
+    expect(own.igApiHub.url).toBe("https://example.org/own.html");
+    const gone = { igApiHub: { url: "https://example.org/hub.html", localPath: "fhir-artifact-index/gone/hub.json" } };
+    expect(carryFromCommitted({}, gone, dir)).toEqual([]);
     expect(carryFromCommitted({}, undefined, dir)).toEqual([]);
   });
 });
@@ -79,5 +79,52 @@ describe("publishedBase", () => {
     expect(publishedBase({ source: { kind: "gh-pages", of: "https://example.org/ig/" } }, { iriBase: "https://other.example/" }).base).toBe("https://example.org/ig");
     expect(publishedBase({ source: { kind: "sushi-config", of: "https://github.com/x/y" } }, { iriBase: "https://other.example/ig/" }).base).toBe("https://other.example/ig");
     expect(publishedBase(undefined, undefined).base).toBeUndefined();
+  });
+});
+
+describe("packFromAst", () => {
+  it("packs each AST resource at package/<Type>-<id>.json, with a package.json from sushi-config.yaml", () => {
+    const dir = mkdtempSync(join(tmpdir(), "ig-index-pack-"));
+    try {
+      const ast = join(dir, "output-ast");
+      mkdirSync(join(ast, "resources", "ValueSet"), { recursive: true });
+      writeFileSync(join(ast, "resources", "ValueSet", "vs--abc.json"), '{"resourceType":"ValueSet","id":"vs"}');
+      writeFileSync(
+        join(ast, "manifest.json"),
+        JSON.stringify({ resources: [{ resourceType: "ValueSet", id: "vs", file: "resources/ValueSet/vs--abc.json" }, { resourceType: "ValueSet", id: "missing", file: "resources/ValueSet/nope.json" }] }),
+      );
+      writeFileSync(join(dir, "sushi-config.yaml"), "id: ex.ig\nversion: 1.0.0\nfhirVersion: 4.0.1\ncanonical: http://example.org/ig\n");
+      const out = join(dir, "fhir-artifact-index", "package.tgz");
+      expect(packFromAst(ast, dir, out, join(dir, "stage"))).toBe(1);
+      const list = spawnSync("tar", ["-tzf", out], { encoding: "utf-8" }).stdout.split("\n").filter(Boolean).sort();
+      expect(list).toEqual(["package/", "package/ValueSet-vs.json", "package/package.json"]);
+      const pj = JSON.parse(spawnSync("tar", ["-xzOf", out, "package/package.json"], { encoding: "utf-8" }).stdout);
+      expect(pj).toMatchObject({ name: "ex.ig", version: "1.0.0", fhirVersions: ["4.0.1"] });
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("contextsFrom and fhirVersionsOf", () => {
+  it("indexes each context-only .jsonld under input/images, skips data, and reads the FHIR version", () => {
+    const ig = mkdtempSync(join(tmpdir(), "ig-index-ctx-"));
+    try {
+      mkdirSync(join(ig, "input", "images", "ctx"), { recursive: true });
+      writeFileSync(join(ig, "input", "images", "ctx", "v1.jsonld"), JSON.stringify({ "@context": { a: "https://example.org/a" } }));
+      writeFileSync(join(ig, "input", "images", "data.jsonld"), JSON.stringify({ "@context": {}, "@graph": [] }));
+      writeFileSync(join(ig, "input", "images", "broken.jsonld"), "{");
+      writeFileSync(join(ig, "sushi-config.yaml"), "id: ex.ig\nfhirVersion: 4.0.1\n");
+      const dir = join(ig, "out");
+      const got = contextsFrom(ig, dir, "https://example.org/ig");
+      expect(got.map((c) => c.id)).toEqual(["ctx/v1"]);
+      expect(got[0]!.representation.url).toBe("https://example.org/ig/ctx/v1.jsonld");
+      expect(got[0]!.representation.localPath).toBe("fhir-artifact-index/contexts/ctx/v1.jsonld");
+      expect(contextsFrom(join(ig, "none"), dir, undefined)).toEqual([]);
+      expect(fhirVersionsOf(ig)).toEqual(["4.0.1"]);
+      expect(fhirVersionsOf(join(ig, "none"))).toEqual([]);
+    } finally {
+      rmSync(ig, { recursive: true, force: true });
+    }
   });
 });

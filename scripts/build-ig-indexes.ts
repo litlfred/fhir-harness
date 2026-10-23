@@ -43,11 +43,27 @@
  * by its name and never knows what it writes. No such script, nothing is bound,
  * and the run says so. A step that fails fails that IG.
  *
- * ## What the AST does not carry yet, kept from a committed copy
+ * ## The package, from the AST
  *
- * An index ingested from the published site also holds the package
- * (`package.tgz`, which the JSON view pages read), the JSON-LD contexts and
- * the IG API hub. The AST does not hold them yet. While a committed copy is on
+ * The JSON view pages read each resource out of `package.tgz`, at
+ * `package/<Type>-<id>.json`, as the Publisher packages it. {@link packFromAst}
+ * writes that file from the AST's resources, with a `package/package.json`
+ * read from the IG's `sushi-config.yaml`, to `fhir-artifact-index/package.tgz`.
+ * It is the AST's package, not the published one, and holds what the AST holds.
+ *
+ * ## The JSON-LD contexts and the FHIR version, from the IG's source
+ *
+ * The Publisher copies `input/images/` to the site root as it is, so a JSON-LD
+ * context the IG publishes is a `.jsonld` file there whose only key is
+ * `@context` ({@link contextsFrom}); a `.jsonld` holding data (`@graph`, ...)
+ * is not one. Each is copied to `fhir-artifact-index/contexts/` and indexed by
+ * its path without the extension. `fhirVersion` is read from
+ * `sushi-config.yaml`.
+ *
+ * ## What the build does not supply yet, kept from a committed copy
+ *
+ * An index ingested from the published site also holds the IG API hub. The
+ * build does not supply it yet. While a committed copy is on
  * disk, those fields are kept from it ({@link CARRIED}), provided the files they
  * point at are there, so the pages lose nothing on the first build. An IG
  * instance can drop its committed copy only once the build supplies them
@@ -74,7 +90,8 @@
  * Nothing here may know about WHO (fhir-harness/AGENTS.md).
  */
 import { spawnSync } from "node:child_process";
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { parse as parseYaml } from "yaml";
 import { tmpdir } from "node:os";
 import { basename, join, resolve } from "node:path";
 
@@ -156,7 +173,7 @@ function run(cmd: string, args: string[], cwd?: string): { ok: boolean; out: str
 }
 
 /** Index fields the AST does not supply yet, kept from a committed copy when one is on disk. */
-export const CARRIED = ["fhirVersion", "package", "contexts", "igApiHub"] as const;
+export const CARRIED = ["igApiHub"] as const;
 
 /** A representation's instance-relative file, when the field carries one. */
 function localPaths(v: unknown): string[] {
@@ -190,6 +207,94 @@ export function publishedBase(committed: Record<string, unknown> | undefined, de
   const iri = declaration?.["iriBase"];
   if (typeof iri === "string" && /^https?:\/\//.test(iri)) return { base: iri.replace(/\/+$/, ""), from: "the declaration's iriBase" };
   return { from: "nowhere: no published links" };
+}
+
+/**
+ * Write `out` as a Publisher-shaped `package.tgz` from the AST in `ast`: each
+ * resource at `package/<Type>-<id>.json`, and `package/package.json` from the
+ * IG's `sushi-config.yaml`. Returns the number of resources packed.
+ */
+export function packFromAst(ast: string, igSource: string, out: string, stage: string): number {
+  const manifest = JSON.parse(readFileSync(join(ast, "manifest.json"), "utf-8")) as { resources: { resourceType: string; id: string; file: string }[] };
+  rmSync(stage, { recursive: true, force: true });
+  const pkg = join(stage, "package");
+  mkdirSync(pkg, { recursive: true });
+  let n = 0;
+  for (const r of manifest.resources) {
+    const from = join(ast, r.file);
+    if (!existsSync(from) || !/^[A-Za-z]+$/.test(r.resourceType) || !/^[A-Za-z0-9.-]+$/.test(r.id)) continue;
+    cpSync(from, join(pkg, `${r.resourceType}-${r.id}.json`));
+    n++;
+  }
+  const cfg = parseYaml(readFileSync(join(igSource, "sushi-config.yaml"), "utf-8")) as Record<string, unknown>;
+  const fhirVersion = cfg["fhirVersion"];
+  writeFileSync(
+    join(pkg, "package.json"),
+    `${JSON.stringify(
+      {
+        name: String(cfg["packageId"] ?? cfg["id"] ?? ""),
+        version: String(cfg["version"] ?? ""),
+        ...(cfg["canonical"] ? { canonical: String(cfg["canonical"]) } : {}),
+        ...(fhirVersion ? { fhirVersions: Array.isArray(fhirVersion) ? fhirVersion.map(String) : [String(fhirVersion)] } : {}),
+        description: "Built from the IG's cached AST by fhir-harness build-ig-indexes.ts, not by the IG Publisher.",
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  mkdirSync(join(out, ".."), { recursive: true });
+  const t = spawnSync("tar", ["-czf", out, "-C", stage, "package"], { encoding: "utf-8" });
+  if (t.status !== 0) throw new Error(`tar failed: ${t.stderr}`);
+  return n;
+}
+
+/** The Publisher's folder copied verbatim to the site root. */
+export const IG_IMAGES = join("input", "images");
+
+/** `.jsonld` files under `dir`, as paths relative to it, sorted. */
+function jsonldUnder(dir: string, rel = ""): string[] {
+  if (!existsSync(join(dir, rel))) return [];
+  return readdirSync(join(dir, rel), { withFileTypes: true })
+    .flatMap((e) => (e.isDirectory() ? jsonldUnder(dir, join(rel, e.name)) : e.name.endsWith(".jsonld") ? [join(rel, e.name)] : []))
+    .sort();
+}
+
+/**
+ * The JSON-LD contexts the IG publishes: each `.jsonld` under `input/images/`
+ * whose only key is `@context`, copied to `dir/contexts/<path>`. Returns the
+ * index's `contexts` entries, empty when there are none.
+ */
+export function contextsFrom(igSource: string, dir: string, base: string | undefined): { id: string; representation: { url: string; localPath: string; bytes: number } }[] {
+  const images = join(igSource, IG_IMAGES);
+  const out: { id: string; representation: { url: string; localPath: string; bytes: number } }[] = [];
+  for (const rel of jsonldUnder(images)) {
+    let doc: unknown;
+    try {
+      doc = JSON.parse(readFileSync(join(images, rel), "utf-8"));
+    } catch {
+      continue;
+    }
+    if (doc === null || typeof doc !== "object" || Array.isArray(doc)) continue;
+    const keys = Object.keys(doc);
+    if (keys.length !== 1 || keys[0] !== "@context") continue;
+    const path = rel.split("\\").join("/");
+    const to = join(dir, "contexts", rel);
+    mkdirSync(join(to, ".."), { recursive: true });
+    cpSync(join(images, rel), to);
+    out.push({
+      id: path.replace(/\.jsonld$/, ""),
+      representation: { url: base ? `${base}/${path}` : `fhir-artifact-index/contexts/${path}`, localPath: `fhir-artifact-index/contexts/${path}`, bytes: statSync(to).size },
+    });
+  }
+  return out;
+}
+
+/** The IG's FHIR versions, from its `sushi-config.yaml`; none when it names none. */
+export function fhirVersionsOf(igSource: string): string[] {
+  const p = join(igSource, "sushi-config.yaml");
+  if (!existsSync(p)) return [];
+  const v = (parseYaml(readFileSync(p, "utf-8")) as Record<string, unknown> | null)?.["fhirVersion"];
+  return v === undefined || v === null ? [] : (Array.isArray(v) ? v : [v]).map(String);
 }
 
 /** The step name a layer above provides for the IG API sidecars. */
@@ -255,6 +360,21 @@ export function buildOne(t: IgTarget, work: string, log: (s: string) => void, ch
   else {
     const committed = committedIx;
     const next = JSON.parse(readFileSync(built, "utf-8")) as Record<string, unknown>;
+    try {
+      const tgz = join(dir, "package.tgz");
+      const packed = packFromAst(ast, clone, tgz, join(work, `${t.name}.package`));
+      next["package"] = { url: pub.base ? `${pub.base}/package.tgz` : "fhir-artifact-index/package.tgz", localPath: "fhir-artifact-index/package.tgz", bytes: statSync(tgz).size };
+      log(`  package: ${packed} resource(s) packed from the AST`);
+    } catch (e) {
+      problems.push(`package: ${(e as Error).message}`);
+    }
+    const fv = fhirVersionsOf(clone);
+    if (fv.length) next["fhirVersion"] = fv;
+    rmSync(join(dir, "contexts"), { recursive: true, force: true });
+    const ctx = contextsFrom(clone, dir, pub.base);
+    if (ctx.length) next["contexts"] = ctx;
+    else delete next["contexts"];
+    log(`  contexts: ${ctx.length} JSON-LD context(s) from ${IG_IMAGES}/`);
     const kept = carryFromCommitted(next, committed, t.root);
     writeFileSync(indexPath, `${JSON.stringify(next, null, 2)}\n`);
     log(`  index: ${ix.out.split("\n")[0]}${kept.length ? `; kept from the committed copy: ${kept.join(", ")}` : ""}`);
