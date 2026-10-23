@@ -14,6 +14,7 @@ import { gzipSync } from "node:zlib";
 import {
   checkCached,
   exact,
+  FULL_COMMIT,
   fromMirror,
   fromSite,
   parseCliArgs,
@@ -355,6 +356,22 @@ dependencies:
       expect(existsSync(missingOut)).toBe(true);
       const missingText = readFileSync(missingOut, "utf-8").trim();
       expect(missingText).toBe("pkg.d#2.0.0");
+    });
+
+    test("refuses an abbreviated --mirror-commit by name instead of dropping the mirror", async () => {
+      const logs: string[] = [];
+      const res = await seedFhirCache({
+        cacheDir: join(tmp, "cache"),
+        mirror: "https://example.invalid/fhir-package-mirror",
+        mirrorCommit: "c344c47",
+        wanted: ["pkg.x#1.0.0"],
+        logger: { log: (m) => logs.push(m), error: (m) => logs.push(m) },
+        resolveNpmFn: () => ({ ok: false, reasons: ["not on npm"] }),
+      });
+      expect(logs.some((m) => m.includes('--mirror-commit must be a full 40-character commit SHA, got "c344c47"'))).toBe(true);
+      expect(res.missing.map((m) => m.spec)).toEqual(["pkg.x#1.0.0"]);
+      expect(FULL_COMMIT.test("c344c47")).toBe(false);
+      expect(FULL_COMMIT.test("c344c47b".padEnd(40, "0"))).toBe(true);
     });
 
     test("terminates without infinite loop on cyclic dependencies", async () => {
