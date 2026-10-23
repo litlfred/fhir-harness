@@ -248,6 +248,20 @@ export function igSiteDocs(root: string): string | undefined {
 }
 
 /**
+ * The site paths a later step publishes inside an `igSite` instance's IG site:
+ * one `/`-ended prefix per directory the instance declares `served`. The
+ * served-directory mount refuses a route the site already holds, so an IG's
+ * own `input/images/<same path>/` must be left to it. Empty when the IG site
+ * sits at `/<instance>/ig/`, where no served route can meet it.
+ */
+export function servedPathsFor(root: string): { prefix: string; by: string }[] {
+  if (igSiteDocs(root) === undefined) return [];
+  return (readDeclaration(root)?.directories ?? [])
+    .filter((d) => d.served === true)
+    .map((d) => ({ prefix: `${d.path.replace(/^\/+|\/+$/g, "")}/`, by: `served directory ${d.id ?? d.path}` }));
+}
+
+/**
  * Copy an `igSite` docs directory into a staged IG site's Jekyll source,
  * refusing to overwrite: a file the IG's own build already wrote at the same
  * path is two answers for one URL, and the generator is supposed to have
@@ -445,6 +459,8 @@ if (import.meta.main) {
       // The IG's post-processing output, where its source holds only a marker.
       fills: [igApiHubFill(ig.root, docs ? "" : "../")].filter((x) => x !== undefined),
       annexes: annexesFor(ig.root),
+      // A declared served directory is published by a later step at its own route.
+      reservedPaths: servedPathsFor(ig.root),
     });
     console.error(`${ig.instance} (${ig.repo}@${ig.ref.slice(0, 7)}):\n${describeStage(r)}`);
     // The `site.data` overwrite record (bean `yy4u`), as a QA sidecar in the
