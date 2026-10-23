@@ -56,6 +56,11 @@ beforeAll(() => {
   writeFileSync(join(src, "input", "images", "logo.png"), "png");
   writeFileSync(join(src, "input", "images", "good.jsonld"), '{"@id": "x"}');
   writeFileSync(join(src, "input", "images", "broken.jsonld"), '{"a: 1}');
+  mkdirSync(join(src, "input", "images", "demo", "lib"), { recursive: true });
+  writeFileSync(join(src, "input", "images", "demo", "app.js"), "export {};");
+  writeFileSync(join(src, "input", "images", "demo", "lib", "data.json"), '{"ok": true}');
+  writeFileSync(join(src, "input", "images", "demo", "broken.json"), '{"a: 1}');
+  writeFileSync(join(src, "input", "images", "demo", "icon.svg"), "<svg/>");
   writeFileSync(join(src, "input", "images-source", "flow.plantuml"), "@startuml\nA -> B\n@enduml\n");
   out = join(dir, "site");
   r = stageIgSite(src, out, { baseurl: "/site/example" });
@@ -90,11 +95,21 @@ describe("staging one IG as one just-the-docs site", () => {
     expect(readFileSync(join(out, "logo.png"), "utf-8")).toBe("png");
   });
 
+  test("a subdirectory of input/images is published as a subdirectory, as the Publisher does", () => {
+    expect(readFileSync(join(out, "demo", "app.js"), "utf-8")).toBe("export {};");
+    expect(readFileSync(join(out, "demo", "lib", "data.json"), "utf-8")).toBe('{"ok": true}');
+    expect(existsSync(join(out, "demo", "icon.svg"))).toBe(true);
+    // `{% include %}` names a file at the top level only.
+    expect(existsSync(join(out, "_includes", "icon.svg"))).toBe(false);
+  });
+
   test("a data file that does not parse is not published, and is reported", () => {
     expect(existsSync(join(out, "good.jsonld"))).toBe(true);
     expect(existsSync(join(out, "broken.jsonld"))).toBe(false);
-    expect(r.unparseable).toHaveLength(1);
+    expect(existsSync(join(out, "demo", "broken.json"))).toBe(false);
+    expect(r.unparseable).toHaveLength(2);
     expect(r.unparseable[0]).toStartWith("broken.jsonld (");
+    expect(r.unparseable[1]).toStartWith("demo/broken.json (");
   });
 
   test("a diagram the Publisher renders, with no renderer given, is a VISIBLE marker and reported", () => {
@@ -680,6 +695,24 @@ describe("the Publisher's page footer on the IG site's own pages (#1901)", () =>
     expect(r.stdout).toContain('Links: <a href="toc.html">Table of Contents</a> | <a href="https://l" rel="external">License</a>');
     // The first page: no prev, and nothing invented for it.
     expect(run({}).stdout).toContain('<p class="ig-footer-nav"><a href="#">top</a></p>');
+  });
+});
+
+describe("a link into a subdirectory of input/images stays on the site", () => {
+  test("it is served, so it is not relinked to the source", () => {
+    const d = mkdtempSync(join(tmpdir(), "ig-nested-"));
+    const src = join(d, "src");
+    mkdirSync(join(src, "input", "pagecontent"), { recursive: true });
+    mkdirSync(join(src, "input", "images", "demo"), { recursive: true });
+    writeFileSync(join(src, "sushi-config.yaml"), "id: x.ig\ntitle: X IG\n");
+    writeFileSync(join(src, "input", "images", "demo", "app.css"), "p{}");
+    writeFileSync(join(src, "input", "pagecontent", "concepts.md"), '[css](demo/app.css) <link rel="stylesheet" href="demo/app.css">\n');
+    stageIgSite(src, join(d, "out"), { editBase: "https://github.com/o/r/edit/main" });
+    const page = readFileSync(join(d, "out", "concepts.md"), "utf-8");
+    expect(page).toContain("[css](demo/app.css)");
+    expect(page).toContain('href="demo/app.css"');
+    expect(readFileSync(join(d, "out", "demo", "app.css"), "utf-8")).toBe("p{}");
+    rmSync(d, { recursive: true, force: true });
   });
 });
 

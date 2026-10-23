@@ -16,7 +16,7 @@
  * |---|---|---|
  * | `input/pagecontent/*.md` | `<page>.md` with front matter | the pages; title, parent and order from `sushi-config.yaml` `pages:` |
  * | `input/includes/*`, `input/pagecontent/*`, `input/images/*.svg` | `_includes/` | the Publisher resolves `{% include %}` against all three, so pages include each other and inline SVGs |
- * | `input/images/*` | the site root | the Publisher publishes them there, so pages say `<img src="x.png">` — except a `.json`/`.jsonld` that does not parse, which is left out and reported: publishing a broken data file under our site blocks the deploy, and whose file it is cannot be told from a file no parser can read |
+ * | `input/images/**` | the site root, subdirectories kept | the Publisher publishes them there, so pages say `<img src="x.png">` or `<script src="demo/app.js">` — except a `.json`/`.jsonld` that does not parse, which is left out and reported: publishing a broken data file under our site blocks the deploy, and whose file it is cannot be told from a file no parser can read |
  * | `input/images-source/*.plantuml` | `_includes/<name>.svg` | the Publisher RENDERS these; rendered here with `--plantuml-jar`, otherwise a visible "not rendered" marker, reported |
  * | the artefact index (`--artifacts`) | `_includes/list-(simple-)?<types>.xhtml` | the Publisher GENERATES these lists of an IG's artefacts of one type; written here as Liquid over `site.data.fhir.artifact_lists`, so any IG with an index gets them (bean `9hfi`) |
  * | `ig-site-data` over the source | `_data/fhir.json` | `site.data.fhir.*`, only what is sourced |
@@ -865,6 +865,14 @@ export function composeIgSite(
 }
 
 const files = (dir: string) => (existsSync(dir) ? readdirSync(dir).filter((f) => statSync(join(dir, f)).isFile()) : []);
+/** Every file under `dir`, subdirectories included, as `/`-separated paths relative to it. */
+const filesDeep = (dir: string, rel = ""): string[] =>
+  existsSync(join(dir, rel))
+    ? readdirSync(join(dir, rel)).sort().flatMap((f) => {
+        const p = rel ? `${rel}/${f}` : f;
+        return statSync(join(dir, p)).isDirectory() ? filesDeep(dir, p) : [p];
+      })
+    : [];
 const entries = (dir: string) => (existsSync(dir) ? readdirSync(dir).sort() : []);
 
 /**
@@ -1680,7 +1688,7 @@ export function stageIgSite(igSrc: string, out: string, opts: StageOptions = {})
   // `input/images/*` (published at the root), the artefact pages, and the
   // artefact index page.
   const pageHtml = new Set(files(pagecontent).filter((f) => f.endsWith(".md")).map((f) => `${basename(f, ".md")}.html`));
-  const rootImages = new Set(files(join(src, "input", "images")));
+  const rootImages = new Set(filesDeep(join(src, "input", "images")));
   const isServed = (t: string): boolean =>
     pageHtml.has(t) || rootImages.has(t) || t === "artifacts.html" || (opts.artifacts !== undefined && t.startsWith(opts.artifacts.pagesHref));
   const dead = new Set<string>();
@@ -1839,7 +1847,7 @@ export function stageIgSite(igSrc: string, out: string, opts: StageOptions = {})
   const imagesDir = join(src, "input", "images");
   let images = 0;
   const unparseable: string[] = [];
-  for (const f of files(imagesDir)) {
+  for (const f of filesDeep(imagesDir)) {
     if (/\.(json|jsonld)$/.test(f)) {
       try {
         JSON.parse(readFileSync(join(imagesDir, f), "utf-8"));
@@ -1848,8 +1856,12 @@ export function stageIgSite(igSrc: string, out: string, opts: StageOptions = {})
         continue;
       }
     }
+    // A subdirectory is published as a subdirectory, as the Publisher does, so
+    // a page's `<script src="demo/app.js">` resolves.
+    if (f.includes("/")) mkdirSync(join(out, dirname(f)), { recursive: true });
     copyFileSync(join(imagesDir, f), join(out, f));
-    if (f.endsWith(".svg")) {
+    // `{% include x.svg %}` names a file, so only the top level is includable.
+    if (f.endsWith(".svg") && !f.includes("/")) {
       copyFileSync(join(imagesDir, f), join(out, "_includes", f));
       includes++;
     }
