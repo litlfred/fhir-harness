@@ -147,6 +147,7 @@
  * thousands, measured on one IG), so the site build reports it and does not
  * refuse the publish over it, while a dead link in the chrome still refuses.
  */
+import { IG_API_HUB_DEFAULT_PAGE, hasIgApi, hubEntries, igApiHubPageOf, writeIgApiHubSite } from "./ig-api-hub.ts";
 import { spawnSync } from "node:child_process";
 import { appendFileSync, cpSync, writeFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
@@ -776,6 +777,23 @@ export function publisherPages(o: { site: string; ast: string; work?: string; ig
       `${served.sidecars} IG API sidecar(s) at ${SIDECARS_SERVED}/; ${served.siteFiles} file(s) the layer above wrote for the site root. The Publisher's HTML is not taken`,
   );
   if (served.siteFilled.length) log(`publisher pages: ${served.siteFilled.length} page(s) of the IG's own held the layer above's placeholder and are its page now: ${served.siteFilled.join(", ")}`);
+  // The IG API hub, drawn from the index's bound sidecars (bean `h7ap`): at the
+  // IG's page holding the placeholder, or `ig-api.html`. Laid over a page the
+  // site holds only when that page is the placeholder's shell or the layer's own.
+  if (igApi && index && existsSync(index)) {
+    const ix = JSON.parse(readFileSync(index, "utf-8")) as FhirArtifactIndex;
+    if (hasIgApi(ix)) {
+      const page = o.ig !== undefined ? igApiHubPageOf(o.ig, igApi.placeholder) : IG_API_HUB_DEFAULT_PAGE;
+      const at = join(o.site, page);
+      const mine = !existsSync(at) || (igApi.site !== undefined && existsSync(join(igApi.site, page))) || (igApi.placeholder !== undefined && readFileSync(at, "utf-8").includes(igApi.placeholder));
+      if (mine) {
+        const openapi = existsSync(join(o.site, "openapi", "index.html"));
+        const documents = igApi.site ? readdirSync(igApi.site).filter((f) => f.endsWith(".schema.json") && statSync(join(igApi.site!, f)).isFile()) : [];
+        writeIgApiHubSite({ site: o.site, ix, label: igApi.label ?? "IG API", page, openapi, documents });
+        log(`publisher pages: the ${igApi.label ?? "IG API"} hub at ${page}, drawn from the index (${hubEntries(ix).length} sidecar(s))`);
+      } else log(`publisher pages: ${page} is a page of the IG's own without the hub's placeholder; no hub written over it`);
+    }
+  }
   if (served.siteKept.length) log(`publisher pages: the site already held ${served.siteKept.length} path(s) the layer above also wrote, kept as the site built them: ${served.siteKept.slice(0, 10).join(", ")}`);
   // The guard: whatever put it there, a page wearing the Publisher's chrome is not published.
   const chrome = publisherChromePages(o.site);

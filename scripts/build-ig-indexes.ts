@@ -60,15 +60,13 @@
  * its path without the extension. `fhirVersion` is read from
  * `sushi-config.yaml`.
  *
- * ## The IG API hub: a link to the IG's own hub page
+ * ## The IG API hub: drawn from the index, named by the layer above
  *
- * A layer above that writes the sidecars may also write a hub page into
- * `<work>/ig-api/site/`, and names in its descriptor (`ig-api.json`) the
- * marker that the IG's own page holds where the hub goes (`placeholder`). The
- * IG's page holding that marker (`input/pagecontent/<page>.md`) is the hub
- * page, and when the layer wrote `<page>.html` the index's `igApiHub` points at
- * it on the published site ({@link hubFrom}). It holds no copy: the IG's site
- * serves the hub, and the docs site links to it.
+ * A layer above that writes the sidecars names in its descriptor
+ * (`ig-api.json`) what the API is called (`label`) and the marker the IG's own
+ * hub page holds (`placeholder`). The index's `igApiHub` records both and the
+ * hub page's address ({@link hubFrom}); it holds no copy, because the hub is
+ * drawn from the index's own bound sidecars (`ig-api-hub.ts`, bean `h7ap`).
  *
  * ## What the build does not supply, kept from a committed copy
  *
@@ -107,7 +105,8 @@ import { basename, join, resolve } from "node:path";
 
 import { checkoutRootFor, instanceRootsIn } from "../../cat-harness/schemas/cat-harness.js";
 import { scriptTable } from "../../cat-harness/schemas/script-table.ts";
-import { IG_API_DESCRIPTOR, IG_API_SITE, IG_API_WORK } from "./ig-repo-site.ts";
+import { IG_API_DESCRIPTOR, IG_API_WORK } from "./ig-repo-site.ts";
+import { igApiHubPageOf } from "./ig-api-hub.ts";
 import { AST_FAMILY_PREFIXES, LAYER, lsRemote, needing, type BranchLister, type InstanceFacts } from "./gen-ig-ast-pages.ts";
 import { buildMenu } from "./ingest-ig-menu.ts";
 
@@ -308,29 +307,24 @@ export function fhirVersionsOf(igSource: string): string[] {
 }
 
 /**
- * The IG API hub as a link (see "The IG API hub"): the IG's page holding the
- * descriptor's `placeholder`, when the layer above wrote that page into
- * `<siteWork>/ig-api/site/` and the IG has a published address. `undefined`
- * otherwise.
+ * The IG API hub's index entry (see "The IG API hub"): the IG's page holding
+ * the descriptor's `placeholder` (else `ig-api.html`) on the published site,
+ * and the descriptor's `label`. `undefined` when no layer above left a
+ * descriptor, so there is no API to name.
  */
-export function hubFrom(siteWork: string, igSource: string, base: string | undefined): { url: string; placeholder: string } | undefined {
+export function hubFrom(siteWork: string, igSource: string, base: string | undefined): { url: string; placeholder?: string; label?: string } | undefined {
   const descriptor = join(siteWork, IG_API_WORK, IG_API_DESCRIPTOR);
-  if (!base || !existsSync(descriptor)) return undefined;
-  let placeholder: unknown;
+  if (!existsSync(descriptor)) return undefined;
+  let d: Record<string, unknown>;
   try {
-    placeholder = (JSON.parse(readFileSync(descriptor, "utf-8")) as Record<string, unknown>)["placeholder"];
+    d = JSON.parse(readFileSync(descriptor, "utf-8")) as Record<string, unknown>;
   } catch {
     return undefined;
   }
-  if (typeof placeholder !== "string" || placeholder.length === 0) return undefined;
-  const pages = join(igSource, "input", "pagecontent");
-  if (!existsSync(pages)) return undefined;
-  for (const f of readdirSync(pages).filter((n) => n.endsWith(".md")).sort()) {
-    if (!readFileSync(join(pages, f), "utf-8").includes(placeholder)) continue;
-    const page = `${f.replace(/\.md$/, "")}.html`;
-    if (existsSync(join(siteWork, IG_API_WORK, IG_API_SITE, page))) return { url: `${base}/${page}`, placeholder };
-  }
-  return undefined;
+  const placeholder = typeof d["placeholder"] === "string" && d["placeholder"].length > 0 ? (d["placeholder"] as string) : undefined;
+  const label = typeof d["label"] === "string" && d["label"].trim().length > 0 ? (d["label"] as string).trim() : undefined;
+  const page = igApiHubPageOf(igSource, placeholder);
+  return { url: base ? `${base}/${page}` : page, ...(placeholder ? { placeholder } : {}), ...(label ? { label } : {}) };
 }
 
 /** The step name a layer above provides for the IG API sidecars. */
@@ -413,7 +407,7 @@ export function buildOne(t: IgTarget, work: string, log: (s: string) => void, ch
     log(`  contexts: ${ctx.length} JSON-LD context(s) from ${IG_IMAGES}/`);
     const hub = hubFrom(join(work, `${t.name}.site-work`), clone, pub.base);
     if (hub) next["igApiHub"] = hub;
-    log(`  API hub: ${hub ? `a link to ${hub.url}` : "no hub page written by a layer above"}`);
+    log(`  API hub: ${hub ? `${hub.label ?? "IG API"} at ${hub.url}, drawn from the index` : "no IG API descriptor from a layer above"}`);
     const kept = carryFromCommitted(next, committed, t.root);
     writeFileSync(indexPath, `${JSON.stringify(next, null, 2)}\n`);
     log(`  index: ${ix.out.split("\n")[0]}${kept.length ? `; kept from the committed copy: ${kept.join(", ")}` : ""}`);
