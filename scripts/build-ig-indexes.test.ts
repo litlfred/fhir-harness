@@ -9,9 +9,12 @@
  *
  * @module fhir-harness/scripts/build-ig-indexes.test
  */
-import { describe, expect, it } from "bun:test";
+import { afterAll, describe, expect, it } from "bun:test";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
 
-import { igTargets } from "./build-ig-indexes.ts";
+import { carryFromCommitted, igTargets, publishedBase } from "./build-ig-indexes.ts";
 import type { BranchLister } from "./gen-ig-ast-pages.ts";
 
 const instances = [
@@ -48,5 +51,33 @@ describe("igTargets", () => {
 
   it("--only narrows to one instance", () => {
     expect(igTargets(instances, list, "overlay-ig").targets.map((t) => t.name)).toEqual(["overlay-ig"]);
+  });
+});
+
+describe("carryFromCommitted", () => {
+  const dir = mkdtempSync(join(tmpdir(), "ig-index-carry-"));
+  mkdirSync(join(dir, "fhir-artifact-index"), { recursive: true });
+  writeFileSync(join(dir, "fhir-artifact-index", "package.tgz"), "x");
+  afterAll(() => rmSync(dir, { recursive: true, force: true }));
+
+  it("keeps what the AST does not supply, only when its files are on disk, and never overwrites the build", () => {
+    const built: Record<string, unknown> = { packageId: "ex.ig", fhirVersion: "5.0.0" };
+    const committed = {
+      fhirVersion: "4.0.1",
+      package: { url: "https://example.org/package.tgz", localPath: "fhir-artifact-index/package.tgz" },
+      igApiHub: { url: "https://example.org/hub.html", localPath: "fhir-artifact-index/gone/hub.json" },
+    };
+    expect(carryFromCommitted(built, committed, dir)).toEqual(["package"]);
+    expect(built["fhirVersion"]).toBe("5.0.0");
+    expect(built["igApiHub"]).toBeUndefined();
+    expect(carryFromCommitted({}, undefined, dir)).toEqual([]);
+  });
+});
+
+describe("publishedBase", () => {
+  it("prefers the committed copy's published site, then the declaration's iriBase, else none", () => {
+    expect(publishedBase({ source: { kind: "gh-pages", of: "https://example.org/ig/" } }, { iriBase: "https://other.example/" }).base).toBe("https://example.org/ig");
+    expect(publishedBase({ source: { kind: "sushi-config", of: "https://github.com/x/y" } }, { iriBase: "https://other.example/ig/" }).base).toBe("https://other.example/ig");
+    expect(publishedBase(undefined, undefined).base).toBeUndefined();
   });
 });
