@@ -15,7 +15,7 @@ import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { carryFromCommitted, contextsFrom, fhirVersionsOf, igTargets, packFromAst, publishedBase } from "./build-ig-indexes.ts";
+import { carryFromCommitted, contextsFrom, fhirVersionsOf, hubFrom, igTargets, packFromAst, publishedBase } from "./build-ig-indexes.ts";
 import type { BranchLister } from "./gen-ig-ast-pages.ts";
 
 const instances = [
@@ -123,6 +123,27 @@ describe("contextsFrom and fhirVersionsOf", () => {
       expect(contextsFrom(join(ig, "none"), dir, undefined)).toEqual([]);
       expect(fhirVersionsOf(ig)).toEqual(["4.0.1"]);
       expect(fhirVersionsOf(join(ig, "none"))).toEqual([]);
+    } finally {
+      rmSync(ig, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("hubFrom", () => {
+  it("names the IG's page holding the descriptor's marker, with the descriptor's label, only when a layer left a descriptor", () => {
+    const ig = mkdtempSync(join(tmpdir(), "ig-index-hub-"));
+    try {
+      const work = join(ig, "work");
+      mkdirSync(join(ig, "input", "pagecontent"), { recursive: true });
+      writeFileSync(join(ig, "input", "pagecontent", "index.md"), "# Home\n");
+      writeFileSync(join(ig, "input", "pagecontent", "api.md"), "# API\n<!-- X_CONTENT -->\n");
+      expect(hubFrom(work, ig, "https://example.org/ig")).toBeUndefined();
+      mkdirSync(join(work, "ig-api"), { recursive: true });
+      writeFileSync(join(work, "ig-api", "ig-api.json"), JSON.stringify({ label: "Example API", placeholder: "<!-- X_CONTENT -->" }));
+      expect(hubFrom(work, ig, "https://example.org/ig")).toEqual({ url: "https://example.org/ig/api.html", placeholder: "<!-- X_CONTENT -->", label: "Example API" });
+      expect(hubFrom(work, ig, undefined)).toEqual({ url: "api.html", placeholder: "<!-- X_CONTENT -->", label: "Example API" });
+      writeFileSync(join(work, "ig-api", "ig-api.json"), "{}");
+      expect(hubFrom(work, ig, "https://example.org/ig")).toEqual({ url: "https://example.org/ig/ig-api.html" });
     } finally {
       rmSync(ig, { recursive: true, force: true });
     }

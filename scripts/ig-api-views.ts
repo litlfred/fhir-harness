@@ -24,6 +24,7 @@
  */
 import { readFileSync } from "node:fs";
 import { hasJsonView } from "./resource-views.ts";
+import { hasIgApi, igApiHubNodeFill } from "./ig-api-hub.ts";
 import { basename, join } from "node:path";
 import { artifactPageName, type FhirArtifact, type FhirArtifactIndex } from "../schemas/fhir-artifact-index.js";
 import { declarationPathIn } from "../../cat-harness/schemas/cat-harness.js";
@@ -201,7 +202,9 @@ export function igApiHubFill(instanceRoot: string, prefix = "../"): { marker: st
   } catch {
     return undefined;
   }
-  if (!ix.igApiHub?.localPath || !igApiServed(instanceRoot).ok) return undefined;
+  if (!igApiServed(instanceRoot).ok) return undefined;
+  // Built at publish, the hub holds no copy: it is drawn from the index's bound sidecars (bean `h7ap`).
+  if (!ix.igApiHub?.localPath) return hasIgApi(ix) ? igApiHubNodeFill(ix.igApiHub?.label ?? "IG API", ix.igApiHub?.placeholder ?? IG_API_PLACEHOLDER, prefix) : undefined;
   const fragment = igApiHubFragment(instanceRoot, ix.igApiHub.localPath);
   return { marker: ix.igApiHub.placeholder ?? IG_API_PLACEHOLDER, body: readFileSync(IG_API_HUB_TEMPLATE, "utf8"), data: { hub: igApiHubData(ix, fragment, prefix) } };
 }

@@ -114,6 +114,7 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { basename, join, posix, relative, resolve, sep } from "node:path";
 import { compareRoute } from "../../cat-harness-tools/scripts/route-authority.ts";
+import { IG_API_HUB_DEFAULT_PAGE, IG_API_HUB_NODE, IG_API_HUB_NODE_LOADER, IG_API_HUB_NODE_SCRIPT, hasIgApi, igApiHubBody, igApiHubNodeJson } from "./ig-api-hub.ts";
 import { IG_API_HUB_SCRIPT, IG_API_HUB_TEMPLATE, IG_API_VIEW_SCRIPT, igApiHubData, igApiHubFragment, igApiServed, igApiViewData, igApiViews } from "./ig-api-views.ts";
 import { IG_CHROME_SCOPE, igFooterData } from "./ig-footer.ts";
 import { JSON_VIEW_SCRIPT, VIEW_PAGE, examplesPage, hasJsonView, historyPage, jsonViewData, mappingsPage, mdText, packageEntries, rebaseDescriptionLinks, profileJsonViewData, resourceFacts, resourceTabs, testingPage, type TabPageData } from "./resource-views.ts";
@@ -365,7 +366,9 @@ const SIDECAR_LABEL = arg("--sidecar-label") ?? "IG API";
  * hub was ingested from (whatever page its layer named), so the replica
  * keeps the published name without this layer writing any IG's name down.
  */
-const hubPage = (ix: FhirArtifactIndex): string => basename(new URL(ix.igApiHub!.url).pathname).replace(/\.html$/, "");
+// The hub page's name: the index's hub link when it has one (the IG's page holding the
+// placeholder, `build-ig-indexes`), else the generic default.
+const hubPage = (ix: FhirArtifactIndex): string => basename(ix.igApiHub ? new URL(ix.igApiHub.url).pathname : IG_API_HUB_DEFAULT_PAGE).replace(/\.html$/, "");
 
 /** The declaration's `name`, or `undefined` when a directory is not an instance. */
 function declaredName(root: string): string | undefined {
@@ -996,6 +999,7 @@ function indexPage(ix: FhirArtifactIndex): string {
     ``,
     // Linked only when the hub page is written — the same two conditions.
     ...(ix.igApiHub?.localPath && igApiServable().ok ? [`The IG's own [${SIDECAR_LABEL} hub](${hubPage(ix)}.html) lists them as the Publisher's \`${hubPage(ix)}.html\` does.`, ``] : []),
+    ...(!ix.igApiHub?.localPath && hasIgApi(ix) && igApiServable().ok ? [`The [${SIDECAR_LABEL} hub](${hubPage(ix)}.html) lists them, each with its artefact and its view.`, ``] : []),
     `## Every artefact, by category`,
     ``,
     `Grouped and ordered as the IG's own \`artifacts.html\` groups them, with each artefact's name and`,
@@ -1549,6 +1553,22 @@ if (ix.igApiHub?.localPath && igApiServing.ok) {
     ),
   );
   pages.set(IG_API_HUB_SCRIPT, readFileSync(IG_API_HUB_LOADER, "utf8"));
+} else if (hasIgApi(ix) && igApiServing.ok) {
+  // The hub from the index (bean `h7ap`): no Publisher fragment, the node the
+  // index's bound sidecars make, drawn by one loader. In an IG site the IG's own
+  // hub page holds the placeholder, and `stage-ig-sites` fills it from the same node.
+  pages.set(IG_API_HUB_NODE, igApiHubNodeJson(ix, SIDECAR_LABEL));
+  pages.set(IG_API_HUB_NODE_SCRIPT, readFileSync(IG_API_HUB_NODE_LOADER, "utf8"));
+  pages.set(
+    `${hubPage(ix)}.md`,
+    shell(
+      `${SIDECAR_LABEL} Documentation Hub`,
+      `The ${LABEL} IG's ${SIDECAR_LABEL} hub: every sidecar, with its artefact and its view.`,
+      igApiHubBody(SIDECAR_LABEL, ""),
+      { kind: "leaf" },
+      "fixture",
+    ),
+  );
 }
 
 // A page for each category too large to inline, so "too many to list here"
@@ -1698,7 +1718,7 @@ for (const [label, list] of byCategory(ix.artifacts)) {
 // The CSS, scripts and artefact pages stay: the IG site carries them.
 if (IG_SITE) {
   for (const k of [...pages.keys()]) {
-    if (k === "index.md" || k.startsWith("menu/") || k.startsWith("category/") || (ix.igApiHub?.localPath && k === `${hubPage(ix)}.md`)) pages.delete(k);
+    if (k === "index.md" || k.startsWith("menu/") || k.startsWith("category/") || ((ix.igApiHub?.localPath || hasIgApi(ix)) && k === `${hubPage(ix)}.md`)) pages.delete(k);
   }
   // THE PROVENANCE MOVES WITH THE INDEX. In the IG site the artefact index is
   // the IG's own `artifacts` page, which `build-ig-site` writes from data and

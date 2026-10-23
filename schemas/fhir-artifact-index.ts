@@ -380,8 +380,13 @@ export const FhirArtifactIndexSchema = z
      * layer that stages every IG's site at once has no other per-IG place to
      * read it from, and names no post-processor's marker itself (bean `d313`;
      * this field was `dakApiHub` until then).
+     *
+     * Built at publish (`build-ig-indexes`, bean `h7ap`) it holds no copy, no
+     * `localPath`: the hub is drawn from the index's own bound sidecars
+     * (`ig-api-hub.ts`), and `url` is the IG's hub page. `label` is what the
+     * layer above calls the API (`ig-api.json`); absent, "IG API".
      */
-    igApiHub: RepresentationSchema.extend({ placeholder: z.string().min(1).optional() }).optional(),
+    igApiHub: RepresentationSchema.extend({ placeholder: z.string().min(1).optional(), label: z.string().min(1).optional() }).optional(),
     /**
      * The IG's own `package.tgz` — every resource's JSON in one file, as the
      * Publisher packaged it. Held (`--materialize-package`) so a page can
