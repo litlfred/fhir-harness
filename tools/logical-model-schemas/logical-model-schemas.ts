@@ -15,9 +15,9 @@ export default toolFactory((t) =>
     title: "Logical models → JSON Schema",
     description: "A JSON Schema per logical model, from the published FHIR resources.",
     install: { none: true },
-    invoke: { shell: "python3 input/scripts/generate_logical_model_schemas.py" },
+    invoke: { shell: "bun run fhir-harness/scripts/ig-api-gen.ts --ast output-ast --out <sidecars> --site <site>" },
     io: {
-      inputs: [{ name: "igOutput", schema: t("RepoPath"), required: true, description: "The Publisher's `output/`." }],
+      inputs: [{ name: "ast", schema: t("RepoPath"), required: true, description: "The IG's AST (`output-ast/`, with the build's `expansions.json`)." }],
       outputs: [{ name: "logicalModelSchemas", schema: t("RepoPath"), description: "`schemas/<stem>.schema.json`, one per logical model." }],
     },
     satisfies: ["ig-build-pipeline"],
@@ -26,6 +26,6 @@ export default toolFactory((t) =>
       limits: "It describes what the Publisher emitted. A model the Publisher did not publish is not reported as missing.",
       cost: "Seconds, inside the publisher container.",
     },
-    requires: { runtime: ["python3"], network: false },
+    requires: { runtime: ["bun"], network: false },
   }),
 );
