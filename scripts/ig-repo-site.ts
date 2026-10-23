@@ -159,6 +159,7 @@ import { astValidity, type AstValidity, readAst } from "./ig-ast.ts";
 import { composeIgSite, dedupeSiteIds, describeStage, IG_THIN_CSS_FILE, stageIgSite, type SitePalette } from "./build-ig-site";
 import { artifactSearchEntries, IG_SEARCH_INDEX_FILE, IG_SEARCH_SCRIPT_FILE, IG_SEARCH_SCRIPT_SOURCE, igSearchIndex, pageSearchEntries, withIgBar } from "./ig-search.ts";
 import { translationMetaBlock, withTranslationMeta } from "../../cat-harness-tools/scripts/lib/translation-meta.ts";
+import { igOpenapiGraph, OPENAPI_DIR } from "../../cat-harness-tools/openapi/scripts/ig-site-openapi.ts";
 import type { FhirArtifactIndex } from "../schemas/fhir-artifact-index.js";
 import { buildMenu } from "./ingest-ig-menu.ts";
 import { siteBuild, type SiteBuild, STAMP_FILE } from "./site-build-stamp.ts";
@@ -523,6 +524,11 @@ export function compose(o: { docs: string; ig: string; baseurl: string; ast?: st
       ...(theme.palette ? { palette: theme.palette } : {}),
       ...(plantumlJar ? { plantumlJar } : {}),
       ...(editBase ? { editBase } : {}),
+      // A checkout with an OpenAPI graph gets its `openapi/` pages from
+      // `ig-site:openapi`, a later step that refuses a path the site holds,
+      // so the IG's own `input/images/openapi/` (the Publisher's Swagger UI)
+      // is not published over them.
+      ...(igOpenapiGraph(ig) ? { reservedPaths: [{ prefix: `${OPENAPI_DIR}/`, by: "ig-site:openapi" }] } : {}),
       search: true,
     });
     log(`${name}:\n${describeStage(r)}`);

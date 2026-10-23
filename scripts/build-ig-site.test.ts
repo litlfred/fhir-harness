@@ -698,6 +698,30 @@ describe("the Publisher's page footer on the IG site's own pages (#1901)", () =>
   });
 });
 
+describe("a path a later site step writes is left to it", () => {
+  test("input/images files under a reserved prefix are not published, and are reported", () => {
+    const d = mkdtempSync(join(tmpdir(), "ig-reserved-"));
+    const src = join(d, "src");
+    mkdirSync(join(src, "input", "pagecontent"), { recursive: true });
+    mkdirSync(join(src, "input", "images", "openapi"), { recursive: true });
+    mkdirSync(join(src, "input", "images", "demo"), { recursive: true });
+    writeFileSync(join(src, "sushi-config.yaml"), "id: x.ig\ntitle: X IG\n");
+    writeFileSync(join(src, "input", "pagecontent", "index.md"), "# I\n");
+    writeFileSync(join(src, "input", "images", "openapi", "index.html"), "<html>swagger</html>");
+    writeFileSync(join(src, "input", "images", "openapi", "swagger-ui.js"), "//");
+    writeFileSync(join(src, "input", "images", "openapi.png"), "png");
+    writeFileSync(join(src, "input", "images", "demo", "app.js"), "export {};");
+    const s = stageIgSite(src, join(d, "out"), { reservedPaths: [{ prefix: "openapi/", by: "ig-site:openapi" }] });
+    expect(existsSync(join(d, "out", "openapi"))).toBe(false);
+    // A file merely named like the prefix, and other subdirectories, still publish.
+    expect(readFileSync(join(d, "out", "openapi.png"), "utf-8")).toBe("png");
+    expect(existsSync(join(d, "out", "demo", "app.js"))).toBe(true);
+    expect(s.reserved).toEqual(["openapi/index.html (ig-site:openapi)", "openapi/swagger-ui.js (ig-site:openapi)"]);
+    expect(describeStage(s)).toContain("a later step writes the path: 2 file(s)");
+    rmSync(d, { recursive: true, force: true });
+  });
+});
+
 describe("a link into a subdirectory of input/images stays on the site", () => {
   test("it is served, so it is not relinked to the source", () => {
     const d = mkdtempSync(join(tmpdir(), "ig-nested-"));
