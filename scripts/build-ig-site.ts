@@ -185,6 +185,8 @@ export interface StageResult {
   dependencies?: { from: string; rows: number; unresolved: string[] };
   /** `input/images` data files (`.json`, `.jsonld`) that do not parse: not published, with the parser's reason. */
   unparseable: string[];
+  /** `input/images` files not published because a later site step writes that path (`file (step)`). */
+  reserved: string[];
   /** Links the IG's source writes to an artefact's flat Publisher page (`ValueSet-X.html`), pointed at this site's artefact page instead. */
   relinked: number;
   /** Annexes appended to their pages (`page <- file`). */
@@ -1087,6 +1089,12 @@ export const notRenderedMarker = (name: string, from: string) =>
 
 export interface StageOptions {
   baseurl?: string;
+  /**
+   * Site paths a later step writes, as a `/`-ended prefix and the step that
+   * owns it. An `input/images` file under one is left out and reported, so
+   * the site holds one answer for each URL.
+   */
+  reservedPaths?: readonly { prefix: string; by: string }[];
   plantumlJar?: string;
   /** Navigate by the IG's published menu instead of sushi-config `pages:`. */
   menu?: IgMenu;
@@ -1847,7 +1855,13 @@ export function stageIgSite(igSrc: string, out: string, opts: StageOptions = {})
   const imagesDir = join(src, "input", "images");
   let images = 0;
   const unparseable: string[] = [];
+  const reserved: string[] = [];
   for (const f of filesDeep(imagesDir)) {
+    const owner = opts.reservedPaths?.find((p) => f.startsWith(p.prefix));
+    if (owner) {
+      reserved.push(`${f} (${owner.by})`);
+      continue;
+    }
     if (/\.(json|jsonld)$/.test(f)) {
       try {
         JSON.parse(readFileSync(join(imagesDir, f), "utf-8"));
@@ -2047,7 +2061,7 @@ export function stageIgSite(igSrc: string, out: string, opts: StageOptions = {})
     ].join("\n"),
   );
   const fillsResult = opts.fills?.length ? { filled, unused: opts.fills.map((x) => x.marker).filter((m) => !usedMarkers.has(m)) } : undefined;
-  return { annexed, unplaced, templateIncludes: templateIncludesResult, pages: pages.sort(), generated, fills: fillsResult, variables: lifted ? { artifacts: Object.keys(lifted.vars.artifacts).length, notSourced: lifted.notSourced } : undefined, unlisted: unlisted.sort(), menuMissing, includes, images, rendered, listed, notRendered, unparseable, relinked, deadLinks: [...dead].sort(), scheme, siteData, data, astData, ...(forms ? { forms } : {}), dependencyTables, dependencies, globals };
+  return { annexed, unplaced, templateIncludes: templateIncludesResult, pages: pages.sort(), generated, fills: fillsResult, variables: lifted ? { artifacts: Object.keys(lifted.vars.artifacts).length, notSourced: lifted.notSourced } : undefined, unlisted: unlisted.sort(), menuMissing, includes, images, rendered, listed, notRendered, unparseable, reserved, relinked, deadLinks: [...dead].sort(), scheme, siteData, data, astData, ...(forms ? { forms } : {}), dependencyTables, dependencies, globals };
 }
 
 /**
@@ -2107,6 +2121,7 @@ export function describeStage(r: StageResult): string {
     ...(r.listed.length ? [`artefact lists written from the artefact index (the Publisher generates these): ${r.listed.join(", ")}`] : []),
     ...(r.notRendered.length ? [`NOT RENDERED (a visible marker stands in): ${r.notRendered.join(", ")}`] : []),
     ...(r.unparseable.length ? [`NOT PUBLISHED (not valid JSON in the IG source): ${r.unparseable.join("; ")}`] : []),
+    ...(r.reserved.length ? [`not published from input/images, a later step writes the path: ${r.reserved.length} file(s), ${r.reserved.slice(0, 5).join("; ")}${r.reserved.length > 5 ? "; …" : ""}`] : []),
     ...(r.astData === undefined
       ? ["no FHIR AST: site.data.canonicals and site.data[\"<Type>-<id>\"] not written — a page that loops them renders EMPTY"]
       : "why" in r.astData
