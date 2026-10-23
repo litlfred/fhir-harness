@@ -11,7 +11,7 @@ import { join } from "node:path";
 import { igChromeIncludes, liquidInertScript, SOURCE_LINKS_JS } from "./build-ig-site";
 import { Liquid } from "liquidjs";
 import { EDIT_LINKS_RUNTIME } from "../../cat-harness-tools/src/core/edit-links.js";
-import { ARTIFACT_LIST_TEMPLATE_PATH, artifactListInclude, publisherPlural, FOOTER_TEMPLATE_PATH, ARTIFACTS_TEMPLATE_PATH,IG_FIGURE_IMAGES_STAMP, annexMount, ANNEX_SCRIPT_PATH, artifactVariables, artifactCellLookup, kramdownId, linkTableCells, colourScheme, composeIgSite, contrast, dedupeIds, igTocNav, igTopBar, IG_TOPBAR_CSS, includeTargets, localTemplateIncludes, pageNav, relinkArtifacts, relinkTemplatedArtifacts, relinkOffSite, rubyLiquidStrings, relinkPublisherOutputs, sourceHeadings, dataOverwritesQa, describeStage, RELEASES_TEMPLATE_PATH, releaseVariables, sizeLabel, stageIgSite, tocPage, type StageResult } from "./build-ig-site";
+import { ARTIFACT_LIST_TEMPLATE_PATH, artifactListInclude, publisherPlural, FOOTER_TEMPLATE_PATH, ARTIFACTS_TEMPLATE_PATH,IG_FIGURE_IMAGES_STAMP, annexMount, ANNEX_SCRIPT_PATH, artifactVariables, artifactCellLookup, kramdownId, linkTableCells, colourScheme, composeIgSite, liquidSiteBase, contrast, dedupeIds, igTocNav, igTopBar, IG_TOPBAR_CSS, includeTargets, localTemplateIncludes, pageNav, relinkArtifacts, relinkTemplatedArtifacts, relinkOffSite, rubyLiquidStrings, relinkPublisherOutputs, sourceHeadings, dataOverwritesQa, describeStage, RELEASES_TEMPLATE_PATH, releaseVariables, sizeLabel, stageIgSite, tocPage, type StageResult } from "./build-ig-site";
 import { copyDocsInto, igSiteDocs, webpagePalette } from "./stage-ig-sites";
 import type { IgReleases } from "../schemas/ig-releases.ts";
 import { artifactPageName } from "../schemas/fhir-artifact-index.js";
@@ -927,6 +927,34 @@ describe("composeIgSite: a staged IG moved into a host Jekyll source", () => {
     expect(existsSync(join(root, "x"))).toBe(false);
     expect(existsSync(join(root, "_includes", "ig", "x", "_top.html"))).toBe(true);
     rmSync(d, { recursive: true, force: true });
+  });
+
+  // Bean g196: the literal base was one preview's path, so every IG page
+  // differed between two previews only by that name.
+  test("the host's base reaches the composed top bar and section as {{ site.baseurl }}, not as one deploy's path", () => {
+    const d = mkdtempSync(join(tmpdir(), "ig-compose-base-"));
+    const src = join(d, "src");
+    mkdirSync(join(src, "input", "pagecontent"), { recursive: true });
+    writeFileSync(join(src, "sushi-config.yaml"), "id: x.ig\ntitle: X IG\n");
+    writeFileSync(join(src, "input", "pagecontent", "index.md"), "# Home\n");
+    const staged = join(d, "site");
+    const site = "/folio-assistant/STAGING/some-branch";
+    stageIgSite(src, staged, { menu: { groups: [{ label: "Home", items: [{ label: "Summary", href: "index.html" }] }] }, baseurl: `${site}/x/ig` });
+    const host = join(d, "host");
+    mkdirSync(host, { recursive: true });
+    expect(composeIgSite(staged, host, "x", { siteBase: site }).collisions).toEqual([]);
+    const written = [readFileSync(join(host, "_layouts", "ig-thin-x.html"), "utf-8"), readFileSync(join(host, "_includes", "ig", "x", "_top.html"), "utf-8")].join("\n");
+    expect(written).not.toContain("some-branch");
+    expect(written).toContain('"href":"{{ site.baseurl }}/x/ig/index.html"');
+    expect(written).toContain('href="{{ site.baseurl }}/x/ig/index.html"');
+    rmSync(d, { recursive: true, force: true });
+  });
+
+  test("liquidSiteBase: only a quoted value starting with the base, and never a sibling path", () => {
+    expect(liquidSiteBase('<a href="/fa/x/">x</a> <a href="/fa-core/">y</a> "/fa"', "/fa/")).toBe('<a href="{{ site.baseurl }}/x/">x</a> <a href="/fa-core/">y</a> "/fa"');
+    expect(liquidSiteBase('{"href":"/fa/x.html"}', "/fa")).toBe('{"href":"{{ site.baseurl }}/x.html"}');
+    expect(liquidSiteBase('<a href="/x/">', "")).toBe('<a href="/x/">');
+    expect(liquidSiteBase('<a href="/x/">', undefined)).toBe('<a href="/x/">');
   });
 });
 

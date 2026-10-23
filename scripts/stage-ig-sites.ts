@@ -473,7 +473,7 @@ if (import.meta.main) {
     }
     const into = opt("--compose-into");
     if (into) {
-      const c = composeIgSite(site, resolve(into), ig.instance, { atRoot, fullPages });
+      const c = composeIgSite(site, resolve(into), ig.instance, { atRoot, fullPages, siteBase: base });
       console.error(`${ig.instance}: composed into ${relative(resolve("."), atRoot ? resolve(into) : resolve(into, ig.instance))} — ${c.pages} page(s), ${c.files - c.pages} other file(s), ${c.includes} include(s)`);
       if (c.collisions.length) {
         console.error(`${ig.instance}: ${c.collisions.length} path(s) already in the host source — refusing two answers for one URL:\n  ${c.collisions.slice(0, 20).join("\n  ")}`);

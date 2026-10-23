@@ -537,7 +537,7 @@ export function compose(o: { docs: string; ig: string; baseurl: string; ast?: st
     log(`${name}: ${d.copied} artefact page and node file(s) built into the site${d.merged.length ? `; front matter laid onto ${d.merged.join(", ")}` : ""}`);
     if (d.collisions.length) throw new Error(`${name}: ${d.collisions.length} artefact file(s) the IG's own pages already write — refusing two answers for one URL:\n  ${d.collisions.slice(0, 20).join("\n  ")}`);
     const before = new Set(filesUnder(resolve(o.docs)));
-    const c = composeIgSite(site, resolve(o.docs), name, { atRoot: true });
+    const c = composeIgSite(site, resolve(o.docs), name, { atRoot: true, siteBase: baseurl });
     listUpstream(filesUnder(resolve(o.docs)).filter((f) => !before.has(f)).map(builtPage).filter((p): p is string => p !== undefined));
     log(`${name}: composed at the site root — ${c.pages} page(s), ${c.files - c.pages} other file(s), ${c.includes} include(s)`);
     // The thin layout links the shared thin-page stylesheet, which the artefact
