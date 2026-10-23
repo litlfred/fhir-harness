@@ -149,6 +149,14 @@ sources, and confirmed by real builds on 2026-10-23:
   silently breaks the exact-versions rule. Mirror the version the registry
   lists today, and record which version it was.
 
+**An offline validator crash that is not ours.** In core 7.0.1,
+`InstanceValidator.checkTypeValue` fetches the approved additional resources
+from `fhir.github.io`. When that fetch fails it dereferences a null set, so
+the build fails with an NPE on `additionalResourceNames`. Only an environment
+that cannot reach `fhir.github.io` meets it. It is upstream's bug
+(`org.hl7.fhir.core`), and it is not patched here, because the library does
+not change Publisher code.
+
 **Build with a terminology server** (owner, 2026-10-23). A `-tx n/a` build,
 which is `run-real-igs.sh --no-tx`, is only for finding faults before the real
 run. Its numbers are never recorded as measurements.
