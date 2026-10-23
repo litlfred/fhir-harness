@@ -85,19 +85,19 @@ jobs:
       verdict: ${{ steps.ast.outputs.verdict }}
       seeded: ${{ steps.seed.outputs.seeded }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           ref: ${{ inputs.ref }}
           # Full history: validity accepts a later commit that changes no IG
           # input only when it can see the recorded commit is an ancestor.
           fetch-depth: 0
 
-      - uses: oven-sh/setup-bun@v2
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version: 1.3.14  # the platform's CI version
 
       - name: Cache remote mounts (bean cis1)
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: /home/runner/.cache/cat-mount
           key: cat-mount-v1-${{ hashFiles('index.lock.json') }}
@@ -139,7 +139,7 @@ jobs:
 
       - name: Cache FHIR packages and IG tooling (bean cis5)
         if: steps.ast.outputs.rebuild == 'true'
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: |
             ~/.fhir/packages
@@ -152,20 +152,20 @@ jobs:
 
       - name: Java for the IG Publisher
         if: steps.ast.outputs.rebuild == 'true'
-        uses: actions/setup-java@v4
+        uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4.9.1
         with:
           distribution: temurin
           java-version: "17"
 
       - name: Node for SUSHI
         if: steps.ast.outputs.rebuild == 'true'
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
           node-version: "20"
 
       - name: Ruby for the Publisher's Jekyll
         if: steps.ast.outputs.rebuild == 'true'
-        uses: ruby/setup-ruby@v1
+        uses: ruby/setup-ruby@14594264cd68ce8a2345dd349bc3d138a4ef85c8 # v1.327.0
         with:
           ruby-version: "3.3"
 
@@ -231,7 +231,7 @@ jobs:
 
       - name: Keep the AST build log
         if: always() && steps.ast.outputs.rebuild == 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: ast-build-log
           path: ${{ runner.temp }}/ast-build.log
@@ -262,7 +262,7 @@ jobs:
 
       - name: Keep the AST when it was not seeded
         if: steps.ast.outputs.rebuild == 'true' && steps.seed.outputs.seeded != 'true'
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: output-ast
           path: output-ast

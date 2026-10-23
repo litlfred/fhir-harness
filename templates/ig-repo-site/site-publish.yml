@@ -85,7 +85,7 @@ jobs:
     if: ${{ always() && (needs.ast.result == 'success' || needs.ast.result == 'skipped') }}
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
         with:
           fetch-depth: 0
           # The job token is given to git ONCE, as the global header below.
@@ -94,12 +94,12 @@ jobs:
           # publish could not read the default branch.
           persist-credentials: false
 
-      - uses: oven-sh/setup-bun@v2
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:
           bun-version: 1.3.14  # the platform's CI version
 
       - name: Cache remote mounts and FHIR packages (beans cis1, cis5)
-        uses: actions/cache@v4
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: |
             /home/runner/.cache/cat-mount
@@ -122,7 +122,7 @@ jobs:
             [ -f "$d/package.json" ] && (cd "$d" && bun install --no-save)
           done
 
-      - uses: ruby/setup-ruby@v1
+      - uses: ruby/setup-ruby@14594264cd68ce8a2345dd349bc3d138a4ef85c8 # v1.327.0
         with:
           ruby-version: "3.3"
 

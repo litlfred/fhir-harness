@@ -23,6 +23,12 @@ export default toolFactory((t) =>
       cost: "One download per package; terminology packages are megabytes each.",
     },
     requires: { runtime: ["bash", "curl", "python3", "git"], network: true },
-    remedies: [{ host: "packages.fhir.org", none: "It exists to run where packages.fhir.org IS reachable — a local networked agent, for instance — and the mirror it fills is what `fhir-cache-seed-npm --mirror` reads here." }],
+    remedies: [
+      {
+        host: "packages.fhir.org",
+        none:
+          "It exists to run where packages.fhir.org IS reachable. A GitHub Actions runner is such a place, and one a cloud session can drive by itself: in litlfred/fhir-package-mirror, push a `claude/mirror-*` branch that edits `packages.txt` (`name#version`, `name#1.2.x` or `name#latest`), and `.github/workflows/mirror.yml` fetches each package with its dependencies, checks it names itself, records SHA512SUMS and commits back to the branch. Merge the branch, then `fhir-cache-seed-npm --mirror` reads it here. A local networked agent works too.",
+      },
+    ],
   }),
 );

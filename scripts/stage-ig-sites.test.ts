@@ -8,7 +8,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { writeDeclaration } from "../../cat-harness-tools/test/support/instance-fixture";
-import { igsToBuild } from "./stage-ig-sites";
+import { igsToBuild, servedPathsFor } from "./stage-ig-sites";
 
 let repo: string;
 const menu = (source?: object) => JSON.stringify({ $schema: "folio-ig-menu/v1", groups: [], ...(source ? { source } : {}) });
@@ -56,4 +56,28 @@ test("an instance whose menu records a sushi-config source is built, from that c
 test("a menu with no source is skipped AND reported; no menu at all is simply not an IG", () => {
   const { skipped } = igsToBuild(repo);
   expect(skipped).toEqual(["no-source: neither the instance declaration nor menu.json records a source repository and commit"]);
+});
+
+test("an igSite instance reserves each served directory's path, so its IG's input/images copy does not take that route", () => {
+  const root = join(repo, "served-ig");
+  mkdirSync(join(root, "docs"), { recursive: true });
+  writeDeclaration(root, {
+    name: "served-ig",
+    directories: [
+      { id: "served-ig-docs", path: "docs/", graphTypologies: ["docs"], igSite: true },
+      { id: "served-ig-openapi", path: "openapi/", graphTypologies: ["openapi"], served: true },
+      { id: "served-ig-notes", path: "notes/", graphTypologies: ["docs"] },
+    ],
+  });
+  expect(servedPathsFor(root)).toEqual([{ prefix: "openapi/", by: "served directory served-ig-openapi" }]);
+});
+
+test("an IG site at /<instance>/ig/ reserves nothing: no served route can meet it", () => {
+  const root = join(repo, "served-no-igsite");
+  mkdirSync(root, { recursive: true });
+  writeDeclaration(root, {
+    name: "served-no-igsite",
+    directories: [{ id: "served-no-igsite-openapi", path: "openapi/", graphTypologies: ["openapi"], served: true }],
+  });
+  expect(servedPathsFor(root)).toEqual([]);
 });
