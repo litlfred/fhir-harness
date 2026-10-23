@@ -141,13 +141,27 @@ From there the IG grows in place, and leaves only through
    install the just-the-docs site (default yes). The rule and the question
    text are [`ig-build-pipeline`](ig-build-pipeline.md) §"Who starts a
    build"; a repository forked from an upstream IG is the usual case.
+5. **Copy the site templates, unchanged.** `templates/ig-repo-site/`
+   holds `ig-ast-refresh.yml` and `site-publish.yml`; copy both into
+   `.github/workflows/`, as they are. An IG repository's site is built from
+   the AST cache (§"The AST cache lifecycle" of
+   [`ig-build-pipeline`](ig-build-pipeline.md)), and `ig-ast-refresh.yml`
+   is its one writer. Without it the repository has no site, and
+   `stage-local.ts` refuses with *no cache branch for this IG*. The first
+   refresh is dispatched once on the default branch by the owner, or by an
+   agent the owner names for that run. Until it has run, the repository's
+   preview is not built anywhere: say so and ask. Do not stage it on another
+   repository's site instead
+   ([`feature-staging`](../../../cat-harness/skills/sdlc/sdlc-core/feature-staging.md),
+   *Which site*).
 
 ### `existing-ig`
 
 `repo-conversion` scans first and imports second, never the other way round.
 After the import, mount its layer through `index.config.json` as in
 `new-repo` step 2 (no declaration of its own), then ask the two build questions in [`ig-build-pipeline`](ig-build-pipeline.md)
-§"Who starts a build". An existing IG repository almost always carries build
+§"Who starts a build". Then `new-repo` step 5: copy the site templates if they are
+missing. An existing IG repository almost always carries build
 workflows that publish on every push.
 
 ## Anti-patterns
@@ -161,3 +175,7 @@ workflows that publish on every push.
    publication target belong to a harness above this one.
 4. **Skipping the seam because the IG has no code yet.** The first test that
    imports a platform helper is the first climb.
+5. **Typing a workflow the templates already hold.** A repository scaffolded
+   by hand on 2026-10-15 had no `ig-ast-refresh.yml`, so it had no site, and
+   its preview went to another repository's site. Copy
+   `templates/ig-repo-site/`.

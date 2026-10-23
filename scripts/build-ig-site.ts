@@ -16,7 +16,7 @@
  * |---|---|---|
  * | `input/pagecontent/*.md` | `<page>.md` with front matter | the pages; title, parent and order from `sushi-config.yaml` `pages:` |
  * | `input/includes/*`, `input/pagecontent/*`, `input/images/*.svg` | `_includes/` | the Publisher resolves `{% include %}` against all three, so pages include each other and inline SVGs |
- * | `input/images/*` | the site root | the Publisher publishes them there, so pages say `<img src="x.png">` — except a `.json`/`.jsonld` that does not parse, which is left out and reported: publishing a broken data file under our site blocks the deploy, and whose file it is cannot be told from a file no parser can read |
+ * | `input/images/**` | the site root, subdirectories kept | the Publisher publishes them there, so pages say `<img src="x.png">` or `<script src="demo/app.js">` — except a `.json`/`.jsonld` that does not parse, which is left out and reported: publishing a broken data file under our site blocks the deploy, and whose file it is cannot be told from a file no parser can read |
  * | `input/images-source/*.plantuml` | `_includes/<name>.svg` | the Publisher RENDERS these; rendered here with `--plantuml-jar`, otherwise a visible "not rendered" marker, reported |
  * | the artefact index (`--artifacts`) | `_includes/list-(simple-)?<types>.xhtml` | the Publisher GENERATES these lists of an IG's artefacts of one type; written here as Liquid over `site.data.fhir.artifact_lists`, so any IG with an index gets them (bean `9hfi`) |
  * | `ig-site-data` over the source | `_data/fhir.json` | `site.data.fhir.*`, only what is sourced |
@@ -185,6 +185,8 @@ export interface StageResult {
   dependencies?: { from: string; rows: number; unresolved: string[] };
   /** `input/images` data files (`.json`, `.jsonld`) that do not parse: not published, with the parser's reason. */
   unparseable: string[];
+  /** `input/images` files not published because a later site step writes that path (`file (step)`). */
+  reserved: string[];
   /** Links the IG's source writes to an artefact's flat Publisher page (`ValueSet-X.html`), pointed at this site's artefact page instead. */
   relinked: number;
   /** Annexes appended to their pages (`page <- file`). */
@@ -865,6 +867,14 @@ export function composeIgSite(
 }
 
 const files = (dir: string) => (existsSync(dir) ? readdirSync(dir).filter((f) => statSync(join(dir, f)).isFile()) : []);
+/** Every file under `dir`, subdirectories included, as `/`-separated paths relative to it. */
+const filesDeep = (dir: string, rel = ""): string[] =>
+  existsSync(join(dir, rel))
+    ? readdirSync(join(dir, rel)).sort().flatMap((f) => {
+        const p = rel ? `${rel}/${f}` : f;
+        return statSync(join(dir, p)).isDirectory() ? filesDeep(dir, p) : [p];
+      })
+    : [];
 const entries = (dir: string) => (existsSync(dir) ? readdirSync(dir).sort() : []);
 
 /**
@@ -1079,6 +1089,12 @@ export const notRenderedMarker = (name: string, from: string) =>
 
 export interface StageOptions {
   baseurl?: string;
+  /**
+   * Site paths a later step writes, as a `/`-ended prefix and the step that
+   * owns it. An `input/images` file under one is left out and reported, so
+   * the site holds one answer for each URL.
+   */
+  reservedPaths?: readonly { prefix: string; by: string }[];
   plantumlJar?: string;
   /** Navigate by the IG's published menu instead of sushi-config `pages:`. */
   menu?: IgMenu;
@@ -1680,7 +1696,7 @@ export function stageIgSite(igSrc: string, out: string, opts: StageOptions = {})
   // `input/images/*` (published at the root), the artefact pages, and the
   // artefact index page.
   const pageHtml = new Set(files(pagecontent).filter((f) => f.endsWith(".md")).map((f) => `${basename(f, ".md")}.html`));
-  const rootImages = new Set(files(join(src, "input", "images")));
+  const rootImages = new Set(filesDeep(join(src, "input", "images")));
   const isServed = (t: string): boolean =>
     pageHtml.has(t) || rootImages.has(t) || t === "artifacts.html" || (opts.artifacts !== undefined && t.startsWith(opts.artifacts.pagesHref));
   const dead = new Set<string>();
@@ -1839,7 +1855,13 @@ export function stageIgSite(igSrc: string, out: string, opts: StageOptions = {})
   const imagesDir = join(src, "input", "images");
   let images = 0;
   const unparseable: string[] = [];
-  for (const f of files(imagesDir)) {
+  const reserved: string[] = [];
+  for (const f of filesDeep(imagesDir)) {
+    const owner = opts.reservedPaths?.find((p) => f.startsWith(p.prefix));
+    if (owner) {
+      reserved.push(`${f} (${owner.by})`);
+      continue;
+    }
     if (/\.(json|jsonld)$/.test(f)) {
       try {
         JSON.parse(readFileSync(join(imagesDir, f), "utf-8"));
@@ -1848,8 +1870,12 @@ export function stageIgSite(igSrc: string, out: string, opts: StageOptions = {})
         continue;
       }
     }
+    // A subdirectory is published as a subdirectory, as the Publisher does, so
+    // a page's `<script src="demo/app.js">` resolves.
+    if (f.includes("/")) mkdirSync(join(out, dirname(f)), { recursive: true });
     copyFileSync(join(imagesDir, f), join(out, f));
-    if (f.endsWith(".svg")) {
+    // `{% include x.svg %}` names a file, so only the top level is includable.
+    if (f.endsWith(".svg") && !f.includes("/")) {
       copyFileSync(join(imagesDir, f), join(out, "_includes", f));
       includes++;
     }
@@ -2035,7 +2061,7 @@ export function stageIgSite(igSrc: string, out: string, opts: StageOptions = {})
     ].join("\n"),
   );
   const fillsResult = opts.fills?.length ? { filled, unused: opts.fills.map((x) => x.marker).filter((m) => !usedMarkers.has(m)) } : undefined;
-  return { annexed, unplaced, templateIncludes: templateIncludesResult, pages: pages.sort(), generated, fills: fillsResult, variables: lifted ? { artifacts: Object.keys(lifted.vars.artifacts).length, notSourced: lifted.notSourced } : undefined, unlisted: unlisted.sort(), menuMissing, includes, images, rendered, listed, notRendered, unparseable, relinked, deadLinks: [...dead].sort(), scheme, siteData, data, astData, ...(forms ? { forms } : {}), dependencyTables, dependencies, globals };
+  return { annexed, unplaced, templateIncludes: templateIncludesResult, pages: pages.sort(), generated, fills: fillsResult, variables: lifted ? { artifacts: Object.keys(lifted.vars.artifacts).length, notSourced: lifted.notSourced } : undefined, unlisted: unlisted.sort(), menuMissing, includes, images, rendered, listed, notRendered, unparseable, reserved, relinked, deadLinks: [...dead].sort(), scheme, siteData, data, astData, ...(forms ? { forms } : {}), dependencyTables, dependencies, globals };
 }
 
 /**
@@ -2095,6 +2121,7 @@ export function describeStage(r: StageResult): string {
     ...(r.listed.length ? [`artefact lists written from the artefact index (the Publisher generates these): ${r.listed.join(", ")}`] : []),
     ...(r.notRendered.length ? [`NOT RENDERED (a visible marker stands in): ${r.notRendered.join(", ")}`] : []),
     ...(r.unparseable.length ? [`NOT PUBLISHED (not valid JSON in the IG source): ${r.unparseable.join("; ")}`] : []),
+    ...(r.reserved.length ? [`not published from input/images, a later step writes the path: ${r.reserved.length} file(s), ${r.reserved.slice(0, 5).join("; ")}${r.reserved.length > 5 ? "; …" : ""}`] : []),
     ...(r.astData === undefined
       ? ["no FHIR AST: site.data.canonicals and site.data[\"<Type>-<id>\"] not written — a page that loops them renders EMPTY"]
       : "why" in r.astData
