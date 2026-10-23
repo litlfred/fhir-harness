@@ -15,7 +15,7 @@ import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { carryFromCommitted, igTargets, packFromAst, publishedBase } from "./build-ig-indexes.ts";
+import { carryFromCommitted, contextsFrom, fhirVersionsOf, igTargets, packFromAst, publishedBase } from "./build-ig-indexes.ts";
 import type { BranchLister } from "./gen-ig-ast-pages.ts";
 
 const instances = [
@@ -58,19 +58,18 @@ describe("igTargets", () => {
 describe("carryFromCommitted", () => {
   const dir = mkdtempSync(join(tmpdir(), "ig-index-carry-"));
   mkdirSync(join(dir, "fhir-artifact-index"), { recursive: true });
-  writeFileSync(join(dir, "fhir-artifact-index", "ctx.jsonld"), "{}");
+  writeFileSync(join(dir, "fhir-artifact-index", "hub.json"), "{}");
   afterAll(() => rmSync(dir, { recursive: true, force: true }));
 
   it("keeps what the AST does not supply, only when its files are on disk, and never overwrites the build", () => {
-    const built: Record<string, unknown> = { packageId: "ex.ig", fhirVersion: "5.0.0" };
-    const committed = {
-      fhirVersion: "4.0.1",
-      contexts: [{ id: "ctx", representation: { url: "https://example.org/ctx.jsonld", localPath: "fhir-artifact-index/ctx.jsonld" } }],
-      igApiHub: { url: "https://example.org/hub.html", localPath: "fhir-artifact-index/gone/hub.json" },
-    };
-    expect(carryFromCommitted(built, committed, dir)).toEqual(["contexts"]);
-    expect(built["fhirVersion"]).toBe("5.0.0");
-    expect(built["igApiHub"]).toBeUndefined();
+    const committed = { igApiHub: { url: "https://example.org/hub.html", localPath: "fhir-artifact-index/hub.json" } };
+    const built: Record<string, unknown> = { packageId: "ex.ig" };
+    expect(carryFromCommitted(built, committed, dir)).toEqual(["igApiHub"]);
+    const own = { igApiHub: { url: "https://example.org/own.html" } };
+    expect(carryFromCommitted(own, committed, dir)).toEqual([]);
+    expect(own.igApiHub.url).toBe("https://example.org/own.html");
+    const gone = { igApiHub: { url: "https://example.org/hub.html", localPath: "fhir-artifact-index/gone/hub.json" } };
+    expect(carryFromCommitted({}, gone, dir)).toEqual([]);
     expect(carryFromCommitted({}, undefined, dir)).toEqual([]);
   });
 });
@@ -103,6 +102,29 @@ describe("packFromAst", () => {
       expect(pj).toMatchObject({ name: "ex.ig", version: "1.0.0", fhirVersions: ["4.0.1"] });
     } finally {
       rmSync(dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("contextsFrom and fhirVersionsOf", () => {
+  it("indexes each context-only .jsonld under input/images, skips data, and reads the FHIR version", () => {
+    const ig = mkdtempSync(join(tmpdir(), "ig-index-ctx-"));
+    try {
+      mkdirSync(join(ig, "input", "images", "ctx"), { recursive: true });
+      writeFileSync(join(ig, "input", "images", "ctx", "v1.jsonld"), JSON.stringify({ "@context": { a: "https://example.org/a" } }));
+      writeFileSync(join(ig, "input", "images", "data.jsonld"), JSON.stringify({ "@context": {}, "@graph": [] }));
+      writeFileSync(join(ig, "input", "images", "broken.jsonld"), "{");
+      writeFileSync(join(ig, "sushi-config.yaml"), "id: ex.ig\nfhirVersion: 4.0.1\n");
+      const dir = join(ig, "out");
+      const got = contextsFrom(ig, dir, "https://example.org/ig");
+      expect(got.map((c) => c.id)).toEqual(["ctx/v1"]);
+      expect(got[0]!.representation.url).toBe("https://example.org/ig/ctx/v1.jsonld");
+      expect(got[0]!.representation.localPath).toBe("fhir-artifact-index/contexts/ctx/v1.jsonld");
+      expect(contextsFrom(join(ig, "none"), dir, undefined)).toEqual([]);
+      expect(fhirVersionsOf(ig)).toEqual(["4.0.1"]);
+      expect(fhirVersionsOf(join(ig, "none"))).toEqual([]);
+    } finally {
+      rmSync(ig, { recursive: true, force: true });
     }
   });
 });
