@@ -4,11 +4,12 @@
  */
 
 import { afterAll, beforeAll, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { writeDeclaration } from "../../cat-harness-tools/test/support/instance-fixture";
-import { igsToBuild, servedPathsFor } from "./stage-ig-sites";
+import { composedInstances, instanceStub } from "../../cat-harness-tools/scripts/compose-docs";
+import { clearComposeStub, igsToBuild, servedPathsFor } from "./stage-ig-sites";
 
 let repo: string;
 const menu = (source?: object) => JSON.stringify({ $schema: "folio-ig-menu/v1", groups: [], ...(source ? { source } : {}) });
@@ -80,4 +81,45 @@ test("an IG site at /<instance>/ig/ reserves nothing: no served route can meet i
     directories: [{ id: "served-no-igsite-openapi", path: "openapi/", graphTypologies: ["openapi"], served: true }],
   });
   expect(servedPathsFor(root)).toEqual([]);
+});
+
+// folio-assistant#2638: `compose-docs --staging` left `stubbed-ig` out and
+// wrote its "not built into this preview" stub; the IG cone then built the IG,
+// whose landing at `/stubbed-ig/index.html` was refused as a collision.
+test("compose-docs' own stub gives way to the IG built at that URL; any other index.md stays a collision", () => {
+  const root = join(repo, "stubbed-ig");
+  mkdirSync(join(root, "site-docs"), { recursive: true });
+  writeDeclaration(root, {
+    name: "stubbed-ig",
+    directories: [{ id: "stubbed-ig-site-docs", path: "site-docs/", graphTypologies: ["docs"], composed: true }],
+  });
+  const c = composedInstances(repo).find((x) => x.under === "stubbed-ig")!;
+  expect(c).toBeDefined();
+  const into = mkdtempSync(join(tmpdir(), "stage-ig-into-"));
+  try {
+    const at = join(into, "stubbed-ig", "index.md");
+    mkdirSync(join(into, "stubbed-ig"), { recursive: true });
+
+    // The stub compose-docs writes, byte for byte: cleared, and named.
+    writeFileSync(at, instanceStub(c));
+    expect(clearComposeStub(into, "stubbed-ig", repo)).toBe("stubbed-ig/index.md");
+    expect(existsSync(at)).toBe(false);
+
+    // Nothing there: nothing to clear.
+    expect(clearComposeStub(into, "stubbed-ig", repo)).toBeUndefined();
+
+    // An authored page — even one quoting the stub's words — is not the stub.
+    const authored = `${instanceStub(c)}\nAn authored line.\n`;
+    writeFileSync(at, authored);
+    expect(clearComposeStub(into, "stubbed-ig", repo)).toBeUndefined();
+    expect(readFileSync(at, "utf-8")).toBe(authored);
+
+    // An IG that compose-docs does not compose has no stub of its own to clear.
+    mkdirSync(join(into, "with-source"), { recursive: true });
+    writeFileSync(join(into, "with-source", "index.md"), instanceStub({ ...c, under: "with-source", root: "with-source", instance: "with-source" }));
+    expect(clearComposeStub(into, "with-source", repo)).toBeUndefined();
+    expect(existsSync(join(into, "with-source", "index.md"))).toBe(true);
+  } finally {
+    rmSync(into, { recursive: true, force: true });
+  }
 });

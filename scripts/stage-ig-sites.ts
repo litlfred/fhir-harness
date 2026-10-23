@@ -58,13 +58,14 @@
 import { igApiHubFill } from "./ig-api-views.ts";
 import { IG_CHROME_SCOPE, type IgFooterData } from "./ig-footer.ts";
 import { execFileSync } from "node:child_process";
-import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { basename, join, relative, resolve, sep } from "node:path";
 import { declarationPathIn, instanceRootsIn, readDeclaration } from "../../cat-harness/schemas/cat-harness.js";
 import { instanceThemes } from "../../cat-harness/schemas/theme-by-ref.js";
 import { composeIgSite, dataOverwritesQa, describeStage, stageIgSite, type IgMenu, type IndexedArtifact, type SitePalette, type StageOptions } from "./build-ig-site";
 import { IgReleasesSchema, type IgReleases } from "../schemas/ig-releases.ts";
 import { readChangedFiles, siteFilter } from "../../cat-harness-tools/scripts/staging-cone.ts";
+import { composedInstances, instanceStub } from "../../cat-harness-tools/scripts/compose-docs.ts";
 import { sourceHashOf } from "../../cat-harness-tools/scripts/qa-results.ts";
 import { ARTIFACT_INDEX_FILE, artifactPageName } from "./ig-artifact-jsonld.ts";
 
@@ -320,6 +321,34 @@ export function copyDocsInto(docs: string, site: string): { copied: number; merg
 }
 
 /**
+ * Clear `compose-docs`' own placeholder at `/<instance>/index.md` before this
+ * IG answers that URL; returns the path cleared, or undefined.
+ *
+ * Two steps decide independently whether an instance is "in" a preview, and
+ * they can disagree: `compose-docs --staging` asks `carriedInstances` (does
+ * the branch reach the instance's TREE?), this script asks `siteFilter` (does
+ * it reach the IG BUILD, its writer's import closure included). When the docs
+ * cut leaves the instance out, it writes its "not built into this preview"
+ * stub there; when this script then builds the IG, that stub is not a second
+ * answer for the URL but the first answer's stand-in, and the IG's landing
+ * supersedes it. Left in place, `composeIgSite` refused it as a collision
+ * (folio-assistant#2638). Removing the stub in `compose-docs` instead would
+ * leave a 404 at `/<instance>/` whenever the IG is NOT built (bean `pb04`).
+ *
+ * The stub is recognised by `compose-docs`' own `instanceStub`, byte for
+ * byte, never by a phrase in it: any other file at that path, an authored
+ * `index.md` included, stays and is still reported as a collision.
+ */
+export function clearComposeStub(into: string, instance: string, repoRoot: string): string | undefined {
+  const c = composedInstances(repoRoot).find((x) => x.under === instance);
+  if (!c) return undefined;
+  const at = join(into, c.under, "index.md");
+  if (!existsSync(at) || readFileSync(at, "utf-8") !== instanceStub(c)) return undefined;
+  rmSync(at);
+  return `${c.under}/index.md`;
+}
+
+/**
  * The instance's recorded GitHub releases (`fhir-artifact-index/releases.json`),
  * validated, for the IG site's `releases` page; undefined when none was
  * recorded. A file that does not validate throws: a wrong download link is
@@ -489,6 +518,8 @@ if (import.meta.main) {
     }
     const into = opt("--compose-into");
     if (into) {
+      const cleared = atRoot ? undefined : clearComposeStub(resolve(into), ig.instance, resolve("."));
+      if (cleared) console.error(`${ig.instance}: the IG is built here, so its landing replaces compose-docs' "not built into this preview" stub at ${cleared}`);
       const c = composeIgSite(site, resolve(into), ig.instance, { atRoot, fullPages });
       console.error(`${ig.instance}: composed into ${relative(resolve("."), atRoot ? resolve(into) : resolve(into, ig.instance))} — ${c.pages} page(s), ${c.files - c.pages} other file(s), ${c.includes} include(s)`);
       if (c.collisions.length) {
