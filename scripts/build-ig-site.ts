@@ -724,6 +724,28 @@ export function igChromeIncludes(topBar: string, thin?: { assetsAt: string }): {
 }
 
 /**
+ * The host site's base, written literally into the staged layout's top bar and
+ * navigation (`igTopBar`, `igTocNav`), handed back to the host build as
+ * `{{ site.baseurl }}`.
+ *
+ * WHY. The literal is one deploy's path: on a preview it carries the preview's
+ * name, so every IG page differed between two previews and each preview stored
+ * its own copy of all of them (bean `g196`, measured 2026-10-23: 1,660 IG
+ * pages differed only by that name). As Liquid, the host build writes it the
+ * way it writes its own links (cat-harness site chrome: relative to the page).
+ *
+ * Only a quoted value that STARTS with the base and continues with `/` is
+ * rewritten, so `/folio-assistant-core/` is not mistaken for `/folio-assistant/`.
+ * An empty base (a site at `/`) carries no deploy's name and is left alone.
+ */
+export function liquidSiteBase(html: string, siteBase?: string): string {
+  const b = (siteBase ?? "").replace(/\/+$/, "");
+  if (!b) return html;
+  const esc = b.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  return html.replace(new RegExp(`(["'])${esc}(?=/)`, "g"), "$1{{ site.baseurl }}");
+}
+
+/**
  * Move a staged IG site INTO a host Jekyll source at `<docsRoot>/<instance>/`,
  * so the host's own build renders it with the host's chrome (bean `mftp`,
  * owner's choice: "Build in main site"). What made a separate site per IG
@@ -750,7 +772,7 @@ export function composeIgSite(
   staged: string,
   docsRoot: string,
   instance: string,
-  opts: { atRoot?: boolean; fullPages?: boolean } = {},
+  opts: { atRoot?: boolean; fullPages?: boolean; siteBase?: string } = {},
 ): { pages: number; files: number; includes: number; collisions: string[] } {
   const title = /^title:\s*(.+)$/m.exec(readFileSync(join(staged, "_config.yml"), "utf-8"))?.[1]?.replace(/^"(.*)"$/, "$1") ?? instance;
   const q = JSON.stringify(title);
@@ -794,7 +816,7 @@ export function composeIgSite(
       else cpSync(from, join(dataDest, f), { recursive: true });
     } else put(join(dataDest, f), readFileSync(from));
   }
-  const stagedLayout = existsSync(join(staged, "_layouts", "default.html")) ? readFileSync(join(staged, "_layouts", "default.html"), "utf-8") : "";
+  const stagedLayout = liquidSiteBase(existsSync(join(staged, "_layouts", "default.html")) ? readFileSync(join(staged, "_layouts", "default.html"), "utf-8") : "", opts.siteBase);
   const topBar = IG_TOPBAR_RE.exec(stagedLayout)?.[0] ?? "";
   // THIN, the default (owner, 2026-10-12: "make thin default"): the IG's pages
   // wear `thinIgLayout` rather than the host's layout, so none of the host's
