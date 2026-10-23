@@ -202,7 +202,13 @@ The AST must carry:
 - [ ] **one structured record per resource**, keyed by canonical URL *and*
       version — an id alone collides across versions
 - [ ] **dependency edges among Library, PlanDefinition and Measure** — the gap
-      above. Built as `LogicEdges`; **not yet measured** on the WHO SMART Immunizations IG
+      above. Built as `LogicEdges`; **not yet measured** on the WHO SMART Immunizations IG.
+      **Measured as** (owner, 2026-10-23): every logic resource has at least one
+      logic-to-logic edge in *either* direction. In graph terms, no vertex is
+      isolated. Outgoing edges alone cannot be the test, because a finite
+      acyclic dependency graph always has a sink: a library that others depend
+      on and that depends on no logic itself. `run-real-igs.sh` prints both
+      counts.
 - [ ] **`uses` actually populated**, or an explicit statement that it cannot be
       — a declared-and-empty field is worse than an absent one, because a
       consumer cannot tell "no dependencies" from "not computed"
