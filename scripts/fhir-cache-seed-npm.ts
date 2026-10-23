@@ -556,6 +556,13 @@ export function resolvePatchWildcard(
   return { concrete: cands[0].ver, where: cands[0].where };
 }
 
+/**
+ * A commit `--mirror-commit` accepts: the full 40-character SHA. `git fetch <url> <sha>`
+ * cannot resolve an abbreviated SHA on the remote, so a short one used to fail the fetch
+ * and silently drop the mirror, and every mirror-only package was then reported missing.
+ */
+export const FULL_COMMIT = /^[0-9a-f]{40}$/;
+
 export interface SeedOptions {
   cacheDir?: string;
   sushiConfigPath?: string;
@@ -636,6 +643,10 @@ export async function seedFhirCache(options: SeedOptions): Promise<SeedResult> {
       const commit = options.mirrorCommit || remoteCommit(mirrorSpec);
       if (!commit) {
         logger.error(`cannot resolve HEAD commit for mirror ${mirrorSpec}`);
+      } else if (!FULL_COMMIT.test(commit)) {
+        logger.error(
+          `--mirror-commit must be a full 40-character commit SHA, got "${commit}": git cannot fetch an abbreviated SHA from a remote, so the mirror would be skipped`,
+        );
       } else {
         const mStage = join(workDir, "mirror");
         mkdirSync(mStage, { recursive: true });
