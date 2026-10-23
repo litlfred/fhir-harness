@@ -12,6 +12,9 @@ import { join } from "node:path";
 
 import { codeSystemIri, enumerationSchema, generateIgApi, logicalModel, logicalModelSchema, Ordered, plain, pyJson, schemaKind, valueSetDisplays, valueSetFileId, valueSetSchema, valueSetVocabulary } from "./ig-api-gen.ts";
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- generated schemas and JSON-LD, indexed freely by each case
+type Json = Record<string, any>;
+
 const vs = {
   resourceType: "ValueSet",
   id: "colours",
@@ -41,7 +44,7 @@ describe("ValueSets", () => {
       { code: "red", display: "Red", system: vs.expansion.contains[0]!.system },
       { code: "1", display: "1", system: vs.expansion.contains[0]!.system },
     ];
-    const s = valueSetSchema(vs, codes) as any;
+    const s = valueSetSchema(vs, codes) as Json;
     expect(s.$id).toBe("https://example.org/ig/ValueSet-colours.schema.json");
     expect(s.properties.system).toEqual({ type: "string", const: "https://example.org/ig/CodeSystem/colours" });
     expect(s.properties.code.enum).toEqual(["red", "1"]);
@@ -56,8 +59,8 @@ describe("ValueSets", () => {
       { code: "a", display: "A", system: "https://example.org/CodeSystem/one" },
       { code: "b", display: "B", system: "https://example.org/CodeSystem/two" },
     ];
-    expect((valueSetSchema(vs, codes) as any).oneOf).toHaveLength(2);
-    const v = plain(valueSetVocabulary(vs, codes, { vocabBase: "http://hl7.org/fhir/", now: "T" })) as any;
+    expect((valueSetSchema(vs, codes) as Json).oneOf).toHaveLength(2);
+    const v = plain(valueSetVocabulary(vs, codes, { vocabBase: "http://hl7.org/fhir/", now: "T" })) as Json;
     expect(v["@context"].cs0).toBe("https://example.org/CodeSystem-one");
     expect(v["@graph"][1]).toEqual({ id: "#b", name: "B", "fhir:CodeSystem": "cs1" });
     expect(v["@context"].fhir).toBe("http://hl7.org/fhir/");
@@ -83,7 +86,7 @@ describe("logical models", () => {
     },
   };
   it("derives from the base schema, binds a ValueSet by reference and records it in the JSON-LD context", () => {
-    const s = plain(logicalModelSchema(logicalModel(sd)!, "https://example.org/ig")) as any;
+    const s = plain(logicalModelSchema(logicalModel(sd)!, "https://example.org/ig")) as Json;
     expect(s.$id).toBe("https://example.org/ig/StructureDefinition-PatientLite.schema.json");
     expect(s.required).toEqual(["resourceType", "name"]);
     expect(s.properties.colour).toEqual({ type: "array", items: { $ref: "./ValueSet-colours.schema.json", description: "Coding-shaped {system, code} object from ValueSet colours" } });
@@ -97,7 +100,7 @@ describe("logical models", () => {
     expect(schemaKind("StructureDefinition-x.schema.json")).toBe("logical_model");
     expect(schemaKind("CodeSystem-x.schema.json")).toBeUndefined();
     expect(schemaKind("ValueSets.schema.json")).toBeUndefined();
-    const e = enumerationSchema("logical_model", [["StructureDefinition-x.schema.json", { title: "X", properties: new Ordered().set("a", {}) }]]) as any;
+    const e = enumerationSchema("logical_model", [["StructureDefinition-x.schema.json", { title: "X", properties: new Ordered().set("a", {}) }]]) as Json;
     expect(e.example.schemas[0]).toEqual({ filename: "StructureDefinition-x.schema.json", id: "", title: "X", description: "", url: "./StructureDefinition-x.schema.json", propertyCount: 1 });
   });
 });
