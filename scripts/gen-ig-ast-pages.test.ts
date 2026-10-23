@@ -19,7 +19,7 @@ import { mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, wr
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
-import { astsIn, directoryVerdict } from "./gen-ig-ast-pages.ts";
+import { AST_FAMILY_PREFIXES, astsIn, directoryVerdict, inheritedSubjects, needing, subjectPage, type BranchLister, type InstanceFacts } from "./gen-ig-ast-pages.ts";
 
 const ROOT = resolve(import.meta.dir, "..", "..");
 const SCRIPT = join(import.meta.dir, "gen-ig-ast-pages.ts");
@@ -192,5 +192,52 @@ describe("fhir-harness declares the viewer it draws", () => {
     const pkg = JSON.parse(readFileSync(join(import.meta.dir, "..", "package.json"), "utf8")) as { checkoutScripts: Record<string, string> };
     expect(pkg.checkoutScripts["ig-ast:pages"]).toContain("gen-ig-ast-pages.ts");
     expect(decl.builtAtPublish?.some((x) => x.writer.includes("ig-ast:pages")) ?? false).toBe(false);
+  });
+});
+
+describe("an IG repository inherits its AST listing from needing this layer", () => {
+  // `ig` needs fhir-harness directly, `overlay-ig` through `overlay`; `held`
+  // declares its own ig-ast directory; `lone` needs nothing. Made up for the test.
+  const instances: InstanceFacts[] = [
+    { name: "fhir-harness", repository: "example/fhir-harness", needs: ["core"] },
+    { name: "overlay", repository: "example/overlay", needs: ["fhir-harness"] },
+    { name: "ig", repository: "example/ig", needs: ["fhir-harness"] },
+    { name: "overlay-ig", repository: "example/overlay-ig", needs: ["overlay"] },
+    { name: "held", repository: "example/held", needs: ["fhir-harness"] },
+    { name: "lone", repository: "example/lone", needs: [] },
+  ];
+  const asked: string[] = [];
+  const list: BranchLister = (repo) => {
+    asked.push(repo);
+    if (repo === "example/overlay") return { branches: [] };
+    if (repo === "example/overlay-ig") return { error: "git ls-remote https://github.com/example/overlay-ig failed" };
+    return { branches: ["cat/fhir-harness/fhir-ast/hl7.fhir.uv.ips", "fhir-ast/hl7.fhir.uv.old"] };
+  };
+
+  it("needing follows needs through the layers above, and excludes the layer itself", () => {
+    expect([...needing(instances, "fhir-harness")].sort()).toEqual(["held", "ig", "overlay", "overlay-ig"]);
+  });
+
+  it("asks only undeclared instances that need the layer, keys each family, and says a failed lookup", () => {
+    const subjects = inheritedSubjects(instances, new Set(["held"]), list);
+    expect(asked.sort()).toEqual(["example/ig", "example/overlay", "example/overlay-ig"]);
+    expect(subjects.map((s) => s.name)).toEqual(["ig", "overlay-ig"]);
+    const ig = subjects[0]!;
+    expect(ig.directories.map((d) => [d.path, d.inherited?.keys])).toEqual([
+      [AST_FAMILY_PREFIXES[0], ["hl7.fhir.uv.ips"]],
+      ["fhir-ast/", ["hl7.fhir.uv.old"]],
+    ]);
+    expect(directoryVerdict(ig.directories[0]!)).toContain("inherited");
+    const failed = subjects[1]!.directories[0]!;
+    expect(failed.inherited?.error).toContain("failed");
+    expect(directoryVerdict(failed)).toContain("unknown");
+  });
+
+  it("the page links each branch and calls the AST unknown, not none", () => {
+    const subjects = inheritedSubjects(instances, new Set(["held"]), list);
+    const html = subjectPage({ id: "ig-ast", title: "IG ASTs" }, subjects[0]!, subjects);
+    expect(html).toContain("https://github.com/example/ig/tree/cat/fhir-harness/fhir-ast/hl7.fhir.uv.ips");
+    expect(html).toContain("inherited");
+    expect(html).toContain("<strong>unknown</strong>, not none");
   });
 });
