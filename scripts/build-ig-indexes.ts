@@ -43,11 +43,18 @@
  * by its name and never knows what it writes. No such script, nothing is bound,
  * and the run says so. A step that fails fails that IG.
  *
+ * ## The package, from the AST
+ *
+ * The JSON view pages read each resource out of `package.tgz`, at
+ * `package/<Type>-<id>.json`, as the Publisher packages it. {@link packFromAst}
+ * writes that file from the AST's resources, with a `package/package.json`
+ * read from the IG's `sushi-config.yaml`, to `fhir-artifact-index/package.tgz`.
+ * It is the AST's package, not the published one, and holds what the AST holds.
+ *
  * ## What the AST does not carry yet, kept from a committed copy
  *
- * An index ingested from the published site also holds the package
- * (`package.tgz`, which the JSON view pages read), the JSON-LD contexts and
- * the IG API hub. The AST does not hold them yet. While a committed copy is on
+ * An index ingested from the published site also holds the JSON-LD contexts
+ * and the IG API hub. The AST does not hold them yet. While a committed copy is on
  * disk, those fields are kept from it ({@link CARRIED}), provided the files they
  * point at are there, so the pages lose nothing on the first build. An IG
  * instance can drop its committed copy only once the build supplies them
@@ -74,7 +81,8 @@
  * Nothing here may know about WHO (fhir-harness/AGENTS.md).
  */
 import { spawnSync } from "node:child_process";
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { parse as parseYaml } from "yaml";
 import { tmpdir } from "node:os";
 import { basename, join, resolve } from "node:path";
 
@@ -156,7 +164,7 @@ function run(cmd: string, args: string[], cwd?: string): { ok: boolean; out: str
 }
 
 /** Index fields the AST does not supply yet, kept from a committed copy when one is on disk. */
-export const CARRIED = ["fhirVersion", "package", "contexts", "igApiHub"] as const;
+export const CARRIED = ["fhirVersion", "contexts", "igApiHub"] as const;
 
 /** A representation's instance-relative file, when the field carries one. */
 function localPaths(v: unknown): string[] {
@@ -190,6 +198,45 @@ export function publishedBase(committed: Record<string, unknown> | undefined, de
   const iri = declaration?.["iriBase"];
   if (typeof iri === "string" && /^https?:\/\//.test(iri)) return { base: iri.replace(/\/+$/, ""), from: "the declaration's iriBase" };
   return { from: "nowhere: no published links" };
+}
+
+/**
+ * Write `out` as a Publisher-shaped `package.tgz` from the AST in `ast`: each
+ * resource at `package/<Type>-<id>.json`, and `package/package.json` from the
+ * IG's `sushi-config.yaml`. Returns the number of resources packed.
+ */
+export function packFromAst(ast: string, igSource: string, out: string, stage: string): number {
+  const manifest = JSON.parse(readFileSync(join(ast, "manifest.json"), "utf-8")) as { resources: { resourceType: string; id: string; file: string }[] };
+  rmSync(stage, { recursive: true, force: true });
+  const pkg = join(stage, "package");
+  mkdirSync(pkg, { recursive: true });
+  let n = 0;
+  for (const r of manifest.resources) {
+    const from = join(ast, r.file);
+    if (!existsSync(from) || !/^[A-Za-z]+$/.test(r.resourceType) || !/^[A-Za-z0-9.-]+$/.test(r.id)) continue;
+    cpSync(from, join(pkg, `${r.resourceType}-${r.id}.json`));
+    n++;
+  }
+  const cfg = parseYaml(readFileSync(join(igSource, "sushi-config.yaml"), "utf-8")) as Record<string, unknown>;
+  const fhirVersion = cfg["fhirVersion"];
+  writeFileSync(
+    join(pkg, "package.json"),
+    `${JSON.stringify(
+      {
+        name: String(cfg["packageId"] ?? cfg["id"] ?? ""),
+        version: String(cfg["version"] ?? ""),
+        ...(cfg["canonical"] ? { canonical: String(cfg["canonical"]) } : {}),
+        ...(fhirVersion ? { fhirVersions: Array.isArray(fhirVersion) ? fhirVersion.map(String) : [String(fhirVersion)] } : {}),
+        description: "Built from the IG's cached AST by fhir-harness build-ig-indexes.ts, not by the IG Publisher.",
+      },
+      null,
+      2,
+    )}\n`,
+  );
+  mkdirSync(join(out, ".."), { recursive: true });
+  const t = spawnSync("tar", ["-czf", out, "-C", stage, "package"], { encoding: "utf-8" });
+  if (t.status !== 0) throw new Error(`tar failed: ${t.stderr}`);
+  return n;
 }
 
 /** The step name a layer above provides for the IG API sidecars. */
@@ -255,6 +302,14 @@ export function buildOne(t: IgTarget, work: string, log: (s: string) => void, ch
   else {
     const committed = committedIx;
     const next = JSON.parse(readFileSync(built, "utf-8")) as Record<string, unknown>;
+    try {
+      const tgz = join(dir, "package.tgz");
+      const packed = packFromAst(ast, clone, tgz, join(work, `${t.name}.package`));
+      next["package"] = { url: pub.base ? `${pub.base}/package.tgz` : "fhir-artifact-index/package.tgz", localPath: "fhir-artifact-index/package.tgz", bytes: statSync(tgz).size };
+      log(`  package: ${packed} resource(s) packed from the AST`);
+    } catch (e) {
+      problems.push(`package: ${(e as Error).message}`);
+    }
     const kept = carryFromCommitted(next, committed, t.root);
     writeFileSync(indexPath, `${JSON.stringify(next, null, 2)}\n`);
     log(`  index: ${ix.out.split("\n")[0]}${kept.length ? `; kept from the committed copy: ${kept.join(", ")}` : ""}`);
