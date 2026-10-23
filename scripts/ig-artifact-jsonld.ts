@@ -134,13 +134,13 @@ export function artifactJsonLd(ix: FhirArtifactIndex, a: FhirArtifact, o: JsonLd
   if (local) {
     encodings.push({ "@type": "schema:MediaObject", "schema:contentUrl": { "@id": iriFor(local, o.base) }, "schema:encodingFormat": FHIR_JSON, "dcterms:source": "local" });
   }
-  // The upstream files, where the IG publishes them. The html is the
-  // Publisher's page, which this node does not point at: the page that renders
-  // this node is the html, and the node names no rendering.
-  for (const [k, type] of [["json", FHIR_JSON], ["xml", "application/fhir+xml"], ["ttl", "text/turtle"]] as const) {
-    const r = a.published[k];
-    if (r) encodings.push({ "@type": "schema:MediaObject", "schema:contentUrl": { "@id": r.url }, "schema:encodingFormat": type, "dcterms:source": "upstream" });
-  }
+  // The upstream JSON, where the IG publishes it. The html is the Publisher's
+  // page, which this node does not point at: the page that renders this node
+  // is the html, and the node names no rendering. No XML or Turtle encoding:
+  // owner, 2026-10-23, "excise XML and ttl everywhere for now" (the P2
+  // refusal record still counts what the IG published in those forms).
+  const upstream = a.published.json;
+  if (upstream) encodings.push({ "@type": "schema:MediaObject", "schema:contentUrl": { "@id": upstream.url }, "schema:encodingFormat": FHIR_JSON, "dcterms:source": "upstream" });
   const m = a.materialization;
   const inputs = m.state === "materialized" && m.purpose === "compiled" ? m.inputs : undefined;
   const node: IgArtifactJsonLd = {
