@@ -33,6 +33,20 @@
  * and the page names the family it would be restored from instead. A
  * directory that is on disk but holds no `manifest.json` says exactly that.
  *
+ * ## An IG repository declares nothing: its ASTs are inherited
+ *
+ * An IG repository needs no `ig-ast` declaration of its own: it builds on this
+ * layer through `needs`, and its site is built from the AST on its own
+ * repository's branch family (`ig-build-pipeline`, "The IG repository's site
+ * route"). So the viewer does not wait for one. Every instance in the checkout
+ * that needs this layer, directly or through a layer above it, and declares a
+ * `repository` is asked for the families in {@link AST_FAMILY_PREFIXES}
+ * (`git ls-remote`, as `stage-ast-sites.ts` asks). Each family it carries
+ * becomes an INHERITED directory on that instance's page, listed by key and
+ * shown as unknown in this build, like any unrestored family. An instance that
+ * declares an `ig-ast` directory itself is shown as declared and not asked. A
+ * lookup that fails is said on the page, never read as "no AST".
+ *
  * Authored text (resource names, the plan's reasons) is escaped and the page
  * is marked `render_with_liquid: false`, so a `{{` in an IG's resource name
  * cannot reach Liquid.
@@ -42,6 +56,7 @@
  *
  * Exit: 0 written (or current, with `--check`) · 1 `--check` found a stale or missing page.
  */
+import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { basename, join, relative, resolve, sep } from "node:path";
 
@@ -51,6 +66,16 @@ import { declaredVisualisers, pageParts, siteOwnerDir, visualiserPageDir, withRe
 import { siteArg } from "../../cat-harness-tools/scripts/lib/site-target.ts";
 import { AstPlanSchema, type AstPlan } from "../schemas/ig-ast.ts";
 import { listAst, readAst, type AstListing } from "./ig-ast.ts";
+
+/**
+ * The branch families an IG's AST cache sits on, newest name first: the
+ * `cat/<harness>/` scheme, then the two older names still read (bean tlk2).
+ * `ig-cache.sh` and `stage-ast-sites.ts` read the same three.
+ */
+export const AST_FAMILY_PREFIXES = ["cat/fhir-harness/fhir-ast/", "cat-fhir-ast/", "fhir-ast/"] as const;
+
+/** The layer whose `needs` makes an instance an IG this viewer asks about. */
+export const LAYER = "fhir-harness";
 
 /** The Tool that draws these pages — the `renderedBy` a harness declares. */
 export const TOOL_ID = "ig-ast-pages";
@@ -97,6 +122,12 @@ export interface AstDirectory {
   storage?: FamilyStorage;
   /** `null`: the directory is not on disk, so what it holds is unknown. */
   asts: AstSummary[] | null;
+  /**
+   * Set when the instance does not declare this directory: it was found on the
+   * instance's repository because the instance needs this layer. `keys` are the
+   * family's branch keys (package ids); `error` says the lookup failed.
+   */
+  inherited?: { keys: string[]; error?: string };
 }
 
 /** One instance holding `ig-ast` directories: the page's subject. */
@@ -213,6 +244,81 @@ export function astSubjects(dirs: readonly DirLike[], kinds: readonly string[], 
   return [...out.values()].sort((a, b) => a.name.localeCompare(b.name));
 }
 
+/** What `git ls-remote` found: the branch names under the families, or why it could not tell. */
+export type BranchLister = (repository: string) => { branches: string[] } | { error: string };
+
+/** Ask GitHub for `repository`'s AST family branches. */
+export const lsRemote: BranchLister = (repository) => {
+  const ls = spawnSync("git", ["ls-remote", "--heads", `https://github.com/${repository}`, ...AST_FAMILY_PREFIXES.map((p) => `refs/heads/${p}*`)], {
+    encoding: "utf-8",
+    timeout: 60_000,
+  });
+  if (ls.status !== 0) return { error: `git ls-remote https://github.com/${repository} failed` };
+  return {
+    branches: ls.stdout
+      .split("\n")
+      .map((l) => l.split("\t")[1]?.trim())
+      .filter((r): r is string => r !== undefined && r.startsWith("refs/heads/"))
+      .map((r) => r.slice("refs/heads/".length)),
+  };
+};
+
+/** One instance of the checkout as the inheritance needs it. */
+export interface InstanceFacts {
+  name: string;
+  repository?: string;
+  needs: string[];
+}
+
+/** The instances that need `layer`, directly or through any instance they need. */
+export function needing(instances: readonly InstanceFacts[], layer: string): Set<string> {
+  const byName = new Map(instances.map((i) => [i.name, i]));
+  const memo = new Map<string, boolean>();
+  const visit = (name: string, seen: Set<string>): boolean => {
+    if (memo.has(name)) return memo.get(name)!;
+    if (seen.has(name)) return false;
+    seen.add(name);
+    const needs = byName.get(name)?.needs ?? [];
+    const yes = needs.includes(layer) || needs.some((n) => visit(n, seen));
+    memo.set(name, yes);
+    return yes;
+  };
+  return new Set(instances.filter((i) => i.name !== layer && visit(i.name, new Set())).map((i) => i.name));
+}
+
+/**
+ * The inherited subjects: every instance that needs {@link LAYER}, declares a
+ * `repository`, has no declared `ig-ast` directory, and whose repository
+ * carries a family (or whose lookup failed, which is said, not dropped).
+ */
+export function inheritedSubjects(instances: readonly InstanceFacts[], declared: ReadonlySet<string>, list: BranchLister): AstSubject[] {
+  const out: AstSubject[] = [];
+  const need = needing(instances, LAYER);
+  for (const i of instances) {
+    if (!need.has(i.name) || declared.has(i.name) || i.repository === undefined || !/^[\w.-]+\/[\w.-]+$/.test(i.repository)) continue;
+    const found = list(i.repository);
+    if ("error" in found) {
+      out.push({ name: i.name, repository: i.repository, directories: [{ id: `${i.name} (inherited)`, path: AST_FAMILY_PREFIXES[0], absPath: "", asts: null, inherited: { keys: [], error: found.error } }] });
+      continue;
+    }
+    const directories: AstDirectory[] = [];
+    for (const prefix of AST_FAMILY_PREFIXES) {
+      const keys = found.branches.filter((b) => b.startsWith(prefix) && !AST_FAMILY_PREFIXES.some((q) => q.length > prefix.length && b.startsWith(q))).map((b) => b.slice(prefix.length)).filter((k) => k.length > 0).sort();
+      if (keys.length === 0) continue;
+      directories.push({
+        id: `${i.name} (inherited)`,
+        path: prefix,
+        absPath: "",
+        storage: { branchPrefix: prefix, keyFrom: "the IG's package id", repository: i.repository, tool: "ig-cache" },
+        asts: null,
+        inherited: { keys },
+      });
+    }
+    if (directories.length) out.push({ name: i.name, repository: i.repository, directories });
+  }
+  return out;
+}
+
 // ── rendering ──────────────────────────────────────────────────────────────
 
 const esc = (v: string): string => v.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -245,6 +351,8 @@ function familyHref(storage: FamilyStorage, repository: string | undefined, key?
 
 /** One line for the hub and the instance list: what a directory holds, or that it is unknown. */
 export function directoryVerdict(d: AstDirectory): string {
+  if (d.inherited?.error !== undefined) return "inherited — lookup failed, unknown";
+  if (d.inherited !== undefined) return `inherited — ${d.inherited.keys.length} branch(es) on the repository, not in this build`;
   if (d.asts === null) return "unknown — not in this build";
   if (d.asts.length === 0) return "on disk, holds no AST (no manifest.json)";
   const resources = d.asts.reduce((s, a) => s + (a.listing?.resources ?? 0), 0);
@@ -311,6 +419,17 @@ function directorySection(d: AstDirectory, repository: string | undefined): stri
       `${d.storage.tool ? `, restored by <code>${esc(d.storage.tool)}</code>` : ""}.` +
       `${familyHref(d.storage, repository) ? ` <a href="${esc(familyHref(d.storage, repository)!)}">The family's branches</a>.` : ""}</p>`
     : "";
+  if (d.inherited !== undefined) {
+    const why = `<p class="iga-sub">Not declared by the instance: inherited, because it needs <code>${LAYER}</code> and its repository is asked for the AST branch families.</p>`;
+    if (d.inherited.error !== undefined) return `${head}${why}<p>The lookup failed, so whether it holds an AST is <strong>unknown</strong>: ${esc(d.inherited.error)}</p>`;
+    const keys = d.inherited.keys
+      .map((k) => {
+        const href = d.storage ? familyHref(d.storage, repository, k) : undefined;
+        return `<li>${href ? `<a href="${esc(href)}"><code>${esc(k)}</code></a>` : `<code>${esc(k)}</code>`}</li>`;
+      })
+      .join("");
+    return `${head}${where}${why}<ul>${keys}</ul><p>Not restored in this build, so what each holds is <strong>unknown</strong>, not none.</p>`;
+  }
   if (d.asts === null) {
     return `${head}${where}<p>Not in this build, so the ASTs it holds are <strong>unknown</strong>, not none. ${
       d.storage ? "A branch-family directory is absent from a checkout by design until it is restored." : ""
@@ -345,31 +464,41 @@ export function hubPage(v: Pick<DeclaredVisualiser, "id" | "title">, all: readon
     .join("");
   const body = all.length
     ? `<table><thead><tr><th>instance</th><th>directory</th><th>holds</th></tr></thead><tbody>${rows}</tbody></table>`
-    : `<p>No instance in this checkout declares an <code>ig-ast</code> directory.</p>`;
-  return page(title, `<h1>${esc(title)}</h1>\n${MARK}\n<p>One page per instance in this checkout that declares a directory of kind <code>ig-ast</code>.</p>\n${body}`);
+    : `<p>No instance in this checkout declares an <code>ig-ast</code> directory or carries an AST branch family.</p>`;
+  return page(
+    title,
+    `<h1>${esc(title)}</h1>\n${MARK}\n<p>One page per instance in this checkout that declares a directory of kind <code>ig-ast</code>, or that needs <code>${LAYER}</code> and whose repository carries an AST branch family (inherited).</p>\n${body}`,
+  );
 }
 
 // ── writing ────────────────────────────────────────────────────────────────
 
 /** Every page the declared visualisers rendered by this Tool owe, absolute path → content. */
-export function plannedPages(root: string, site: string): { pages: Map<string, string>; routes: string[] } {
+export function plannedPages(root: string, site: string, list: BranchLister = lsRemote): { pages: Map<string, string>; routes: string[] } {
   const pages = new Map<string, string>();
   const routes: string[] = [];
   const vis = declaredVisualisers(root).filter((v) => v.renderedBy === TOOL_ID);
   if (vis.length === 0) return { pages, routes };
   const repoOf = new Map<string, string>();
+  const facts = new Map<string, InstanceFacts>();
   const dirs = checkoutDirectories(root);
   for (const d of dirs) {
     const name = d.member ?? d.declaredBy;
-    if (repoOf.has(name)) continue;
+    if (facts.has(name)) continue;
     const up = d.path.split("/").filter((x) => x.length > 0 && x !== ".").length;
     const instRoot = resolve(d.absPath, ...Array.from({ length: up }, () => ".."));
-    const repo = str(rawDeclaration(instRoot)?.["repository"]);
+    const decl = rawDeclaration(instRoot);
+    const repo = str(decl?.["repository"]);
     if (repo) repoOf.set(name, repo);
+    const needs = Array.isArray(decl?.["needs"]) ? (decl!["needs"] as unknown[]).filter((x): x is string => typeof x === "string") : [];
+    facts.set(name, { name, ...(repo ? { repository: repo } : {}), needs });
   }
   for (const v of vis) {
     const kinds = v.coversKinds?.length ? v.coversKinds : [KIND];
-    const subjects = astSubjects(dirs, kinds, (i) => repoOf.get(i));
+    const declaredSubjects = astSubjects(dirs, kinds, (i) => repoOf.get(i));
+    const subjects = [...declaredSubjects, ...inheritedSubjects([...facts.values()], new Set(declaredSubjects.map((s) => s.name)), list)].sort((a, b) =>
+      a.name.localeCompare(b.name),
+    );
     const full = pageParts({ harness: v.harness, visualiser: v.id });
     const dir = visualiserPageDir(site, full);
     routes.push(dir);
