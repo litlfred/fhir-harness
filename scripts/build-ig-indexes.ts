@@ -60,10 +60,20 @@
  * its path without the extension. `fhirVersion` is read from
  * `sushi-config.yaml`.
  *
- * ## What the build does not supply yet, kept from a committed copy
+ * ## The IG API hub: a link to the IG's own hub page
  *
- * An index ingested from the published site also holds the IG API hub. The
- * build does not supply it yet. While a committed copy is on
+ * A layer above that writes the sidecars may also write a hub page into
+ * `<work>/ig-api/site/`, and names in its descriptor (`ig-api.json`) the
+ * marker that the IG's own page holds where the hub goes (`placeholder`). The
+ * IG's page holding that marker (`input/pagecontent/<page>.md`) is the hub
+ * page, and when the layer wrote `<page>.html` the index's `igApiHub` points at
+ * it on the published site ({@link hubFrom}). It holds no copy: the IG's site
+ * serves the hub, and the docs site links to it.
+ *
+ * ## What the build does not supply, kept from a committed copy
+ *
+ * An index ingested from the published site held a copy of the hub's HTML.
+ * When no layer writes a hub page, that copy is kept. While a committed copy is on
  * disk, those fields are kept from it ({@link CARRIED}), provided the files they
  * point at are there, so the pages lose nothing on the first build. An IG
  * instance can drop its committed copy only once the build supplies them
@@ -97,7 +107,7 @@ import { basename, join, resolve } from "node:path";
 
 import { checkoutRootFor, instanceRootsIn } from "../../cat-harness/schemas/cat-harness.js";
 import { scriptTable } from "../../cat-harness/schemas/script-table.ts";
-import { IG_API_WORK } from "./ig-repo-site.ts";
+import { IG_API_DESCRIPTOR, IG_API_SITE, IG_API_WORK } from "./ig-repo-site.ts";
 import { AST_FAMILY_PREFIXES, LAYER, lsRemote, needing, type BranchLister, type InstanceFacts } from "./gen-ig-ast-pages.ts";
 import { buildMenu } from "./ingest-ig-menu.ts";
 
@@ -297,6 +307,32 @@ export function fhirVersionsOf(igSource: string): string[] {
   return v === undefined || v === null ? [] : (Array.isArray(v) ? v : [v]).map(String);
 }
 
+/**
+ * The IG API hub as a link (see "The IG API hub"): the IG's page holding the
+ * descriptor's `placeholder`, when the layer above wrote that page into
+ * `<siteWork>/ig-api/site/` and the IG has a published address. `undefined`
+ * otherwise.
+ */
+export function hubFrom(siteWork: string, igSource: string, base: string | undefined): { url: string; placeholder: string } | undefined {
+  const descriptor = join(siteWork, IG_API_WORK, IG_API_DESCRIPTOR);
+  if (!base || !existsSync(descriptor)) return undefined;
+  let placeholder: unknown;
+  try {
+    placeholder = (JSON.parse(readFileSync(descriptor, "utf-8")) as Record<string, unknown>)["placeholder"];
+  } catch {
+    return undefined;
+  }
+  if (typeof placeholder !== "string" || placeholder.length === 0) return undefined;
+  const pages = join(igSource, "input", "pagecontent");
+  if (!existsSync(pages)) return undefined;
+  for (const f of readdirSync(pages).filter((n) => n.endsWith(".md")).sort()) {
+    if (!readFileSync(join(pages, f), "utf-8").includes(placeholder)) continue;
+    const page = `${f.replace(/\.md$/, "")}.html`;
+    if (existsSync(join(siteWork, IG_API_WORK, IG_API_SITE, page))) return { url: `${base}/${page}`, placeholder };
+  }
+  return undefined;
+}
+
 /** The step name a layer above provides for the IG API sidecars. */
 export const SIDECARS_STEP = "ig-site:sidecars";
 
@@ -375,6 +411,9 @@ export function buildOne(t: IgTarget, work: string, log: (s: string) => void, ch
     if (ctx.length) next["contexts"] = ctx;
     else delete next["contexts"];
     log(`  contexts: ${ctx.length} JSON-LD context(s) from ${IG_IMAGES}/`);
+    const hub = hubFrom(join(work, `${t.name}.site-work`), clone, pub.base);
+    if (hub) next["igApiHub"] = hub;
+    log(`  API hub: ${hub ? `a link to ${hub.url}` : "no hub page written by a layer above"}`);
     const kept = carryFromCommitted(next, committed, t.root);
     writeFileSync(indexPath, `${JSON.stringify(next, null, 2)}\n`);
     log(`  index: ${ix.out.split("\n")[0]}${kept.length ? `; kept from the committed copy: ${kept.join(", ")}` : ""}`);

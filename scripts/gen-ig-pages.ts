@@ -996,6 +996,8 @@ function indexPage(ix: FhirArtifactIndex): string {
     ``,
     // Linked only when the hub page is written — the same two conditions.
     ...(ix.igApiHub?.localPath && igApiServable().ok ? [`The IG's own [${SIDECAR_LABEL} hub](${hubPage(ix)}.html) lists them as the Publisher's \`${hubPage(ix)}.html\` does.`, ``] : []),
+    // A hub held only as a link (no copy): the IG's own site serves it.
+    ...(ix.igApiHub && !ix.igApiHub.localPath ? [`The IG's own [${SIDECAR_LABEL} hub](${ix.igApiHub.url}) lists them.`, ``] : []),
     `## Every artefact, by category`,
     ``,
     `Grouped and ordered as the IG's own \`artifacts.html\` groups them, with each artefact's name and`,

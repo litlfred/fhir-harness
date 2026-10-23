@@ -15,7 +15,7 @@ import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { carryFromCommitted, contextsFrom, fhirVersionsOf, igTargets, packFromAst, publishedBase } from "./build-ig-indexes.ts";
+import { carryFromCommitted, contextsFrom, fhirVersionsOf, hubFrom, igTargets, packFromAst, publishedBase } from "./build-ig-indexes.ts";
 import type { BranchLister } from "./gen-ig-ast-pages.ts";
 
 const instances = [
@@ -123,6 +123,27 @@ describe("contextsFrom and fhirVersionsOf", () => {
       expect(contextsFrom(join(ig, "none"), dir, undefined)).toEqual([]);
       expect(fhirVersionsOf(ig)).toEqual(["4.0.1"]);
       expect(fhirVersionsOf(join(ig, "none"))).toEqual([]);
+    } finally {
+      rmSync(ig, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("hubFrom", () => {
+  it("links the IG's page that holds the descriptor's marker, only when a layer wrote it and the IG has an address", () => {
+    const ig = mkdtempSync(join(tmpdir(), "ig-index-hub-"));
+    try {
+      const work = join(ig, "work");
+      mkdirSync(join(ig, "input", "pagecontent"), { recursive: true });
+      writeFileSync(join(ig, "input", "pagecontent", "index.md"), "# Home\n");
+      writeFileSync(join(ig, "input", "pagecontent", "api.md"), "# API\n<!-- X_CONTENT -->\n");
+      expect(hubFrom(work, ig, "https://example.org/ig")).toBeUndefined();
+      mkdirSync(join(work, "ig-api", "site"), { recursive: true });
+      writeFileSync(join(work, "ig-api", "ig-api.json"), JSON.stringify({ placeholder: "<!-- X_CONTENT -->" }));
+      expect(hubFrom(work, ig, "https://example.org/ig")).toBeUndefined();
+      writeFileSync(join(work, "ig-api", "site", "api.html"), "<html></html>");
+      expect(hubFrom(work, ig, "https://example.org/ig")).toEqual({ url: "https://example.org/ig/api.html", placeholder: "<!-- X_CONTENT -->" });
+      expect(hubFrom(work, ig, undefined)).toBeUndefined();
     } finally {
       rmSync(ig, { recursive: true, force: true });
     }
