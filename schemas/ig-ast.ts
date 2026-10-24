@@ -122,7 +122,7 @@ export const IG_AST_VOCAB = ownNamespace("fhir-harness-ig-ast");
 /**
  * The `$id` base of the generated JSON Schemas: this release's `schemas/`,
  * where the files are committed beside this module and so where publishing
- * serves them. Resolved against the vocabulary's own address (`…/0.1.0/ns/ig-ast#`),
+ * serves them. Resolved against the vocabulary's own address (`…/v0/ns/ig-ast#`),
  * so it stays ours by the same record.
  *
  * It was the vocabulary's address itself (`…/ns/ig-ast/`) until this instance
