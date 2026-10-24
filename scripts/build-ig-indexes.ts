@@ -256,6 +256,33 @@ export function rebaseOnMount(iri: string, declared: string | undefined, mounted
 }
 
 /**
+ * An artefact the index calls `materialized` must have its bytes under the
+ * instance root, because that is where `check:materialized-fixity` looks.
+ * Built at publish, the compiled AST sits in a temporary clone that is gone
+ * when the index is read, so such an artefact is only `referenced`: the
+ * published page is where it is, and the note keeps what it was built from.
+ * Returns how many records were rewritten. Pure but for the existence check.
+ */
+export function referenceAbsent(index: Record<string, unknown>, instanceRoot: string): number {
+  const arts = Array.isArray(index["artifacts"]) ? (index["artifacts"] as Record<string, unknown>[]) : [];
+  let n = 0;
+  for (const a of arts) {
+    const m = a["materialization"] as Record<string, unknown> | undefined;
+    if (m?.["state"] !== "materialized" || typeof m["localPath"] !== "string") continue;
+    if (existsSync(join(instanceRoot, m["localPath"] as string))) continue;
+    const prov = (m["provenance"] ?? {}) as { upstream?: string; local?: string };
+    const rev = (m["inputs"] as { sourceRevision?: string } | undefined)?.sourceRevision;
+    a["materialization"] = {
+      state: "referenced",
+      provenance: prov.upstream ? { upstream: prov.upstream } : prov,
+      note: `built at publish from a compiled AST that this checkout does not keep${rev ? ` (source revision ${rev})` : ""}`,
+    };
+    n++;
+  }
+  return n;
+}
+
+/**
  * Where the IG is published: the committed copy's site, else the
  * declaration's `iriBase` (re-based on the mounted repository, {@link
  * rebaseOnMount}), else none.
@@ -463,6 +490,8 @@ export function buildOne(t: IgTarget, work: string, log: (s: string) => void, ch
     if (hub) next["igApiHub"] = hub;
     log(`  API hub: ${hub ? `${hub.label ?? "IG API"} at ${hub.url}, drawn from the index` : "no IG API descriptor from a layer above"}`);
     const kept = carryFromCommitted(next, committed, t.root);
+    const referenced = referenceAbsent(next, t.root);
+    if (referenced) log(`  materialization: ${referenced} artefact(s) referenced, not materialized: their compiled bytes are not in this checkout`);
     writeFileSync(indexPath, `${JSON.stringify(next, null, 2)}\n`);
     log(`  index: ${ix.out.split("\n")[0]}${kept.length ? `; kept from the committed copy: ${kept.join(", ")}` : ""}`);
   }

@@ -15,7 +15,7 @@ import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { carryFromCommitted, contextsFrom, fhirVersionsOf, hubFrom, igTargets, lockedRepositories, packFromAst, publishedBase, rebaseOnMount } from "./build-ig-indexes.ts";
+import { carryFromCommitted, referenceAbsent, contextsFrom, fhirVersionsOf, hubFrom, igTargets, lockedRepositories, packFromAst, publishedBase, rebaseOnMount } from "./build-ig-indexes.ts";
 import type { BranchLister } from "./gen-ig-ast-pages.ts";
 
 const instances = [
@@ -183,5 +183,35 @@ describe("hubFrom", () => {
     } finally {
       rmSync(ig, { recursive: true, force: true });
     }
+  });
+});
+
+describe("referenceAbsent", () => {
+  const root = mkdtempSync(join(tmpdir(), "ref-absent-"));
+  afterAll(() => rmSync(root, { recursive: true, force: true }));
+  mkdirSync(join(root, "output-ast"), { recursive: true });
+  writeFileSync(join(root, "output-ast", "here.json"), "{}");
+  const mat = (localPath: string) => ({
+    state: "materialized",
+    provenance: { upstream: "https://example.org/ig/X.html", local: "fsh-generated/X.json" },
+    localPath,
+    purpose: "compiled",
+    inputs: { sourceRevision: "abc123" },
+  });
+
+  it("keeps an artefact whose bytes are under the instance root, and references one whose bytes are not", () => {
+    const ix = { artifacts: [{ key: "A", materialization: mat("output-ast/here.json") }, { key: "B", materialization: mat("output-ast/gone.json") }] };
+    expect(referenceAbsent(ix, root)).toBe(1);
+    expect((ix.artifacts[0]!.materialization as { state: string }).state).toBe("materialized");
+    expect(ix.artifacts[1]!.materialization as unknown).toEqual({
+      state: "referenced",
+      provenance: { upstream: "https://example.org/ig/X.html" },
+      note: "built at publish from a compiled AST that this checkout does not keep (source revision abc123)",
+    });
+  });
+
+  it("leaves records that are not materialized alone", () => {
+    const ix = { artifacts: [{ key: "C", materialization: { state: "referenced", provenance: { upstream: "u" } } }] };
+    expect(referenceAbsent(ix, root)).toBe(0);
   });
 });
