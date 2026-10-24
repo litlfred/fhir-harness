@@ -45,6 +45,13 @@ export interface SiteBuild {
   platform: { commit: string };
   /** The IG repository and commit it was built from. */
   source: { repo?: string; ref?: string; commit?: string };
+  /**
+   * The commit the IG's AST was built from, and the verdict it was published
+   * under. An IG site's artefact pages come from the AST, not from `source`,
+   * so when the verdict is not `valid` (a preview built with
+   * `SITE_ACCEPT_STALE_AST=1`) the two differ and the stamp says so.
+   */
+  ast?: { commit?: string; verdict: string };
   builtAt: string;
 }
 
