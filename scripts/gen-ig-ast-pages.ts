@@ -68,11 +68,12 @@ import { AstPlanSchema, type AstPlan } from "../schemas/ig-ast.ts";
 import { listAst, readAst, type AstListing } from "./ig-ast.ts";
 
 /**
- * The branch families an IG's AST cache sits on, newest name first: the
- * `cat/<harness>/` scheme, then the two older names still read (bean tlk2).
- * `ig-cache.sh` and `stage-ast-sites.ts` read the same three.
+ * The branch families an IG's AST cache sits on: the `cat/<harness>/` scheme
+ * (bean tlk2). The older `cat-fhir-ast/` and `fhir-ast/` names were retired on
+ * 2026-10-24, once no IG remote carried one (bean folio-assistant-oycs).
+ * `ig-cache.sh` and `stage-ast-sites.ts` read the same name.
  */
-export const AST_FAMILY_PREFIXES = ["cat/fhir-harness/fhir-ast/", "cat-fhir-ast/", "fhir-ast/"] as const;
+export const AST_FAMILY_PREFIXES = ["cat/fhir-harness/fhir-ast/"] as const;
 
 /** The layer whose `needs` makes an instance an IG this viewer asks about. */
 export const LAYER = "fhir-harness";

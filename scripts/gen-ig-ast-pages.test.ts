@@ -223,9 +223,9 @@ describe("an IG repository inherits its AST listing from needing this layer", ()
     expect(asked.sort()).toEqual(["example/ig", "example/overlay", "example/overlay-ig"]);
     expect(subjects.map((s) => s.name)).toEqual(["ig", "overlay-ig"]);
     const ig = subjects[0]!;
+    // A branch left under the retired `fhir-ast/` name is not a family (bean oycs).
     expect(ig.directories.map((d) => [d.path, d.inherited?.keys])).toEqual([
       [AST_FAMILY_PREFIXES[0], ["hl7.fhir.uv.ips"]],
-      ["fhir-ast/", ["hl7.fhir.uv.old"]],
     ]);
     expect(directoryVerdict(ig.directories[0]!)).toContain("inherited");
     const failed = subjects[1]!.directories[0]!;
