@@ -75,6 +75,7 @@ import { findDeclarationFile } from "../../cat-harness/schemas/instance-roots.ts
 import { scriptTable } from "../../cat-harness/schemas/script-table.ts";
 import { buildInstanceSite, keepPinned, lockedMountPaths, recipeRead, siteFields, stagingDir } from "../../cat-harness-tools/scripts/build-instance-site.ts";
 import { igOpenapiGraph } from "../../cat-harness-tools/openapi/scripts/ig-site-openapi.ts";
+import { igPreviewData, proseRenderer } from "./ig-review-data.ts";
 import { NAVBAR_ROW_ID } from "../../cat-harness-tools/scripts/lib/harness-rail.ts";
 import { callerInputs, type UsesRef } from "../../cat-harness-tools/scripts/site-publisher.ts";
 import { type DroppedByRuling, parityShortfall, siteFeatures } from "../../cat-harness-tools/scripts/site-parity.ts";
@@ -1132,6 +1133,9 @@ async function stageIgFolio(a: PublisherRun, b: IgBuilt, site: IgFolioSite, h: P
   if (o.artifact) throw new Error("--artifact is not available for an IG's folio site: build-instance-site publishes to the Pages branch only");
   log(`· building ${ownerRepo}@${branch} (${sha.slice(0, 7)}) from its cached AST`);
   const publish = !o.dryRun;
+  const render = staging ? await proseRenderer(repo) : undefined;
+  const previewData = (built: string): void =>
+    igPreviewData(built, { ig: repo, render: render!, branch, sha, base: a.defaultBranch ?? "main", ownerRepo, runUrl: a.runUrl }, log);
   const r = await buildInstanceSite({
     root: repo,
     instance: site.scope,
@@ -1151,6 +1155,10 @@ async function stageIgFolio(a: PublisherRun, b: IgBuilt, site: IgFolioSite, h: P
     ...(site.coverage ? { coverage: site.coverage } : {}),
     parityDropped: site.dropped,
     require: [IG_SITE_STAMP],
+    // A preview's review data (folio-assistant#215 walk, break 6): the
+    // ChangeSet, the review page and the staging banner with staging.json,
+    // as a folio's preview carries them.
+    ...(staging ? { beforePublish: (built: string) => previewData(built) } : {}),
     message,
   });
   return done({ pushed: publish, site: r.site });
