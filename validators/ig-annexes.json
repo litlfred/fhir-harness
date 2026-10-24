@@ -5,5 +5,5 @@
     "kind": "ig-annex",
     "family": "ig-annexes/v1"
   },
-  "schema": "fhir-harness:schemas/ig-annexes.ts#IgAnnexesSchema"
+  "schema": "fhir-harness:schemas/ig-annexes.ts#IgAnnexesKind"
 }

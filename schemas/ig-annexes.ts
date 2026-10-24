@@ -16,6 +16,7 @@
  * @graphNode schema
  */
 import { z } from "zod";
+import { nodeKind } from "../../cat-harness/schemas/node-kind.ts";
 
 export const IG_ANNEXES_TAG = "ig-annexes/v1" as const;
 /** The graph typology an IG instance declares a directory of annexes as. */
@@ -42,3 +43,11 @@ export const IgAnnexesSchema = z
   })
   .strict();
 export type IgAnnexes = z.infer<typeof IgAnnexesSchema>;
+
+/**
+ * The declaration as a node kind, so `validators/ig-annexes.json` names a kind
+ * and `node-kinds:check` files the family under one. Unversioned, as
+ * `folio-ig-artifact-jsonld/v1` is: the tag is not SemVer, so the `$schema`
+ * literal stays a field of the shape. Strict, as the schema is.
+ */
+export const IgAnnexesKind = nodeKind("ig-annexes", [], IgAnnexesSchema.shape, { strict: true });
