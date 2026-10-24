@@ -51,7 +51,9 @@ work, built as a library on top of the Publisher) and `ig-ast-delta` (list,
 check, diff and render IG ASTs; `scripts/ig-ast.ts`). The package manifest is
 the list, not this sentence.
 `skills/fhir-client/` — `smart-launch` and `fhir-client-operations`, which use
-the SMARTerFHIR library. Nothing else, and the declaration says so: a declared-but-absent directory is the
+the SMARTerFHIR library. `docs/`: this layer's pages on the platform's site
+(the IG Publisher and FHIR content, authored under `docs/source/` and
+rendered by the platform's docs-page run), plus the `ig-ast` wireframe. Nothing else, and the declaration says so: a declared-but-absent directory is the
 `dh4f` defect, where a consumer scans nothing and reports a clean run over it.
 
 ## An IG repository declares nothing of this layer's
