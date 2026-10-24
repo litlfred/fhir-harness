@@ -21,6 +21,7 @@
       "@type": "@id"
     },
     "kind": "cat-harness:kind",
+    "label": "cat-harness:label",
     "licenceRecord": {
       "@id": "cat-harness:licenceRecord",
       "@type": "@json"
