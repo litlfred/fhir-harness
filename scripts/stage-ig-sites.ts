@@ -197,7 +197,7 @@ export function artifactsFor(root: string, pagesHref = "../artifact/", opts: { f
  * 2026-10-10: the data dictionary in the KG, dynamically loaded). The
  * directory holds `annexes.json` (`ig-annexes/v1`, {@link IgAnnexesSchema}):
  * `{ $schema, annexes: [{ page, file, columns? }] }`, with `file` relative to
- * the directory, so an annex is a node of the instance's graph rather than a
+ * the directory (it may name a file in a nested directory), so an annex is a node of the instance's graph rather than a
  * build-time product. A bare array of the same records is read too: it is
  * the shape `fhir-artifact-index/annexes.json` carried before the contract
  * had a kind (fhir-harness#33).
@@ -220,11 +220,11 @@ export function annexesIn(dir: string): StageOptions["annexes"] {
 
 /**
  * The directories an instance declares as the generic `ig-annex` kind
- * (`typologies/ig-annex.json`), absolute, in declaration order. A directory
- * may carry a second kind beside it (an overlay's own kind that types the
- * annex files themselves), as `ig-pages` sits beside `docs`. One that is
- * declared and absent from the checkout (an index that does not mount it)
- * is skipped and said, not read as empty.
+ * (`typologies/ig-annex.json`), absolute, in declaration order. The annex
+ * files themselves may sit in a directory nested inside, declared with the
+ * kind of the layer that writes them. One that is declared and absent from
+ * the checkout (an index that does not mount it) is skipped and said, not
+ * read as empty.
  */
 export function annexDirsFor(root: string, log: (s: string) => void = (s) => console.error(s)): string[] {
   const out: string[] = [];

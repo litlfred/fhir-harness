@@ -226,9 +226,10 @@ the IG's own and no AST holds it. It is a directory of the generic `ig-annex`
 kind (`typologies/ig-annex.json`) holding `annexes.json` (`ig-annexes/v1`:
 `{ page, file, columns? }` per annex, `file` beside it). `compose` and
 `stage-ig-sites.ts` both read it through `annexesFor`, copy each file to
-`assets/annex/` and mount `ig-annex.js` on the page. The same directory
-carries the producing layer's own kind for the files themselves. This layer
-names none of them. An index still reads a committed
+`assets/annex/` and mount `ig-annex.js` on the page. The files themselves
+sit in a directory nested inside, declared with the producing layer's own
+kind, because each kind owns the `$schema` families of its own directory.
+This layer names none of them. An index still reads a committed
 `fhir-artifact-index/annexes.json` where one is held. That is the location
 before the kind existed, and an IG repository does not use it (#124).
 

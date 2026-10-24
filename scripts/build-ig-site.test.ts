@@ -1384,16 +1384,21 @@ describe("the annex contract: an ig-annex directory the instance declares (fm9n)
     rmSync(d, { recursive: true, force: true });
   });
 
-  test("annexesFor reads every declared ig-annex directory, beside another kind, and nothing undeclared", () => {
-    const at = ig({ directories: [{ id: "an-ig-annexes", path: "annexes/", graphTypologies: ["docs", "ig-annex"] }] });
-    mkdirSync(join(at, "annexes"));
-    writeFileSync(join(at, "annexes", "t.json"), table);
-    writeFileSync(join(at, "annexes", "annexes.json"), JSON.stringify({ $schema: "ig-annexes/v1", annexes: [{ page: "dictionary.md", file: "t.json" }] }));
+  test("annexesFor reads every declared ig-annex directory, a file in a nested directory of another kind, and nothing undeclared", () => {
+    const at = ig({
+      directories: [
+        { id: "an-ig-annexes", path: "annexes/", graphTypologies: ["ig-annex"] },
+        { id: "an-ig-annex-files", path: "annexes/tables/", graphTypologies: ["docs"] },
+      ],
+    });
+    mkdirSync(join(at, "annexes", "tables"), { recursive: true });
+    writeFileSync(join(at, "annexes", "tables", "t.json"), table);
+    writeFileSync(join(at, "annexes", "annexes.json"), JSON.stringify({ $schema: "ig-annexes/v1", annexes: [{ page: "dictionary.md", file: "tables/t.json" }] }));
     // A directory holding an annexes.json that is not declared ig-annex is not read.
     mkdirSync(join(at, "other"));
     writeFileSync(join(at, "other", "annexes.json"), JSON.stringify({ $schema: "ig-annexes/v1", annexes: [{ page: "x.md", file: "nope.json" }] }));
     expect(annexDirsFor(at)).toEqual([join(at, "annexes/")]);
-    expect(annexesFor(at)).toEqual([{ page: "dictionary.md", src: join(at, "annexes", "t.json") }]);
+    expect(annexesFor(at)).toEqual([{ page: "dictionary.md", src: join(at, "annexes", "tables", "t.json") }]);
     // What compose and stage-ig-sites hand stageIgSite: the page mounts the loader.
     const out = join(at, "..", "out");
     const r = stageIgSite(at, out, { annexes: annexesFor(at) });
