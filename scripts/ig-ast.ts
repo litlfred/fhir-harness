@@ -114,6 +114,8 @@ export interface AstListing {
   edgesResolvedInIg: number;
   edgesByOrigin: Record<string, number>;
   mixed: boolean;
+  /** Which kind of build: see {@link buildKind}. */
+  kind: AstBuildKind;
   builtAt: Record<string, number>;
   provisional: string[];
 }
@@ -128,9 +130,34 @@ export function listAst(ast: Ast): AstListing {
     edgesResolvedInIg: ast.edges.filter((e) => e.resolved).length,
     edgesByOrigin: sortKeys(count(ast.edges, (e) => e.origin)),
     mixed: ast.manifest.mixed === true,
+    kind: buildKind(ast),
     builtAt: sortKeys(count(ast.manifest.resources, (r) => r.builtAt ?? "(single build)")),
     provisional: ast.manifest.provisional ?? [],
   };
+}
+
+// ── build kind ─────────────────────────────────────────────────────────────
+
+/**
+ * Which kind of Publisher build an AST came from (phase P4, bean h3tx; owner,
+ * 2026-10-24, option C). `incremental` is a merge of a partial rebuild over an
+ * earlier AST (`mixed`, with an `incremental` lineage); `full` is one ordinary
+ * run. A release is cut from a `full` AST only: {@link refuseIncremental}.
+ */
+export type AstBuildKind = "full" | "incremental";
+
+export function buildKind(ast: Pick<Ast, "manifest">): AstBuildKind {
+  return ast.manifest.mixed === true || ast.manifest.incremental !== undefined ? "incremental" : "full";
+}
+
+/** Why a release may not be cut from this AST, or undefined when it may. */
+export function refuseIncremental(ast: Pick<Ast, "manifest">): string | undefined {
+  if (buildKind(ast) === "full") return undefined;
+  const l = ast.manifest.incremental as { base?: string; head?: string; rebuilt?: number; kept?: number } | undefined;
+  return (
+    `this AST is an incremental build${l ? ` (base ${l.base?.slice(0, 7) ?? "?"}, head ${l.head?.slice(0, 7) ?? "?"}: ${l.rebuilt ?? "?"} rebuilt, ${l.kept ?? "?"} kept)` : ""}. ` +
+    "A release is cut from a full build: run the AST refresh with force"
+  );
 }
 
 // ── validity ───────────────────────────────────────────────────────────────
@@ -766,7 +793,7 @@ if (import.meta.main) {
   const pos = args.filter((a, i) => !a.startsWith("--") && !(i > 0 && args[i - 1]!.startsWith("--")));
   const usage =
     "usage: ig-ast.ts list <ast> | validity <ast> --ig <root> [--toolchain <s>] [--at <rev>] | digest --ig <root> [--at <rev>] | " +
-    "source-inputs <ast> --digest <hex> --pre-export <command> | " +
+    "source-inputs <ast> --digest <hex> --pre-export <command> | build-kind <ast> [--require-full] | " +
     "diff <base-ast> <head-ast> [--plan plan.json] [--json out.json] [--site dir] | render <delta.json> --site dir | " +
     "jsonld <ast> | schema [--check]";
   if (cmd === "list" && pos[0]) {
@@ -782,6 +809,15 @@ if (import.meta.main) {
       process.exit(2);
     }
     console.log(d);
+  } else if (cmd === "build-kind" && pos[0]) {
+    // P4: `--require-full` is the release guard — exit 1 on an incremental AST.
+    const ast = readAst(pos[0]);
+    console.log(buildKind(ast));
+    const why = args.includes("--require-full") ? refuseIncremental(ast) : undefined;
+    if (why) {
+      console.error(`✗ ${why}`);
+      process.exit(1);
+    }
   } else if (cmd === "source-inputs" && pos[0] && opt("--digest") && opt("--pre-export")) {
     const r = recordSourceInputs(pos[0], opt("--digest")!, opt("--pre-export")!);
     console.log(`inputs.inputDigest: ${r.source} (the source); the prepared tree's, ${r.prepared}, kept under preExport`);

@@ -21,6 +21,15 @@
 #      seeds the cache branch with `ig-cache.sh seed --push`.
 #   5. a later commit that changes no IG input does not make the cache stale
 #      (`ig-ast.ts` `sameSourceAs`), so most merges need no rebuild.
+#   6. a STALE cache is rebuilt INCREMENTALLY (`IncrementalBuildCli`: only the
+#      cone of what changed is rebuilt and merged over the cache; phase P4,
+#      owner 2026-10-24, option C). It falls back to a full build when the
+#      plan cannot tell, the build fails, or the merged AST is not valid. A
+#      `force` run, a `pre-export` caller, or a cache that is missing or
+#      cannot-tell always builds in full. A RELEASE is cut from a full build
+#      only: `ig-ast.ts build-kind output-ast --require-full` refuses an
+#      incremental AST, and the site's `folio-build.json` says which kind it
+#      was built from (`ast.kind`).
 #
 # The cache is shared by every build of the IG, so only a build of a commit on
 # the caller's DEFAULT branch whose inputs (sushi-config.yaml, ig.ini, input/)
@@ -48,13 +57,13 @@ on:
         type: string
         default: main
       force:
-        description: "Rebuild even when the cache is valid for the ref"
+        description: "Rebuild in full even when the cache is valid for the ref (a release: never incremental)"
         type: boolean
         default: false
       ast-export-ref:
         description: "litlfred/fhir-ig-publisher commit carrying ast-export (AstExportCli)"
         type: string
-        default: d03a05a7bc298ce8079e0f14a47145f018db57f8
+        default: ce950d286ac7410b9d3b2411afd9e289a9badac1
       tx:
         description: "Terminology server the Publisher uses (its own default)"
         type: string
@@ -67,6 +76,9 @@ on:
       verdict:
         description: "The cache's verdict before the run: valid, stale, cannot-tell or missing"
         value: ${{ jobs.refresh.outputs.verdict }}
+      kind:
+        description: "Which kind of build made the AST this run produced: full or incremental (empty when nothing was rebuilt)"
+        value: ${{ jobs.refresh.outputs.kind }}
       seeded:
         description: "true when this run wrote the cache branch"
         value: ${{ jobs.refresh.outputs.seeded }}
@@ -83,6 +95,7 @@ jobs:
       cancel-in-progress: false
     outputs:
       verdict: ${{ steps.ast.outputs.verdict }}
+      kind: ${{ steps.build.outputs.kind }}
       seeded: ${{ steps.seed.outputs.seeded }}
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
@@ -170,11 +183,14 @@ jobs:
           ruby-version: "3.3"
 
       - name: Build the IG and export its AST
+        id: build
         if: steps.ast.outputs.rebuild == 'true'
         env:
           AST_EXPORT_REF: ${{ inputs.ast-export-ref }}
           TX_SERVER: ${{ inputs.tx }}
           PRE_EXPORT: ${{ inputs.pre-export }}
+          VERDICT: ${{ steps.ast.outputs.verdict }}
+          FORCE: ${{ inputs.force }}
         run: |
           set -o pipefail
           export PATH="$HOME/.npm-global/bin:$PATH"
@@ -184,7 +200,42 @@ jobs:
           git -C "$RUNNER_TEMP/igp" checkout -q "$AST_EXPORT_REF"
           (cd "$RUNNER_TEMP/igp/ast-export" && mvn -q -B -DskipTests compile dependency:build-classpath -Dmdep.outputFile=cp.txt)
           CP="$RUNNER_TEMP/igp/ast-export/target/classes:$(cat "$RUNNER_TEMP/igp/ast-export/cp.txt")"
+          # Incremental only over a STALE cache, from a clean tree (the build
+          # refuses any other), never for a release (force). Anything it cannot
+          # account for ends in its own full build; a failure here falls back
+          # to the full export below.
+          kind=
+          if [ "$VERDICT" = stale ] && [ "$FORCE" != true ] && [ -z "$PRE_EXPORT" ] && [ -f output-ast/manifest.json ]; then
+            rm -rf "$RUNNER_TEMP/base-ast" && mv output-ast "$RUNNER_TEMP/base-ast"
+            echo "::group::incremental build over the cache"
+            if java -Xmx10g -cp "$CP" org.hl7.fhir.igtools.ast.IncrementalBuildCli -ast "$RUNNER_TEMP/base-ast" \
+                 -ig "$GITHUB_WORKSPACE" -out "$GITHUB_WORKSPACE/output-ast" -head HEAD -tx "$TX_SERVER" \
+                 -work "$RUNNER_TEMP/incremental-work" > "$RUNNER_TEMP/ast-build.log" 2>&1 \
+               && for p in sushi-config.yaml ig.ini input; do if git ls-files --error-unmatch -- "$p" > /dev/null 2>&1; then git checkout -q HEAD -- "$p"; fi; done \
+               && git clean -fdq -- sushi-config.yaml ig.ini input \
+               && bun run fhir-harness/scripts/ig-ast.ts validity output-ast --ig . > /dev/null; then
+              kind=$(bun run fhir-harness/scripts/ig-ast.ts build-kind output-ast)
+              tail -n 20 "$RUNNER_TEMP/ast-build.log"
+            else
+              tail -n 40 "$RUNNER_TEMP/ast-build.log"
+              echo "::warning::the incremental build failed or its AST is not valid: building in full"
+              kind=
+            fi
+            echo "::endgroup::"
+          fi
+          # `kind` is set only when IncrementalBuildCli produced a valid AST. It
+          # is `full` when its own plan chose a full build (nothing more to do).
+          if [ -n "$kind" ]; then
+            echo "kind=$kind" >> "$GITHUB_OUTPUT"
+            echo "::notice::AST rebuilt by IncrementalBuildCli: $kind (a release needs a force run)"
+            exit 0
+          fi
+          echo "kind=full" >> "$GITHUB_OUTPUT"
           rm -rf output-ast
+          for p in sushi-config.yaml ig.ini input; do
+            if git ls-files --error-unmatch -- "$p" > /dev/null 2>&1; then git checkout -q HEAD -- "$p"; fi
+          done
+          git clean -fdq -- sushi-config.yaml ig.ini input
           if [ -n "$PRE_EXPORT" ]; then
             # The SOURCE's input digest, before anything prepares the tree. Only
             # here: a caller without pre-export may pin a fhir-harness whose

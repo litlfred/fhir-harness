@@ -10,7 +10,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { spawnSync } from "node:child_process";
 
-import { astJsonLd, astValidity, diffAst, igAstSchemaFiles, inputDigest, inputDigestAt, listAst, readAst, recordSourceInputs, renderDelta } from "./ig-ast";
+import { astJsonLd, astValidity, buildKind, refuseIncremental, diffAst, igAstSchemaFiles, inputDigest, inputDigestAt, listAst, readAst, recordSourceInputs, renderDelta } from "./ig-ast";
 import { igAstJsonSchemas } from "../schemas/ig-ast.ts";
 import Ajv from "ajv";
 
@@ -378,5 +378,41 @@ describe("the formats, declared once — JSON Schema and JSON-LD for downstream 
     for (const [name, text] of Object.entries(igAstSchemaFiles())) {
       expect(readFileSync(join(import.meta.dir, "..", "schemas", name), "utf-8")).toBe(text);
     }
+  });
+});
+
+describe("build kind — a release is cut from a full build (phase P4, bean h3tx)", () => {
+  const m = (extra: Record<string, unknown>) => ({ manifest: { resources: [], ...extra } }) as unknown as Parameters<typeof buildKind>[0];
+
+  test("one ordinary run is full, and may be released", () => {
+    expect(buildKind(m({}))).toBe("full");
+    expect(refuseIncremental(m({}))).toBeUndefined();
+  });
+
+  test("a merged AST is incremental, and the guard says why it is refused", () => {
+    const inc = m({ mixed: true, incremental: { base: "aaaaaaaa1", head: "bbbbbbbb2", rebuilt: 84, kept: 664 } });
+    expect(buildKind(inc)).toBe("incremental");
+    const why = refuseIncremental(inc)!;
+    expect(why).toContain("incremental build (base aaaaaaa, head bbbbbbb: 84 rebuilt, 664 kept)");
+    expect(why).toContain("full build");
+  });
+
+  test("the CLI's --require-full exits 1 on an incremental AST, 0 on a full one", () => {
+    const d = mkdtempSync(join(tmpdir(), "igast-kind-"));
+    const write = (dir: string, extra: Record<string, unknown>) => {
+      mkdirSync(dir, { recursive: true });
+      writeFileSync(join(dir, "manifest.json"), JSON.stringify({ $schema: "ig-ast/v1", authority: "cache", provisional: [], resources: [], ...extra }));
+      writeFileSync(join(dir, "dependencies.json"), JSON.stringify({ $schema: "ig-ast-dependencies/v1", dependencies: [] }));
+    };
+    write(join(d, "full"), {});
+    write(join(d, "inc"), { mixed: true, incremental: { base: "a", head: "b", rebuilt: 1, kept: 2, removed: 0 } });
+    const run = (dir: string) => spawnSync("bun", [join(import.meta.dir, "ig-ast.ts"), "build-kind", dir, "--require-full"], { encoding: "utf-8" });
+    const f = run(join(d, "full"));
+    expect(f.stdout.trim()).toBe("full");
+    expect(f.status).toBe(0);
+    const i = run(join(d, "inc"));
+    expect(i.stdout.trim()).toBe("incremental");
+    expect(i.status).toBe(1);
+    rmSync(d, { recursive: true, force: true });
   });
 });
