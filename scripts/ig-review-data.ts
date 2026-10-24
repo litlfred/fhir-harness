@@ -246,6 +246,52 @@ export function writeReviewData(site: string, r: IgChangeSetResult): void {
   writeFileSync(join(site, "changeset-text.json"), `${JSON.stringify(r.text)}\n`);
 }
 
+/** The open pull request a preview's branch belongs to. */
+export interface OpenPr {
+  number: string;
+  url: string;
+}
+
+/**
+ * The open PR for `branch`, or `null` when there is none or it cannot be
+ * found (bean zvl0). A `pull_request` run names its PR in the event payload,
+ * so that is read first and needs no network. A run started by hand
+ * (`workflow_dispatch`) carries no PR, so the REST API is asked for the
+ * branch's open PRs (`pulls?head=owner:branch`). A token is used when the
+ * environment has one; without it the call is anonymous, which a public
+ * repository allows. Any failure reads as "no PR found", never as a guess.
+ */
+export async function openPrFor(
+  ownerRepo: string,
+  branch: string,
+  o: { env?: Record<string, string | undefined>; fetch?: typeof fetch } = {},
+): Promise<OpenPr | null> {
+  const env = o.env ?? process.env;
+  const eventPath = env.GITHUB_EVENT_PATH;
+  if (eventPath && existsSync(eventPath)) {
+    try {
+      const pr = (JSON.parse(readFileSync(eventPath, "utf-8")) as { pull_request?: { number?: number; html_url?: string } }).pull_request;
+      if (pr?.number) return { number: String(pr.number), url: pr.html_url ?? `https://github.com/${ownerRepo}/pull/${pr.number}` };
+    } catch {
+      // An unreadable payload is not a PR; fall through to the lookup.
+    }
+  }
+  const [owner] = ownerRepo.split("/");
+  const token = env.GITHUB_TOKEN || env.GH_TOKEN;
+  const api = `https://api.github.com/repos/${ownerRepo}/pulls?state=open&head=${encodeURIComponent(`${owner}:${branch}`)}`;
+  try {
+    const res = await (o.fetch ?? fetch)(api, {
+      headers: { accept: "application/vnd.github+json", ...(token ? { authorization: `Bearer ${token}` } : {}) },
+    });
+    if (!res.ok) return null;
+    const list = (await res.json()) as { number?: number; html_url?: string }[];
+    const pr = Array.isArray(list) ? list[0] : undefined;
+    return pr?.number ? { number: String(pr.number), url: pr.html_url ?? `https://github.com/${ownerRepo}/pull/${pr.number}` } : null;
+  } catch {
+    return null;
+  }
+}
+
 /**
  * Everything a preview's review needs, written into the finished site before
  * it is published: the ChangeSet and its text, the review page at
@@ -256,7 +302,7 @@ export function writeReviewData(site: string, r: IgChangeSetResult): void {
  */
 export function igPreviewData(
   site: string,
-  f: { ig: string; render: (md: string) => string; branch: string; sha: string; base: string; ownerRepo: string; runUrl: string },
+  f: { ig: string; render: (md: string) => string; branch: string; sha: string; base: string; ownerRepo: string; runUrl: string; pr?: OpenPr | null },
   log: (s: string) => void,
 ): void {
   const fetched = git(f.ig, ["fetch", "-q", "origin", f.base]).ok;
@@ -297,8 +343,9 @@ export function igPreviewData(
     branch: f.branch,
     sha: f.sha.slice(0, 7),
     built: new Date().toISOString().replace(/\.\d+Z$/, "Z"),
-    pr: "n/a",
-    prUrl: `${gh}/pulls?q=head%3A${encodeURIComponent(f.branch)}`,
+    // `"n/a"` is the banner's "no open PR found"; its link still searches the branch's PRs.
+    pr: f.pr?.number ?? "n/a",
+    prUrl: f.pr?.url ?? `${gh}/pulls?q=head%3A${encodeURIComponent(f.branch)}`,
     branchUrl: `${gh}/tree/${f.branch}`,
     issue: null,
     issueUrl: null,
