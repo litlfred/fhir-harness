@@ -85,6 +85,16 @@
  * `ig-ast-site.sh` follows), else the instance declaration's `iriBase`, else
  * none, and the run says which.
  *
+ * The SITE decides the owner, not the declaration. A declaration names one
+ * repository and one `iriBase`, and both travel with every copy of the
+ * instance. A checkout that mounts the instance from a different repository
+ * (a sync of the same IG to another owner, say) is building that repository's
+ * site. So the repository is the one the checkout's `index.lock.json` mounts
+ * the instance from, when it names one, and the IG is cloned from there. An
+ * `iriBase` that is the declared repository's own GitHub Pages address is
+ * re-based on the mounted repository's ({@link rebaseOnMount}). Any other
+ * `iriBase` is a site the IG chose, and is kept.
+ *
  * A committed `index.json` still on disk is read for its grouping
  * (`--keep-published-grouping`) before it is replaced, so the Publisher's
  * editorial categories survive the first build. Once the committed copy is
@@ -116,7 +126,10 @@ const HERE = import.meta.dir;
 export interface IgTarget {
   name: string;
   root: string;
+  /** The repository the checkout mounts the instance from, else the declared one. */
   repository: string;
+  /** The repository the instance's declaration names, when the mount differs from it. */
+  declaredRepository?: string;
   /** The family branches found on the repository. */
   branches: string[];
 }
@@ -136,28 +149,47 @@ function declarationOf(root: string): Record<string, unknown> | undefined {
   }
 }
 
-/** The checkout's instances, as the inheritance needs them, with their roots. */
-export function instancesIn(checkout: string): (InstanceFacts & { root: string })[] {
-  const out: (InstanceFacts & { root: string })[] = [];
+const OWNER_REPO = /^[\w.-]+\/[\w.-]+$/;
+
+/** Each instance's repository as the checkout's `index.lock.json` mounts it; empty when there is no lock. */
+export function lockedRepositories(checkout: string): Map<string, string> {
+  const out = new Map<string, string>();
+  try {
+    const lock = JSON.parse(readFileSync(join(checkout, "index.lock.json"), "utf-8")) as { instances?: { instance?: unknown; repository?: unknown }[] };
+    for (const i of lock.instances ?? []) {
+      if (typeof i.instance === "string" && typeof i.repository === "string" && OWNER_REPO.test(i.repository)) out.set(i.instance, i.repository);
+    }
+  } catch {
+    // No lock, or not one this reads: the declarations' repositories stand.
+  }
+  return out;
+}
+
+/** The checkout's instances, as the inheritance needs them, with their roots. The repository is the mounted one, else the declared one. */
+export function instancesIn(checkout: string): (InstanceFacts & { root: string; declaredRepository?: string })[] {
+  const out: (InstanceFacts & { root: string; declaredRepository?: string })[] = [];
+  const locked = lockedRepositories(checkout);
   for (const root of instanceRootsIn(checkout)) {
     const d = declarationOf(root);
     const name = typeof d?.["name"] === "string" ? (d["name"] as string) : basename(root);
-    const repository = typeof d?.["repository"] === "string" ? (d["repository"] as string) : undefined;
+    const declared = typeof d?.["repository"] === "string" ? (d["repository"] as string) : undefined;
+    const mounted = locked.get(name);
+    const repository = mounted ?? declared;
     const needs = Array.isArray(d?.["needs"]) ? (d!["needs"] as unknown[]).filter((x): x is string => typeof x === "string") : [];
-    out.push({ name, root, needs, ...(repository ? { repository } : {}) });
+    out.push({ name, root, needs, ...(repository ? { repository } : {}), ...(declared && mounted && declared !== mounted ? { declaredRepository: declared } : {}) });
   }
   return out.sort((a, b) => a.name.localeCompare(b.name));
 }
 
 /** The IG instances to build, and every instance that needs this layer but is skipped. */
-export function igTargets(instances: readonly (InstanceFacts & { root: string })[], list: BranchLister, only?: string): { targets: IgTarget[]; skipped: Skipped[] } {
+export function igTargets(instances: readonly (InstanceFacts & { root: string; declaredRepository?: string })[], list: BranchLister, only?: string): { targets: IgTarget[]; skipped: Skipped[] } {
   const targets: IgTarget[] = [];
   const skipped: Skipped[] = [];
   const need = needing(instances, LAYER);
   for (const i of instances) {
     if (!need.has(i.name)) continue;
     if (only !== undefined && i.name !== only) continue;
-    if (i.repository === undefined || !/^[\w.-]+\/[\w.-]+$/.test(i.repository)) {
+    if (i.repository === undefined || !OWNER_REPO.test(i.repository)) {
       skipped.push({ name: i.name, why: "declares no repository (owner/repo)" });
       continue;
     }
@@ -171,7 +203,7 @@ export function igTargets(instances: readonly (InstanceFacts & { root: string })
       skipped.push({ name: i.name, why: `${i.repository} carries no AST branch family (${AST_FAMILY_PREFIXES.join(", ")}): not an IG, or its AST was never seeded` });
       continue;
     }
-    targets.push({ name: i.name, root: i.root, repository: i.repository, branches });
+    targets.push({ name: i.name, root: i.root, repository: i.repository, ...(i.declaredRepository ? { declaredRepository: i.declaredRepository } : {}), branches });
   }
   return { targets, skipped };
 }
@@ -209,12 +241,34 @@ export function carryFromCommitted(built: Record<string, unknown>, committed: Re
   return kept;
 }
 
-/** Where the IG is published: the committed copy's site, else the declaration's `iriBase`, else none. */
-export function publishedBase(committed: Record<string, unknown> | undefined, declaration: Record<string, unknown> | undefined): { base?: string; from: string } {
+/**
+ * `iri` re-based on the mounted repository, when it is the declared
+ * repository's own GitHub Pages address (`https://<owner>.github.io/<repo>`,
+ * and anything under it). Any other address is returned unchanged.
+ */
+export function rebaseOnMount(iri: string, declared: string | undefined, mounted: string | undefined): string {
+  if (!declared || !mounted || declared === mounted || !OWNER_REPO.test(declared) || !OWNER_REPO.test(mounted)) return iri;
+  const [dOwner, dRepo] = declared.split("/");
+  const [mOwner, mRepo] = mounted.split("/");
+  const m = /^https?:\/\/([^/]+)\.github\.io\/([^/]+)(\/.*)?$/i.exec(iri);
+  if (!m || m[1]!.toLowerCase() !== dOwner!.toLowerCase() || m[2] !== dRepo) return iri;
+  return `https://${mOwner!.toLowerCase()}.github.io/${mRepo}${m[3] ?? ""}`;
+}
+
+/**
+ * Where the IG is published: the committed copy's site, else the
+ * declaration's `iriBase` (re-based on the mounted repository, {@link
+ * rebaseOnMount}), else none.
+ */
+export function publishedBase(committed: Record<string, unknown> | undefined, declaration: Record<string, unknown> | undefined, mounted?: string): { base?: string; from: string } {
   const src = committed?.["source"] as { kind?: unknown; of?: unknown } | undefined;
   if ((src?.kind === "gh-pages" || src?.kind === "url") && typeof src.of === "string" && src.of.length > 0) return { base: src.of.replace(/\/+$/, ""), from: "the committed copy's source" };
   const iri = declaration?.["iriBase"];
-  if (typeof iri === "string" && /^https?:\/\//.test(iri)) return { base: iri.replace(/\/+$/, ""), from: "the declaration's iriBase" };
+  if (typeof iri === "string" && /^https?:\/\//.test(iri)) {
+    const declared = typeof declaration?.["repository"] === "string" ? (declaration["repository"] as string) : undefined;
+    const base = rebaseOnMount(iri, declared, mounted).replace(/\/+$/, "");
+    return { base, from: base === iri.replace(/\/+$/, "") ? "the declaration's iriBase" : `the declaration's iriBase, re-based on ${mounted}, the repository this checkout mounts` };
+  }
   return { from: "nowhere: no published links" };
 }
 
@@ -382,7 +436,7 @@ export function buildOne(t: IgTarget, work: string, log: (s: string) => void, ch
   if ("error" in sc) return [`sidecars: ${sc.error}`];
   const sidecars = sc.at ? ["--sidecars", sc.at, "--sidecars-local", "fhir-artifact-index/sidecars"] : [];
   const committedIx = existsSync(indexPath) ? (JSON.parse(readFileSync(indexPath, "utf-8")) as Record<string, unknown>) : undefined;
-  const pub = publishedBase(committedIx, declarationOf(t.root));
+  const pub = publishedBase(committedIx, declarationOf(t.root), t.repository);
   log(`  published at: ${pub.base ?? "unknown"} (from ${pub.from})`);
   const built = join(work, `${t.name}.index.json`);
   const ix = run("bun", ["run", join(HERE, "ast-to-artifact-index.ts"), "--ast", ast, "--instance-id", t.name, "--out", built, ...grouping, ...sidecars, ...(pub.base ? ["--published-base", pub.base] : [])]);

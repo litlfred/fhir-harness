@@ -15,7 +15,7 @@ import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { carryFromCommitted, contextsFrom, fhirVersionsOf, hubFrom, igTargets, packFromAst, publishedBase } from "./build-ig-indexes.ts";
+import { carryFromCommitted, contextsFrom, fhirVersionsOf, hubFrom, igTargets, lockedRepositories, packFromAst, publishedBase, rebaseOnMount } from "./build-ig-indexes.ts";
 import type { BranchLister } from "./gen-ig-ast-pages.ts";
 
 const instances = [
@@ -79,6 +79,42 @@ describe("publishedBase", () => {
     expect(publishedBase({ source: { kind: "gh-pages", of: "https://example.org/ig/" } }, { iriBase: "https://other.example/" }).base).toBe("https://example.org/ig");
     expect(publishedBase({ source: { kind: "sushi-config", of: "https://github.com/x/y" } }, { iriBase: "https://other.example/ig/" }).base).toBe("https://other.example/ig");
     expect(publishedBase(undefined, undefined).base).toBeUndefined();
+  });
+
+  it("re-bases the declared repository's own Pages address on the repository the checkout mounts", () => {
+    const decl = { repository: "alpha/ig", iriBase: "https://alpha.github.io/ig/" };
+    expect(publishedBase(undefined, decl, "beta/ig").base).toBe("https://beta.github.io/ig");
+    expect(publishedBase(undefined, decl, "beta/ig").from).toContain("beta/ig");
+    expect(publishedBase(undefined, decl, "alpha/ig").base).toBe("https://alpha.github.io/ig");
+    expect(publishedBase(undefined, decl).base).toBe("https://alpha.github.io/ig");
+    // A committed copy's site still wins: it is what was published.
+    expect(publishedBase({ source: { kind: "gh-pages", of: "https://gamma.github.io/ig" } }, decl, "beta/ig").base).toBe("https://gamma.github.io/ig");
+  });
+});
+
+describe("rebaseOnMount", () => {
+  it("re-bases only the declared repository's own Pages address, keeping the path under it", () => {
+    expect(rebaseOnMount("https://Alpha.github.io/ig/sub/", "alpha/ig", "Beta/ig")).toBe("https://beta.github.io/ig/sub/");
+    expect(rebaseOnMount("https://alpha.github.io/ig", "alpha/ig", "beta/ig2")).toBe("https://beta.github.io/ig2");
+  });
+  it("keeps any other address: a site the IG chose is not the owner's to move", () => {
+    expect(rebaseOnMount("https://ig.example.org/", "alpha/ig", "beta/ig")).toBe("https://ig.example.org/");
+    expect(rebaseOnMount("https://alpha.github.io/other/", "alpha/ig", "beta/ig")).toBe("https://alpha.github.io/other/");
+    expect(rebaseOnMount("https://alpha.github.io/ig/", undefined, "beta/ig")).toBe("https://alpha.github.io/ig/");
+    expect(rebaseOnMount("https://alpha.github.io/ig/", "alpha/ig", undefined)).toBe("https://alpha.github.io/ig/");
+  });
+});
+
+describe("lockedRepositories", () => {
+  it("reads each instance's mounted repository from the checkout's lock, and nothing without one", () => {
+    const dir = mkdtempSync(join(tmpdir(), "ig-index-lock-"));
+    try {
+      expect(lockedRepositories(dir).size).toBe(0);
+      writeFileSync(join(dir, "index.lock.json"), JSON.stringify({ instances: [{ instance: "ig", repository: "beta/ig" }, { instance: "odd", repository: "not a repo" }, { instance: "local" }] }));
+      expect([...lockedRepositories(dir)]).toEqual([["ig", "beta/ig"]]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });
 
