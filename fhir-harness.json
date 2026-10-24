@@ -121,6 +121,14 @@
       "graphTypologies": [
         "qa"
       ]
+    },
+    {
+      "id": "glossary",
+      "path": "glossary/",
+      "description": "FHIR Harness's generated glossary (`glossary/generated/fhir-harness/`): candidate `folio-glossary/v1` schemes extracted from this layer's tools, skills, BPMN activities and schema fields by core's `glossary:page`. Moved here from `folio-assistant-core/glossary/generated/fhir-harness/` (bean q3n9, owner ruling 2026-10-24: a scheme is keyed by (instance, scheme), and each layer holds its own glossary, following rfev).",
+      "graphTypologies": [
+        "glossary"
+      ]
     }
   ],
   "assets": [
