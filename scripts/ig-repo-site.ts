@@ -164,7 +164,7 @@ import { igOpenapiGraph, OPENAPI_DIR } from "../../cat-harness-tools/openapi/scr
 import type { FhirArtifactIndex } from "../schemas/fhir-artifact-index.js";
 import { buildMenu } from "./ingest-ig-menu.ts";
 import { siteBuild, type SiteBuild, STAMP_FILE } from "./site-build-stamp.ts";
-import { artifactsFor, copyDocsInto, footerFor, githubEditBase, instanceNeeds, webpagePalette } from "./stage-ig-sites.ts";
+import { annexesFor, artifactsFor, copyDocsInto, footerFor, githubEditBase, instanceNeeds, webpagePalette } from "./stage-ig-sites.ts";
 
 /**
  * The file, named by the site build in this variable, in which a step lists
@@ -515,6 +515,7 @@ export function compose(o: { docs: string; ig: string; baseurl: string; ast?: st
       cpSync(join(inst, INDEX_SERVED, "index.json"), join(o.work, INDEX_WORK, "index.json"));
     }
     const plantumlJar = plantumlJarFor(o.plantumlJar, process.env, homedir()) ?? (hasPlantuml(ig) ? fetchPlantuml(homedir(), log) : undefined);
+    const annexes = annexesFor(ig, log);
     const r = stageIgSite(src, site, {
       baseurl,
       menu,
@@ -525,6 +526,9 @@ export function compose(o: { docs: string; ig: string; baseurl: string; ast?: st
       ...(theme.palette ? { palette: theme.palette } : {}),
       ...(plantumlJar ? { plantumlJar } : {}),
       ...(editBase ? { editBase } : {}),
+      // The IG's own annexes (`ig-annex` directories it declares), as an
+      // index's IG site places them (stage-ig-sites.ts).
+      ...(annexes ? { annexes } : {}),
       // A checkout with an OpenAPI graph gets its `openapi/` pages from
       // `ig-site:openapi`, a later step that refuses a path the site holds,
       // so the IG's own `input/images/openapi/` (the Publisher's Swagger UI)

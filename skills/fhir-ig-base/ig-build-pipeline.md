@@ -255,6 +255,20 @@ artefact index at `fhir-artifact-index/index.json`, and the AST as
 `fhir-artifact-index/index.json` is kept when it holds one, since the AST
 stops before the Publisher assigns categories.
 
+**Annexes an IG's pages load on demand** (owner, 2026-10-10: the data
+dictionary in the graph, loaded dynamically, not the full workbook). This is
+the one directory an IG repository declares for this layer, because the data is
+the IG's own and no AST holds it. It is a directory of the generic `ig-annex`
+kind (`typologies/ig-annex.json`) holding `annexes.json` (`ig-annexes/v1`:
+`{ page, file, columns? }` per annex, `file` beside it). `compose` and
+`stage-ig-sites.ts` both read it through `annexesFor`, copy each file to
+`assets/annex/` and mount `ig-annex.js` on the page. The files themselves
+sit in a directory nested inside, declared with the producing layer's own
+kind, because each kind owns the `$schema` families of its own directory.
+This layer names none of them. An index still reads a committed
+`fhir-artifact-index/annexes.json` where one is held. That is the location
+before the kind existed, and an IG repository does not use it (#124).
+
 ## The deploy phase, and the result that surprised me
 
 The WHO build's deploy phase is **ten steps**, read from `ghbuild.yml`:
