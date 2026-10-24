@@ -66,6 +66,39 @@ describe("igChangeSet: the default branch against the working tree", () => {
     expect(r.changeset.summary).toMatchObject({ added: 1, changed: 3, removed: 0, unchanged: 3, prose: 2, manifest: 1 });
   });
 
+  test("the outline lists the pages, then the sources, keyed as the ChangeSet's sections (bean 0om7)", () => {
+    const d = repo();
+    writeFileSync(join(d, "sushi-config.yaml"), "id: x\ntitle: \"Uganda Immunizations\"\n");
+    const r = igChangeSet({ ig: d, base: "main", render: plain });
+    const doc = r.outline.documents[0]!;
+    expect(doc).toMatchObject({ slug: "input", title: "Uganda Immunizations", page: "index.html" });
+    expect(doc.chapters.map((c) => c.title)).toEqual(["Pages", "Sources"]);
+    expect(doc.chapters[0]!.sections).toEqual([{ key: "pages::schedule", title: "Children", blocks: ["schedule/_top", "schedule/children", "schedule/women"] }]);
+    expect(doc.chapters[1]!.sections.map((s) => s.key)).toEqual(["sources::.", "sources::input", "sources::input/cql"]);
+    // Every key the ChangeSet uses is one the outline has, so its badges find a row.
+    const keys = new Set(doc.chapters.flatMap((c) => c.sections.map((s) => s.key)));
+    for (const c of r.changeset.changes) expect(keys.has((c.change === "removed" ? c.base : c.head).section)).toBe(true);
+  });
+
+  test("the rendered impact names each page with its changed anchors, and every other source as not mapped (bean 0om7)", () => {
+    const d = repo();
+    writeFileSync(join(d, "input", "pagecontent", "schedule.md"), "Ages.\n\n### Children\n| 9 years | HPV |\n{:.grid}\n");
+    writeFileSync(join(d, "input", "cql", "Logic.cql"), "define Due: birthDate + 9 years\n");
+    writeFileSync(join(d, "input", "pagecontent", "new.md"), "### Added\nx\n");
+    writeFileSync(join(d, "sushi-config.yaml"), "id: y\n");
+    const r = igChangeSet({ ig: d, base: "main", render: plain });
+    expect(r.impact).toMatchObject({ $schema: "rendered-impact/v1", method: "cone", renderer: "fhir-ig-pages" });
+    expect(r.impact.files).toEqual([
+      { path: "new.html", change: "added", role: "content", via: ["input/pagecontent/new.md"], anchors: ["added"] },
+      // "women" was removed: its id is gone from the page, so it is no anchor.
+      { path: "schedule.html", change: "changed", role: "content", via: ["input/pagecontent/schedule.md"], anchors: ["children"] },
+    ]);
+    expect(r.impact.undetermined).toEqual([
+      { input: "input/cql/Logic.cql", reason: expect.stringContaining("IG Publisher"), scope: "unknown" },
+      { input: "sushi-config.yaml", reason: expect.stringContaining("any rendered page"), scope: "all" },
+    ]);
+  });
+
   test("an unchanged tree is a determined empty, and the files land at the site root", () => {
     const d = repo();
     const r = igChangeSet({ ig: d, base: "main", render: plain });
@@ -74,6 +107,8 @@ describe("igChangeSet: the default branch against the working tree", () => {
     writeReviewData(site, r);
     expect(JSON.parse(readFileSync(join(site, "changeset.json"), "utf-8")).$schema).toBe("folio-changeset/v1");
     expect(JSON.parse(readFileSync(join(site, "changeset-text.json"), "utf-8")).$schema).toBe("folio-changeset-text/v1");
+    expect(JSON.parse(readFileSync(join(site, "rendered-impact.json"), "utf-8"))).toMatchObject({ $schema: "rendered-impact/v1", files: [], undetermined: [] });
+    expect(JSON.parse(readFileSync(join(site, "outline.json"), "utf-8")).documents).toHaveLength(1);
   });
 });
 

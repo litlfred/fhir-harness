@@ -29,6 +29,15 @@
  * no `moved` or `renamed` aspect is reported. That is stated in the summary
  * rather than guessed at.
  *
+ * ## The outline and the rendered impact (bean 0om7)
+ *
+ * The same blocks give the review page its outline (`outline.json`: the IG's
+ * pages, then its source directories, keyed by the ChangeSet's sections) and
+ * its list of rendered pages (`rendered-impact.json`, a `cone` prediction:
+ * each changed narrative page with the heading ids it alters). Sources the
+ * IG Publisher renders into artefact pages are listed as undetermined, with
+ * that reason, because this preview does not map them to pages.
+ *
  * Nothing here is WHO-specific: any IG's pages and sources are read the same way.
  */
 import { spawnSync } from "node:child_process";
@@ -131,9 +140,120 @@ export function blocksOf(paths: string[], read: (p: string) => Buffer): Map<stri
   return out;
 }
 
+/** The review page's outline (`outline.json`, cat-harness-tools `review-nav.ts` `NavOutline`). */
+export interface IgOutline {
+  documents: Array<{
+    slug: string;
+    title: string;
+    page: string;
+    chapters: Array<{ title: string; sections: Array<{ key: string; title: string; blocks: string[] }> }>;
+  }>;
+}
+
+/** A `rendered-impact/v1` (cat-harness `schemas/rendered-impact.ts`), as far as an IG preview can say it. */
+export interface IgRenderedImpact {
+  $schema: "rendered-impact/v1";
+  renderer: string;
+  method: "cone";
+  base?: string;
+  head?: string;
+  inputs: string[];
+  files: Array<{ path: string; change: "changed" | "added" | "removed"; role: "content"; via: string[]; anchors?: string[] }>;
+  undetermined: Array<{ input: string; reason: string; scope: "unknown" | "all" }>;
+}
+
 export interface IgChangeSetResult {
   changeset: { $schema: string; folio: string; base: { ref: string; commit: string | null }; head: { ref: string; commit: string | null }; summary: Record<string, number>; changes: IgChange[] };
   text: { $schema: string; blocks: Record<string, { base?: { prose: string; html: string }; head?: { prose: string; html: string } }> };
+  outline: IgOutline;
+  impact: IgRenderedImpact;
+}
+
+/**
+ * The outline of the IG as the review page shows it (bean 0om7): one document,
+ * its narrative pages first and then its sources, one section per page or
+ * source directory. A section's key is the ChangeSet's `section`, so the
+ * page's badges and jumps find it. The document's slug is `input`, the first
+ * segment of every block's file, which is how the review page names a
+ * block's document.
+ */
+export function igOutline(head: Map<string, Side>, title = "Implementation Guide"): IgOutline {
+  const pages = new Map<string, { title: string; blocks: string[] }>();
+  const sources = new Map<string, string[]>();
+  for (const [label, s] of head) {
+    if (s.at.kind === "page-section") {
+      const name = s.at.section.slice("pages::".length);
+      const p = pages.get(name) ?? { title: "", blocks: [] };
+      if (!p.title && s.at.anchor) p.title = /^#{1,6}\s+(.+?)\s*#*\s*$/m.exec(s.text ?? "")?.[1]?.replace(/\{:[^}]*\}\s*$/, "").trim() ?? "";
+      p.blocks.push(label);
+      pages.set(name, p);
+    } else {
+      const dir = s.at.section.slice("sources::".length);
+      sources.set(dir, [...(sources.get(dir) ?? []), label]);
+    }
+  }
+  const sorted = <T>(m: Map<string, T>) => [...m.entries()].sort(([a], [b]) => (a === "index" ? -1 : b === "index" ? 1 : a < b ? -1 : a > b ? 1 : 0));
+  const chapters: IgOutline["documents"][number]["chapters"] = [];
+  if (pages.size) chapters.push({ title: "Pages", sections: sorted(pages).map(([name, p]) => ({ key: `pages::${name}`, title: p.title || name, blocks: p.blocks })) });
+  if (sources.size) chapters.push({ title: "Sources", sections: sorted(sources).map(([dir, blocks]) => ({ key: `sources::${dir}`, title: dir, blocks })) });
+  return { documents: [{ slug: "input", title, page: "index.html", chapters }] };
+}
+
+/** The renderer an IG preview's impact is predicted for: Jekyll over the IG's narrative pages. */
+export const IG_IMPACT_RENDERER = "fhir-ig-pages";
+
+/**
+ * Which rendered pages the change alters, predicted from the ChangeSet (bean
+ * 0om7). A narrative page's sections render to `<page>.html`, each at its
+ * heading's id, so those are listed with their anchors. Every other source
+ * (FSH, CQL, a workbook, an example) is rendered by the IG Publisher into
+ * artefact pages that this preview does not map, so it goes in `undetermined`
+ * rather than being left out: "not known" is never "no page changed".
+ * `sushi-config.yaml` can re-render any page, so its scope is `all`.
+ */
+export function igRenderedImpact(base: Map<string, Side>, head: Map<string, Side>, changes: IgChange[], refs?: { base?: string; head?: string }): IgRenderedImpact {
+  const pagesOf = (m: Map<string, Side>) => new Set([...m.values()].filter((s) => s.at.kind === "page-section").map((s) => s.at.page));
+  const before = pagesOf(base);
+  const after = pagesOf(head);
+  const files = new Map<string, { anchors: Set<string>; via: Set<string> }>();
+  const undetermined: IgRenderedImpact["undetermined"] = [];
+  const inputs = new Set<string>();
+  for (const c of changes) {
+    const at = c.change === "removed" ? c.base : c.head;
+    inputs.add(at.file);
+    if (at.kind !== "page-section") {
+      if (!undetermined.some((u) => u.input === at.file))
+        undetermined.push(
+          at.file === "sushi-config.yaml"
+            ? { input: at.file, reason: "the IG's configuration: it can change any rendered page", scope: "all" }
+            : { input: at.file, reason: "rendered by the IG Publisher into artefact pages, which this preview does not map", scope: "unknown" },
+        );
+      continue;
+    }
+    const f = files.get(at.page) ?? { anchors: new Set<string>(), via: new Set<string>() };
+    f.via.add(at.file);
+    // A removed section's id is gone from the page, so it is no place to link.
+    if (c.change !== "removed" && at.anchor) f.anchors.add(at.anchor);
+    files.set(at.page, f);
+  }
+  return {
+    $schema: "rendered-impact/v1",
+    renderer: IG_IMPACT_RENDERER,
+    method: "cone",
+    ...(refs?.base ? { base: refs.base } : {}),
+    ...(refs?.head ? { head: refs.head } : {}),
+    inputs: [...inputs].sort(),
+    files: [...files.entries()]
+      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+      .map(([path, f]) => ({
+        path,
+        change: !before.has(path) ? "added" : !after.has(path) ? "removed" : "changed",
+        role: "content" as const,
+        via: [...f.via].sort(),
+        ...(f.anchors.size ? { anchors: [...f.anchors] } : {}),
+      })),
+    undetermined,
+  };
 }
 
 /** Compare two sides' blocks: head reading order first, then what was removed. */
@@ -170,6 +290,8 @@ export function compareBlocks(
   const count = (k: IgChange["change"]) => changes.filter((c) => c.change === k).length;
   const aspect = (a: string) => changes.filter((c) => c.change === "changed" && (c.aspects as string[]).includes(a)).length;
   return {
+    outline: igOutline(head),
+    impact: igRenderedImpact(base, head, changes, { base: refs.base.ref, head: refs.head.ref }),
     changeset: {
       $schema: CHANGESET_SCHEMA,
       folio: PAGES_DIR,
@@ -230,20 +352,26 @@ export function igChangeSet(o: { ig: string; base: string; render: (md: string) 
   const base = blocksOf(basePaths, (p) => git(o.ig, ["show", `${o.base}:${p}`], "buffer").buf);
   const head = blocksOf(headPaths, (p) => readFileSync(join(o.ig, p)));
   const headCommit = git(o.ig, ["rev-parse", "HEAD"]);
-  return compareBlocks(
+  const r = compareBlocks(
     base,
     head,
     { base: { ref: o.base, commit: baseCommit.out.trim() }, head: { ref: "worktree", commit: headCommit.ok ? headCommit.out.trim() : null } },
     // A kramdown attribute line (`{:.grid}`) is Jekyll's, not text: remark would print it.
     (s) => (s.at.kind === "page-section" ? o.render((s.text ?? "").replace(/^\{:[^}\n]*\}\s*$/gm, "")) : `<pre>${escapeHtml(s.text ?? "")}</pre>`),
   );
+  // The outline is headed by the IG's own title, read from its configuration.
+  const title = head.get("sushi-config.yaml")?.text?.match(/^title:\s*["']?(.+?)["']?\s*$/m)?.[1];
+  if (title) r.outline.documents[0]!.title = title;
+  return r;
 }
 
-/** Write `changeset.json` and `changeset-text.json` at the site root. */
+/** Write `changeset.json`, `changeset-text.json`, `outline.json` and `rendered-impact.json` at the site root. */
 export function writeReviewData(site: string, r: IgChangeSetResult): void {
   mkdirSync(site, { recursive: true });
   writeFileSync(join(site, "changeset.json"), `${JSON.stringify(r.changeset)}\n`);
   writeFileSync(join(site, "changeset-text.json"), `${JSON.stringify(r.text)}\n`);
+  writeFileSync(join(site, "outline.json"), `${JSON.stringify(r.outline)}\n`);
+  writeFileSync(join(site, "rendered-impact.json"), `${JSON.stringify(r.impact)}\n`);
 }
 
 /** The open pull request a preview's branch belongs to. */
@@ -312,7 +440,7 @@ export function igPreviewData(
     r.changeset.base.ref = f.base;
     writeReviewData(site, r);
     const s = r.changeset.summary;
-    log(`· review data: ${f.base} → ${f.branch}: ${s.added} added, ${s.removed} removed, ${s.changed} changed, ${s.unchanged} unchanged (changeset.json, changeset-text.json)`);
+    log(`· review data: ${f.base} → ${f.branch}: ${s.added} added, ${s.removed} removed, ${s.changed} changed, ${s.unchanged} unchanged (changeset.json, changeset-text.json, outline.json, rendered-impact.json: ${r.impact.files.length} page(s), ${r.impact.undetermined.length} source(s) not mapped)`);
   } catch (e) {
     log(`· no ChangeSet on this preview: ${(e as Error).message}`);
   }
