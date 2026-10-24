@@ -74,11 +74,15 @@ jobs:
     if: ${{ !inputs.plan }}
     uses: litlfred/fhir-harness/.github/workflows/ig-ast-refresh.yml@main
     with:
-      # Always the default branch: only its build seeds the shared cache, so a
-      # preview of a branch that leaves the IG's inputs as they are on it finds
-      # a valid AST. A branch that changes the inputs is refused by
-      # `ig-site:ast` (stale), as the route requires.
-      ref: ${{ github.event.repository.default_branch }}
+      # The branch being published. On the default branch the run seeds the
+      # shared cache. On any other branch the cache is a no-op when the branch
+      # leaves the IG's inputs as they are; when it changes them, the run
+      # builds the branch's own AST and keeps it as this run's `output-ast`
+      # artifact (never in the shared cache), and `publish` builds the preview
+      # from it. Pinned to the default branch, every branch that changed the
+      # IG was refused as stale, so a committee could never see a content
+      # change on STAGING (folio-assistant#215 walk, 2026-10-24).
+      ref: ${{ github.ref_name }}
 
   publish:
     needs: ast
@@ -93,6 +97,18 @@ jobs:
           # headers, which GitHub rejects: `ls-remote origin` failed and the
           # publish could not read the default branch.
           persist-credentials: false
+
+      - name: Take the branch's own AST, when this run built one
+        # `ast` rebuilt (the cache was not valid for this branch) and did not
+        # seed (not the default branch): its AST is this run's artifact.
+        # `ig-site:ast` keeps an AST already in the checkout when it is valid
+        # for the commit, so the preview is built from the branch, not from
+        # the default branch's cache.
+        if: ${{ needs.ast.result == 'success' && needs.ast.outputs.verdict != 'valid' && needs.ast.outputs.seeded != 'true' }}
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: output-ast
+          path: output-ast
 
       - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2.2.0
         with:

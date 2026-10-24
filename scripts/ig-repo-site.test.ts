@@ -35,6 +35,7 @@ import {
   serveAstData,
   SIDECARS_SERVED,
   topMounts,
+  VALIDITY_FILE,
 } from "./ig-repo-site.ts";
 
 let dir: string;
@@ -328,6 +329,22 @@ describe("the site's folio-build.json", () => {
     expect(existsSync(join(site, STAMP_FILE))).toBe(true);
     const b = parseBuild(readFileSync(join(site, STAMP_FILE), "utf-8"));
     expect(typeof b === "string" ? b : b.platform.commit).toBe("t1");
+  });
+
+  test("names the AST the artefact pages came from, so a stale preview's stamp does not claim the branch for them", () => {
+    const r = ig();
+    writeFileSync(join(r, "index.lock.json"), JSON.stringify({ mounts: [{ harness: "cat-harness-tools", ref: "t1" }] }));
+    const site = join(r, "_site");
+    const work = join(r, "work");
+    mkdirSync(site);
+    mkdirSync(work);
+    writeFileSync(join(site, "index.html"), "<p>site</p>");
+    writeFileSync(join(work, VALIDITY_FILE), JSON.stringify({ verdict: "stale-inputs", recorded: { sourceRevision: "91b2b5a" } }));
+    const said: string[] = [];
+    publisherPages({ site, ast: fakeAst(r, [{ resourceType: "ValueSet", id: "x" }]), ig: r, work, log: (s) => said.push(s) });
+    const b = parseBuild(readFileSync(join(site, STAMP_FILE), "utf-8"));
+    expect(typeof b === "string" ? b : b.ast).toEqual({ commit: "91b2b5a", verdict: "stale-inputs" });
+    expect(said.some((s) => s.includes("stale-inputs") && s.includes("91b2b5a"))).toBe(true);
   });
 });
 

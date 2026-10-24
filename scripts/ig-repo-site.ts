@@ -806,6 +806,12 @@ export function publisherPages(o: { site: string; ast: string; work?: string; ig
     const barred = stampIgBar(o.site, igTitle(o.ig) ?? basename(resolve(o.ig)));
     log(`publisher pages: the IG's slim bar given to ${barred.pages} page(s) that had another or none, with the shared page layout`);
     const stamp = igSiteStamp(o.ig);
+    const validity = o.work ? join(o.work, VALIDITY_FILE) : undefined;
+    if (validity && existsSync(validity)) {
+      const v = JSON.parse(readFileSync(validity, "utf-8")) as AstValidity;
+      stamp.ast = { commit: v.recorded?.sourceRevision, verdict: v.verdict };
+      if (v.verdict !== "valid") log(`publisher pages: the artefact pages come from an AST that is ${v.verdict} (built from ${v.recorded?.sourceRevision?.slice(0, 7) ?? "an unrecorded revision"}), not from ${stamp.source.commit?.slice(0, 7) ?? "the source"}; ${STAMP_FILE} says so`);
+    }
     writeFileSync(join(o.site, STAMP_FILE), `${JSON.stringify(stamp, null, 2)}\n`);
     log(`publisher pages: stamped ${STAMP_FILE} — ${stamp.instance}, platform ${stamp.platform.commit.slice(0, 9)}`);
   }
