@@ -130,7 +130,7 @@ PY
 )
   fi
   [ -n "$declared" ] && printf '%s\n' "$declared"
-  for p in "cat/fhir-harness/fhir-ast/" "cat-fhir-ast/" "fhir-ast/"; do
+  for p in "cat/fhir-harness/fhir-ast/"; do
     [ "$p" = "$declared" ] || printf '%s\n' "$p"
   done
 }
@@ -142,12 +142,11 @@ cmd_list_names() {
   igit ls-remote --heads "$REMOTE" "${pats[@]}" | sed -n 's#^.*refs/heads/\(.*\)$#\1#p'
 }
 
-# The cache branch for a package. Special branches are moving to the owner's
-# final scheme `cat/<harness>/<name>` (bean tlk2, after #1913's interim
-# `cat-` prefix), so every name must work until the moves land: the first of
-# `cat/fhir-harness/fhir-ast/<pkg>`, `cat-fhir-ast/<pkg>`, `fhir-ast/<pkg>`
-# that exists, else the final name (a first seed creates it). `--branch`
-# overrides.
+# The cache branch for a package: `cat/fhir-harness/fhir-ast/<pkg>` (bean
+# tlk2), or the folio's declared family first. The older `cat-fhir-ast/` and
+# `fhir-ast/` names were retired on 2026-10-24, once `git ls-remote` showed
+# no such head on any litlfred or WHO IG remote (bean folio-assistant-oycs).
+# A first seed creates the branch. `--branch` overrides.
 # IGIT_ROOT must be set. A remote that cannot be reached is an error, not
 # "absent": reading it as absent would seed a second branch beside the first.
 resolve_branch() {
