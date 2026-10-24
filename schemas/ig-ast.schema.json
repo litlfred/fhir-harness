@@ -161,6 +161,6 @@
     "resources"
   ],
   "additionalProperties": {},
-  "$id": "https://litlfred.github.io/fhir-harness/v0/schemas/ig-ast.schema.json",
+  "$id": "https://litlfred.github.io/fhir-harness/0.1.0/schemas/ig-ast.schema.json",
   "title": "IG AST manifest (ig-ast/v1)"
 }
