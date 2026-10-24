@@ -68,5 +68,7 @@ publish by `ig-index:build` (`build-ig-indexes.ts`) from the same AST and the
 IG's own `sushi-config.yaml`, so an IG instance commits none (#124). **Read that skill and the IG's own AGENTS.md before proposing a
 folder, page or declaration for an IG.** An IG instance that does declare such
 directories does so only because an index still mounts files it commits,
-which #124 retires. That is an exception, not a pattern to copy. Owner, 2026-10-23: the AST listing "should
+which #124 retires. That is an exception, not a pattern to copy. The one directory an IG repository does declare for this layer is an
+`ig-annex` directory of annexes its pages load on demand, data no AST holds
+(the skill above, "Annexes an IG's pages load on demand"). Owner, 2026-10-23: the AST listing "should
 be inherited", because the IG depends on this layer.

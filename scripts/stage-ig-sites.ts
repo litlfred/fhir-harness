@@ -64,6 +64,7 @@ import { declarationPathIn, instanceRootsIn, readDeclaration } from "../../cat-h
 import { instanceThemes } from "../../cat-harness/schemas/theme-by-ref.js";
 import { composeIgSite, dataOverwritesQa, describeStage, stageIgSite, type IgMenu, type IndexedArtifact, type SitePalette, type StageOptions } from "./build-ig-site";
 import { IgReleasesSchema, type IgReleases } from "../schemas/ig-releases.ts";
+import { IG_ANNEX_KIND, IG_ANNEXES_FILE, IgAnnexesSchema, IgAnnexRecordSchema } from "../schemas/ig-annexes.ts";
 import { readChangedFiles, siteFilter } from "../../cat-harness-tools/scripts/staging-cone.ts";
 import { sourceHashOf } from "../../cat-harness-tools/scripts/qa-results.ts";
 import { ARTIFACT_INDEX_FILE, artifactPageName } from "./ig-artifact-jsonld.ts";
@@ -192,24 +193,61 @@ export function artifactsFor(root: string, pagesHref = "../artifact/", opts: { f
 }
 
 /**
- * The instance's ANNEXES: tables a page loads on demand (owner, 2026-10-10:
- * the data dictionary in the KG, dynamically loaded). Declared beside the
- * menu, in `fhir-artifact-index/annexes.json`, as
- * `[{ page, file, columns? }]` with `file` relative to that directory, so an
- * annex is a node of the instance's graph rather than a build-time product.
- * Undefined when there is no declaration; a declared file that is missing
- * throws, because a silent skip would publish a page that promises a table.
+ * The annexes ONE directory declares: tables a page loads on demand (owner,
+ * 2026-10-10: the data dictionary in the KG, dynamically loaded). The
+ * directory holds `annexes.json` (`ig-annexes/v1`, {@link IgAnnexesSchema}):
+ * `{ $schema, annexes: [{ page, file, columns? }] }`, with `file` relative to
+ * the directory, so an annex is a node of the instance's graph rather than a
+ * build-time product. A bare array of the same records is read too: it is
+ * the shape `fhir-artifact-index/annexes.json` carried before the contract
+ * had a kind (fhir-harness#33).
+ *
+ * Undefined when the directory holds no declaration. A declared file that is
+ * missing throws, because a silent skip would publish a page that promises a
+ * table.
  */
-export function annexesFor(root: string): StageOptions["annexes"] {
-  const dir = join(root, "fhir-artifact-index");
-  const decl = join(dir, "annexes.json");
+export function annexesIn(dir: string): StageOptions["annexes"] {
+  const decl = join(dir, IG_ANNEXES_FILE);
   if (!existsSync(decl)) return undefined;
-  const list = JSON.parse(readFileSync(decl, "utf-8")) as { page: string; file: string; columns?: string[] }[];
+  const json = JSON.parse(readFileSync(decl, "utf-8")) as unknown;
+  const list = Array.isArray(json) ? IgAnnexRecordSchema.array().parse(json) : IgAnnexesSchema.parse(json).annexes;
   return list.map((a) => {
     const src = join(dir, a.file);
     if (!existsSync(src)) throw new Error(`${decl}: annex ${a.file} for ${a.page} is declared but not held`);
     return { page: a.page, src, ...(a.columns ? { columns: a.columns } : {}) };
   });
+}
+
+/**
+ * The directories an instance declares as the generic `ig-annex` kind
+ * (`typologies/ig-annex.json`), absolute, in declaration order. A directory
+ * may carry a second kind beside it (an overlay's own kind that types the
+ * annex files themselves), as `ig-pages` sits beside `docs`. One that is
+ * declared and absent from the checkout (an index that does not mount it)
+ * is skipped and said, not read as empty.
+ */
+export function annexDirsFor(root: string, log: (s: string) => void = (s) => console.error(s)): string[] {
+  const out: string[] = [];
+  for (const d of readDeclaration(root)?.directories ?? []) {
+    if (!(d.graphTypologies as readonly string[] | undefined)?.includes(IG_ANNEX_KIND)) continue;
+    const abs = join(root, d.path);
+    if (existsSync(abs)) out.push(abs);
+    else log(`${basename(root)}: ${IG_ANNEX_KIND} directory ${d.id ?? d.path} is declared and not in this checkout; its annexes are not placed`);
+  }
+  return out;
+}
+
+/**
+ * The instance's ANNEXES: every `ig-annex` directory it declares
+ * ({@link annexDirsFor}), then `fhir-artifact-index/annexes.json` where one is
+ * still held (the location before the kind; an IG repository commits no
+ * artefact index, #124, so it declares an `ig-annex` directory instead).
+ * Each directory is read by {@link annexesIn}. Undefined when none declares
+ * an annex.
+ */
+export function annexesFor(root: string, log?: (s: string) => void): StageOptions["annexes"] {
+  const all = [...annexDirsFor(root, log), join(root, "fhir-artifact-index")].flatMap((d) => annexesIn(d) ?? []);
+  return all.length ? all : undefined;
 }
 
 /**

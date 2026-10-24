@@ -12,7 +12,7 @@ import { igChromeIncludes, liquidInertScript, SOURCE_LINKS_JS } from "./build-ig
 import { Liquid } from "liquidjs";
 import { EDIT_LINKS_RUNTIME } from "../../cat-harness-tools/src/core/edit-links.js";
 import { ARTIFACT_LIST_TEMPLATE_PATH, artifactListInclude, publisherPlural, FOOTER_TEMPLATE_PATH, ARTIFACTS_TEMPLATE_PATH,IG_FIGURE_IMAGES_STAMP, annexMount, ANNEX_SCRIPT_PATH, artifactVariables, artifactCellLookup, kramdownId, linkTableCells, colourScheme, composeIgSite, liquidSiteBase, contrast, dedupeIds, igTocNav, igTopBar, IG_TOPBAR_CSS, includeTargets, localTemplateIncludes, pageNav, relinkArtifacts, relinkTemplatedArtifacts, relinkOffSite, rubyLiquidStrings, relinkPublisherOutputs, sourceHeadings, dataOverwritesQa, describeStage, RELEASES_TEMPLATE_PATH, releaseVariables, sizeLabel, stageIgSite, tocPage, type StageResult } from "./build-ig-site";
-import { copyDocsInto, igSiteDocs, webpagePalette } from "./stage-ig-sites";
+import { annexDirsFor, annexesFor, annexesIn, copyDocsInto, igSiteDocs, webpagePalette } from "./stage-ig-sites";
 import type { IgReleases } from "../schemas/ig-releases.ts";
 import { artifactPageName } from "../schemas/fhir-artifact-index.js";
 import { siteFileFor } from "../../cat-harness/schemas/cat-harness.js";
@@ -1354,6 +1354,70 @@ describe("annexes in a staged page", () => {
     expect(people).not.toContain("fa-annex");
     expect(r.unplaced).toEqual(["nope.md (x.md)"]);
     rmSync(root, { recursive: true, force: true });
+  });
+});
+
+describe("the annex contract: an ig-annex directory the instance declares (fm9n)", () => {
+  const ig = (decl: Record<string, unknown>): string => {
+    const root = mkdtempSync(join(tmpdir(), "annex-decl-"));
+    const at = join(root, "an-ig");
+    mkdirSync(join(at, "input", "pagecontent"), { recursive: true });
+    writeFileSync(join(at, "an-ig.json"), JSON.stringify({ name: "an-ig", version: "0.1.0", directories: [], ...decl }, null, 2));
+    writeFileSync(join(at, "sushi-config.yaml"), "id: x\ncanonical: http://example.org/x\npages:\n  dictionary.md:\n    title: Dictionary\n");
+    writeFileSync(join(at, "input", "pagecontent", "dictionary.md"), "The dictionary.\n");
+    return at;
+  };
+  const table = JSON.stringify({ title: "T", sheets: [] });
+
+  test("annexesIn reads ig-annexes/v1 and the bare array it replaces; files are relative to the directory", () => {
+    const d = mkdtempSync(join(tmpdir(), "annex-dir-"));
+    writeFileSync(join(d, "t.json"), table);
+    expect(annexesIn(d)).toBeUndefined();
+    writeFileSync(join(d, "annexes.json"), JSON.stringify({ $schema: "ig-annexes/v1", annexes: [{ page: "dictionary.md", file: "t.json", columns: ["a"] }] }));
+    expect(annexesIn(d)).toEqual([{ page: "dictionary.md", src: join(d, "t.json"), columns: ["a"] }]);
+    writeFileSync(join(d, "annexes.json"), JSON.stringify([{ page: "dictionary.md", file: "t.json" }]));
+    expect(annexesIn(d)).toEqual([{ page: "dictionary.md", src: join(d, "t.json") }]);
+    writeFileSync(join(d, "annexes.json"), JSON.stringify({ $schema: "ig-annexes/v1", annexes: [{ page: "dictionary.md", file: "gone.json" }] }));
+    expect(() => annexesIn(d)).toThrow(/declared but not held/);
+    writeFileSync(join(d, "annexes.json"), JSON.stringify({ $schema: "ig-annexes/v1", annexes: [{ page: "dictionary.md" }] }));
+    expect(() => annexesIn(d)).toThrow();
+    rmSync(d, { recursive: true, force: true });
+  });
+
+  test("annexesFor reads every declared ig-annex directory, beside another kind, and nothing undeclared", () => {
+    const at = ig({ directories: [{ id: "an-ig-annexes", path: "annexes/", graphTypologies: ["docs", "ig-annex"] }] });
+    mkdirSync(join(at, "annexes"));
+    writeFileSync(join(at, "annexes", "t.json"), table);
+    writeFileSync(join(at, "annexes", "annexes.json"), JSON.stringify({ $schema: "ig-annexes/v1", annexes: [{ page: "dictionary.md", file: "t.json" }] }));
+    // A directory holding an annexes.json that is not declared ig-annex is not read.
+    mkdirSync(join(at, "other"));
+    writeFileSync(join(at, "other", "annexes.json"), JSON.stringify({ $schema: "ig-annexes/v1", annexes: [{ page: "x.md", file: "nope.json" }] }));
+    expect(annexDirsFor(at)).toEqual([join(at, "annexes/")]);
+    expect(annexesFor(at)).toEqual([{ page: "dictionary.md", src: join(at, "annexes", "t.json") }]);
+    // What compose and stage-ig-sites hand stageIgSite: the page mounts the loader.
+    const out = join(at, "..", "out");
+    const r = stageIgSite(at, out, { annexes: annexesFor(at) });
+    expect(readFileSync(join(out, "dictionary.md"), "utf-8")).toContain('data-src="{{ site.baseurl }}/assets/annex/t.json"');
+    expect(existsSync(join(out, "assets", "annex", "t.json"))).toBe(true);
+    expect(r.annexed).toEqual(["dictionary.md <- t.json"]);
+    rmSync(join(at, ".."), { recursive: true, force: true });
+  });
+
+  test("a declared directory absent from the checkout is said and skipped, not read as empty", () => {
+    const at = ig({ directories: [{ id: "an-ig-annexes", path: "annexes/", graphTypologies: ["ig-annex"] }] });
+    const said: string[] = [];
+    expect(annexesFor(at, (s) => said.push(s))).toBeUndefined();
+    expect(said.join("\n")).toMatch(/an-ig-annexes is declared and not in this checkout/);
+    rmSync(join(at, ".."), { recursive: true, force: true });
+  });
+
+  test("the fhir-artifact-index/annexes.json an existing caller holds is still read", () => {
+    const at = ig({});
+    mkdirSync(join(at, "fhir-artifact-index"));
+    writeFileSync(join(at, "fhir-artifact-index", "t.json"), table);
+    writeFileSync(join(at, "fhir-artifact-index", "annexes.json"), JSON.stringify([{ page: "dictionary.md", file: "t.json", columns: ["a"] }]));
+    expect(annexesFor(at)).toEqual([{ page: "dictionary.md", src: join(at, "fhir-artifact-index", "t.json"), columns: ["a"] }]);
+    rmSync(join(at, ".."), { recursive: true, force: true });
   });
 });
 
