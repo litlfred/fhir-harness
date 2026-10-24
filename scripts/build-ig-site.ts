@@ -56,6 +56,7 @@ import { thinIndexPage } from "./ig-thin-pages.ts";
 import { IG_SEARCH_CSS, IG_SEARCH_INDEX_FILE, IG_SEARCH_SCRIPT_FILE, igSearchBox, igSearchScript, type IgSearchRef } from "./ig-search.ts";
 import { withRenderedBy } from "../../cat-harness-tools/scripts/viewer-declarations.js";
 import { NAVBAR_LINKED } from "../../cat-harness-tools/scripts/lib/harness-rail.ts";
+import { MARKER as FOLIO_MOUNT_MARKER } from "../../cat-harness-tools/scripts/folio-mount.ts";
 import { DEFAULT_ICON } from "../../cat-harness-tools/scripts/thin-page.ts";
 import { PAGE_BAR_CLASS, PAGE_LAYOUT_CSS_FILE, PAGE_LAYOUT_CSS_SOURCE, PAGE_LAYOUT_JS_FILE, PAGE_LAYOUT_JS_SOURCE, PAGE_LAYOUT_MARK, PAGE_MAIN_CLASS } from "../../cat-harness-tools/scripts/page-layout.ts";
 
@@ -663,6 +664,27 @@ export const IG_TOPBAR_RE = /<div class="ig-topbar[ "][\s\S]*?<\/div>(?=\n|$)/;
 export const IG_THIN_CSS_FILE = "assets/ig-artifact.css";
 
 /**
+ * The reader's folio on an IG page (bean `95sk`, R24). The owner, 2026-09-21:
+ * the folio visualisation is the harness's, and SHALL be available by
+ * convention on any harness, so it is the SAME folio in every library a
+ * reader browses. The glass is mounted by the platform's `docs-ui.js`, and
+ * the who-iris replica pages already carry it through `folio-mount.ts`. The
+ * thin layout linked everything of the host's except it, so a reader who
+ * followed a link into an IG lost their folio, which is the absence
+ * `check-folio-mount.ts` exists to catch.
+ *
+ * Both are LINKED from the host's site root, as the thin layout links
+ * everything (owner, 2026-10-12: "make thin default"). `defer` keeps the
+ * script off the critical path, and it is one cached request across every
+ * page of the host. Both carry `folio-mount.ts`'s marker, so the same gate
+ * finds the mount here as on a replica page.
+ */
+export const IG_FOLIO_MOUNT: readonly string[] = [
+  `<link rel="stylesheet" href="{{ '/assets/css/docs-ui.css' | relative_url }}" ${FOLIO_MOUNT_MARKER}>`,
+  `<script src="{{ '/assets/js/docs-ui.js' | relative_url }}" defer ${FOLIO_MOUNT_MARKER}></script>`,
+];
+
+/**
  * The THIN layout for an IG's narrative pages composed into a host site
  * (owner, 2026-10-12: "make thin default"): the page's own prose and the
  * IG's top bar, edit links and footer — and nothing of the host's chrome
@@ -691,6 +713,7 @@ export function thinIgLayout(assetsAt: string, tocNav = "", sectionLabel?: strin
     `<link rel="stylesheet" href="${asset(PAGE_LAYOUT_CSS_FILE)}" ${PAGE_LAYOUT_MARK}>`,
     `<script src="${asset(PAGE_LAYOUT_JS_FILE)}" defer ${PAGE_LAYOUT_MARK}></script>`,
     `<link rel="stylesheet" href="${asset(IG_THIN_CSS_FILE)}">`,
+    ...IG_FOLIO_MOUNT,
     "</head>",
     "<body>",
     ...(tocNav ? [tocNav] : []),

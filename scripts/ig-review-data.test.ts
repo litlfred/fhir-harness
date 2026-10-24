@@ -1,0 +1,78 @@
+import { describe, expect, test } from "bun:test";
+import { spawnSync } from "node:child_process";
+import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+
+import { igChangeSet, kramdownId, splitPage, writeReviewData } from "./ig-review-data.ts";
+
+describe("kramdownId: the id Jekyll gives a heading", () => {
+  test("as the Uganda schedule page's headings were published", () => {
+    expect(kramdownId("Children")).toBe("children");
+    expect(kramdownId("Women of child-bearing age (15 to 49 years)")).toBe("women-of-child-bearing-age-15-to-49-years");
+    expect(kramdownId("Messages to caregivers (Ministry of Health poster)")).toBe("messages-to-caregivers-ministry-of-health-poster");
+    expect(kramdownId("2. Scope")).toBe("scope");
+  });
+});
+
+describe("splitPage", () => {
+  test("cuts at headings, keeps the text before the first, numbers repeats and ignores fenced code", () => {
+    const parts = splitPage("Intro.\n\n### Notes\nA\n```\n# not a heading\n```\n### Notes\nB\n");
+    expect(parts.map((p) => p.id)).toEqual(["_top", "notes", "notes-1"]);
+    expect(parts[1]!.text).toContain("# not a heading");
+  });
+});
+
+describe("igChangeSet: the default branch against the working tree", () => {
+  const git = (d: string, ...a: string[]) => spawnSync("git", ["-C", d, ...a], { encoding: "utf-8" });
+  const repo = (): string => {
+    const d = mkdtempSync(join(tmpdir(), "ig-review-"));
+    git(d, "init", "-q", "-b", "main");
+    git(d, "config", "user.email", "t@example.org");
+    git(d, "config", "user.name", "t");
+    mkdirSync(join(d, "input", "pagecontent"), { recursive: true });
+    mkdirSync(join(d, "input", "cql"), { recursive: true });
+    writeFileSync(join(d, "sushi-config.yaml"), "id: x\n");
+    writeFileSync(join(d, "input", "pagecontent", "schedule.md"), "Ages.\n\n### Children\n| 10 years | HPV |\n{:.grid}\n\n### Women\nTd\n");
+    writeFileSync(join(d, "input", "cql", "Logic.cql"), "define Due: birthDate + 10 years\n");
+    writeFileSync(join(d, "input", "book.xlsx"), Buffer.from([0x50, 0x4b, 0, 1]));
+    git(d, "add", "-A");
+    git(d, "commit", "-qm", "base");
+    return d;
+  };
+  const plain = (md: string) => `<p>${md}</p>`;
+
+  test("a schedule change reads as one reworded section, the logic file and the binary workbook", () => {
+    const d = repo();
+    writeFileSync(join(d, "input", "pagecontent", "schedule.md"), "Ages.\n\n### Children\n| 9 years | HPV |\n{:.grid}\n\n### Women\nTd\n");
+    writeFileSync(join(d, "input", "cql", "Logic.cql"), "define Due: birthDate + 9 years\n");
+    writeFileSync(join(d, "input", "book.xlsx"), Buffer.from([0x50, 0x4b, 0, 2]));
+    writeFileSync(join(d, "input", "pagecontent", "new.md"), "### Added\nx\n");
+    const r = igChangeSet({ ig: d, base: "main", render: plain });
+    expect(r.changeset.changes.map((c) => [c.change, c.label])).toEqual([
+      ["added", "new/added"],
+      ["changed", "schedule/children"],
+      ["changed", "input/book.xlsx"],
+      ["changed", "input/cql/Logic.cql"],
+    ]);
+    const children = r.changeset.changes[1]!;
+    expect(children.change === "changed" && children.head).toMatchObject({ page: "schedule.html", anchor: "children", section: "pages::schedule" });
+    const book = r.changeset.changes[2]!;
+    expect(book.change === "changed" && book.aspects).toEqual(["manifest"]);
+    expect(r.text.blocks["input/book.xlsx"]).toEqual({});
+    expect(r.text.blocks["schedule/children"]!.head!.prose).toContain("9 years");
+    // The kramdown attribute line is Jekyll's, so it is not rendered as text.
+    expect(r.text.blocks["schedule/children"]!.head!.html).not.toContain("{:.grid}");
+    expect(r.changeset.summary).toMatchObject({ added: 1, changed: 3, removed: 0, unchanged: 3, prose: 2, manifest: 1 });
+  });
+
+  test("an unchanged tree is a determined empty, and the files land at the site root", () => {
+    const d = repo();
+    const r = igChangeSet({ ig: d, base: "main", render: plain });
+    expect(r.changeset.changes).toEqual([]);
+    const site = join(d, "_site");
+    writeReviewData(site, r);
+    expect(JSON.parse(readFileSync(join(site, "changeset.json"), "utf-8")).$schema).toBe("folio-changeset/v1");
+    expect(JSON.parse(readFileSync(join(site, "changeset-text.json"), "utf-8")).$schema).toBe("folio-changeset-text/v1");
+  });
+});

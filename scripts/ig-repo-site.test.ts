@@ -35,6 +35,7 @@ import {
   serveAstData,
   SIDECARS_SERVED,
   topMounts,
+  VALIDITY_FILE,
 } from "./ig-repo-site.ts";
 
 let dir: string;
@@ -329,6 +330,22 @@ describe("the site's folio-build.json", () => {
     const b = parseBuild(readFileSync(join(site, STAMP_FILE), "utf-8"));
     expect(typeof b === "string" ? b : b.platform.commit).toBe("t1");
   });
+
+  test("names the AST the artefact pages came from, so a stale preview's stamp does not claim the branch for them", () => {
+    const r = ig();
+    writeFileSync(join(r, "index.lock.json"), JSON.stringify({ mounts: [{ harness: "cat-harness-tools", ref: "t1" }] }));
+    const site = join(r, "_site");
+    const work = join(r, "work");
+    mkdirSync(site);
+    mkdirSync(work);
+    writeFileSync(join(site, "index.html"), "<p>site</p>");
+    writeFileSync(join(work, VALIDITY_FILE), JSON.stringify({ verdict: "stale-inputs", recorded: { sourceRevision: "91b2b5a" } }));
+    const said: string[] = [];
+    publisherPages({ site, ast: fakeAst(r, [{ resourceType: "ValueSet", id: "x" }]), ig: r, work, log: (s) => said.push(s) });
+    const b = parseBuild(readFileSync(join(site, STAMP_FILE), "utf-8"));
+    expect(typeof b === "string" ? b : b.ast).toEqual({ commit: "91b2b5a", verdict: "stale-inputs" });
+    expect(said.some((s) => s.includes("stale-inputs") && s.includes("91b2b5a"))).toBe(true);
+  });
 });
 
 test("a page titled as the site is titled once (the IG's home page at the root)", async () => {
@@ -340,4 +357,19 @@ test("a page titled as the site is titled once (the IG's home page at the root)"
     expect(await engine.parseAndRender(title, { page: { title: "My IG" }, site: { title: "My IG" } })).toBe("<title>My IG</title>");
     expect(await engine.parseAndRender(title, { page: { title: "Home" }, site: { title: "My IG" } })).toMatch(/^<title>Home (—|\|) My IG<\/title>$/);
   }
+});
+
+test("an IG page composed into a host carries the reader's folio (bean 95sk, R24)", async () => {
+  const { thinIgLayout } = await import("./build-ig-site");
+  const { hasMount } = await import("../../cat-harness-tools/scripts/folio-mount.ts");
+  const { Liquid } = await import("liquidjs");
+  const layout = thinIgLayout("/some-ig/");
+  expect(hasMount(layout)).toBe(true);
+  // Linked from the HOST's root, not the IG's, which is where docs-ui.js is published.
+  const engine = new Liquid();
+  engine.registerFilter("relative_url", (u: string) => `/folio-assistant${u}`);
+  const head = /<head>[\s\S]*<\/head>/.exec(layout)![0];
+  const html = await engine.parseAndRender(head, { page: { title: "x" }, site: { title: "y" } });
+  expect(html).toContain('<script src="/folio-assistant/assets/js/docs-ui.js" defer');
+  expect(html).toContain('href="/folio-assistant/assets/css/docs-ui.css"');
 });

@@ -128,7 +128,20 @@ push to its IG sources may add the optional caller
    AST is valid for its own commit;
 5. seeds the cache with `ig-cache.sh seed --push`, only when the commit is on
    the default branch with the tip's inputs. Otherwise the AST is uploaded as
-   a run artefact.
+   a run artefact, `output-ast`.
+
+**A preview is built from its own branch's AST.** The template's `ast` job
+passes `ref: github.ref_name`, and when that run rebuilt without seeding, the
+`publish` job downloads the run's `output-ast` before `ig-site:ast` runs, which
+keeps an AST already in the checkout when it is valid for the commit. So a
+branch that changes the IG's inputs gets a preview of its own content, and
+the shared cache stays the default branch's. Pinned to the default branch, as
+the template was until 2026-10-24, every such branch was refused as stale: a
+review committee could never see a content change on STAGING (the
+folio-assistant#215 walk on smart-immunizations-uganda#12). Overriding with
+`SITE_ACCEPT_STALE_AST=1` is no substitute: it mixes the branch's narrative
+with the default branch's artefacts. That is why `folio-build.json` names the
+AST it used (`ast.commit`, `ast.verdict`) beside `source`.
 
 Seeding is refused below 90% of the incumbent's resources or edges (the
 no-shrink gate in `compiled-artefact-cache`). The run builds no site, writes
