@@ -130,6 +130,29 @@ push to its IG sources may add the optional caller
    the default branch with the tip's inputs. Otherwise the AST is uploaded as
    a run artefact, `output-ast`.
 
+**A stale cache is rebuilt incrementally; a release is cut from a full build**
+(phase P4, bean `h3tx`; owner, 2026-10-24, option C). Step 3 does not always
+run a full Publisher build:
+
+- When the cache is **stale**, the run is not `force`, and the caller gives no
+  `pre-export`, it runs `IncrementalBuildCli` over the restored cache. That
+  rebuilds only the cone of what changed and merges it over the cache (skill
+  [`ig-publisher-fork`](ig-publisher-fork.md)). Its own plan falls back to a
+  full build when it cannot tell, and a failure, or a merged AST that is not
+  valid, falls back to `AstExportCli`.
+- A cache that is **missing** or **cannot-tell**, a **`force`** run, and a
+  caller with a **`pre-export`** always build in full. A `pre-export` changes
+  the work tree, which the incremental build refuses.
+- The run's `kind` output, and `ig-ast.ts build-kind output-ast`, say which kind
+  of build it was: `full`, or `incremental` (the manifest is `mixed`, with an
+  `incremental` lineage).
+- **A release is cut from a full build only.** Any step that cuts a release
+  runs `ig-ast.ts build-kind output-ast --require-full`, which exits 1 on an
+  incremental AST. To get a full AST, run the refresh with `force`.
+- **The site says which kind of build it came from.** `folio-build.json`
+  carries `ast.kind` beside `ast.verdict` (`ig-repo-site.ts`, the
+  `publisher-pages` step).
+
 **A preview is built from its own branch's AST.** The template's `ast` job
 passes `ref: github.ref_name`, and when that run rebuilt without seeding, the
 `publish` job downloads the run's `output-ast` before `ig-site:ast` runs, which

@@ -343,7 +343,7 @@ describe("the site's folio-build.json", () => {
     const said: string[] = [];
     publisherPages({ site, ast: fakeAst(r, [{ resourceType: "ValueSet", id: "x" }]), ig: r, work, log: (s) => said.push(s) });
     const b = parseBuild(readFileSync(join(site, STAMP_FILE), "utf-8"));
-    expect(typeof b === "string" ? b : b.ast).toEqual({ commit: "91b2b5a", verdict: "stale-inputs" });
+    expect(typeof b === "string" ? b : b.ast).toEqual({ commit: "91b2b5a", verdict: "stale-inputs", kind: "full" });
     expect(said.some((s) => s.includes("stale-inputs") && s.includes("91b2b5a"))).toBe(true);
   });
 });

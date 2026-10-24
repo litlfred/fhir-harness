@@ -72,6 +72,11 @@ All five phases were put to the owner one at a time, with the criteria above
   offered as a replacement for the fork and **not** accepted as one: the AST is
   the Publisher's.
 - **P2** and **P4** — approved as written.
+- **P4, scoped 2026-10-24** (bean `h3tx`, option C). The refresh rebuilds a
+  stale cache incrementally. A release step refuses an incremental AST
+  (`ig-ast.ts build-kind --require-full`), and the site's `folio-build.json`
+  says which kind of build it came from (`ast.kind`). Skill
+  [`ig-build-pipeline`](ig-build-pipeline.md), "The AST cache lifecycle".
 - **P0, restated 2026-10-01** (bean `jut3`, owner's answer *"1y"*). The strict
   wording counted P2's refusals and the fork's data as P0 gaps, so P0 could not
   pass before the phases after it — the phase order inverted. P0 now accounts

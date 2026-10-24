@@ -51,7 +51,16 @@ export interface SiteBuild {
    * so when the verdict is not `valid` (a preview built with
    * `SITE_ACCEPT_STALE_AST=1`) the two differ and the stamp says so.
    */
-  ast?: { commit?: string; verdict: string };
+  ast?: {
+    commit?: string;
+    verdict: string;
+    /**
+     * Which kind of Publisher build made the AST: `full`, or `incremental`
+     * (a partial rebuild merged over an earlier AST). Phase P4: a release is
+     * cut from a full build only, and the site says which it came from.
+     */
+    kind?: "full" | "incremental";
+  };
   builtAt: string;
 }
 

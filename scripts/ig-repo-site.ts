@@ -156,7 +156,7 @@ import { basename, dirname, join, relative, resolve, sep } from "node:path";
 import { parse as parseYaml } from "yaml";
 
 import { conceptOf, profilesOf } from "./ast-to-artifact-index.ts";
-import { astValidity, type AstValidity, readAst } from "./ig-ast.ts";
+import { astValidity, type AstValidity, buildKind, readAst } from "./ig-ast.ts";
 import { composeIgSite, dedupeSiteIds, describeStage, IG_THIN_CSS_FILE, stageIgSite, type SitePalette } from "./build-ig-site";
 import { artifactSearchEntries, IG_SEARCH_INDEX_FILE, IG_SEARCH_SCRIPT_FILE, IG_SEARCH_SCRIPT_SOURCE, igSearchIndex, pageSearchEntries, withIgBar } from "./ig-search.ts";
 import { translationMetaBlock, withTranslationMeta } from "../../cat-harness-tools/scripts/lib/translation-meta.ts";
@@ -810,6 +810,13 @@ export function publisherPages(o: { site: string; ast: string; work?: string; ig
     if (validity && existsSync(validity)) {
       const v = JSON.parse(readFileSync(validity, "utf-8")) as AstValidity;
       stamp.ast = { commit: v.recorded?.sourceRevision, verdict: v.verdict };
+      // P4: which kind of build made the AST. Read from the manifest alone, so
+      // a manifest the stamp cannot read leaves the kind out rather than guessing.
+      try {
+        stamp.ast.kind = buildKind({ manifest: JSON.parse(readFileSync(join(o.ast, "manifest.json"), "utf-8")) });
+      } catch {
+        // no kind: the stamp says only what it knows
+      }
       if (v.verdict !== "valid") log(`publisher pages: the artefact pages come from an AST that is ${v.verdict} (built from ${v.recorded?.sourceRevision?.slice(0, 7) ?? "an unrecorded revision"}), not from ${stamp.source.commit?.slice(0, 7) ?? "the source"}; ${STAMP_FILE} says so`);
     }
     writeFileSync(join(o.site, STAMP_FILE), `${JSON.stringify(stamp, null, 2)}\n`);
