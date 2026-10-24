@@ -341,3 +341,18 @@ test("a page titled as the site is titled once (the IG's home page at the root)"
     expect(await engine.parseAndRender(title, { page: { title: "Home" }, site: { title: "My IG" } })).toMatch(/^<title>Home (—|\|) My IG<\/title>$/);
   }
 });
+
+test("an IG page composed into a host carries the reader's folio (bean 95sk, R24)", async () => {
+  const { thinIgLayout } = await import("./build-ig-site");
+  const { hasMount } = await import("../../cat-harness-tools/scripts/folio-mount.ts");
+  const { Liquid } = await import("liquidjs");
+  const layout = thinIgLayout("/smart-base/");
+  expect(hasMount(layout)).toBe(true);
+  // Linked from the HOST's root, not the IG's, which is where docs-ui.js is published.
+  const engine = new Liquid();
+  engine.registerFilter("relative_url", (u: string) => `/folio-assistant${u}`);
+  const head = /<head>[\s\S]*<\/head>/.exec(layout)![0];
+  const html = await engine.parseAndRender(head, { page: { title: "x" }, site: { title: "y" } });
+  expect(html).toContain('<script src="/folio-assistant/assets/js/docs-ui.js" defer');
+  expect(html).toContain('href="/folio-assistant/assets/css/docs-ui.css"');
+});
