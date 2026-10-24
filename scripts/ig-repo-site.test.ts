@@ -363,7 +363,7 @@ test("an IG page composed into a host carries the reader's folio (bean 95sk, R24
   const { thinIgLayout } = await import("./build-ig-site");
   const { hasMount } = await import("../../cat-harness-tools/scripts/folio-mount.ts");
   const { Liquid } = await import("liquidjs");
-  const layout = thinIgLayout("/smart-base/");
+  const layout = thinIgLayout("/some-ig/");
   expect(hasMount(layout)).toBe(true);
   // Linked from the HOST's root, not the IG's, which is where docs-ui.js is published.
   const engine = new Liquid();
