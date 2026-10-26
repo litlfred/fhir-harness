@@ -163,6 +163,11 @@
       "outputs": [],
       "because": "measured 2026-10-01 (bean xpcu); moved from cat-harness/scripts/task-io.ts to its owning instance 2026-10-06 (bean 0r7u)"
     },
+    "check:ig-annex-links": {
+      "inputs": ["{tracked}"],
+      "outputs": [],
+      "because": "reads each declared ig-annex directory's markdown annexes and the IG's input/pagecontent pages they are appended to; writes nothing (smart-immunizations#81)"
+    },
     "ig-ast:schema:check": {
       "outputs": [],
       "because": "measured 2026-10-01 (bean xpcu); moved from cat-harness/scripts/task-io.ts to its owning instance 2026-10-06 (bean 0r7u)"
