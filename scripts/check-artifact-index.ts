@@ -1,9 +1,10 @@
 #!/usr/bin/env bun
 /**
- * Validate every committed FHIR IG artefact index against its schema.
+ * Validate every committed FHIR IG artefact index against its schema, and
+ * judge every `ig-annex` declaration an instance holds.
  *
  * @module folio-assistant-core/scripts/check-artifact-index
- * @covers fhir-artifact-index
+ * @covers fhir-artifact-index, ig-annex
  *
  * ## Why this exists beside `ingest:ig:check`
  *
@@ -31,6 +32,20 @@
  * `fhir-artifact-index` graph has nothing to check and says so; a scan that
  * silently returned zero would read exactly like a clean run, which is the
  * shape this repository has paid for twice (`dh4f`, `xom7`).
+ *
+ * ## The annex declarations that left the index
+ *
+ * An IG's on-demand annexes were declared in `fhir-artifact-index/
+ * annexes.json` until an IG repository stopped committing an artefact index
+ * (#124); they now sit in a directory of their own, the `ig-annex` kind. The
+ * kind was typed and judged by nothing (`audit:coverage:require-all`,
+ * folio-assistant#2681), so this gate, which already reads the declarations
+ * for the index beside them, judges them too ({@link judgeIgAnnexDir}): the
+ * declaration is there and is `ig-annexes/v1`, every file it names is held
+ * inside its instance, nothing is declared or shown twice, and each page is
+ * an `input/pagecontent/` page where the instance holds one (said, not
+ * counted, where it does not). No instance declaring an `ig-annex` directory
+ * is an absence of subjects, said as such — not a pass.
  */
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -38,6 +53,7 @@ import { join } from "node:path";
 import { FhirArtifactIndexSchema, materializationCensus } from "../schemas/fhir-artifact-index.js";
 import { declarationPathIn, repoRootFor } from "../../cat-harness/schemas/cat-harness.js";
 import { gitTopLevelDirs } from "../../cat-harness/schemas/git-corpus.js";
+import { judgeInstanceAnnexes } from "./ig-annex-judge.ts";
 
 const ROOT = repoRootFor(join(import.meta.dir, ".."));
 
@@ -57,13 +73,12 @@ const ROOT = repoRootFor(join(import.meta.dir, ".."));
  */
 function declaredIndexes(): string[] {
   const out: string[] = [];
-  for (const entry of gitTopLevelDirs(ROOT).names) {
+  for (const entry of declaringInstances()) {
     // RESOLVED, never composed: since #695 an instance declares itself in
     // `<name>.config.json`, so there is no single filename to join. Composing
     // one is how a reader stops seeing every instance the moment the
     // convention moves — which is exactly what this scan must not do.
-    const decl = declarationPathIn(join(ROOT, entry));
-    if (decl === undefined) continue;
+    const decl = declarationPathIn(join(ROOT, entry))!;
     let parsed: { directories?: Array<{ path?: string; graphTypologies?: string[] }> };
     try {
       parsed = JSON.parse(readFileSync(decl, "utf8"));
@@ -80,12 +95,45 @@ function declaredIndexes(): string[] {
   return out;
 }
 
+/** The repository's top-level directories (asked of git) that hold an instance declaration. */
+function declaringInstances(): string[] {
+  return gitTopLevelDirs(ROOT).names.filter((entry) => declarationPathIn(join(ROOT, entry)) !== undefined);
+}
+
+/** Judge every `ig-annex` directory every instance declares; the number of declarations with a finding. */
+function checkAnnexes(): number {
+  let bad = 0;
+  let judged = 0;
+  for (const entry of declaringInstances()) {
+    const root = join(ROOT, entry);
+    const { judged: all, absent } = judgeInstanceAnnexes(root);
+    for (const a of absent) console.log(`? ${a.slice(ROOT.length + 1)}: declared as ig-annex and not in this checkout — not judged, and not a pass`);
+    for (const j of all) {
+      judged++;
+      const rel = j.declaration.slice(ROOT.length + 1);
+      if (j.findings.length === 0) console.log(`✓ ${rel}: ${j.records} annex record(s) resolve`);
+      for (const f of j.findings) console.error(`✗ ${rel}: ${f}`);
+      if (j.pagesUnverified.length > 0) {
+        console.log(`  · ${rel}: page(s) ${j.pagesUnverified.join(", ")} not verified — ${entry} holds no input/pagecontent/ in this checkout`);
+      }
+      if (j.findings.length > 0) bad++;
+    }
+  }
+  if (judged === 0) {
+    console.log("? no instance declares an `ig-annex` directory here — no annex declaration to judge (an absence of subjects, not a pass).");
+  }
+  return bad;
+}
+
+const annexFailures = checkAnnexes();
+if (annexFailures > 0) process.exitCode = 1;
+
 const indexes = declaredIndexes();
 
 if (indexes.length === 0) {
   console.log("? no instance declares a `fhir-artifact-index` graph — nothing to check.");
   console.log("  This is NOT a pass over indexes that exist; it is an absence of subjects.");
-  process.exit(0);
+  process.exit(annexFailures > 0 ? 1 : 0);
 }
 
 let failed = 0;
@@ -129,3 +177,7 @@ if (failed > 0) {
   process.exit(1);
 }
 console.log(`\n✓ ${indexes.length} artefact index/indexes validate`);
+if (annexFailures > 0) {
+  console.error(`✗ ${annexFailures} ig-annex declaration(s) did not resolve (above).`);
+  process.exit(1);
+}
