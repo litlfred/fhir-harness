@@ -441,11 +441,19 @@ export function igTopBar(menu: IgMenu, baseurl: string, title: string, search?: 
  * one wrapping row the title shared the line with the menu, and the last
  * group dropped under the title. The break is the title's full-width flex
  * basis, so the markup ({@link igTopBar}) stays one `<div>`.
+ *
+ * The Folio tab (`docs-ui.css` `.fa-glass-handle`, fixed at the top middle)
+ * gets the bar's first 2.25rem to itself (folio-assistant#2534, owner: the tab
+ * sat on "Data Models and Exchange" and "Deployment"). The shared layout lets
+ * the tab sit on a wide bar's empty middle and reserves the row only below
+ * 50rem; an IG bar has no empty middle, since its title and menu fill it, so
+ * it reserves the row at every width.
  */
 export const IG_TOPBAR_CSS = `
 .ig-topbar{display:flex;flex-wrap:wrap;align-items:center;gap:.25rem 1rem;padding:.5rem 1.5rem;background:var(--ig-topbar-bg,#1c4b7c);color:#fff;font-size:.95rem}
 .ig-topbar a{color:#fff;text-decoration:none}
 .ig-topbar-home{flex:0 0 100%;font-weight:600}
+body:has(> .fa-glass-handle) .ig-topbar.fa-page-bar{padding-top:2.25rem}
 .ig-topbar-group{position:relative}
 .ig-topbar-group summary{cursor:pointer;list-style:none}
 .ig-topbar-group summary::after{content:" \\25BE"}
