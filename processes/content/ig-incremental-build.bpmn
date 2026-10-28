@@ -160,7 +160,7 @@
       <bpmn:outgoing>F06</bpmn:outgoing>
     </bpmn:task>
     <bpmn:serviceTask id="Task_Checkout" name="Restricted checkout&#10;of the backward cone">
-      <bpmn:documentation>git sparse-checkout of the cone's files plus sushi-config.yaml, ig.ini and the alias files — a median of three files, p90 eleven, on smart-immunizations.</bpmn:documentation>
+      <bpmn:documentation>git sparse-checkout of the cone's files plus sushi-config.yaml, ig.ini and the alias files — a median of three files, p90 eleven, measured on the SMART Immunizations IG.</bpmn:documentation>
       <bpmn:extensionElements>
         <bootstrap.processes:skill ref="ig-publication" />
         <bootstrap.processes:skill ref="ig-publication" />
