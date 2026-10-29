@@ -110,10 +110,10 @@ IG.
 3. **Get the IG source**, one of:
    - **authored here**: `sushi-config.yaml` and `input/` under the
      instance, authored with [`l3-fhir-authoring`](../content/fhir-ig-authoring/l3-fhir-authoring.md);
-   - **an IG already published elsewhere**: ingest its artefact index and
-     navigation, which record the source repository and commit they read:
-     `bun run cat ingest:ig -- --source <published output> --kind gh-pages --id <name> --base <published url> --out <name>`
-     and `bun run cat ingest:ig-menu -- --source <ig repo checkout> --out <name>/fhir-artifact-index`.
+   - **an IG already published elsewhere**: mount or fork its source
+     repository. Its artefact index and navigation are not ingested or
+     committed: `bun run cat ig-index:build` writes them at publish from the
+     IG's AST and its own `sushi-config.yaml` (#124).
 4. **Build its site** from a local checkout:
    `bun run fhir-harness/scripts/stage-ig-sites.ts --work <dir> --baseurl <baseurl> --only <name> --source <ig repo checkout>`
    ([`ig-build-pipeline`](ig-build-pipeline.md), [`ig-render-jekyll`](ig-render-jekyll.md)).

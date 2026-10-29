@@ -37,9 +37,7 @@ Part of [FHIR IG Harness](../README.md) 0.1.0, declared as `fhir-ig-scripts`, ho
 | [`ig-site-data.ts`](ig-site-data.ts) | a file |  |
 | [`ig-thin-pages.test.ts`](ig-thin-pages.test.ts) | a file |  |
 | [`ig-thin-pages.ts`](ig-thin-pages.ts) | a file |  |
-| [`ingest-ig-artifacts.ts`](ingest-ig-artifacts.ts) | a file |  |
 | [`ingest-ig-chrome.ts`](ingest-ig-chrome.ts) | a file |  |
-| [`ingest-ig-invocation.test.ts`](ingest-ig-invocation.test.ts) | a file |  |
 | [`ingest-ig-menu.ts`](ingest-ig-menu.ts) | a file |  |
 | [`ingest-ig-releases.ts`](ingest-ig-releases.ts) | a file |  |
 | [`p2-refusals.test.ts`](p2-refusals.test.ts) | a file |  |

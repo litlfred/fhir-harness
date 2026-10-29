@@ -2,7 +2,7 @@
 /**
  * ingest-ig-chrome.ts — read a FHIR IG's published chrome out of its template chain.
  *
- * Third sibling of `ingest-ig-artifacts.ts` (the IG's OUTPUT) and
+ * Third sibling of the retired `ingest-ig-artifacts.ts` (the IG's OUTPUT) and
  * `ingest-ig-menu.ts` (its SOURCE config). This one reads neither: an IG's
  * appearance is declared in the `fhir.template` packages its `ig.ini` names,
  * which are separate repositories the IG merely depends on.

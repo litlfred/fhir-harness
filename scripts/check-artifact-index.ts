@@ -6,7 +6,11 @@
  * @module folio-assistant-core/scripts/check-artifact-index
  * @covers fhir-artifact-index, ig-annex
  *
- * ## Why this exists beside `ingest:ig:check`
+ * ## Why this exists beside the retired `ingest:ig:check`
+ *
+ * `ingest:ig:check` was removed once IG instances stopped committing their
+ * index (#124); `ig-index:build` writes it at publish. The history below is
+ * kept because it explains what this check does and does not cover.
  *
  * They answer different questions, and only one of them can be asked in CI.
  *
@@ -172,8 +176,8 @@ for (const path of indexes) {
 
 if (failed > 0) {
   console.error(`\n✗ ${failed} of ${indexes.length} artefact index/indexes did not validate.`);
-  console.error("  Nothing under a fhir-artifact-index graph is hand-authored — re-run `ingest:ig`");
-  console.error("  against the IG's published output rather than editing the file.");
+  console.error("  Nothing under a fhir-artifact-index graph is hand-authored — re-run `ig-index:build`");
+  console.error("  from the IG's AST rather than editing the file.");
   process.exit(1);
 }
 console.log(`\n✓ ${indexes.length} artefact index/indexes validate`);

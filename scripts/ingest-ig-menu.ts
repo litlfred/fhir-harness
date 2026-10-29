@@ -2,7 +2,7 @@
 /**
  * ingest-ig-menu.ts — read a FHIR IG's navigation out of its `sushi-config.yaml`.
  *
- * Sibling of `ingest-ig-artifacts.ts`, and deliberately a SEPARATE ingest: that
+ * Sibling of the retired `ingest-ig-artifacts.ts` (#124), and deliberately a SEPARATE ingest: that
  * one reads the IG's OUTPUT (a gh-pages tree), this one reads its SOURCE (the
  * config, in a git repository, at a commit). Two sources, two provenance
  * blocks. Folding the menu into `index.json` would give one file two answers
