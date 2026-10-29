@@ -5,7 +5,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: ig-incremental-build\n"
-"POT-Creation-Date: 2026-10-03T09:58:08.430Z\n"
+"POT-Creation-Date: 2026-10-28T14:15:31.099Z\n"
 "PO-Revision-Date: \n"
 "Last-Translator: \n"
 "Language: ru\n"
@@ -141,7 +141,7 @@ msgstr ""
 
 #: ../fhir-harness/processes/content/ig-incremental-build.bpmn:163
 #. Diagram element documentation
-msgid "git sparse-checkout of the cone's files plus sushi-config.yaml, ig.ini and the alias files — a median of three files, p90 eleven, on smart-immunizations."
+msgid "git sparse-checkout of the cone's files plus sushi-config.yaml, ig.ini and the alias files — a median of three files, p90 eleven, measured on the SMART Immunizations IG."
 msgstr ""
 
 #: ../fhir-harness/processes/content/ig-incremental-build.bpmn:318

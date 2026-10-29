@@ -35,13 +35,13 @@ function ig(opts: { pages?: boolean; declareAbsent?: boolean } = {}): string {
   return at;
 }
 
-const declare = (at: string, body: unknown): void => writeFileSync(join(at, "annexes", "annexes.json"), JSON.stringify(body));
+const writeAnnexes = (at: string, body: unknown): void => writeFileSync(join(at, "annexes", "annexes.json"), JSON.stringify(body));
 const record = (r: Record<string, unknown>) => ({ $schema: "ig-annexes/v1", annexes: [r] });
 
 describe("judgeIgAnnexDir", () => {
   test("a declaration whose file is held judges clean, and its page is said unverified without input/pagecontent/", () => {
     const at = ig();
-    declare(at, record({ page: "dictionary.md", file: "../tables/t.json", columns: ["a", "b"] }));
+    writeAnnexes(at, record({ page: "dictionary.md", file: "../tables/t.json", columns: ["a", "b"] }));
     const j = judgeIgAnnexDir(at, join(at, "annexes"));
     expect(j.findings).toEqual([]);
     expect(j.records).toBe(1);
@@ -50,9 +50,9 @@ describe("judgeIgAnnexDir", () => {
 
   test("with input/pagecontent/ the page is judged: held passes, missing is a finding", () => {
     const at = ig({ pages: true });
-    declare(at, record({ page: "dictionary.md", file: "../tables/t.json" }));
+    writeAnnexes(at, record({ page: "dictionary.md", file: "../tables/t.json" }));
     expect(judgeIgAnnexDir(at, join(at, "annexes"))).toMatchObject({ findings: [], pagesUnverified: [] });
-    declare(at, record({ page: "nope.md", file: "../tables/t.json" }));
+    writeAnnexes(at, record({ page: "nope.md", file: "../tables/t.json" }));
     expect(judgeIgAnnexDir(at, join(at, "annexes")).findings).toEqual([
       "annex ../tables/t.json on nope.md: nope.md is not a page under input/pagecontent/",
     ]);
@@ -65,16 +65,16 @@ describe("judgeIgAnnexDir", () => {
 
   test("the bare array and an unknown field do not validate as ig-annexes/v1", () => {
     const at = ig();
-    declare(at, [{ page: "dictionary.md", file: "../tables/t.json" }]);
+    writeAnnexes(at, [{ page: "dictionary.md", file: "../tables/t.json" }]);
     expect(judgeIgAnnexDir(at, join(at, "annexes")).findings[0]).toMatch(/does not validate as ig-annexes\/v1/);
-    declare(at, record({ page: "dictionary.md", file: "../tables/t.json", extra: true }));
+    writeAnnexes(at, record({ page: "dictionary.md", file: "../tables/t.json", extra: true }));
     expect(judgeIgAnnexDir(at, join(at, "annexes")).findings[0]).toMatch(/does not validate as ig-annexes\/v1/);
   });
 
   test("a file not held, a file outside the instance, a record twice and a column twice are findings", () => {
     const at = ig();
     writeFileSync(join(at, "..", "outside.json"), "{}");
-    declare(at, {
+    writeAnnexes(at, {
       $schema: "ig-annexes/v1",
       annexes: [
         { page: "dictionary.md", file: "../tables/gone.json" },
@@ -95,7 +95,7 @@ describe("judgeIgAnnexDir", () => {
 describe("judgeInstanceAnnexes", () => {
   test("judges each declared ig-annex directory, and says one absent from the checkout rather than reading it as empty", () => {
     const at = ig({ declareAbsent: true });
-    declare(at, record({ page: "dictionary.md", file: "../tables/t.json" }));
+    writeAnnexes(at, record({ page: "dictionary.md", file: "../tables/t.json" }));
     const r = judgeInstanceAnnexes(at);
     expect(r.judged.map((j) => j.findings)).toEqual([[]]);
     expect(r.absent).toEqual([join(at, "gone/")]);
@@ -103,7 +103,7 @@ describe("judgeInstanceAnnexes", () => {
 
   test("a directory of another kind holding an annexes.json is not read", () => {
     const at = ig();
-    declare(at, record({ page: "dictionary.md", file: "../tables/t.json" }));
+    writeAnnexes(at, record({ page: "dictionary.md", file: "../tables/t.json" }));
     writeFileSync(join(at, "tables", "annexes.json"), JSON.stringify(record({ page: "x.md", file: "nope.json" })));
     expect(judgeInstanceAnnexes(at).judged.map((j) => j.declaration)).toEqual([join(at, "annexes", "annexes.json")]);
   });
