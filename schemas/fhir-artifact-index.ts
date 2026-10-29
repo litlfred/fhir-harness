@@ -351,11 +351,11 @@ export const FhirArtifactIndexSchema = z
     /** Instance id — the directory this index lives in, e.g. `<ig>`. */
     id: z.string().min(1),
     title: z.string().min(1),
-    /** NPM-style package id, e.g. `smart.who.int.trust`. */
+    /** NPM-style package id, e.g. `hl7.fhir.uv.ips`. */
     packageId: z.string().min(1).optional(),
     version: z.string().min(1).optional(),
     fhirVersion: z.array(z.string().min(1)).optional(),
-    /** The canonical base every artefact's canonical URL extends, e.g. `http://smart.who.int/trust`. */
+    /** The canonical base every artefact's canonical URL extends, e.g. `http://hl7.org/fhir/uv/ips`. */
     canonicalBase: z.string().min(1).optional(),
     /** The IG's own build timestamp, verbatim from `package.manifest.json`. Not reformatted: a transcription that normalises is no longer a transcription. */
     builtAt: z.string().min(1).optional(),
