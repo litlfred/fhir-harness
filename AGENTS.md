@@ -74,3 +74,42 @@ which #124 retires. That is an exception, not a pattern to copy. The one directo
 `ig-annex` directory of annexes its pages load on demand, data no AST holds
 (the skill above, "Annexes an IG's pages load on demand"). Owner, 2026-10-23: the AST listing "should
 be inherited", because the IG depends on this layer.
+
+## The skills this layer publishes
+
+<!-- cat-harness:skills:begin -->
+
+_16 skills in 3 directories, generated from each skill's front matter. `bun run cat readme:sync` rewrites this list and `readme:sync:check` fails when it is stale. Skills this repository inherits are listed by the repositories that publish them._
+
+**`skills/content/fhir-ig-authoring/`** (5)
+
+| Skill | What it is for |
+|---|---|
+| [`fhir-questionnaire-wireframe`](skills/content/fhir-ig-authoring/fhir-questionnaire-wireframe.md) | Show a built FHIR `Questionnaire` the way a person will meet it — a mid-fidelity wireframe at web and mobile width, and a live form — have it reviewed as a design, check that it says what the… |
+| [`fhir-validation`](skills/content/fhir-ig-authoring/fhir-validation.md) | Validate an IG's FHIR artefacts against the profiles and packages they claim to conform to. |
+| [`ig-publication`](skills/content/fhir-ig-authoring/ig-publication.md) | Build a FHIR Implementation Guide and publish it: version, tag, assemble the site, deploy. |
+| [`l3-fhir-authoring`](skills/content/fhir-ig-authoring/l3-fhir-authoring.md) | Derive the **L3** layer — machine-readable FHIR artefacts — from an authored L2 DAK, using FHIR Shorthand and SUSHI. |
+| [`terminology-management`](skills/content/fhir-ig-authoring/terminology-management.md) | Bind a DAK's data elements to standard terminologies, and manage the value sets and concept maps that result. |
+
+**`skills/fhir-client/`** (2)
+
+| Skill | What it is for |
+|---|---|
+| [`fhir-client-operations`](skills/fhir-client/fhir-client-operations.md) | Reading, searching and writing FHIR R4 resources through the SMARTerFHIR client (`BaseClient` and its vendor subclasses): the launch-context reads, `requestResource`, `create` with its automatic… |
+| [`smart-launch`](skills/fhir-client/smart-launch.md) | How a browser app performs a SMART on FHIR launch — EHR launch and standalone launch — with the SMARTerFHIR library: `SmartLaunchHandler`, the `LAUNCH` and `EMR` enums, the scopes it requests per… |
+
+**`skills/fhir-ig-base/`** (9)
+
+| Skill | What it is for |
+|---|---|
+| [`fhir-ig-create`](skills/fhir-ig-base/fhir-ig-create.md) | Somebody asked for a new FHIR Implementation Guide. |
+| [`ig-ast-delta`](skills/fhir-ig-base/ig-ast-delta.md) | List and view what changed between two IG ASTs, check whether an AST is still valid for the IG's current inputs, and render the delta as just-the-docs pages that carry the provisional mark. |
+| [`ig-binary-artefacts`](skills/fhir-ig-base/ig-binary-artefacts.md) | Where the IG Publisher's binary outputs go — full-ig.zip, package.tgz and its R4/R4B variants, package.db, validator packs, and the definitions, examples and expansions zips — and why a pages branch… |
+| [`ig-build-pipeline`](skills/fhir-ig-base/ig-build-pipeline.md) | The bare FHIR IG pipeline — FSH to SUSHI to the IG Publisher to a pages branch, with no pre-processing and no post-processing. |
+| [`ig-publisher-fork`](skills/fhir-ig-base/ig-publisher-fork.md) | Requirements for an agent working a local experimental fork of the IG Publisher — which repositories, what the AST must carry, what must not change, and the acceptance criteria. |
+| [`ig-publisher-reduction`](skills/fhir-ig-base/ig-publisher-reduction.md) | The phased transition that reduces the IG Publisher to AST + QA — five phases, each with an exit criterion that is measured rather than asserted, and the staleness contract that makes an AST-backed… |
+| [`ig-render-jekyll`](skills/fhir-ig-base/ig-render-jekyll.md) | Rendering a FHIR IG's content through the just-the-docs pipeline instead of mounting the IG Publisher's finished HTML — the JSON-only representation contract, navigation derived from… |
+| [`ig-site-links`](skills/fhir-ig-base/ig-site-links.md) | What happens to an IG's links when its pages are rendered on our site rather than by the IG Publisher: which are rewritten (artefact pages, a case-only mismatch, the Publisher's downloads and pages,… |
+| [`ig-site-theme`](skills/fhir-ig-base/ig-site-theme.md) | How an IG rendered through just-the-docs wears the theme its instance ALREADY declares: the one `webpage` theme becomes the IG site's colour scheme. |
+
+<!-- cat-harness:skills:end -->
