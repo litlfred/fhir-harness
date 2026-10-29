@@ -100,7 +100,7 @@ export const IgMenuGroupSchema = z.object({
 
 export const IgMenuSchema = z.object({
   $schema: z.literal(IG_MENU_SCHEMA_TAG),
-  /** The IG's `id` from `sushi-config.yaml`, e.g. `smart.who.int.trust`. */
+  /** The IG's `id` from `sushi-config.yaml`, e.g. `hl7.fhir.uv.ips`. */
   id: z.string().min(1),
   /** Its `canonical`, the base every `href` is relative to. */
   canonical: z.string().url(),
