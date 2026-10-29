@@ -214,7 +214,9 @@ jobs:
                && for p in sushi-config.yaml ig.ini input; do if git ls-files --error-unmatch -- "$p" > /dev/null 2>&1; then git checkout -q HEAD -- "$p"; fi; done \
                && git clean -fdq -- sushi-config.yaml ig.ini input \
                && bun run fhir-harness/scripts/ig-ast.ts validity output-ast --ig . > /dev/null; then
-              kind=$(bun run fhir-harness/scripts/ig-ast.ts build-kind output-ast)
+              # An IG whose lock mounts a fhir-harness older than #173 has no
+              # `build-kind`; this branch only runs on IncrementalBuildCli's AST.
+              kind=$(bun run fhir-harness/scripts/ig-ast.ts build-kind output-ast 2>/dev/null || echo incremental)
               tail -n 20 "$RUNNER_TEMP/ast-build.log"
             else
               tail -n 40 "$RUNNER_TEMP/ast-build.log"
