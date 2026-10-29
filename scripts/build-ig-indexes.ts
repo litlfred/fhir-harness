@@ -68,15 +68,6 @@
  * hub page's address ({@link hubFrom}); it holds no copy, because the hub is
  * drawn from the index's own bound sidecars (`ig-api-hub.ts`, bean `h7ap`).
  *
- * ## What the build does not supply, kept from a committed copy
- *
- * An index ingested from the published site held a copy of the hub's HTML.
- * When no layer writes a hub page, that copy is kept. While a committed copy is on
- * disk, those fields are kept from it ({@link CARRIED}), provided the files they
- * point at are there, so the pages lose nothing on the first build. An IG
- * instance can drop its committed copy only once the build supplies them
- * (issue #124, step 3).
- *
  * ## Where the IG is published
  *
  * The published links (`published.json`, `.html`, ...) need the address the
@@ -211,34 +202,6 @@ export function igTargets(instances: readonly (InstanceFacts & { root: string; d
 function run(cmd: string, args: string[], cwd?: string): { ok: boolean; out: string } {
   const r = spawnSync(cmd, args, { cwd, encoding: "utf-8", timeout: 600_000 });
   return { ok: r.status === 0, out: `${r.stdout ?? ""}${r.stderr ?? ""}`.trim() };
-}
-
-/** Index fields the AST does not supply yet, kept from a committed copy when one is on disk. */
-export const CARRIED = ["igApiHub"] as const;
-
-/** A representation's instance-relative file, when the field carries one. */
-function localPaths(v: unknown): string[] {
-  if (Array.isArray(v)) return v.flatMap(localPaths);
-  if (v === null || typeof v !== "object") return [];
-  const o = v as Record<string, unknown>;
-  return [...(typeof o["localPath"] === "string" ? [o["localPath"] as string] : []), ...Object.values(o).flatMap((x) => (typeof x === "object" ? localPaths(x) : []))];
-}
-
-/**
- * Keep the {@link CARRIED} fields the built index lacks from the committed one,
- * when every file they point at exists under `instanceRoot`. Returns the
- * fields kept. Pure but for the existence check.
- */
-export function carryFromCommitted(built: Record<string, unknown>, committed: Record<string, unknown> | undefined, instanceRoot: string): string[] {
-  if (committed === undefined) return [];
-  const kept: string[] = [];
-  for (const k of CARRIED) {
-    if (built[k] !== undefined || committed[k] === undefined) continue;
-    if (!localPaths(committed[k]).every((p) => existsSync(join(instanceRoot, p)))) continue;
-    built[k] = committed[k];
-    kept.push(k);
-  }
-  return kept;
 }
 
 /**
@@ -469,7 +432,6 @@ export function buildOne(t: IgTarget, work: string, log: (s: string) => void, ch
   const ix = run("bun", ["run", join(HERE, "ast-to-artifact-index.ts"), "--ast", ast, "--instance-id", t.name, "--out", built, ...grouping, ...sidecars, ...(pub.base ? ["--published-base", pub.base] : [])]);
   if (!ix.ok) problems.push(`index: ${ix.out}`);
   else {
-    const committed = committedIx;
     const next = JSON.parse(readFileSync(built, "utf-8")) as Record<string, unknown>;
     try {
       const tgz = join(dir, "package.tgz");
@@ -489,11 +451,10 @@ export function buildOne(t: IgTarget, work: string, log: (s: string) => void, ch
     const hub = hubFrom(join(work, `${t.name}.site-work`), clone, pub.base);
     if (hub) next["igApiHub"] = hub;
     log(`  API hub: ${hub ? `${hub.label ?? "IG API"} at ${hub.url}, drawn from the index` : "no IG API descriptor from a layer above"}`);
-    const kept = carryFromCommitted(next, committed, t.root);
     const referenced = referenceAbsent(next, t.root);
     if (referenced) log(`  materialization: ${referenced} artefact(s) referenced, not materialized: their compiled bytes are not in this checkout`);
     writeFileSync(indexPath, `${JSON.stringify(next, null, 2)}\n`);
-    log(`  index: ${ix.out.split("\n")[0]}${kept.length ? `; kept from the committed copy: ${kept.join(", ")}` : ""}`);
+    log(`  index: ${ix.out.split("\n")[0]}`);
   }
 
   try {

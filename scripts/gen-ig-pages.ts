@@ -115,7 +115,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync
 import { basename, join, posix, relative, resolve, sep } from "node:path";
 import { compareRoute } from "../../cat-harness-tools/scripts/route-authority.ts";
 import { IG_API_HUB_DEFAULT_PAGE, IG_API_HUB_NODE, IG_API_HUB_NODE_LOADER, IG_API_HUB_NODE_SCRIPT, hasIgApi, igApiHubBody, igApiHubNodeJson } from "./ig-api-hub.ts";
-import { IG_API_HUB_SCRIPT, IG_API_HUB_TEMPLATE, IG_API_VIEW_SCRIPT, igApiHubData, igApiHubFragment, igApiServed, igApiViewData, igApiViews } from "./ig-api-views.ts";
+import { IG_API_VIEW_SCRIPT, igApiServed, igApiViewData, igApiViews } from "./ig-api-views.ts";
 import { IG_CHROME_SCOPE, igFooterData } from "./ig-footer.ts";
 import { JSON_VIEW_SCRIPT, VIEW_PAGE, examplesPage, hasJsonView, historyPage, jsonViewData, mappingsPage, mdText, packageEntries, rebaseDescriptionLinks, profileJsonViewData, resourceFacts, resourceTabs, testingPage, type TabPageData } from "./resource-views.ts";
 import { isDirectoryReadme } from "../../cat-harness/schemas/kg-node.js";
@@ -304,7 +304,6 @@ const IG_API_VIEW_TEMPLATE = join(import.meta.dir, "templates", "ig-pages", "ig-
 /** Their one shared loader, copied to `docs/assets/` (bean `680p`, `visualizer-loading`). */
 const IG_API_VIEW_LOADER = join(import.meta.dir, "templates", "ig-pages", "ig-api-view.js");
 /** The IG API hub page's template and loader — the Publisher's hub page, replicated. */
-const IG_API_HUB_LOADER = join(import.meta.dir, "templates", "ig-pages", "ig-api-hub.js");
 /** The JSON view pages' template and loader — the Publisher's `<Name>.json.html`. */
 const JSON_VIEW_TEMPLATE = join(import.meta.dir, "templates", "ig-pages", "json-view.liquid");
 const JSON_VIEW_LOADER = join(import.meta.dir, "templates", "ig-pages", "resource-json.js");
@@ -998,8 +997,7 @@ function indexPage(ix: FhirArtifactIndex): string {
         ]),
     ``,
     // Linked only when the hub page is written — the same two conditions.
-    ...(ix.igApiHub?.localPath && igApiServable().ok ? [`The IG's own [${SIDECAR_LABEL} hub](${hubPage(ix)}.html) lists them as the Publisher's \`${hubPage(ix)}.html\` does.`, ``] : []),
-    ...(!ix.igApiHub?.localPath && hasIgApi(ix) && igApiServable().ok ? [`The [${SIDECAR_LABEL} hub](${hubPage(ix)}.html) lists them, each with its artefact and its view.`, ``] : []),
+    ...(hasIgApi(ix) && igApiServable().ok ? [`The [${SIDECAR_LABEL} hub](${hubPage(ix)}.html) lists them, each with its artefact and its view.`, ``] : []),
     `## Every artefact, by category`,
     ``,
     `Grouped and ordered as the IG's own \`artifacts.html\` groups them, with each artefact's name and`,
@@ -1534,26 +1532,8 @@ if (ix.package?.localPath && igApiServing.ok) {
 }
 if ([...pages.values()].some((p) => p.includes("data-ig-api-openapi-src"))) pages.set(IG_API_OPENAPI_SCRIPT, readFileSync(IG_API_OPENAPI_LOADER, "utf8"));
 
-// THE IG API HUB — the Publisher's hub page, as its own page under the same
-// name (owner, 2026-10-01: "replicate dak-api.html seperately"). The hub fragment is held
-// in the served graph and fetched; what is computed here is where each of its
-// links should go on THIS site, because the Publisher's relative links assume
-// its flat layout.
-if (ix.igApiHub?.localPath && igApiServing.ok) {
-  const hub = igApiHubData(ix, igApiHubFragment(INSTANCE, ix.igApiHub.localPath), "");
-  pages.set(
-    `${hubPage(ix)}.md`,
-    shell(
-      `${SIDECAR_LABEL} Documentation Hub`,
-      `The ${LABEL} IG's ${SIDECAR_LABEL} hub: its logical models, ValueSet schemas, JSON-LD vocabularies and enumeration endpoints.`,
-      readFileSync(IG_API_HUB_TEMPLATE, "utf8"),
-      { kind: "leaf" },
-      "fixture",
-      { hub },
-    ),
-  );
-  pages.set(IG_API_HUB_SCRIPT, readFileSync(IG_API_HUB_LOADER, "utf8"));
-} else if (hasIgApi(ix) && igApiServing.ok) {
+// THE IG API HUB (owner, 2026-10-01: "replicate dak-api.html seperately").
+if (hasIgApi(ix) && igApiServing.ok) {
   // The hub from the index (bean `h7ap`): no Publisher fragment, the node the
   // index's bound sidecars make, drawn by one loader. In an IG site the IG's own
   // hub page holds the placeholder, and `stage-ig-sites` fills it from the same node.
@@ -1718,7 +1698,7 @@ for (const [label, list] of byCategory(ix.artifacts)) {
 // The CSS, scripts and artefact pages stay: the IG site carries them.
 if (IG_SITE) {
   for (const k of [...pages.keys()]) {
-    if (k === "index.md" || k.startsWith("menu/") || k.startsWith("category/") || ((ix.igApiHub?.localPath || hasIgApi(ix)) && k === `${hubPage(ix)}.md`)) pages.delete(k);
+    if (k === "index.md" || k.startsWith("menu/") || k.startsWith("category/") || (hasIgApi(ix) && k === `${hubPage(ix)}.md`)) pages.delete(k);
   }
   // THE PROVENANCE MOVES WITH THE INDEX. In the IG site the artefact index is
   // the IG's own `artifacts` page, which `build-ig-site` writes from data and

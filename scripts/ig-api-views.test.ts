@@ -6,7 +6,7 @@ import { describe, expect, it } from "bun:test";
 import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { IG_API_VIEW_SCRIPT, igApiHubLinks, igApiServed, igApiViewData, igApiViews } from "./ig-api-views.ts";
+import { IG_API_VIEW_SCRIPT, igApiServed, igApiViewData, igApiViews } from "./ig-api-views.ts";
 import type { FhirArtifact } from "../schemas/fhir-artifact-index.js";
 
 const a = {
@@ -50,16 +50,6 @@ describe("IG API views", () => {
     const t = readFileSync(join(import.meta.dir, "templates", "ig-pages", "ig-api-view.liquid"), "utf8");
     expect(t.startsWith("{%- comment -%}")).toBe(true);
     expect(t).not.toMatch(/\|\s*(plus|minus|size|replace|jsonify)\b/);
-  });
-
-  it("hub links: artefact pages go under artifact/, held files to the served graph, the rest to the Publisher", () => {
-    const frag = '<a href="ValueSet-Actors.html">x</a><a href="ValueSet-Actors.schema.json">s</a>' +
-      '<a href="openapi/index.html">o</a><a href="https://x/y">abs</a><a href="#top">t</a><a href="ValueSet-Actors.html">again</a>';
-    expect(igApiHubLinks([a], "https://p/", frag)).toEqual({
-      "ValueSet-Actors.html": "artifact/ValueSet-Actors.html",
-      "ValueSet-Actors.schema.json": "fhir-artifact-index/sidecars/ValueSet-Actors.schema.json",
-      "openapi/index.html": "https://p/openapi/index.html",
-    });
   });
 
   it("the JSON tab is this site's view only when that page is written", () => {
