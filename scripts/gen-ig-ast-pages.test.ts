@@ -188,7 +188,7 @@ describe("fhir-harness declares the viewer it draws", () => {
   // runs the writer as a declared visualiser's (`visualiser-writers.ts`).
   it("a visualiser rendered by ig-ast-pages, covering ig-ast per instance, whose writer is a checkout script and not declared built at publish here", () => {
     const v = decl.visualisers?.find((x) => x.renderedBy === "ig-ast-pages");
-    expect(v).toMatchObject({ id: "ig-ast", coversKinds: ["ig-ast"], subgraphs: "instance" });
+    expect(v).toMatchObject({ id: "ig-ast", coversKinds: ["ig-ast"], subgraphs: "instance", writer: ["scripts/gen-ig-ast-pages.ts"] });
     const pkg = JSON.parse(readFileSync(join(import.meta.dir, "..", "package.json"), "utf8")) as { checkoutScripts: Record<string, string> };
     expect(pkg.checkoutScripts["ig-ast:pages"]).toContain("gen-ig-ast-pages.ts");
     expect(decl.builtAtPublish?.some((x) => x.writer.includes("ig-ast:pages")) ?? false).toBe(false);
