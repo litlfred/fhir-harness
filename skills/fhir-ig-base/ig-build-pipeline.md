@@ -268,6 +268,13 @@ kind, because each kind owns the `$schema` families of its own directory.
 This layer names none of them. An index still reads a committed
 `fhir-artifact-index/annexes.json` where one is held. That is the location
 before the kind existed, and an IG repository does not use it (#124).
+A `.md` annex is appended to its page as written, so its links address that
+page, not the directory holding the file: the kind says so
+(`shownOnPublishedPages`), which keeps them out of the harness's source-tree
+link sweep, and `bun run cat check:ig-annex-links`
+(`scripts/check-ig-annex-links.ts`) judges them from the host page instead:
+each `x.html` must be a page the IG serves, and each `#id` an id that page
+(its annexes included) carries (smart-immunizations#81).
 
 ## The deploy phase, and the result that surprised me
 
