@@ -15,7 +15,7 @@ import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { carryFromCommitted, referenceAbsent, contextsFrom, fhirVersionsOf, hubFrom, igTargets, lockedRepositories, packFromAst, publishedBase, rebaseOnMount } from "./build-ig-indexes.ts";
+import { referenceAbsent, contextsFrom, fhirVersionsOf, hubFrom, igTargets, lockedRepositories, packFromAst, publishedBase, rebaseOnMount } from "./build-ig-indexes.ts";
 import type { BranchLister } from "./gen-ig-ast-pages.ts";
 
 const instances = [
@@ -52,25 +52,6 @@ describe("igTargets", () => {
 
   it("--only narrows to one instance", () => {
     expect(igTargets(instances, list, "overlay-ig").targets.map((t) => t.name)).toEqual(["overlay-ig"]);
-  });
-});
-
-describe("carryFromCommitted", () => {
-  const dir = mkdtempSync(join(tmpdir(), "ig-index-carry-"));
-  mkdirSync(join(dir, "fhir-artifact-index"), { recursive: true });
-  writeFileSync(join(dir, "fhir-artifact-index", "hub.json"), "{}");
-  afterAll(() => rmSync(dir, { recursive: true, force: true }));
-
-  it("keeps what the AST does not supply, only when its files are on disk, and never overwrites the build", () => {
-    const committed = { igApiHub: { url: "https://example.org/hub.html", localPath: "fhir-artifact-index/hub.json" } };
-    const built: Record<string, unknown> = { packageId: "ex.ig" };
-    expect(carryFromCommitted(built, committed, dir)).toEqual(["igApiHub"]);
-    const own = { igApiHub: { url: "https://example.org/own.html" } };
-    expect(carryFromCommitted(own, committed, dir)).toEqual([]);
-    expect(own.igApiHub.url).toBe("https://example.org/own.html");
-    const gone = { igApiHub: { url: "https://example.org/hub.html", localPath: "fhir-artifact-index/gone/hub.json" } };
-    expect(carryFromCommitted({}, gone, dir)).toEqual([]);
-    expect(carryFromCommitted({}, undefined, dir)).toEqual([]);
   });
 });
 

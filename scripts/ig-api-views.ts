@@ -102,31 +102,6 @@ export function igApiViewData(a: FhirArtifact, view: IgApiView, servedFrom = "..
 }
 
 /**
- * Where each link in the hub fragment goes on this site. The Publisher's are
- * relative to its flat root; here an artefact page is under `artifact/` and a
- * sidecar file is in the served graph. Anything neither — `openapi/index.html`,
- * the enumeration schemas, the two `*-enumeration.html` pages the Publisher
- * never wrote — keeps the Publisher's copy, absolute, so a dead link upstream
- * stays visibly the Publisher's rather than becoming a broken one here.
- */
-export function igApiHubLinks(artifacts: readonly FhirArtifact[], publishedAt: string, fragment: string): Record<string, string> {
-  const pagesByName = new Set(artifacts.map((a) => `${artifactPageName(a)}.html`));
-  const held = new Map<string, string>();
-  for (const a of artifacts) {
-    for (const r of Object.values(a.sidecars ?? {})) {
-      if (typeof r === "object" && r && "localPath" in r && r.localPath) held.set(r.localPath.split("/").pop()!, r.localPath);
-    }
-  }
-  const upstream = publishedAt.replace(/\/+$/, "");
-  const out: Record<string, string> = {};
-  for (const [, h] of fragment.matchAll(/href="([^"]+)"/g)) {
-    if (/^[a-z][a-z0-9+.-]*:|^\/|^#/i.test(h) || h in out) continue;
-    out[h] = pagesByName.has(h) ? `artifact/${h}` : held.has(h) ? held.get(h)! : `${upstream}/${h}`;
-  }
-  return out;
-}
-
-/**
  * Whether an instance's sidecar files are on the site for a page to fetch: its
  * artefact-index directory is declared `served`, and its docs directory is
  * the composed instance root — so a page one level down reaches the served
@@ -155,11 +130,6 @@ export function igApiServed(instanceRoot: string): { ok: true } | { ok: false; w
   return { ok: true };
 }
 
-/** The hub's HTML, from the JSON node the ingest holds it in (`{ from, between, html }`). */
-export function igApiHubFragment(instanceRoot: string, localPath: string): string {
-  return (JSON.parse(readFileSync(join(instanceRoot, localPath), "utf8")) as { html: string }).html;
-}
-
 /**
  * The placeholder a hub page's source holds when its index records none —
  * the ingest's own default. An IG whose post-processing uses another marker
@@ -167,23 +137,6 @@ export function igApiHubFragment(instanceRoot: string, localPath: string): strin
  * `--api-placeholder` its own layer passes.
  */
 export const IG_API_PLACEHOLDER = "<!-- IG_API_CONTENT -->";
-/** The hub's loader, published under the instance's docs root by `gen-ig-pages`. */
-export const IG_API_HUB_SCRIPT = "assets/ig-api-hub.js";
-/** The hub's template, shared by the standalone hub page and the IG site's own hub page. */
-export const IG_API_HUB_TEMPLATE = join(import.meta.dir, "templates", "ig-pages", "ig-api-hub.liquid");
-
-/**
- * The hub's page data, for a page at `prefix` from the instance root (`""`
- * for the docs root, `"../"` one level down — the IG site at `ig/`). Every
- * relative path is rebased by the same prefix; the Publisher's absolute URLs
- * are left alone.
- */
-export function igApiHubData(ix: FhirArtifactIndex, fragment: string, prefix: string) {
-  const rebase = (h: string) => (/^[a-z][a-z0-9+.-]*:|^\/|^#/i.test(h) ? h : `${prefix}${h}`);
-  const links = Object.fromEntries(Object.entries(igApiHubLinks(ix.artifacts, ix.source.of, fragment)).map(([k, v]) => [k, rebase(v)]));
-  return { src: rebase(ix.igApiHub!.localPath!), published: ix.igApiHub!.url, links, script: rebase(IG_API_HUB_SCRIPT) };
-}
-
 /**
  * The fill that makes the IG site's own hub page what the Publisher
  * published: its source holds only the placeholder, and the IG's
@@ -203,8 +156,6 @@ export function igApiHubFill(instanceRoot: string, prefix = "../"): { marker: st
     return undefined;
   }
   if (!igApiServed(instanceRoot).ok) return undefined;
-  // Built at publish, the hub holds no copy: it is drawn from the index's bound sidecars (bean `h7ap`).
-  if (!ix.igApiHub?.localPath) return hasIgApi(ix) ? igApiHubNodeFill(ix.igApiHub?.label ?? "IG API", ix.igApiHub?.placeholder ?? IG_API_PLACEHOLDER, prefix) : undefined;
-  const fragment = igApiHubFragment(instanceRoot, ix.igApiHub.localPath);
-  return { marker: ix.igApiHub.placeholder ?? IG_API_PLACEHOLDER, body: readFileSync(IG_API_HUB_TEMPLATE, "utf8"), data: { hub: igApiHubData(ix, fragment, prefix) } };
+  // The hub holds no copy: it is drawn from the index's bound sidecars (bean `h7ap`).
+  return hasIgApi(ix) ? igApiHubNodeFill(ix.igApiHub?.label ?? "IG API", ix.igApiHub?.placeholder ?? IG_API_PLACEHOLDER, prefix) : undefined;
 }
