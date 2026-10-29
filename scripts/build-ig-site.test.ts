@@ -567,6 +567,13 @@ describe("every IG site: the IG's top bar, and its TOC declared for the navbar",
     expect(rule(".ig-topbar")).toContain("flex-wrap:wrap");
     expect(rule(".ig-topbar-home")).toMatch(/flex:0 0 100%|flex-basis:100%/);
   });
+  test("the Folio tab gets the bar's top row to itself, at every width (folio-assistant#2534)", () => {
+    // Not inside a media query: the shared layout reserves the row only below
+    // 50rem, and an IG bar's title and menu leave no empty middle above that.
+    const reserve = /(?:^|\n)body:has\(> \.fa-glass-handle\) \.ig-topbar\.fa-page-bar\{([^}]*)\}/.exec(IG_TOPBAR_CSS)?.[1] ?? "";
+    expect(reserve).toContain("padding-top:2.25rem");
+    expect(IG_TOPBAR_CSS).not.toMatch(/@media[^{]*\{[^}]*\.fa-glass-handle\) \.ig-topbar/);
+  });
   test("a harness-chrome site has a layout with no sidebar of its own", () => {
     const d = mkdtempSync(join(tmpdir(), "ig-chrome-"));
     const src = join(d, "src");
