@@ -1328,7 +1328,7 @@ function menuName(label: string): string {
 // ── Build ──────────────────────────────────────────────────────────────
 if (!existsSync(INDEX)) {
   console.error(`could not determine: no artefact index at ${INDEX}`);
-  console.error("  Nothing was rendered, and this is NOT a clean run. Run `bun run cat ingest:ig` first.");
+  console.error("  Nothing was rendered, and this is NOT a clean run. Run `bun run cat ig-index:build` first.");
   process.exit(2);
 }
 

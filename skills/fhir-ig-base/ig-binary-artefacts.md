@@ -76,8 +76,8 @@ list on ig justthedocs pages somewhere"*.
    fetches `<canonical>/package.tgz`. Nothing else needs to be there.
 6. **What this pipeline renders from the package reads it from the served
    knowledge graph**, never from a pages branch. The resource JSON views
-   fetch the `package.tgz` that `ingest-ig-artifacts --materialize-package`
-   holds in `fhir-artifact-index/` (bean `680p`).
+   fetch the `package.tgz` that `ig-index:build` writes into
+   `fhir-artifact-index/` at publish (bean `680p`, #124).
 
 ## Measure before deciding
 

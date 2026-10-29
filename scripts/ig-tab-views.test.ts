@@ -34,7 +34,7 @@ const PROFILE = `${IPS.canonical}/StructureDefinition/Composition-uv-ips`;
 /**
  * The index an IG site's compose reconstructs from `output/`: the profile, an
  * instance that claims it, and a ValueSet. Each published at the site's own
- * address, as `ingest-ig-artifacts --base <baseurl>` writes it.
+ * address, as `ig-index:build` writes it.
  */
 function siteIndex(id: string): Record<string, unknown> {
   const ix = artifactIndex(IPS, id) as { artifacts: Record<string, unknown>[]; count: number };
