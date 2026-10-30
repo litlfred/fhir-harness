@@ -63,6 +63,8 @@ import { execSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { join, relative, resolve as resolvePath } from "node:path";
 
+import { igReadScope, type IgReadScope } from "./ig-read-scope.ts";
+
 export type FshKind =
   | "Profile"
   | "Extension"
@@ -134,6 +136,12 @@ export interface FshGraph {
    * needs these to produce a complete forward map.
    */
   allBlocks: Block[];
+}
+
+/** The files with `ext` under `rel` that `scope` declares; none when it reaches nothing there. */
+function declaredUnder(scope: IgReadScope, rel: string, ext: string): string[] {
+  if (!scope.reaches(rel)) return [];
+  return walkDir(join(scope.root, rel), ext).filter((f) => scope.declares(relative(scope.root, f)));
 }
 
 function walkDir(dir: string, ext: string, out: string[] = []): string[] {
@@ -284,8 +292,11 @@ function joinInsertCalls(lines: string[]): string[] {
 
 /** Build the graph from an IG root (the directory holding `sushi-config.yaml`). */
 export function buildFshGraph(root: string): FshGraph {
+  // Only what the repository's `contentTypes.ig.include` declares is read;
+  // an IG that declares no section is read as before, with one warning.
+  const scope = igReadScope(root);
   const cfgPath = join(root, "sushi-config.yaml");
-  const cfg = existsSync(cfgPath) ? readFileSync(cfgPath, "utf8") : "";
+  const cfg = scope.declares("sushi-config.yaml") && existsSync(cfgPath) ? readFileSync(cfgPath, "utf8") : "";
   const canonical = (cfg.match(/^canonical:\s*(\S+)/m)?.[1] ?? "").replace(/\/$/, "");
 
   const nodes = new Map<string, FshNode>();
@@ -295,7 +306,7 @@ export function buildFshGraph(root: string): FshGraph {
   const edgeKinds = new Map<string, number>();
 
   // Pass 1 — declarations and aliases.
-  const fshFiles = walkDir(join(root, "input", "fsh"), ".fsh");
+  const fshFiles = declaredUnder(scope, "input/fsh", ".fsh");
   const blocks: Block[] = [];
   for (const file of fshFiles) {
     let current: Block | undefined;
@@ -361,7 +372,7 @@ export function buildFshGraph(root: string): FshGraph {
   }
 
   // CQL libraries.
-  const cqlFiles = walkDir(join(root, "input", "cql"), ".cql");
+  const cqlFiles = declaredUnder(scope, "input/cql", ".cql");
   const cqlByName = new Map<string, string>();
   for (const file of cqlFiles) {
     const text = readFileSync(file, "utf8");

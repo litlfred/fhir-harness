@@ -163,6 +163,7 @@ import { translationMetaBlock, withTranslationMeta } from "../../cat-harness-too
 import { igOpenapiGraph, OPENAPI_DIR } from "../../cat-harness-tools/openapi/scripts/ig-site-openapi.ts";
 import type { FhirArtifactIndex } from "../schemas/fhir-artifact-index.js";
 import { buildMenu } from "./ingest-ig-menu.ts";
+import { copyDeclared, igReadScope, type IgReadScope } from "./ig-read-scope.ts";
 import { siteBuild, type SiteBuild, STAMP_FILE } from "./site-build-stamp.ts";
 import { annexesFor, artifactsFor, copyDocsInto, footerFor, githubEditBase, instanceNeeds, webpagePalette } from "./stage-ig-sites.ts";
 
@@ -234,7 +235,7 @@ export function siteName(ig: string): string {
 /** The IG's title, from `sushi-config.yaml`; undefined when it states none. */
 export function igTitle(ig: string): string | undefined {
   const f = join(ig, "sushi-config.yaml");
-  if (!existsSync(f)) return undefined;
+  if (!igReadScope(ig).declares("sushi-config.yaml") || !existsSync(f)) return undefined;
   const y = (parseYaml(readFileSync(f, "utf-8")) ?? {}) as { title?: unknown; name?: unknown };
   const t = typeof y.title === "string" ? y.title : typeof y.name === "string" ? y.name : undefined;
   return t?.trim() || undefined;
@@ -356,7 +357,7 @@ export function isPreviewBase(baseurl: string | undefined): boolean {
 export function restoreAst(o: { ig: string; work?: string; acceptStale: boolean; preview: boolean; log?: (s: string) => void }): AstValidity {
   const log = o.log ?? ((s: string) => console.error(s));
   const ig = resolve(o.ig);
-  if (!existsSync(join(ig, "sushi-config.yaml"))) throw new Error(`${ig} holds no sushi-config.yaml: not an IG checkout`);
+  if (!existsSync(igReadScope(ig, { warn: log }).path("sushi-config.yaml"))) throw new Error(`${ig} holds no sushi-config.yaml: not an IG checkout`);
   const restore = (): AstValidity => {
     const r = spawnSync("bash", [join(import.meta.dir, "ig-cache.sh"), "restore", "--ig-root", ig], { cwd: ig, stdio: ["ignore", "inherit", "inherit"] });
     if (r.status !== 0) {
@@ -478,24 +479,42 @@ function fetchPlantuml(home: string, log: (s: string) => void): string | undefin
   return undefined;
 }
 
+/**
+ * Copy the IG's source into `src` for staging, and return what was copied.
+ *
+ * A repository that declares `contentTypes.ig` gets exactly its `include`
+ * entries that exist, and its `index.config.json`, so the staged copy keeps
+ * the declaration every later reader checks. One that declares none is
+ * copied whole, less {@link notSource}, as before.
+ */
+export function copyIgSource(ig: string, src: string, scope: IgReadScope = igReadScope(ig)): string[] {
+  if (!scope.legacy) return copyDeclared(scope, src);
+  const skip = notSource(ig);
+  const top = readdirSync(ig).filter((e) => !skip.has(e));
+  for (const e of top) cpSync(join(ig, e), join(src, e), { recursive: true });
+  return top;
+}
+
 /** Whether the IG has PlantUML sources to render. */
 function hasPlantuml(ig: string): boolean {
   const d = join(ig, "input", "images-source");
-  return existsSync(d) && readdirSync(d).some((f) => f.endsWith(".plantuml"));
+  const scope = igReadScope(ig);
+  return scope.reaches("input/images-source") && existsSync(d) && readdirSync(d).some((f) => f.endsWith(".plantuml") && scope.declares(`input/images-source/${f}`));
 }
 
 export function compose(o: { docs: string; ig: string; baseurl: string; ast?: string; work?: string; plantumlJar?: string; log?: (s: string) => void }): void {
   const log = o.log ?? ((s: string) => console.error(s));
   const ig = resolve(o.ig);
-  if (!existsSync(join(ig, "sushi-config.yaml"))) throw new Error(`${ig} holds no sushi-config.yaml: not an IG checkout`);
+  const scope = igReadScope(ig, { warn: log });
+  if (!existsSync(scope.path("sushi-config.yaml"))) throw new Error(`${ig} holds no sushi-config.yaml: not an IG checkout`);
   if (!existsSync(o.docs)) throw new Error(`${o.docs}: no host site source to compose into`);
   const name = siteName(ig);
   const work = mkdtempSync(join(tmpdir(), "ig-repo-site-"));
   try {
     const src = join(work, "src");
-    const skip = notSource(ig);
     mkdirSync(src, { recursive: true });
-    for (const e of readdirSync(ig)) if (!skip.has(e)) cpSync(join(ig, e), join(src, e), { recursive: true });
+    const copied = copyIgSource(ig, src, scope);
+    log(`${name}: ${scope.legacy ? `source copied whole (no contentTypes.ig), ${copied.length} top-level entr${copied.length === 1 ? "y" : "ies"}` : `source copied from contentTypes.ig.include: ${copied.join(", ")}`}`);
     const menu = buildMenu(ig, new Date().toISOString().slice(0, 10));
     log(`${name}: menu read from sushi-config.yaml at build time — ${menu.groups.length} group(s)`);
     const theme = topMountPalette(ig);

@@ -24,6 +24,8 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, join } from "node:path";
 
+import { igReadScope } from "./ig-read-scope.ts";
+
 import { escHtml, thinPageHtml } from "../../cat-harness-tools/scripts/thin-page.ts";
 import { PAGE_MAIN_CLASS } from "../../cat-harness-tools/scripts/page-layout.ts";
 import { artifactPageName, type FhirArtifactIndex } from "../schemas/fhir-artifact-index.js";
@@ -150,8 +152,9 @@ export function igApiHubHtml(label: string, page: string, openapi = false): stri
  */
 export function igApiHubPageOf(igSource: string, placeholder: string | undefined): string {
   const pages = join(igSource, "input", "pagecontent");
-  if (placeholder && existsSync(pages)) {
-    for (const f of readdirSync(pages).filter((n) => n.endsWith(".md")).sort()) {
+  const scope = igReadScope(igSource);
+  if (placeholder && scope.reaches("input/pagecontent") && existsSync(pages)) {
+    for (const f of readdirSync(pages).filter((n) => n.endsWith(".md") && scope.declares(`input/pagecontent/${n}`)).sort()) {
       if (readFileSync(join(pages, f), "utf-8").includes(placeholder)) return `${f.replace(/\.md$/, "")}.html`;
     }
   }
