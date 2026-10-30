@@ -1890,6 +1890,25 @@ export function decide(
 }
 
 /**
+ * Keep only the FHIR `Consent`s whose `policy[].uri` names this exact agreement
+ * version (owner rule 2, 2026-10-30 19:27Z). A Consent given for an earlier or
+ * later version, or for no agreement, does not count, so an amendment that
+ * changes the agreement's version URL needs new consent. Translated ODRL `Set`s
+ * (including PCF's implicit policies) pass through unchanged.
+ */
+export function consentsCitingAgreement(
+  consentOrPolicy: ConsentOrPolicyInput,
+  agreementUri: string,
+): (FhirConsent | PcfOdrlSet)[] {
+  const items: (FhirConsent | PcfOdrlSet)[] = [];
+  if (consentOrPolicy === null || consentOrPolicy === undefined) return items;
+  if (consentOrPolicy instanceof Map) items.push(...consentOrPolicy.values());
+  else if (Array.isArray(consentOrPolicy)) items.push(...consentOrPolicy);
+  else items.push(consentOrPolicy as FhirConsent | PcfOdrlSet);
+  return items.filter((item) => !isFhirConsent(item) || (item.policy ?? []).some((p) => p.uri === agreementUri));
+}
+
+/**
  * Build an injected {@link ConsentEvaluator} for `cat-harness`'s
  * `odrl:obtainConsent` duty (`permits`, `decide`, `permitsWithConsent`,
  * `decideWithConsent`) backed by this single PCF Consent evaluator (beans
@@ -1899,9 +1918,18 @@ export function createPcfConsentEvaluator(
   consentOrPolicy: ConsentOrPolicyInput,
   options: PcfDecideOptions & {
     pcfScope?: Partial<PcfRequestScope>;
+    /**
+     * The agreement's fixed-version URL. A Consent counts for the agreement
+     * only when one of its R4 `Consent.policy.uri` values equals it (owner
+     * rule 2, 2026-10-30 19:27Z: version pinning). Defaults to the agreement
+     * policy's `uid`; with neither, Consents are not filtered.
+     */
+    agreementPolicyUri?: string;
   } = {},
 ): ConsentEvaluator {
-  return (req: PermitRequest, _duty, rule): ConsentEvaluation => {
+  return (req: PermitRequest, _duty, rule, policy): ConsentEvaluation => {
+    const agreementUri = options.agreementPolicyUri ?? policy?.uid;
+    const pinned = agreementUri ? consentsCitingAgreement(consentOrPolicy, agreementUri) : consentOrPolicy;
     const graph = options.actionGraph ?? DEFAULT_ACTION_GRAPH;
     const effectiveAction =
       req.action && broaderOrSelf(req.action, graph).has("odrl:use")
@@ -1914,7 +1942,7 @@ export function createPcfConsentEvaluator(
       ...(options.pcfScope ?? {}),
     };
     return decideWithCitation(
-      consentOrPolicy,
+      pinned,
       {
         actor: req.actor,
         actorRoles: req.actorRoles,

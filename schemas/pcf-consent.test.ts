@@ -952,13 +952,14 @@ describe("Published package provenance, v3-ActReason hierarchy, R4 Consent schem
         purpose: [{ system: HL7_ACT_REASON_SYSTEM, code: "TREAT" }],
         data: [{ meaning: "instance", reference: { reference: "Patient/ex-patient" } }],
       },
-      { meta: { versionId: "3", profile: [PCF_CONSENT_BASIC_PROFILE] } },
+      // Owner rule 2 (2026-10-30 19:27Z): a Consent cites the agreement version it is for.
+      { meta: { versionId: "3", profile: [PCF_CONSENT_BASIC_PROFILE] }, policy: [{ uri: dsa.uid }] },
     );
 
     const activeDenyConsent = makeConsent(
       "c-dissent",
       { type: "deny" },
-      { meta: { versionId: "2", profile: [PCF_CONSENT_BASIC_PROFILE] } },
+      { meta: { versionId: "2", profile: [PCF_CONSENT_BASIC_PROFILE] }, policy: [{ uri: dsa.uid }] },
     );
 
     const inactiveConsent = makeConsent(
