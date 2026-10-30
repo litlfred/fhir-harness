@@ -32,6 +32,10 @@
  *
  * ## Three outcomes
  *
+ * An index the instance declares `builtAtPublish` (#124) and that this
+ * checkout has not built is said as such and not judged: a consumer that
+ * mounts an IG layer (a document folio mounting smart-base) never builds it.
+ *
  * Finding no index is **not** a pass. A repository that declares no
  * `fhir-artifact-index` graph has nothing to check and says so; a scan that
  * silently returned zero would read exactly like a clean run, which is the
@@ -75,15 +79,15 @@ const ROOT = repoRootFor(join(import.meta.dir, ".."));
  * instance (bean `tqv4`). A gitignored directory holding a stray declaration
  * would otherwise be checked as though it were committed.
  */
-function declaredIndexes(): string[] {
-  const out: string[] = [];
+function declaredIndexes(): { path: string; builtAtPublish: boolean }[] {
+  const out: { path: string; builtAtPublish: boolean }[] = [];
   for (const entry of declaringInstances()) {
     // RESOLVED, never composed: since #695 an instance declares itself in
     // `<name>.config.json`, so there is no single filename to join. Composing
     // one is how a reader stops seeing every instance the moment the
     // convention moves — which is exactly what this scan must not do.
     const decl = declarationPathIn(join(ROOT, entry))!;
-    let parsed: { directories?: Array<{ path?: string; graphTypologies?: string[] }> };
+    let parsed: { directories?: Array<{ path?: string; graphTypologies?: string[] }>; builtAtPublish?: Array<{ path?: string }> };
     try {
       parsed = JSON.parse(readFileSync(decl, "utf8"));
     } catch {
@@ -91,9 +95,15 @@ function declaredIndexes(): string[] {
       process.exitCode = 1;
       continue;
     }
+    // An index the instance declares `builtAtPublish` (#124: `ig-index:build`
+    // writes it from the IG's AST at publish) is absent from every checkout
+    // that has not built it, a consumer's included: that is "not built here",
+    // never "missing".
+    const built = new Set((parsed.builtAtPublish ?? []).map((b) => b.path?.replace(/^\.\//, "")).filter(Boolean));
     for (const d of parsed.directories ?? []) {
       if (!d.graphTypologies?.includes("fhir-artifact-index") || !d.path) continue;
-      out.push(join(ROOT, entry, d.path, "index.json"));
+      const rel = join(d.path, "index.json");
+      out.push({ path: join(ROOT, entry, rel), builtAtPublish: built.has(rel) });
     }
   }
   return out;
@@ -141,8 +151,14 @@ if (indexes.length === 0) {
 }
 
 let failed = 0;
-for (const path of indexes) {
+let notBuilt = 0;
+for (const { path, builtAtPublish } of indexes) {
   const rel = path.slice(ROOT.length + 1);
+  if (!existsSync(path) && builtAtPublish) {
+    console.log(`? ${rel}: built at publish (ig-index:build) and not built in this checkout — not judged, and not a pass`);
+    notBuilt++;
+    continue;
+  }
   if (!existsSync(path)) {
     console.error(`✗ ${rel}: declared as a fhir-artifact-index graph, but no index.json is there`);
     failed++;
@@ -180,7 +196,8 @@ if (failed > 0) {
   console.error("  from the IG's AST rather than editing the file.");
   process.exit(1);
 }
-console.log(`\n✓ ${indexes.length} artefact index/indexes validate`);
+const judged = indexes.length - notBuilt;
+console.log(`\n✓ ${judged} artefact index/indexes validate${notBuilt ? `; ${notBuilt} built at publish and not built here, not judged` : ""}`);
 if (annexFailures > 0) {
   console.error(`✗ ${annexFailures} ig-annex declaration(s) did not resolve (above).`);
   process.exit(1);
