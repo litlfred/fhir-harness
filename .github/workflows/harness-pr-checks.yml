@@ -7,6 +7,7 @@ on:
   pull_request:
     # Draft PRs run only the fast tier (bean dft1, cat-harness-tools#616);
     # ready_for_review re-runs the full tier the moment a PR is marked ready.
+    # closed: the PR's runs are cancelled (the `cancel` job below).
     types: [opened, synchronize, reopened, ready_for_review, closed]
   # main's own run keeps main's answer, the gate seconds and the cone records
   # in caches every PR can read (cat-harness-tools#406, #411); a run on a PR
@@ -27,3 +28,12 @@ jobs:
       # The IG site imports cat-harness-tools' shared page layout by path (`scripts/page-layout.ts`), not by package name, so
       # `auto` cannot see it. Take it at main, which a pin in the index may predate.
       layers-at-main: cat-harness-tools
+  # A PR closed or merged: every queued or running run on its head branch,
+  # of any workflow, is cancelled (owner, 2026-10-30, "Both"). This workflow
+  # already ran on `closed`, which cancelled only its own run through the
+  # checks' concurrency.
+  cancel:
+    if: github.event_name == 'pull_request' && github.event.action == 'closed'
+    permissions:
+      actions: write
+    uses: litlfred/cat-harness-tools/.github/workflows/layer-cancel-on-close.yml@main
