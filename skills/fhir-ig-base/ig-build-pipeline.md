@@ -329,7 +329,7 @@ page, not the directory holding the file: the kind says so
 link sweep, and `bun run cat check:ig-annex-links`
 (`scripts/check-ig-annex-links.ts`) judges them from the host page instead:
 each `x.html` must be a page the IG serves, and each `#id` an id that page
-(its annexes included) carries (smart-immunizations#81).
+(its annexes included) carries (https://github.com/litlfred/smart-immunizations/issues/81).
 
 ## The deploy phase, and the result that surprised me
 

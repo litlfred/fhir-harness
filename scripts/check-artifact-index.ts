@@ -34,7 +34,7 @@
  *
  * An index the instance declares `builtAtPublish` (#124) and that this
  * checkout has not built is said as such and not judged: a consumer that
- * mounts an IG layer (a document folio mounting smart-base) never builds it.
+ * mounts an IG layer (a document folio mounting the DAK layer) never builds it.
  *
  * Finding no index is **not** a pass. A repository that declares no
  * `fhir-artifact-index` graph has nothing to check and says so; a scan that

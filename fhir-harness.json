@@ -192,7 +192,7 @@
     "check:ig-annex-links": {
       "inputs": ["{tracked}"],
       "outputs": [],
-      "because": "reads each declared ig-annex directory's markdown annexes and the IG's input/pagecontent pages they are appended to; writes nothing (smart-immunizations#81)"
+      "because": "reads each declared ig-annex directory's markdown annexes and the IG's input/pagecontent pages they are appended to; writes nothing (https://github.com/litlfred/smart-immunizations/issues/81)"
     },
     "ig-ast:schema:check": {
       "outputs": [],
