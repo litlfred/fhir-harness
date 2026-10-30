@@ -756,6 +756,104 @@
       "status": "candidate"
     },
     {
+      "id": "odrl-to-fhir-r5-permission.droppedodrlterm.disposition",
+      "prefLabel": "DroppedOdrlTerm.disposition",
+      "definition": "`\"dropped\"` when omitted entirely from the FHIR R5 Permission output; `\"lossy\"` when approximated in a FHIR R5 Permission element that does not preserve full ODRL semantics.",
+      "source": "fhir-harness/schemas/odrl-to-fhir-r5-permission.ts#DroppedOdrlTerm.disposition",
+      "status": "candidate"
+    },
+    {
+      "id": "odrl-to-fhir-r5-permission.droppedodrlterm.path",
+      "prefLabel": "DroppedOdrlTerm.path",
+      "definition": "JSONPath-style location in the input ODRL Agreement or DCAT record.",
+      "source": "fhir-harness/schemas/odrl-to-fhir-r5-permission.ts#DroppedOdrlTerm.path",
+      "status": "candidate"
+    },
+    {
+      "id": "odrl-to-fhir-r5-permission.droppedodrlterm.reason",
+      "prefLabel": "DroppedOdrlTerm.reason",
+      "definition": "Why FHIR R5 Permission has no exact home for this term, or how it was approximated.",
+      "source": "fhir-harness/schemas/odrl-to-fhir-r5-permission.ts#DroppedOdrlTerm.reason",
+      "status": "candidate"
+    },
+    {
+      "id": "odrl-to-fhir-r5-permission.droppedodrlterm.term",
+      "prefLabel": "DroppedOdrlTerm.term",
+      "definition": "The ODRL 2.2 (or DCAT 3 / SPDX) term name that has no exact FHIR R5 Permission home.",
+      "source": "fhir-harness/schemas/odrl-to-fhir-r5-permission.ts#DroppedOdrlTerm.term",
+      "status": "candidate"
+    },
+    {
+      "id": "odrl-to-fhir-r5-permission.droppedodrlterm.value",
+      "prefLabel": "DroppedOdrlTerm.value",
+      "definition": "The input value that was dropped or only lossily approximated.",
+      "source": "fhir-harness/schemas/odrl-to-fhir-r5-permission.ts#DroppedOdrlTerm.value",
+      "status": "candidate"
+    },
+    {
+      "id": "odrl-to-fhir-r5-permission.odrltofhirr5permissionoptions.agreementdisplay",
+      "prefLabel": "OdrlToFhirR5PermissionOptions.agreementDisplay",
+      "definition": "Optional display label for the agreement's fixed-version `uid` on `justification.evidence[0].display`.",
+      "source": "fhir-harness/schemas/odrl-to-fhir-r5-permission.ts#OdrlToFhirR5PermissionOptions.agreementDisplay",
+      "status": "candidate"
+    },
+    {
+      "id": "odrl-to-fhir-r5-permission.odrltofhirr5permissionoptions.dcat",
+      "prefLabel": "OdrlToFhirR5PermissionOptions.dcat",
+      "definition": "Optional DCAT 3 `dcat:Resource` metadata for the agreement version.",
+      "source": "fhir-harness/schemas/odrl-to-fhir-r5-permission.ts#OdrlToFhirR5PermissionOptions.dcat",
+      "status": "candidate"
+    },
+    {
+      "id": "odrl-to-fhir-r5-permission.odrltofhirr5permissionoptions.id",
+      "prefLabel": "OdrlToFhirR5PermissionOptions.id",
+      "definition": "Optional FHIR resource `id` for the rendered `Permission`.",
+      "source": "fhir-harness/schemas/odrl-to-fhir-r5-permission.ts#OdrlToFhirR5PermissionOptions.id",
+      "status": "candidate"
+    },
+    {
+      "id": "odrl-to-fhir-r5-permission.odrltofhirr5permissionoptions.partyreferences",
+      "prefLabel": "OdrlToFhirR5PermissionOptions.partyReferences",
+      "definition": "Optional map from party/target IRIs (e.g. `\"https://ministry-m.example.org/\"`) to FHIR `Reference`s (e.g. `{ reference: \"Organization/MinistryM\" }` or display strings).",
+      "source": "fhir-harness/schemas/odrl-to-fhir-r5-permission.ts#OdrlToFhirR5PermissionOptions.partyReferences",
+      "status": "candidate"
+    },
+    {
+      "id": "odrl-to-fhir-r5-permission.odrltofhirr5permissionoptions.purposedisplays",
+      "prefLabel": "OdrlToFhirR5PermissionOptions.purposeDisplays",
+      "definition": "Optional human-readable display labels for HL7 `PurposeOfUse` codes.",
+      "source": "fhir-harness/schemas/odrl-to-fhir-r5-permission.ts#OdrlToFhirR5PermissionOptions.purposeDisplays",
+      "status": "candidate"
+    },
+    {
+      "id": "odrl-to-fhir-r5-permission.odrltofhirr5permissionoptions.status",
+      "prefLabel": "OdrlToFhirR5PermissionOptions.status",
+      "definition": "Explicit `Permission.status` (`active | entered-in-error | draft | rejected`). If omitted, derived from `dcat[\"adms:status\"]` when provided, or defaults to `\"active\"`.",
+      "source": "fhir-harness/schemas/odrl-to-fhir-r5-permission.ts#OdrlToFhirR5PermissionOptions.status",
+      "status": "candidate"
+    },
+    {
+      "id": "odrl-to-fhir-r5-permission.odrltofhirr5permissionoptions.targetdisplays",
+      "prefLabel": "OdrlToFhirR5PermissionOptions.targetDisplays",
+      "definition": "Optional map from dataset/target IRIs to human-readable display labels on `rule.data.resource.reference.display`.",
+      "source": "fhir-harness/schemas/odrl-to-fhir-r5-permission.ts#OdrlToFhirR5PermissionOptions.targetDisplays",
+      "status": "candidate"
+    },
+    {
+      "id": "odrl-to-fhir-r5-permission.odrltofhirr5permissionresult.dropped",
+      "prefLabel": "OdrlToFhirR5PermissionResult.dropped",
+      "definition": "Every ODRL 2.2 (or DCAT 3 / SPDX) term from the input that has no exact home in FHIR R5 `Permission` (either omitted or only lossily approximated).",
+      "source": "fhir-harness/schemas/odrl-to-fhir-r5-permission.ts#OdrlToFhirR5PermissionResult.dropped",
+      "status": "candidate"
+    },
+    {
+      "id": "odrl-to-fhir-r5-permission.odrltofhirr5permissionresult.permission",
+      "prefLabel": "OdrlToFhirR5PermissionResult.permission",
+      "definition": "The rendered FHIR R5 `Permission` resource, validated against `FhirR5PermissionSchema`.",
+      "source": "fhir-harness/schemas/odrl-to-fhir-r5-permission.ts#OdrlToFhirR5PermissionResult.permission",
+      "status": "candidate"
+    },
+    {
       "id": "pcf-consent.agreementversion.policy",
       "prefLabel": "AgreementVersion.policy",
       "definition": "The version's ODRL policy; its `uid` is the fixed-version URL.",
