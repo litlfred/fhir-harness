@@ -17,7 +17,9 @@
  * - `FhirConsentSchema`, `FhirSearchsetBundleSchema`, `FhirOperationOutcomeSchema`,
  *   and their bound code lists are built from `hl7.fhir.r4.core#4.0.1`
  *   `StructureDefinition-*.json` and `CodeSystem-*.json` (no hand-written
- *   `FhirConsent` / `Bundle` interfaces or Zod shapes).
+ *   Zod shapes). The `FhirConsent` / `FhirSearchsetBundle` interfaces are only
+ *   the static type of the R4 elements this code reads; validation is the
+ *   StructureDefinition's.
  * - `isConsentExpired` is defined once here and imported by `iti-108-consent-client.ts`.
  *
  * @module fhir-harness/schemas/pcf-consent
@@ -295,7 +297,7 @@ interface StructureDefinitionJson {
   };
 }
 
-function isPlainRecord(x: unknown): x is Record<string, any> {
+function isPlainRecord(x: unknown): x is Record<string, unknown> {
   return Boolean(x && typeof x === "object" && !Array.isArray(x));
 }
 
@@ -444,10 +446,10 @@ function validateDatatypeValue(
   }
 }
 
-export function buildSchemaFromR4StructureDefinition(
+export function buildSchemaFromR4StructureDefinition<T = Record<string, unknown>>(
   sdFilename: string,
   options: { optionalPaths?: readonly string[] } = {},
-): z.ZodType<Record<string, any>> {
+): z.ZodType<T> {
   const sd = JSON.parse(
     readFileSync(resolvePublishedFhirPackageFile(HL7_FHIR_R4_CORE_PACKAGE_ID, sdFilename), "utf-8"),
   ) as StructureDefinitionJson;
@@ -465,7 +467,7 @@ export function buildSchemaFromR4StructureDefinition(
   }
 
   const validateBackbone = (
-    obj: Record<string, any>,
+    obj: Record<string, unknown>,
     sdPath: string,
     issuePath: (string | number)[],
     ctx: z.RefinementCtx,
@@ -585,7 +587,7 @@ export function buildSchemaFromR4StructureDefinition(
     }
   };
 
-  return z.any().superRefine((val, ctx) => {
+  return z.unknown().superRefine((val, ctx) => {
     if (!isPlainRecord(val)) {
       ctx.addIssue({ code: "custom", path: [], message: `Expected FHIR ${sd.type} object` });
       return;
@@ -599,52 +601,160 @@ export function buildSchemaFromR4StructureDefinition(
       return;
     }
     validateBackbone(val, sd.type, [], ctx);
-  }) as z.ZodType<Record<string, any>>;
+  }) as unknown as z.ZodType<T>;
 }
 
-function buildDatatypeSchema(typeCode: string): z.ZodType<Record<string, any>> {
-  return z.any().superRefine((val, ctx) => {
+// ── Typed FHIR R4 shapes ───────────────────────────────────────────────
+//
+// The Zod schemas below validate against the R4 StructureDefinitions at run
+// time, so their static type is whatever shape the caller declares. These are
+// that shape: the R4 elements this module and `iti-108-consent-client.ts`
+// actually read or build, with the R4 element names unchanged. They are
+// deliberately partial — an element not listed here is still accepted (and
+// checked) by the run-time schema, it just is not typed.
+
+/** FHIR R4 `Coding`. */
+export interface FhirCoding {
+  system?: string;
+  code?: string;
+  display?: string;
+}
+
+/** FHIR R4 `CodeableConcept`. */
+export interface FhirCodeableConcept {
+  coding?: readonly FhirCoding[];
+}
+
+/** FHIR R4 `Period`. */
+export interface FhirPeriod {
+  start?: string;
+  end?: string;
+}
+
+/** FHIR R4 `Identifier`. */
+export interface FhirIdentifier {
+  system?: string;
+  value?: string;
+}
+
+/** FHIR R4 `Reference`. */
+export interface FhirReference {
+  reference?: string;
+  identifier?: FhirIdentifier;
+}
+
+/** FHIR R4 `Meta`. */
+export interface FhirConsentMeta {
+  versionId?: string;
+  profile?: readonly string[];
+}
+
+/** FHIR R4 `Consent.policy`. */
+export interface FhirConsentPolicy {
+  uri?: string;
+}
+
+/** FHIR R4 `Consent.provision.actor`. */
+export interface FhirConsentActor {
+  role?: FhirCodeableConcept;
+  reference?: FhirReference;
+}
+
+/** FHIR R4 `Consent.provision.data`. */
+export interface FhirConsentData {
+  meaning?: FhirConsentDataMeaning;
+  reference?: FhirReference;
+}
+
+/** FHIR R4 `Consent.provision` (recursive through `provision.provision`). */
+export interface FhirConsentProvision {
+  type?: "deny" | "permit";
+  period?: FhirPeriod;
+  actor?: readonly FhirConsentActor[];
+  action?: readonly FhirCodeableConcept[];
+  securityLabel?: readonly FhirCoding[];
+  purpose?: readonly FhirCoding[];
+  dataPeriod?: FhirPeriod;
+  data?: readonly FhirConsentData[];
+  provision?: readonly FhirConsentProvision[];
+}
+
+/** FHIR R4 `Consent`. */
+export interface FhirConsent {
+  resourceType: "Consent";
+  id?: string;
+  meta?: FhirConsentMeta;
+  status: FhirConsentStatus;
+  scope?: FhirCodeableConcept;
+  category?: readonly FhirCodeableConcept[];
+  patient?: FhirReference;
+  dateTime?: string;
+  performer?: readonly FhirReference[];
+  organization?: readonly FhirReference[];
+  sourceReference?: FhirReference;
+  policy?: readonly FhirConsentPolicy[];
+  policyRule?: FhirCodeableConcept;
+  provision?: FhirConsentProvision;
+}
+
+/** Any FHIR R4 resource, as `Bundle.entry.resource` holds it before it is narrowed. */
+export interface FhirAnyResource {
+  resourceType: string;
+  id?: string;
+  [element: string]: unknown;
+}
+
+/** FHIR R4 `Bundle.link`. */
+export interface FhirBundleLink {
+  relation: string;
+  url: string;
+}
+
+/** FHIR R4 `Bundle.entry`. */
+export interface FhirBundleEntry {
+  resource?: FhirAnyResource;
+}
+
+/** FHIR R4 `Bundle` (as a `searchset`). */
+export interface FhirSearchsetBundle {
+  resourceType: "Bundle";
+  type: string;
+  total?: number;
+  link?: readonly FhirBundleLink[];
+  entry?: readonly FhirBundleEntry[];
+}
+
+/** FHIR R4 `OperationOutcome`. */
+export interface FhirOperationOutcome {
+  resourceType: "OperationOutcome";
+  issue: readonly { severity: string }[];
+}
+
+function buildDatatypeSchema<T>(typeCode: string): z.ZodType<T> {
+  return z.unknown().superRefine((val, ctx) => {
     validateDatatypeValue(val, typeCode, [], ctx);
-  }) as z.ZodType<Record<string, any>>;
+  }) as unknown as z.ZodType<T>;
 }
 
-export const FhirCodingSchema = buildDatatypeSchema("Coding");
-export type FhirCoding = z.infer<typeof FhirCodingSchema>;
+export const FhirCodingSchema = buildDatatypeSchema<FhirCoding>("Coding");
+export const FhirCodeableConceptSchema = buildDatatypeSchema<FhirCodeableConcept>("CodeableConcept");
+export const FhirIdentifierSchema = buildDatatypeSchema<FhirIdentifier>("Identifier");
+export const FhirReferenceSchema = buildDatatypeSchema<FhirReference>("Reference");
+export const FhirPeriodSchema = buildDatatypeSchema<FhirPeriod>("Period");
+export const FhirConsentMetaSchema = buildDatatypeSchema<FhirConsentMeta>("Meta");
 
-export const FhirCodeableConceptSchema = buildDatatypeSchema("CodeableConcept");
-export type FhirCodeableConcept = z.infer<typeof FhirCodeableConceptSchema>;
-
-export const FhirIdentifierSchema = buildDatatypeSchema("Identifier");
-export type FhirIdentifier = z.infer<typeof FhirIdentifierSchema>;
-
-export const FhirReferenceSchema = buildDatatypeSchema("Reference");
-export type FhirReference = z.infer<typeof FhirReferenceSchema>;
-
-export const FhirPeriodSchema = buildDatatypeSchema("Period");
-export type FhirPeriod = z.infer<typeof FhirPeriodSchema>;
-
-export const FhirConsentMetaSchema = buildDatatypeSchema("Meta");
-export type FhirConsentMeta = z.infer<typeof FhirConsentMetaSchema>;
-
-export const FhirConsentSchema = buildSchemaFromR4StructureDefinition("StructureDefinition-Consent.json", {
+export const FhirConsentSchema = buildSchemaFromR4StructureDefinition<FhirConsent>("StructureDefinition-Consent.json", {
   optionalPaths: ["Consent.scope", "Consent.category", "Consent.provision.actor.role"],
-}) as z.ZodType<{ resourceType: "Consent"; [key: string]: any }>;
-export const FhirStrictConsentSchema = buildSchemaFromR4StructureDefinition("StructureDefinition-Consent.json") as z.ZodType<{ resourceType: "Consent"; [key: string]: any }>;
-export type FhirConsent = z.infer<typeof FhirConsentSchema>;
-export type FhirConsentProvision = Record<string, any>;
-export type FhirConsentActor = Record<string, any>;
-export type FhirConsentData = Record<string, any>;
-export type FhirConsentPolicy = Record<string, any>;
+});
+export const FhirStrictConsentSchema = buildSchemaFromR4StructureDefinition<FhirConsent>("StructureDefinition-Consent.json");
 
-export const FhirSearchsetBundleSchema = buildSchemaFromR4StructureDefinition("StructureDefinition-Bundle.json");
-export type FhirSearchsetBundle = z.infer<typeof FhirSearchsetBundleSchema>;
-export type FhirBundleLink = Record<string, any>;
-export type FhirBundleEntry = Record<string, any>;
+export const FhirSearchsetBundleSchema = buildSchemaFromR4StructureDefinition<FhirSearchsetBundle>(
+  "StructureDefinition-Bundle.json",
+);
 
-export const FhirOperationOutcomeSchema = buildSchemaFromR4StructureDefinition(
+export const FhirOperationOutcomeSchema = buildSchemaFromR4StructureDefinition<FhirOperationOutcome>(
   "StructureDefinition-OperationOutcome.json",
 );
-export type FhirOperationOutcome = z.infer<typeof FhirOperationOutcomeSchema>;
 
 // ── ODRL Set types produced by consentToOdrl() ─────────────────────────
 
