@@ -25,6 +25,20 @@
  *   a bad entry. {@link igReadScope} throws. A section that declares nothing
  *   is never read as "everything".
  *
+ * ## Usage
+ *
+ * This is a library, not a command. A reader asks it once per repository:
+ *
+ * ```ts
+ * import { igReadScope } from "./ig-read-scope.ts";
+ * const scope = igReadScope(repoRoot);          // warns once if legacy, throws if unusable
+ * if (scope.declares("input/images/")) { ... }  // an undeclared optional path reads as absent
+ * const cfg = scope.path("sushi-config.yaml");  // refuses an undeclared required path
+ * ```
+ *
+ * The skill that says how a repository declares and extends the list is
+ * `skills/fhir-ig-base/ig-build-pipeline.md` §"What this layer reads".
+ *
  * ## What is not gated
  *
  * `index.config.json` itself: reading the declaration is how the scope is

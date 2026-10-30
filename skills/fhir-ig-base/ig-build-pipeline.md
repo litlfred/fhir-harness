@@ -9,7 +9,9 @@ description: >
   become manual-only, and whether to install the just-the-docs site (default
   yes). Owns the AST cache lifecycle: an IG site is built from the AST on
   its cache branch, the publish refuses a stale one, and the reusable
-  `ig-ast-refresh.yml` is the one writer. Read before adding anything to
+  `ig-ast-refresh.yml` is the one writer. Owns what an IG reader may read:
+  `contentTypes.ig.include` in the repository's `index.config.json`, and the
+  legacy warning for a repository that declares none. Read before adding anything to
   fhir-harness, before onboarding, converting or changing the workflows of an
   IG repository, and before publishing an IG site.
 governs:
@@ -212,6 +214,59 @@ What is WHO-specific stays in the overlay: the DAK sidecars and their label
 are the landing layer's `ig-site:sidecars` step (smart-base's), never this
 layer's and never the IG repository's own declaration. Restoring, judging,
 building and seeding are here.
+
+## What this layer reads: `contentTypes.ig.include`
+
+Owner, 2026-10-30: *"a harness can point to a repo, but doesnt want to
+automatically slurpo up all content in a repo. harness desclares what it it
+pays attention to in the repo."* So an IG repository says which of its paths
+this layer reads, in its root `index.config.json`, and nothing else is read:
+
+```json
+"contentTypes": {
+  "ig": { "include": ["sushi-config.yaml", "ig.ini", "input/fsh/", "input/pagecontent/"] }
+}
+```
+
+The section is the `ig` content type (`schemas/ig-content-type.ts`). An entry
+ending in `/` is a directory and covers everything under it; any other entry
+is one file. Paths are repository-relative and POSIX: absolute paths, `..`,
+`.`, backslashes and empty segments are refused. `sushi-config.yaml` is still
+SUSHI's file and is no longer the marker: a repository is an IG source because
+it declares the section.
+
+**Every IG reader here honours it.** Each one asks `scripts/ig-read-scope.ts`
+(`igReadScope(root)`) before it touches a path: `build-ig-indexes`,
+`ig-repo-site`, `build-ig-site`, `fsh-cone`, `ingest-ig-menu`,
+`ingest-ig-chrome`, `ig-api-hub`, `ig-site-data`, `ig-review-data` and
+`measure-logic-layer-edges`. An undeclared optional directory (`input/images/`,
+say) reads as absent; an undeclared file a reader cannot work without
+(`sushi-config.yaml`) is refused with the path named. `ig-repo-site compose`
+and `stageIgSite` stage from a copy of the declared paths only. Two things are
+not gated: `index.config.json` itself, and the input digest in `ig-ast.ts`,
+which must equal the Java exporter's and names what SUSHI and the Publisher
+read. The list bounds the harness, not those tools.
+
+**A repository that declares no section** is a legacy IG. It is read as
+before, every path, and each run prints one warning per repository:
+
+```text
+warning: <root> declares no contentTypes.ig in its index.config.json, so fhir-harness reads it as a legacy IG (every path). Declare "contentTypes": { "ig": { "include": [...] } } there, listing the paths the harness reads (see fhir-harness schemas/ig-content-type.ts).
+```
+
+When you see it, declare the section; do not silence the warning. A section
+that is there but has no `include`, an empty one, or a bad entry is refused
+outright: a section that declares nothing is never read as "everything".
+
+**Adding a path.** When a page, a diagram or a data file is missing from the
+site and the IG declares the section, check `include` before the reader. Add
+the path to `contentTypes.ig.include` in the IG's own `index.config.json`
+(a directory with a trailing `/`), in the same pull request as the content
+that needs it, and say in the description which reader needed it. Add the
+narrowest path that covers it, never `""` or the repository root. The WHO
+SMART Base IG's list is a worked example: it added `input/diagrams/`,
+`input/archimate/`, `input/dmn/` and `input/ignoreWarnings.txt` when its
+site stopped showing them.
 
 ## The IG repository's site route: the layers supply the steps
 
@@ -442,6 +497,9 @@ On yes:
    wears: `"site": {"landing": "<that layer>"}` (the WHO SMART Base IG for a WHO
    SMART IG). Without it the route refuses rather than guess among the
    mounted layers.
+   It also declares `contentTypes.ig` with its `include` list (§"What this
+   layer reads"); without it every reader warns and reads the whole
+   repository.
 2. Keep one workflow that calls the overlay's IG build (`ghbuild.yml` or
    `fhirbuild.yml` of the layer the IG builds on): it is the recipe the
    publish mirrors, and it stays `workflow_dispatch` only.

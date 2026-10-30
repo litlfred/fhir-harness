@@ -131,6 +131,11 @@ the section is read only within `include`; `ig-repo-site compose` and
 `stageIgSite` stage from a copy of the declared paths. A repository that
 declares none is a legacy IG: it is read as before, and one warning per run
 names the missing section. A section with no usable `include` is refused.
+To make a reader see a path it skips, add that path to `include` (a directory
+ends in `/`) in the IG's own `index.config.json`, in the pull request that
+needs it. The full rules, the warning's text and how to add a path are in
+[`ig-build-pipeline`](skills/fhir-ig-base/ig-build-pipeline.md) §"What this
+layer reads".
 The input digest in `ig-ast.ts` is not gated: it must match the Java
 exporter, and it names what SUSHI and the Publisher read. The `ig` type is
 registered at load time by `pipeline/plugin-slots.ts`, the module the

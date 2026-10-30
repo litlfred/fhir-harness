@@ -135,6 +135,12 @@ From there the IG grows in place, and leaves only through
    the WHO SMART Base IG) as a remote instance with consent, and the `index.lock.json`
    `remote-mount.ts` writes. No `<repo>.json` and no submodule: an IG
    repository needs no harness of its own (owner, 2026-10-14).
+   The same `index.config.json` declares the repository an IG source with
+   `contentTypes.ig` and its `include` list, the paths this harness reads
+   (owner, 2026-10-30). Start with the paths the IG holds: usually
+   `sushi-config.yaml`, `ig.ini`, `input/fsh/`, `input/pagecontent/`,
+   `input/includes/`, `input/images/`. [`ig-build-pipeline`](ig-build-pipeline.md)
+   §"What this layer reads" has the rules and the legacy warning.
 3. Then steps 3 to 5 of `in-repo`, at the root.
 4. **Ask the two build questions** before the first push: whether the
    repository's automatic gh-pages builds stay automatic, and whether to
@@ -159,7 +165,8 @@ From there the IG grows in place, and leaves only through
 
 `repo-conversion` scans first and imports second, never the other way round.
 After the import, mount its layer through `index.config.json` as in
-`new-repo` step 2 (no declaration of its own), then ask the two build questions in [`ig-build-pipeline`](ig-build-pipeline.md)
+`new-repo` step 2 (no declaration of its own), declare `contentTypes.ig`
+with an `include` list of the paths the harness should read, then ask the two build questions in [`ig-build-pipeline`](ig-build-pipeline.md)
 §"Who starts a build". Then `new-repo` step 5: copy the site templates if they are
 missing. An existing IG repository almost always carries build
 workflows that publish on every push.

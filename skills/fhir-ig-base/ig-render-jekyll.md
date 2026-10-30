@@ -84,6 +84,17 @@ Two mechanisms not to conflate: which side the nav is on is a **layout**
 decision made once, and what the nav contains is **derived per build**. A change
 to one is not licence to change the other.
 
+## What the render reads in the IG repository
+
+Only what the repository declares. Every reader on this path (`build-ig-site`,
+`ig-site-data`, `ingest-ig-menu`, `ingest-ig-chrome`, `ig-repo-site`) reads
+the IG through `scripts/ig-read-scope.ts`, which honours
+`contentTypes.ig.include` in the repository's `index.config.json`. A page,
+image or data file outside that list is not rendered. A repository with no
+section is read whole, with a legacy warning. The rules, the warning and how
+to add a path are in [`ig-build-pipeline`](ig-build-pipeline.md) §"What this
+layer reads".
+
 ## Where the variables come from
 
 `generate_smart_liquid.py` in the WHO build already computes
