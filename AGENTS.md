@@ -122,3 +122,16 @@ path not on that list is not read. The owner's principle, 2026-10-30: "a
 harness can point to a repo, but doesnt want to automatically slurpo up all
 content in a repo. harness desclares what it it pays attention to in the
 repo."
+
+Every IG reader here asks `scripts/ig-read-scope.ts` before it touches a
+path: `build-ig-indexes`, `ig-repo-site`, `build-ig-site`, `fsh-cone`,
+`ingest-ig-menu`, `ingest-ig-chrome`, `ig-api-hub`, `ig-site-data`,
+`ig-review-data` and `measure-logic-layer-edges`. A repository that declares
+the section is read only within `include`; `ig-repo-site compose` and
+`stageIgSite` stage from a copy of the declared paths. A repository that
+declares none is a legacy IG: it is read as before, and one warning per run
+names the missing section. A section with no usable `include` is refused.
+The input digest in `ig-ast.ts` is not gated: it must match the Java
+exporter, and it names what SUSHI and the Publisher read. The `ig` type is
+registered at load time by `pipeline/plugin-slots.ts`, the module the
+contributions loader requires for every repository that depends on this layer.

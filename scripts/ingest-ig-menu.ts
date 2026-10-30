@@ -39,6 +39,8 @@ import { spawnSync } from "node:child_process";
 
 import { parse as parseYaml } from "yaml";
 
+import { igReadScope } from "./ig-read-scope.ts";
+
 import {
   IG_MENU_SCHEMA_TAG,
   IgMenuSchema,
@@ -103,7 +105,8 @@ function gitRemote(repo: string): string | undefined {
 }
 
 export function buildMenu(sourceRepo: string, readAt: string): IgMenu {
-  const configPath = join(sourceRepo, "sushi-config.yaml");
+  // Refused when the repository's contentTypes.ig.include does not declare it.
+  const configPath = igReadScope(sourceRepo).path("sushi-config.yaml");
   const raw = parseYaml(readFileSync(configPath, "utf-8")) as Record<string, unknown>;
   const ref = gitRef(sourceRepo);
   const of = gitRemote(sourceRepo);

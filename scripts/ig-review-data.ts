@@ -45,6 +45,7 @@ import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 
 import { join, posix } from "node:path";
 
 import { reviewPageHtml } from "../../cat-harness-tools/scripts/gen-review-page.ts";
+import { igReadScope } from "./ig-read-scope.ts";
 import { run as injectStagingBanner, type StagingFacts } from "../../cat-harness-tools/scripts/staging-banner.ts";
 
 export const CHANGESET_SCHEMA = "folio-changeset/v1";
@@ -341,12 +342,15 @@ function git(ig: string, args: string[], encoding: "utf-8" | "buffer" = "utf-8")
   return { ok: r.status === 0, out: buf.toString("utf-8"), buf };
 }
 
-const inScope = (p: string): boolean => p === "sushi-config.yaml" || p.startsWith("input/");
+const IG_INPUTS = (p: string): boolean => p === "sushi-config.yaml" || p.startsWith("input/");
 
 /** The IG's ChangeSet from `base` (a ref) to the working tree, read with git; the base is read as data, never run. */
 export function igChangeSet(o: { ig: string; base: string; render: (md: string) => string }): IgChangeSetResult {
   const baseCommit = git(o.ig, ["rev-parse", "--verify", `${o.base}^{commit}`]);
   if (!baseCommit.ok) throw new Error(`${o.base} is not a commit in ${o.ig}: fetch it first`);
+  // The IG's inputs, narrowed to what contentTypes.ig.include declares.
+  const scope = igReadScope(o.ig);
+  const inScope = (p: string): boolean => IG_INPUTS(p) && scope.declares(p);
   const basePaths = git(o.ig, ["ls-tree", "-r", "--name-only", o.base, "--", "input", "sushi-config.yaml"]).out.split("\n").filter((p) => p && inScope(p));
   const headPaths = git(o.ig, ["ls-files", "-co", "--exclude-standard", "--", "input", "sushi-config.yaml"]).out.split("\n").filter((p) => p && inScope(p) && existsSync(join(o.ig, p)));
   const base = blocksOf(basePaths, (p) => git(o.ig, ["show", `${o.base}:${p}`], "buffer").buf);

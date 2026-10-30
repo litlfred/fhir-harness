@@ -69,8 +69,9 @@
  * @module fhir-harness/scripts/measure-logic-layer-edges
  */
 import { readFileSync, readdirSync, statSync } from "node:fs";
-import { join } from "node:path";
+import { join, relative } from "node:path";
 import { buildFshGraph, type FshGraph } from "./fsh-cone.ts";
+import { igReadScope } from "./ig-read-scope.ts";
 
 /** The three resource types the skill's 61 % is built from. */
 export const LOGIC_TYPES = ["Library", "PlanDefinition", "Measure"] as const;
@@ -107,10 +108,17 @@ interface FshBlock {
   lines: string[];
 }
 
+/** The files with `ext` under `rel` that the IG's contentTypes.ig.include declares. */
+function declaredWalk(igRoot: string, rel: string, ext: string): string[] {
+  const scope = igReadScope(igRoot);
+  if (!scope.reaches(rel)) return [];
+  return walk(join(scope.root, rel), ext).filter((f) => scope.declares(relative(scope.root, f)));
+}
+
 /** Every declaration in `input/fsh`, with its body and (for RuleSets) its parameters. */
 export function readFshBlocks(igRoot: string): FshBlock[] {
   const blocks: FshBlock[] = [];
-  for (const file of walk(join(igRoot, "input", "fsh"), ".fsh")) {
+  for (const file of declaredWalk(igRoot, "input/fsh", ".fsh")) {
     let current: FshBlock | undefined;
     for (const raw of readFileSync(file, "utf8").split(/\r?\n/)) {
       const line = raw.replace(/(^|\s)\/\/.*$/, "$1");
@@ -134,7 +142,7 @@ export function readFshBlocks(igRoot: string): FshBlock[] {
 /** The `library <name>` of every `.cql` file under `input/cql`. */
 export function readCqlNames(igRoot: string): Set<string> {
   const names = new Set<string>();
-  for (const file of walk(join(igRoot, "input", "cql"), ".cql")) {
+  for (const file of declaredWalk(igRoot, "input/cql", ".cql")) {
     const m = readFileSync(file, "utf8").match(/^\s*library\s+"?([A-Za-z0-9_]+)"?/m);
     if (m) names.add(m[1]);
   }

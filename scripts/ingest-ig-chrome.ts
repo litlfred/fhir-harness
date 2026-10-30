@@ -47,6 +47,8 @@ import { spawnSync } from "node:child_process";
 
 import { parse as parseYaml } from "yaml";
 
+import { igReadScope } from "./ig-read-scope.ts";
+
 import {
   IG_CHROME_SCHEMA_TAG,
   IgChromeSchema,
@@ -385,7 +387,7 @@ export function buildChrome(layerRoots: string[], readAt: string): IgChrome {
 
 /** One IG's identity and status, read from its own `sushi-config.yaml`. */
 export function buildIdentity(igRepo: string, readAt: string): IgIdentity {
-  const configPath = join(igRepo, "sushi-config.yaml");
+  const configPath = igReadScope(igRepo).path("sushi-config.yaml");
   const raw = parseYaml(readFileSync(configPath, "utf-8")) as Record<string, unknown>;
   const origin = gitRemote(igRepo);
   const identity = {

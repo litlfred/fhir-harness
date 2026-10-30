@@ -39,13 +39,15 @@
 
 import { EDIT_LINKS_RUNTIME } from "../../cat-harness-tools/src/core/edit-links.js";
 import { execFileSync } from "node:child_process";
-import { copyFileSync, cpSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import type { QaResult } from "../../cat-harness-tools/scripts/qa-results.ts";
 import { basename, dirname, extname, join, relative, resolve } from "node:path";
 import { parse as parseYaml } from "yaml";
 import { astImplementationGuide, describeSiteData, igSiteData, type IgSiteDataResult } from "./ig-site-data";
 import { defaultPackageCache, DEPENDENCY_FRAGMENTS, dependencyRows, fromImplementationGuide, fromSushiConfig, type DependencyRow } from "./ig-dependencies.ts";
 import { readAst } from "./ig-ast.ts";
+import { copyDeclared, igReadScope, onlyDeclared } from "./ig-read-scope.ts";
 import { questionnaireFormPages, type FormPage } from "./questionnaire-form.ts";
 import { GLOBALS_FRAGMENT, globalsFromImplementationGuide, globalsFromSushiConfig } from "./ig-globals.ts";
 import { artifactPageName } from "../schemas/fhir-artifact-index.js";
@@ -1737,7 +1739,28 @@ export function linkTableCells(body: string, lookup: ReadonlyMap<string, string>
   return { text, count };
 }
 
+/**
+ * Stage the IG at `igSrc` into `out`.
+ *
+ * Only what the repository's `contentTypes.ig.include` declares is read
+ * (`ig-read-scope.ts`). A source holding anything else is staged from a
+ * copy of the declared paths, so no reader below can reach the rest. An IG
+ * that declares no section is staged from where it is, as before, with one
+ * warning naming the missing declaration.
+ */
 export function stageIgSite(igSrc: string, out: string, opts: StageOptions = {}): StageResult {
+  const scope = igReadScope(igSrc);
+  if (onlyDeclared(scope)) return stageDeclaredSource(scope.root, out, opts);
+  const view = mkdtempSync(join(tmpdir(), "ig-declared-"));
+  try {
+    copyDeclared(scope, view);
+    return stageDeclaredSource(view, out, opts);
+  } finally {
+    rmSync(view, { recursive: true, force: true });
+  }
+}
+
+function stageDeclaredSource(igSrc: string, out: string, opts: StageOptions): StageResult {
   const { baseurl = "", plantumlJar } = opts;
   const src = resolve(igSrc);
   const sushi = parseYaml(readFileSync(join(src, "sushi-config.yaml"), "utf-8")) as Record<string, unknown>;

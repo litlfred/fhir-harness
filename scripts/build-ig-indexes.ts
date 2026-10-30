@@ -110,6 +110,7 @@ import { IG_API_DESCRIPTOR, IG_API_WORK } from "./ig-repo-site.ts";
 import { igApiHubPageOf } from "./ig-api-hub.ts";
 import { AST_FAMILY_PREFIXES, LAYER, lsRemote, needing, type BranchLister, type InstanceFacts } from "./gen-ig-ast-pages.ts";
 import { buildMenu } from "./ingest-ig-menu.ts";
+import { igReadScope } from "./ig-read-scope.ts";
 
 const HERE = import.meta.dir;
 
@@ -279,7 +280,7 @@ export function packFromAst(ast: string, igSource: string, out: string, stage: s
     cpSync(from, join(pkg, `${r.resourceType}-${r.id}.json`));
     n++;
   }
-  const cfg = parseYaml(readFileSync(join(igSource, "sushi-config.yaml"), "utf-8")) as Record<string, unknown>;
+  const cfg = parseYaml(readFileSync(igReadScope(igSource).path("sushi-config.yaml"), "utf-8")) as Record<string, unknown>;
   const fhirVersion = cfg["fhirVersion"];
   writeFileSync(
     join(pkg, "package.json"),
@@ -320,7 +321,11 @@ function jsonldUnder(dir: string, rel = ""): string[] {
 export function contextsFrom(igSource: string, dir: string, base: string | undefined): { id: string; representation: { url: string; localPath: string; bytes: number } }[] {
   const images = join(igSource, IG_IMAGES);
   const out: { id: string; representation: { url: string; localPath: string; bytes: number } }[] = [];
-  for (const rel of jsonldUnder(images)) {
+  // Only the images contentTypes.ig.include declares; none when it declares none there.
+  const scope = igReadScope(igSource);
+  const imagesRel = IG_IMAGES.split("\\").join("/");
+  if (!scope.reaches(imagesRel)) return out;
+  for (const rel of jsonldUnder(images).filter((r) => scope.declares(`${imagesRel}/${r.split("\\").join("/")}`))) {
     let doc: unknown;
     try {
       doc = JSON.parse(readFileSync(join(images, rel), "utf-8"));
@@ -345,7 +350,7 @@ export function contextsFrom(igSource: string, dir: string, base: string | undef
 /** The IG's FHIR versions, from its `sushi-config.yaml`; none when it names none. */
 export function fhirVersionsOf(igSource: string): string[] {
   const p = join(igSource, "sushi-config.yaml");
-  if (!existsSync(p)) return [];
+  if (!igReadScope(igSource).declares("sushi-config.yaml") || !existsSync(p)) return [];
   const v = (parseYaml(readFileSync(p, "utf-8")) as Record<string, unknown> | null)?.["fhirVersion"];
   return v === undefined || v === null ? [] : (Array.isArray(v) ? v : [v]).map(String);
 }
@@ -413,6 +418,14 @@ export function buildOne(t: IgTarget, work: string, log: (s: string) => void, ch
   rmSync(clone, { recursive: true, force: true });
   const c = run("git", ["clone", "--quiet", "--depth", "1", `https://github.com/${t.repository}`, clone]);
   if (!c.ok) return [`clone of ${t.repository} failed: ${c.out}`];
+  // The paths the harness reads in the IG: its contentTypes.ig.include. An IG
+  // that declares none is read as before, and the warning lands in this log.
+  try {
+    const scope = igReadScope(clone, { warn: (s) => log(`  ${s}`) });
+    if (!scope.legacy) log(`  reads: ${scope.section!.include.join(", ")} (contentTypes.ig.include)`);
+  } catch (e) {
+    return [(e as Error).message];
+  }
 
   const restore = run("bash", [join(HERE, "ig-cache.sh"), "restore", "--ig-root", clone]);
   if (!restore.ok) return [`no AST restored from ${t.repository}: ${restore.out.split("\n").slice(-3).join(" ")}`];

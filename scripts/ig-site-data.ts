@@ -61,6 +61,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { parse as parseYaml } from "yaml";
 import { readAst } from "./ig-ast.ts";
+import { igReadScope } from "./ig-read-scope.ts";
 
 /** The ImplementationGuide resource fields the Publisher exposes as `site.data.fhir.ig`. */
 export interface IgResourceFields {
@@ -184,7 +185,8 @@ export function igSiteData(igRoot: string, opts: { ast?: string } = {}): IgSiteD
     set("canonical", url && suffix && url.endsWith(suffix) ? url.slice(0, -suffix.length) : undefined, from);
   }
 
-  if (existsSync(sushiPath)) {
+  // sushi-config.yaml is read only when contentTypes.ig.include declares it.
+  if (igReadScope(igRoot).declares("sushi-config.yaml") && existsSync(sushiPath)) {
     const s = (parseYaml(readFileSync(sushiPath, "utf-8")) ?? {}) as Record<string, unknown>;
     const from = "sushi-config.yaml";
     const id = str(s.id);

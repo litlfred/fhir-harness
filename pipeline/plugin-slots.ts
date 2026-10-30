@@ -12,10 +12,21 @@
  * `site-publisher-<kind>` slot from the dependencies of the repository it
  * publishes, and names neither this layer nor this file.
  *
+ * ## It also registers this layer's content type
+ *
+ * The contributions loader (`loadContributions` in cat-harness) requires this
+ * module for every repository that depends on fhir-harness, when the QA
+ * sweep, the site publisher or the server starts. That is this layer's
+ * load-time entry, so the `ig` content type (`schemas/ig-content-type.ts`)
+ * is registered here, in the default registry, before anything asks a
+ * repository what it is. Until this import, `ig` was registered only when some
+ * module happened to load the schema.
+ *
  * @module fhir-harness/pipeline/plugin-slots
  */
 import type { SitePublisher } from "../../cat-harness-tools/scripts/stage-local.ts";
 import { IG_PUBLISHER } from "../scripts/stage-local-ig.ts";
+import "../schemas/ig-content-type.ts";
 
 export const PIPELINE_IMPLEMENTATIONS: Record<`site-publisher-${string}`, SitePublisher> = {
   "site-publisher-ig": IG_PUBLISHER,
