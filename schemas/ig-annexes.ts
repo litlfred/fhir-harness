@@ -16,7 +16,7 @@
  * @graphNode schema
  */
 import { z } from "zod";
-import { nodeKind } from "../../cat-harness/schemas/node-kind.ts";
+import { nodeKind } from "../../cat-harness/schemas/kg/node-kind.ts";
 
 export const IG_ANNEXES_TAG = "ig-annexes/v1" as const;
 /** The graph typology an IG instance declares a directory of annexes as. */

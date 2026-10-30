@@ -17,7 +17,7 @@
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { type GitHubRelease, releasesFromGitHub } from "../schemas/ig-releases.ts";
-import { declarationPathIn } from "../../cat-harness/schemas/cat-harness.js";
+import { declarationPathIn } from "../../cat-harness/schemas/kg/cat-harness.js";
 
 /** `owner/repo` from a GitHub URL or an `owner/repo` string. */
 export function repoSlug(s: string): string | undefined {

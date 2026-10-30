@@ -40,9 +40,9 @@ import { existsSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
-import type { ToolDefinition } from "../../cat-harness/schemas/tool.js";
-import { toolsFromFolders } from "../../cat-harness/schemas/tool-folders.js";
-import { declarationPathIn } from "../../cat-harness/schemas/cat-harness.js";
+import type { ToolDefinition } from "../../cat-harness/schemas/tools/tool.js";
+import { toolsFromFolders } from "../../cat-harness/schemas/tools/tool-folders.js";
+import { declarationPathIn } from "../../cat-harness/schemas/kg/cat-harness.js";
 
 /** The INSTANCE root — `<repo>/fhir-harness`, where `fhir-harness.json` lives. */
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");

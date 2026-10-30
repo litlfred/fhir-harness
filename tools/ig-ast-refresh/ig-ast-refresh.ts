@@ -1,5 +1,5 @@
-import { toolFactory } from "../../../cat-harness/schemas/tool-folders.js";
-import { defineTool } from "../../../cat-harness/schemas/tool.js";
+import { toolFactory } from "../../../cat-harness/schemas/tools/tool-folders.js";
+import { defineTool } from "../../../cat-harness/schemas/tools/tool.js";
 
 // The ONE writer of `cat/fhir-harness/fhir-ast/<package id>` (owner,
 // 2026-10-14: "that should be in fhir-harness then smart-* all use
