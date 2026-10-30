@@ -459,7 +459,7 @@ export function astArtefactPages(o: { ig: string; ast: string; work: string; nam
  * release, when it is there. Undefined: the diagrams carry a visible "not
  * rendered" marker, as `stageIgSite` reports.
  */
-export const PLANTUML_VERSION = "1.2024.7";
+export const PLANTUML_VERSION = "1.2026.9";
 export function plantumlJarFor(given: string | undefined, env: Record<string, string | undefined>, home: string): string | undefined {
   for (const j of [given, env.PLANTUML_JAR, join(home, ".cache", "plantuml", `plantuml-${PLANTUML_VERSION}.jar`)]) {
     if (j && existsSync(j) && statSync(j).size > 0) return j;
