@@ -389,6 +389,12 @@ describe("an IG repository's folio site (owner, 2026-10-14)", () => {
     expect(other.notes.join("\n")).toMatch(/NOT run — provided by base-harness-mount\/package\.json/);
   });
 
+  test("the artefact indexes are built at publish, after the AST and the sidecars, when a mounted layer provides the step", () => {
+    const withSide = new Map([...scripts, [IG_SITE_OPTIONAL.sidecars, { manifest: "base-harness-mount/package.json" }], [IG_SITE_OPTIONAL.index, { manifest: "fhir-harness/package.json" }]]);
+    expect(igFolioSite({ hasIndexConfig: true, scripts: withSide, landing, landingPath: "base-harness-mount", identity }).site!.pre).toEqual([IG_SITE_STEPS.ast, IG_SITE_OPTIONAL.sidecars, IG_SITE_OPTIONAL.index]);
+    expect(igFolioSite({ hasIndexConfig: true, scripts, landing, identity }).site!.notes.join("\n")).toMatch(/no artefact index is built/);
+  });
+
   test("the OpenAPI pages run when the checkout holds an OpenAPI graph, before the AST's data is served", () => {
     const withOa = new Map([...scripts, [IG_SITE_OPTIONAL.openapi, { manifest: "tools/package.json" }]]);
     expect(igFolioSite({ hasIndexConfig: true, scripts: withOa, landing, hasOpenapi: true, identity }).site!.siteSteps).toEqual([IG_SITE_OPTIONAL.openapi, IG_SITE_STEPS.site]);
