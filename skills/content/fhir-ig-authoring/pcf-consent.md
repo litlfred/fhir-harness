@@ -225,12 +225,16 @@ search transaction (`GET <baseUrl>/Consent`) as a **Consent Consumer**:
   ITI-108 result into `decide()`, check `result.status === "unknown"` first and
   propagate `"unknown"`.
 
-### 3.3 Fulfilling `odrl:obtainConsent` duties on DSAs (PCF6)
+### 3.3 Fulfilling `odrl:obtainConsent` duties on DSAs via injected `createPcfConsentEvaluator` (PCF6)
 
-In `cat-harness/schemas/content/odrl.ts` (beans `folio-assistant-s4v2` and
-`folio-assistant-a7c1`), a Data Sharing Agreement (`@type: "Agreement"`) may
-attach an `{ action: "odrl:obtainConsent" }` duty to a `permission` or policy
-`obligation`:
+In `cat-harness/schemas/content/odrl.ts` (beans `folio-assistant-s4v2`,
+`folio-assistant-a7c1`, and `folio-assistant-6jnx`), `cat-harness` stays free
+of FHIR resource types and `pcf:*` keys; a Data Sharing Agreement
+(`@type: "Agreement"`) carrying an `{ action: "odrl:obtainConsent" }` duty
+evaluates consent through an injected `consentEvaluator: createPcfConsentEvaluator(consents, options)`
+callback supplied from `fhir-harness/schemas/pcf-consent.ts` (returning
+`{ verdict, consent: { id, versionId, uid } }` to `permits()` / `permitsWithConsent()`
+/ `decideWithConsent()`):
 
 - **DSA + no `Consent` (or unreachable ITI-108 registry) → `"unknown"`:** when
   `odrl:obtainConsent` is due and no active matching PCF `Consent` (or

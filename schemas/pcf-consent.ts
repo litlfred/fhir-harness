@@ -8,58 +8,133 @@
  * `PurposeOfUse` first, plus the four IHE PCF Volume 1 §1:53.2.1 implicit
  * overarching policies as ODRL 2.2 `Set` policies.
  *
- * ## How FHIR `Consent` maps to ODRL 2.2
- *
- * - An active FHIR R4 `Consent` (`status: "active"`) translates to an ODRL
- *   `Set` (`@type: "Set"`) whose `uid` cites `Consent.id` (and
- *   `Consent.meta.versionId` when present) and whose `assigner` names the
- *   consenting party (`Consent.performer[0]` or `Consent.patient`).
- * - A non-active `Consent` (`draft`, `proposed`, `rejected`, `inactive`,
- *   `entered-in-error`) translates to an ODRL `Set` with no active rules
- *   (`permission: []`, `prohibition: []`), which evaluates to `"unknown"`
- *   (or falls back to the configured implicit policy).
- * - `Consent.provision` and nested `Consent.provision.provision` rules map to
- *   `permission` (`type: "permit"`) and `prohibition` (`type: "deny"`) rules:
- *   - `provision.purpose` codes from HL7 `v3-ActReason` (`PurposeOfUse`) become
- *     `{ leftOperand: "odrl:purpose", operator: "odrl:isA", rightOperand: code }`
- *     constraints, so ontological parent codes such as `TREAT` or `HRESCH`
- *     permit their sub-concepts (`CLINTRL`, `ETREAT`, `BTG`, `CLINTRCH`,
- *     `BIORCH`, …) as required by IHE PCF Volume 3 §3:5.8.2; local project
- *     `purposeOfUse` codes outside `v3-ActReason` become `odrl:eq` constraints.
- *   - `provision.period` bounds become `odrl:dateTime` `odrl:gteq` (`start`)
- *     and `odrl:lteq` (`end`) constraints.
- *   - `provision.actor` references become rule `assignee`s (defaulting to
- *     {@link ANYONE} when omitted).
- *   - `provision.data` instance references become rule `target`s; author
- *     (`meaning: "authoredby"`), encounter (`meaning: "related"`),
- *     `provision.dataPeriod` and `provision.securityLabel` become PCF scope
- *     constraints.
- *   - A root `permit` with nested `deny` exceptions uses `conflict: "odrl:prohibit"`;
- *     a root `deny` with nested `permit` exceptions (e.g. dissent except for
- *     Break-Glass) uses `conflict: "odrl:perm"`.
+ * Follow-up bean `folio-assistant-6jnx`:
+ * - Single PCF Consent evaluator in `fhir-harness`; `cat-harness` `odrl:obtainConsent`
+ *   duty receives a plain verdict (`permit` | `deny` | `unknown`, plus citation)
+ *   from an injected {@link createPcfConsentEvaluator} callback.
+ * - `HL7_PURPOSE_OF_USE` is loaded at runtime from the published
+ *   `hl7.terminology.r4#5.3.0` `CodeSystem-v3-ActReason.json` (no hand-typed hierarchy).
+ * - `FhirConsentSchema`, `FhirSearchsetBundleSchema`, `FhirOperationOutcomeSchema`,
+ *   and their bound code lists are built from `hl7.fhir.r4.core#4.0.1`
+ *   `StructureDefinition-*.json` and `CodeSystem-*.json` (no hand-written
+ *   `FhirConsent` / `Bundle` interfaces or Zod shapes).
+ * - `isConsentExpired` is defined once here and imported by `iti-108-consent-client.ts`.
  *
  * @module fhir-harness/schemas/pcf-consent
  * @graphNode schema
  * @conformsTo hl7-fhir
  * @conformsTo w3c-odrl
  */
+import { existsSync, readFileSync } from "node:fs";
+import { homedir } from "node:os";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { z } from "zod";
 import {
   ANYONE,
   FOLIO_DEFAULT_CONFLICT,
+  HL7_ACT_REASON_SYSTEM,
   ODRL_ACTIONS,
   ODRL_NS,
   actionGraph,
   broaderOrSelf,
   type ActionGraph,
   type Decision,
+  type OdrlDuty,
+  type OdrlPolicy,
+  type OdrlRule,
+  type PermitRequest,
 } from "@litlfred/cat-harness-tools/schemas/content/odrl.js";
 
-export { ANYONE, FOLIO_DEFAULT_CONFLICT, ODRL_ACTIONS, ODRL_NS, actionGraph, broaderOrSelf, type ActionGraph, type Decision };
+export {
+  ANYONE,
+  FOLIO_DEFAULT_CONFLICT,
+  HL7_ACT_REASON_SYSTEM,
+  ODRL_ACTIONS,
+  ODRL_NS,
+  actionGraph,
+  broaderOrSelf,
+  type ActionGraph,
+  type Decision,
+};
+
+export const HL7_TERMINOLOGY_PACKAGE_ID = "hl7.terminology.r4#5.3.0" as const;
+
+export interface ConsentDecisionRef {
+  id: string;
+  versionId: string;
+  uid?: string;
+}
+
+export interface ConsentEvaluation {
+  verdict: Decision;
+  consent?: ConsentDecisionRef;
+}
+
+export type ConsentEvaluator = (
+  req: PermitRequest,
+  duty?: OdrlDuty,
+  rule?: OdrlRule,
+  policy?: OdrlPolicy,
+) => ConsentEvaluation | Decision;
+
+interface ActReasonConceptNode {
+  code?: string;
+  property?: readonly { code?: string; valueCode?: string }[];
+  concept?: readonly ActReasonConceptNode[];
+}
+
+export function loadHl7PurposeOfUseFromActReason(
+  path: string,
+): Readonly<Record<string, readonly string[]>> {
+  const raw = JSON.parse(readFileSync(path, "utf-8")) as {
+    concept?: readonly ActReasonConceptNode[];
+  };
+  const rawParents = new Map<string, string[]>();
+  const walk = (nodes: readonly ActReasonConceptNode[] | undefined, structuralParent?: string): void => {
+    for (const node of nodes ?? []) {
+      const code = node.code;
+      if (!code) continue;
+      const parents = rawParents.get(code) ?? [];
+      if (structuralParent && !parents.includes(structuralParent)) parents.push(structuralParent);
+      for (const prop of node.property ?? []) {
+        if (prop.code === "subsumedBy" && typeof prop.valueCode === "string" && !parents.includes(prop.valueCode)) {
+          parents.push(prop.valueCode);
+        }
+      }
+      rawParents.set(code, parents);
+      walk(node.concept, code);
+    }
+  };
+  walk(raw.concept);
+
+  const inPurposeOfUse = new Map<string, boolean>();
+  const reachesPurposeOfUse = (code: string, visiting = new Set<string>()): boolean => {
+    if (code === "PurposeOfUse") return true;
+    const cached = inPurposeOfUse.get(code);
+    if (cached !== undefined) return cached;
+    if (visiting.has(code)) return false;
+    visiting.add(code);
+    const reaches = (rawParents.get(code) ?? []).some((p) => reachesPurposeOfUse(p, new Set(visiting)));
+    inPurposeOfUse.set(code, reaches);
+    return reaches;
+  };
+
+  const out: Record<string, readonly string[]> = { PurposeOfUse: [] };
+  for (const [code, parents] of rawParents.entries()) {
+    if (code !== "PurposeOfUse" && reachesPurposeOfUse(code)) {
+      out[code] = Object.freeze(parents.filter((p) => p === "PurposeOfUse" || reachesPurposeOfUse(p)));
+    }
+  }
+  return Object.freeze(out);
+}
 
 // ── Canonical URLs & CodeSystems (referenced by URL only) ──────────────
 
 export const ODRL_CONTEXT_URL = "http://www.w3.org/ns/odrl.jsonld" as const;
 export const PCF_IG_CANONICAL = "https://profiles.ihe.net/ITI/PCF" as const;
+export const HL7_FHIR_R4_CORE_PACKAGE_ID = "hl7.fhir.r4.core#4.0.1" as const;
+export const IHE_ITI_PCF_PACKAGE_ID = "ihe.iti.pcf#1.1.0" as const;
 
 export const PCF_CONSENT_BASIC_PROFILE =
   "https://profiles.ihe.net/ITI/PCF/StructureDefinition/IHE.PCF.consentBasic" as const;
@@ -79,7 +154,6 @@ export const PCF_BASIC_PURPOSE_VS = "https://profiles.ihe.net/ITI/PCF/ValueSet/B
 export const PCF_ADVANCED_SECURITY_TAG_VS =
   "https://profiles.ihe.net/ITI/PCF/ValueSet/AdvancedSecurityTagVS" as const;
 
-export const HL7_ACT_REASON_SYSTEM = "http://terminology.hl7.org/CodeSystem/v3-ActReason" as const;
 export const HL7_CONFIDENTIALITY_SYSTEM = "http://terminology.hl7.org/CodeSystem/v3-Confidentiality" as const;
 export const HL7_ACT_CODE_SYSTEM = "http://terminology.hl7.org/CodeSystem/v3-ActCode" as const;
 export const HL7_PARTICIPATION_TYPE_SYSTEM = "http://terminology.hl7.org/CodeSystem/v3-ParticipationType" as const;
@@ -94,77 +168,36 @@ export const LOINC_CONSENT_CODE = "59284-0" as const;
 export const PCF_BASIC_PURPOSES = ["TREAT", "HPAYMT", "HOPERAT"] as const;
 export type PcfBasicPurpose = (typeof PCF_BASIC_PURPOSES)[number];
 
+// ── Published FHIR Package Resolution (`~/.fhir/packages` + `test/support/pcf`) ──
+
+const HERE = dirname(fileURLToPath(import.meta.url));
+const SUPPORT_PCF_DIR = resolve(HERE, "..", "test", "support", "pcf");
+
+export function resolvePublishedFhirPackageFile(packageId: string, relativePath: string): string {
+  const candidates = [
+    join(homedir(), ".fhir", "packages", packageId, "package", relativePath),
+    join(SUPPORT_PCF_DIR, packageId, relativePath),
+  ];
+  for (const candidate of candidates) {
+    if (existsSync(candidate)) return candidate;
+  }
+  throw new Error(
+    `Cannot locate ${relativePath} in published package ${packageId} (checked ${candidates.join(", ")})`,
+  );
+}
+
 /**
- * HL7 v3 `ActReason` `PurposeOfUse` hierarchy (`child -> parent[]`), walked by
- * {@link broaderOrSelf} for `odrl:purpose` `odrl:isA` constraints.
+ * HL7 v3 `ActReason` `PurposeOfUse` hierarchy (`subsumedBy` parent links),
+ * loaded directly from `hl7.terminology.r4#5.3.0/CodeSystem-v3-ActReason.json`
+ * (bean `folio-assistant-6jnx`).
  */
-export const HL7_PURPOSE_OF_USE: Readonly<Record<string, readonly string[]>> = {
-  PurposeOfUse: [],
-  HMARKT: ["PurposeOfUse"],
-  HOPERAT: ["PurposeOfUse"],
-  CAREMGT: ["HOPERAT", "TREAT"],
-  DONAT: ["HOPERAT"],
-  FRAUD: ["HOPERAT"],
-  GOV: ["HOPERAT"],
-  HACCRED: ["HOPERAT"],
-  HCOMPL: ["HOPERAT"],
-  HDECD: ["HOPERAT"],
-  HDIRECT: ["HOPERAT"],
-  HDM: ["HOPERAT"],
-  HLEGAL: ["HOPERAT"],
-  HOUTCOMS: ["HOPERAT"],
-  HPRGRP: ["HOPERAT"],
-  HQUALIMP: ["HOPERAT"],
-  HSYSADMIN: ["HOPERAT"],
-  LABELING: ["HOPERAT"],
-  METAMGT: ["HOPERAT"],
-  MEMADMIN: ["HOPERAT"],
-  MILCDM: ["HOPERAT"],
-  PATADMIN: ["HOPERAT"],
-  PATSFTY: ["HOPERAT"],
-  PERFMSR: ["HOPERAT"],
-  RECORDMGT: ["HOPERAT"],
-  SYSDEV: ["HOPERAT"],
-  HTEST: ["HOPERAT"],
-  TRAIN: ["HOPERAT"],
-  HPAYMT: ["PurposeOfUse"],
-  CLMATTCH: ["HPAYMT"],
-  COVAUTH: ["HPAYMT"],
-  COVERAGE: ["HPAYMT"],
-  ELIGDTRM: ["COVERAGE"],
-  ELIGVER: ["COVERAGE"],
-  ENROLLM: ["COVERAGE"],
-  MILDCRG: ["COVERAGE"],
-  HAAUTH: ["HPAYMT"],
-  REMITADV: ["HPAYMT"],
-  HRESCH: ["PurposeOfUse"],
-  BIORCH: ["HRESCH"],
-  CLINTRCH: ["HRESCH"],
-  CLINTRCHNPC: ["CLINTRCH"],
-  CLINTRCHPC: ["CLINTRCH"],
-  PRECLINTRCH: ["CLINTRCH"],
-  DSRCH: ["HRESCH"],
-  POARCH: ["HRESCH"],
-  TRANSRCH: ["HRESCH"],
-  PATRQT: ["PurposeOfUse"],
-  FAMRQT: ["PATRQT"],
-  PWATRNY: ["PATRQT"],
-  SUPNWK: ["PATRQT"],
-  PUBHLTH: ["PurposeOfUse"],
-  DISASTER: ["PUBHLTH"],
-  THREAT: ["PUBHLTH"],
-  TREAT: ["PurposeOfUse"],
-  CLINTRL: ["TREAT"],
-  ETREAT: ["TREAT"],
-  BTG: ["ETREAT"],
-  ERTREAT: ["ETREAT"],
-  POPHLTH: ["TREAT"],
-};
+export const HL7_PURPOSE_OF_USE: Readonly<Record<string, readonly string[]>> = loadHl7PurposeOfUseFromActReason(
+  resolvePublishedFhirPackageFile(HL7_TERMINOLOGY_PACKAGE_ID, "CodeSystem-v3-ActReason.json"),
+);
 
 const PURPOSE_GRAPH: ReadonlyMap<string, readonly string[]> = new Map(Object.entries(HL7_PURPOSE_OF_USE));
-const DEFAULT_ACTION_GRAPH: ActionGraph = actionGraph([]);
 
-/** Strip optional `http://terminology.hl7.org/CodeSystem/v3-ActReason#` or `v3-ActReason:` prefix. */
+/** Normalize an HL7 PurposeOfUse code (stripping optional CodeSystem IRI or prefix). */
 export function normalizePurposeCode(code: string): string {
   if (code.startsWith(`${HL7_ACT_REASON_SYSTEM}#`) || code.startsWith(`${HL7_ACT_REASON_SYSTEM}/`)) {
     return code.slice(HL7_ACT_REASON_SYSTEM.length + 1);
@@ -180,6 +213,437 @@ export function isKnownHl7PurposeOfUse(code: string): boolean {
   if (code.startsWith("dpv:") || code.includes("/dpv")) return false;
   return PURPOSE_GRAPH.has(normalizePurposeCode(code));
 }
+
+// ── Published R4 StructureDefinition & CodeSystem Schema Builder ────────
+
+interface R4ConceptNode {
+  code?: string;
+  concept?: readonly R4ConceptNode[];
+}
+
+export function loadR4CodeSystemCodes(filename: string): readonly [string, ...string[]] {
+  const raw = JSON.parse(
+    readFileSync(resolvePublishedFhirPackageFile(HL7_FHIR_R4_CORE_PACKAGE_ID, filename), "utf-8"),
+  ) as { concept?: readonly R4ConceptNode[] };
+  const codes: string[] = [];
+  const walk = (nodes: readonly R4ConceptNode[] | undefined): void => {
+    for (const n of nodes ?? []) {
+      if (typeof n.code === "string" && n.code.length > 0 && !codes.includes(n.code)) {
+        codes.push(n.code);
+      }
+      walk(n.concept);
+    }
+  };
+  walk(raw.concept);
+  if (codes.length === 0) {
+    throw new Error(`No codes found in ${HL7_FHIR_R4_CORE_PACKAGE_ID}/${filename}`);
+  }
+  return codes as [string, ...string[]];
+}
+
+export const CONSENT_STATE_CODES = loadR4CodeSystemCodes("CodeSystem-consent-state-codes.json");
+export const CONSENT_PROVISION_TYPE_CODES = loadR4CodeSystemCodes("CodeSystem-consent-provision-type.json");
+export const CONSENT_DATA_MEANING_CODES = loadR4CodeSystemCodes("CodeSystem-consent-data-meaning.json");
+export const SEARCH_ENTRY_MODE_CODES = loadR4CodeSystemCodes("CodeSystem-search-entry-mode.json");
+export const ISSUE_SEVERITY_CODES = loadR4CodeSystemCodes("CodeSystem-issue-severity.json");
+export const ISSUE_TYPE_CODES = loadR4CodeSystemCodes("CodeSystem-issue-type.json");
+
+export const FhirConsentStatusSchema = z.enum(CONSENT_STATE_CODES);
+export type FhirConsentStatus = z.infer<typeof FhirConsentStatusSchema>;
+
+export const FhirConsentProvisionTypeSchema = z.enum(CONSENT_PROVISION_TYPE_CODES);
+export type FhirConsentProvisionType = z.infer<typeof FhirConsentProvisionTypeSchema>;
+
+export const FhirConsentDataMeaningSchema = z.enum(CONSENT_DATA_MEANING_CODES);
+export type FhirConsentDataMeaning = z.infer<typeof FhirConsentDataMeaningSchema>;
+
+const VALUE_SET_REQUIRED_CODES: Readonly<Record<string, ReadonlySet<string>>> = {
+  "http://hl7.org/fhir/ValueSet/consent-state-codes": new Set(CONSENT_STATE_CODES),
+  "http://hl7.org/fhir/ValueSet/consent-provision-type": new Set(CONSENT_PROVISION_TYPE_CODES),
+  "http://hl7.org/fhir/ValueSet/consent-data-meaning": new Set(CONSENT_DATA_MEANING_CODES),
+  "http://hl7.org/fhir/ValueSet/search-entry-mode": new Set(SEARCH_ENTRY_MODE_CODES),
+  "http://hl7.org/fhir/ValueSet/issue-severity": new Set(ISSUE_SEVERITY_CODES),
+  "http://hl7.org/fhir/ValueSet/issue-type": new Set(ISSUE_TYPE_CODES),
+};
+
+interface SdElementType {
+  code: string;
+}
+
+interface SdElementBinding {
+  strength?: string;
+  valueSet?: string;
+}
+
+interface SdElement {
+  id: string;
+  path: string;
+  min: number;
+  max: string;
+  type?: readonly SdElementType[];
+  contentReference?: string;
+  binding?: SdElementBinding;
+}
+
+interface StructureDefinitionJson {
+  resourceType: "StructureDefinition";
+  id: string;
+  type: string;
+  snapshot: {
+    element: readonly SdElement[];
+  };
+}
+
+function isPlainRecord(x: unknown): x is Record<string, any> {
+  return Boolean(x && typeof x === "object" && !Array.isArray(x));
+}
+
+function validateDatatypeValue(
+  value: unknown,
+  typeCode: string,
+  issuePath: (string | number)[],
+  ctx: z.RefinementCtx,
+): void {
+  const normType = typeCode.endsWith("System.String") ? "string" : typeCode;
+  switch (normType) {
+    case "string":
+    case "code":
+    case "id":
+    case "uri":
+    case "url":
+    case "canonical":
+    case "oid":
+    case "uuid":
+    case "markdown":
+    case "date":
+    case "dateTime":
+    case "instant":
+    case "time":
+    case "base64Binary":
+    case "xhtml": {
+      if (typeof value !== "string" || value.trim().length === 0) {
+        ctx.addIssue({
+          code: "custom",
+          path: issuePath,
+          message: `Expected non-empty FHIR ${normType} string`,
+        });
+      }
+      return;
+    }
+    case "boolean": {
+      if (typeof value !== "boolean") {
+        ctx.addIssue({ code: "custom", path: issuePath, message: "Expected FHIR boolean" });
+      }
+      return;
+    }
+    case "unsignedInt":
+    case "positiveInt":
+    case "integer": {
+      if (typeof value !== "number" || !Number.isInteger(value) || (normType !== "integer" && value < 0)) {
+        ctx.addIssue({ code: "custom", path: issuePath, message: `Expected FHIR ${normType}` });
+      }
+      return;
+    }
+    case "decimal": {
+      if (typeof value !== "number" || !Number.isFinite(value)) {
+        ctx.addIssue({ code: "custom", path: issuePath, message: "Expected FHIR decimal" });
+      }
+      return;
+    }
+    case "Coding": {
+      if (!isPlainRecord(value)) {
+        ctx.addIssue({ code: "custom", path: issuePath, message: "Expected FHIR Coding object" });
+        return;
+      }
+      for (const k of ["system", "version", "code", "display"] as const) {
+        if (value[k] !== undefined && (typeof value[k] !== "string" || (k !== "display" && value[k].trim().length === 0))) {
+          ctx.addIssue({ code: "custom", path: [...issuePath, k], message: `Invalid Coding.${k}` });
+        }
+      }
+      return;
+    }
+    case "CodeableConcept": {
+      if (!isPlainRecord(value)) {
+        ctx.addIssue({ code: "custom", path: issuePath, message: "Expected FHIR CodeableConcept object" });
+        return;
+      }
+      if (value.coding !== undefined) {
+        if (!Array.isArray(value.coding)) {
+          ctx.addIssue({ code: "custom", path: [...issuePath, "coding"], message: "Expected Coding[] array" });
+        } else {
+          value.coding.forEach((c: unknown, i: number) =>
+            validateDatatypeValue(c, "Coding", [...issuePath, "coding", i], ctx),
+          );
+        }
+      }
+      if (value.text !== undefined && typeof value.text !== "string") {
+        ctx.addIssue({ code: "custom", path: [...issuePath, "text"], message: "Expected string for text" });
+      }
+      return;
+    }
+    case "Identifier": {
+      if (!isPlainRecord(value)) {
+        ctx.addIssue({ code: "custom", path: issuePath, message: "Expected FHIR Identifier object" });
+        return;
+      }
+      for (const k of ["use", "system", "value"] as const) {
+        if (value[k] !== undefined && typeof value[k] !== "string") {
+          ctx.addIssue({ code: "custom", path: [...issuePath, k], message: `Invalid Identifier.${k}` });
+        }
+      }
+      return;
+    }
+    case "Reference": {
+      if (!isPlainRecord(value)) {
+        ctx.addIssue({ code: "custom", path: issuePath, message: "Expected FHIR Reference object" });
+        return;
+      }
+      for (const k of ["reference", "type", "display"] as const) {
+        if (value[k] !== undefined && (typeof value[k] !== "string" || (k !== "display" && value[k].trim().length === 0))) {
+          ctx.addIssue({ code: "custom", path: [...issuePath, k], message: `Invalid Reference.${k}` });
+        }
+      }
+      if (value.identifier !== undefined) {
+        validateDatatypeValue(value.identifier, "Identifier", [...issuePath, "identifier"], ctx);
+      }
+      return;
+    }
+    case "Period": {
+      if (!isPlainRecord(value)) {
+        ctx.addIssue({ code: "custom", path: issuePath, message: "Expected FHIR Period object" });
+        return;
+      }
+      for (const k of ["start", "end"] as const) {
+        if (value[k] !== undefined && (typeof value[k] !== "string" || value[k].trim().length === 0)) {
+          ctx.addIssue({ code: "custom", path: [...issuePath, k], message: `Invalid Period.${k}` });
+        }
+      }
+      return;
+    }
+    case "Meta": {
+      if (!isPlainRecord(value)) {
+        ctx.addIssue({ code: "custom", path: issuePath, message: "Expected FHIR Meta object" });
+        return;
+      }
+      if (value.versionId !== undefined && (typeof value.versionId !== "string" || value.versionId.trim().length === 0)) {
+        ctx.addIssue({ code: "custom", path: [...issuePath, "versionId"], message: "Invalid Meta.versionId" });
+      }
+      if (value.profile !== undefined) {
+        if (!Array.isArray(value.profile) || value.profile.some((p) => typeof p !== "string" || p.trim().length === 0)) {
+          ctx.addIssue({ code: "custom", path: [...issuePath, "profile"], message: "Invalid Meta.profile" });
+        }
+      }
+      return;
+    }
+    default: {
+      if (!isPlainRecord(value)) {
+        ctx.addIssue({ code: "custom", path: issuePath, message: `Expected FHIR ${normType} object` });
+      }
+    }
+  }
+}
+
+export function buildSchemaFromR4StructureDefinition(
+  sdFilename: string,
+  options: { optionalPaths?: readonly string[] } = {},
+): z.ZodType<Record<string, any>> {
+  const sd = JSON.parse(
+    readFileSync(resolvePublishedFhirPackageFile(HL7_FHIR_R4_CORE_PACKAGE_ID, sdFilename), "utf-8"),
+  ) as StructureDefinitionJson;
+  const optionalOverride = new Set(options.optionalPaths ?? []);
+  const childrenByParent = new Map<string, SdElement[]>();
+
+  for (const el of sd.snapshot.element) {
+    if (el.path === sd.type) continue;
+    const dot = el.path.lastIndexOf(".");
+    if (dot < 0) continue;
+    const parentPath = el.path.slice(0, dot);
+    const list = childrenByParent.get(parentPath) ?? [];
+    list.push(el);
+    childrenByParent.set(parentPath, list);
+  }
+
+  const validateBackbone = (
+    obj: Record<string, any>,
+    sdPath: string,
+    issuePath: (string | number)[],
+    ctx: z.RefinementCtx,
+  ): void => {
+    const children = childrenByParent.get(sdPath) ?? [];
+    const allowedFieldMap = new Map<string, { el: SdElement; chosenType: string }>();
+
+    for (const child of children) {
+      const rawName = child.path.slice(sdPath.length + 1);
+      if (rawName.endsWith("[x]")) {
+        const stem = rawName.slice(0, -3);
+        for (const t of child.type ?? []) {
+          const cap = t.code.charAt(0).toUpperCase() + t.code.slice(1);
+          allowedFieldMap.set(`${stem}${cap}`, { el: child, chosenType: t.code });
+        }
+      } else {
+        const chosenType =
+          child.contentReference !== undefined
+            ? "BackboneElement"
+            : child.type?.[0]?.code ?? "BackboneElement";
+        allowedFieldMap.set(rawName, { el: child, chosenType });
+      }
+    }
+
+    for (const child of children) {
+      const effectiveMin = optionalOverride.has(child.path) ? 0 : child.min;
+      if (effectiveMin < 1) continue;
+      const rawName = child.path.slice(sdPath.length + 1);
+      if (rawName.endsWith("[x]")) {
+        const stem = rawName.slice(0, -3);
+        const present = (child.type ?? []).some((t) => {
+          const cap = t.code.charAt(0).toUpperCase() + t.code.slice(1);
+          return obj[`${stem}${cap}`] !== undefined;
+        });
+        if (!present) {
+          ctx.addIssue({
+            code: "custom",
+            path: [...issuePath, rawName],
+            message: `Missing required element ${child.path}`,
+          });
+        }
+      } else if (obj[rawName] === undefined) {
+        ctx.addIssue({
+          code: "custom",
+          path: [...issuePath, rawName],
+          message: `Missing required element ${child.path}`,
+        });
+      }
+    }
+
+    for (const [key, val] of Object.entries(obj)) {
+      if (val === undefined) continue;
+      if (sdPath === sd.type && key === "resourceType") continue;
+      if (key.startsWith("_") && allowedFieldMap.has(key.slice(1))) continue;
+
+      const entry = allowedFieldMap.get(key);
+      if (!entry) {
+        ctx.addIssue({
+          code: "custom",
+          path: [...issuePath, key],
+          message: `Unknown element "${key}" on ${sdPath}`,
+        });
+        continue;
+      }
+
+      const { el, chosenType } = entry;
+      const targetSdPath = el.contentReference ? el.contentReference.replace(/^#/, "") : el.path;
+      const requiredCodes =
+        el.binding?.strength === "required" && el.binding.valueSet
+          ? VALUE_SET_REQUIRED_CODES[el.binding.valueSet.split("|")[0]!]
+          : undefined;
+
+      const checkSingleItem = (item: unknown, itemIssuePath: (string | number)[]): void => {
+        if (chosenType === "BackboneElement") {
+          if (!isPlainRecord(item)) {
+            ctx.addIssue({
+              code: "custom",
+              path: itemIssuePath,
+              message: `Expected BackboneElement object at ${el.path}`,
+            });
+            return;
+          }
+          validateBackbone(item, targetSdPath, itemIssuePath, ctx);
+          return;
+        }
+        validateDatatypeValue(item, chosenType, itemIssuePath, ctx);
+        if (requiredCodes && typeof item === "string" && !requiredCodes.has(item)) {
+          ctx.addIssue({
+            code: "custom",
+            path: itemIssuePath,
+            message: `Invalid code "${item}" for ${el.path}; expected one of ${[...requiredCodes].join(", ")}`,
+          });
+        }
+      };
+
+      if (el.max === "*") {
+        if (!Array.isArray(val)) {
+          ctx.addIssue({
+            code: "custom",
+            path: [...issuePath, key],
+            message: `Expected array for repeating element ${el.path}`,
+          });
+          continue;
+        }
+        val.forEach((item: unknown, idx: number) => checkSingleItem(item, [...issuePath, key, idx]));
+      } else {
+        if (Array.isArray(val)) {
+          ctx.addIssue({
+            code: "custom",
+            path: [...issuePath, key],
+            message: `Expected single value (max=${el.max}) for ${el.path}`,
+          });
+          continue;
+        }
+        checkSingleItem(val, [...issuePath, key]);
+      }
+    }
+  };
+
+  return z.any().superRefine((val, ctx) => {
+    if (!isPlainRecord(val)) {
+      ctx.addIssue({ code: "custom", path: [], message: `Expected FHIR ${sd.type} object` });
+      return;
+    }
+    if (val.resourceType !== sd.type) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["resourceType"],
+        message: `Expected resourceType "${sd.type}", received "${String(val.resourceType ?? "(missing)")}"`,
+      });
+      return;
+    }
+    validateBackbone(val, sd.type, [], ctx);
+  }) as z.ZodType<Record<string, any>>;
+}
+
+function buildDatatypeSchema(typeCode: string): z.ZodType<Record<string, any>> {
+  return z.any().superRefine((val, ctx) => {
+    validateDatatypeValue(val, typeCode, [], ctx);
+  }) as z.ZodType<Record<string, any>>;
+}
+
+export const FhirCodingSchema = buildDatatypeSchema("Coding");
+export type FhirCoding = z.infer<typeof FhirCodingSchema>;
+
+export const FhirCodeableConceptSchema = buildDatatypeSchema("CodeableConcept");
+export type FhirCodeableConcept = z.infer<typeof FhirCodeableConceptSchema>;
+
+export const FhirIdentifierSchema = buildDatatypeSchema("Identifier");
+export type FhirIdentifier = z.infer<typeof FhirIdentifierSchema>;
+
+export const FhirReferenceSchema = buildDatatypeSchema("Reference");
+export type FhirReference = z.infer<typeof FhirReferenceSchema>;
+
+export const FhirPeriodSchema = buildDatatypeSchema("Period");
+export type FhirPeriod = z.infer<typeof FhirPeriodSchema>;
+
+export const FhirConsentMetaSchema = buildDatatypeSchema("Meta");
+export type FhirConsentMeta = z.infer<typeof FhirConsentMetaSchema>;
+
+export const FhirConsentSchema = buildSchemaFromR4StructureDefinition("StructureDefinition-Consent.json", {
+  optionalPaths: ["Consent.scope", "Consent.category", "Consent.provision.actor.role"],
+}) as z.ZodType<{ resourceType: "Consent"; [key: string]: any }>;
+export const FhirStrictConsentSchema = buildSchemaFromR4StructureDefinition("StructureDefinition-Consent.json") as z.ZodType<{ resourceType: "Consent"; [key: string]: any }>;
+export type FhirConsent = z.infer<typeof FhirConsentSchema>;
+export type FhirConsentProvision = Record<string, any>;
+export type FhirConsentActor = Record<string, any>;
+export type FhirConsentData = Record<string, any>;
+export type FhirConsentPolicy = Record<string, any>;
+
+export const FhirSearchsetBundleSchema = buildSchemaFromR4StructureDefinition("StructureDefinition-Bundle.json");
+export type FhirSearchsetBundle = z.infer<typeof FhirSearchsetBundleSchema>;
+export type FhirBundleLink = Record<string, any>;
+export type FhirBundleEntry = Record<string, any>;
+
+export const FhirOperationOutcomeSchema = buildSchemaFromR4StructureDefinition(
+  "StructureDefinition-OperationOutcome.json",
+);
+export type FhirOperationOutcome = z.infer<typeof FhirOperationOutcomeSchema>;
 
 // ── ODRL Set types produced by consentToOdrl() ─────────────────────────
 
@@ -421,101 +885,6 @@ export function getImplicitPolicySet(uriOrAlias: string): PcfOdrlSet | undefined
   }
 }
 
-// ── FHIR R4 Consent model (IHE PCF 1.1.0 Basic / Intermediate / Advanced) ──
-
-export type FhirConsentStatus =
-  | "draft"
-  | "proposed"
-  | "active"
-  | "rejected"
-  | "inactive"
-  | "entered-in-error";
-
-export interface FhirCoding {
-  system?: string;
-  version?: string;
-  code?: string;
-  display?: string;
-}
-
-export interface FhirCodeableConcept {
-  coding?: readonly FhirCoding[];
-  text?: string;
-}
-
-export interface FhirIdentifier {
-  system?: string;
-  value?: string;
-}
-
-export interface FhirReference {
-  reference?: string;
-  type?: string;
-  identifier?: FhirIdentifier;
-  display?: string;
-}
-
-export interface FhirPeriod {
-  start?: string;
-  end?: string;
-}
-
-export interface FhirConsentActor {
-  role?: FhirCodeableConcept;
-  reference: FhirReference;
-}
-
-export type FhirConsentDataMeaning = "instance" | "related" | "dependents" | "authoredby";
-
-export interface FhirConsentData {
-  meaning: FhirConsentDataMeaning;
-  reference: FhirReference;
-}
-
-export interface FhirConsentPolicy {
-  authority?: string;
-  uri?: string;
-}
-
-export interface FhirConsentProvision {
-  type?: "deny" | "permit";
-  period?: FhirPeriod;
-  actor?: readonly FhirConsentActor[];
-  action?: readonly FhirCodeableConcept[];
-  securityLabel?: readonly FhirCoding[];
-  purpose?: readonly FhirCoding[];
-  class?: readonly FhirCoding[];
-  code?: readonly FhirCodeableConcept[];
-  dataPeriod?: FhirPeriod;
-  data?: readonly FhirConsentData[];
-  provision?: readonly FhirConsentProvision[];
-}
-
-export interface FhirConsentMeta {
-  versionId?: string;
-  lastUpdated?: string;
-  profile?: readonly string[];
-  security?: readonly FhirCoding[];
-}
-
-export interface FhirConsent {
-  resourceType: "Consent";
-  id?: string;
-  meta?: FhirConsentMeta;
-  status: FhirConsentStatus;
-  scope?: FhirCodeableConcept;
-  category?: readonly FhirCodeableConcept[];
-  patient?: FhirReference;
-  dateTime?: string;
-  performer?: readonly FhirReference[];
-  organization?: readonly FhirReference[];
-  sourceAttachment?: Record<string, unknown>;
-  sourceReference?: FhirReference;
-  policy?: readonly FhirConsentPolicy[];
-  policyRule?: FhirCodeableConcept;
-  provision?: FhirConsentProvision;
-}
-
 export interface ConsentCitation {
   id: string;
   versionId?: string;
@@ -537,27 +906,30 @@ export interface ConsentToOdrlOptions {
 
 const DEFAULT_UID_PREFIX = "urn:ihe:pcf:consent:";
 
-/**
- * Deterministic ODRL `uid` for a FHIR `Consent`, citing both `Consent.id` and
- * `Consent.meta.versionId` when present (for PROV-O decision traceability,
- * bean `2egb`).
- */
+/** Mint a deterministic ODRL `uid` citing `Consent.id` and `Consent.meta.versionId`. */
 export function consentPolicyUid(consent: FhirConsent, uidPrefix = DEFAULT_UID_PREFIX): string {
   const id = consent.id?.trim() || "anonymous";
   const versionId = consent.meta?.versionId?.trim();
   return versionId ? `${uidPrefix}${id}:v${versionId}` : `${uidPrefix}${id}`;
 }
 
-/** Extract citation metadata (`id`, `versionId`, `uid`, `status`, `patient`, `policyUris`) from a FHIR `Consent`. */
-export function extractConsentCitation(consent: FhirConsent, uidPrefix = DEFAULT_UID_PREFIX): ConsentCitation {
+/** Extract provenance citation metadata (`Consent.id`, `meta.versionId`, `uid`, `patient`, `policy.uri`) from a FHIR `Consent`. */
+export function extractConsentCitation(
+  consent: FhirConsent,
+  uidPrefix = DEFAULT_UID_PREFIX,
+): ConsentCitation {
   const id = consent.id?.trim() || "anonymous";
   const versionId = consent.meta?.versionId?.trim();
   const uid = consentPolicyUid(consent, uidPrefix);
   const patient = referenceId(consent.patient);
-  const performer = referenceId(consent.performer?.[0]) ?? patient;
-  const policyUris = (consent.policy ?? [])
-    .map((p) => p.uri?.trim())
-    .filter((u): u is string => Boolean(u));
+  const performer = referenceId(consent.performer?.[0]);
+  const policyUris: string[] = [];
+  for (const p of consent.policy ?? []) {
+    if (p.uri) policyUris.push(p.uri);
+  }
+  for (const c of consent.policyRule?.coding ?? []) {
+    if (c.code) policyUris.push(c.system ? `${c.system}#${c.code}` : c.code);
+  }
   return {
     id,
     ...(versionId ? { versionId } : {}),
@@ -569,10 +941,7 @@ export function extractConsentCitation(consent: FhirConsent, uidPrefix = DEFAULT
   };
 }
 
-/**
- * Detect which IHE PCF profile (`consentBasic`, `consentIntermediate`,
- * `consentAdvanced`) a FHIR `Consent` declares or structurally uses.
- */
+/** Detect which IHE PCF 1.1.0 Consent profile (`Basic`, `Intermediate`, `Advanced`) a FHIR `Consent` uses or conforms to. */
 export function detectPcfProfile(consent: FhirConsent): PcfConsentProfile {
   const declared = consent.meta?.profile ?? [];
   if (declared.includes(PCF_CONSENT_ADVANCED_PROFILE)) return PCF_CONSENT_ADVANCED_PROFILE;
@@ -581,7 +950,8 @@ export function detectPcfProfile(consent: FhirConsent): PcfConsentProfile {
 
   const prov = consent.provision;
   if (!prov) return PCF_CONSENT_BASIC_PROFILE;
-  const allProvisions = [prov, ...(prov.provision ?? [])];
+
+  const allProvisions: FhirConsentProvision[] = [prov, ...(prov.provision ?? [])];
   if (allProvisions.some((p) => (p.securityLabel?.length ?? 0) > 0)) {
     return PCF_CONSENT_ADVANCED_PROFILE;
   }
@@ -591,7 +961,7 @@ export function detectPcfProfile(consent: FhirConsent): PcfConsentProfile {
       (p) =>
         p.dataPeriod !== undefined ||
         (p.data?.length ?? 0) > 0 ||
-        (p.purpose ?? []).some((coding) => coding.code && ! isKnownHl7PurposeOfUse(coding.code)),
+        (p.purpose ?? []).some((coding: FhirCoding) => coding.code && !isKnownHl7PurposeOfUse(coding.code)),
     )
   ) {
     return PCF_CONSENT_INTERMEDIATE_PROFILE;
@@ -916,11 +1286,6 @@ export function consentToOdrl(consent: FhirConsent, options: ConsentToOdrlOption
     );
   }
 
-  // When a root `deny` carries nested `permit` exceptions (e.g. IHE PCF's
-  // `ex-dissent-intermediate-break-glass`), ODRL's `odrl:perm` conflict
-  // strategy lets the specific break-glass permission override the base
-  // prohibition; otherwise `odrl:prohibit` lets nested `deny` exceptions
-  // override a base `permit`.
   const hasNestedPermitUnderDeny = rootType === "deny" && permission.length > 0;
   const conflict = hasNestedPermitUnderDeny ? "odrl:perm" : FOLIO_DEFAULT_CONFLICT;
 
@@ -999,30 +1364,67 @@ export interface PcfDecideOptions {
   actionGraph?: ActionGraph;
 }
 
-function parseBoundMs(dateStr: string, bound: "start" | "end" | "point"): number {
-  const s = dateStr.trim();
+/**
+ * Parse a FHIR date / dateTime boundary into epoch milliseconds.
+ *
+ * For `bound === "end"`, date-only values (`YYYY`, `YYYY-MM`, `YYYY-MM-DD`)
+ * resolve to the end of that calendar unit in UTC; for `"start"` or `"point"`,
+ * they resolve to the start of that unit in UTC. Full ISO-8601 dateTime strings
+ * are parsed via `Date.parse`.
+ */
+export function parseFhirPeriodBound(
+  raw: string,
+  bound: "start" | "end" | "point" = "point",
+): number {
+  const s = raw.trim();
+  if (/^\d{4}$/.test(s)) {
+    const year = Number(s);
+    return bound === "end"
+      ? Date.UTC(year, 11, 31, 23, 59, 59, 999)
+      : Date.UTC(year, 0, 1, 0, 0, 0, 0);
+  }
+  if (/^\d{4}-\d{2}$/.test(s)) {
+    const [y, m] = s.split("-").map(Number);
+    if (m! < 1 || m! > 12) return Number.NaN;
+    return bound === "end"
+      ? Date.UTC(y!, m!, 0, 23, 59, 59, 999)
+      : Date.UTC(y!, m! - 1, 1, 0, 0, 0, 0);
+  }
   if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
-    return Date.parse(bound === "end" ? `${s}T23:59:59.999Z` : `${s}T00:00:00.000Z`);
+    const [y, m, d] = s.split("-").map(Number);
+    const probe = new Date(Date.UTC(y!, m! - 1, d!));
+    if (
+      probe.getUTCFullYear() !== y ||
+      probe.getUTCMonth() !== m! - 1 ||
+      probe.getUTCDate() !== d
+    ) {
+      return Number.NaN;
+    }
+    return bound === "end"
+      ? Date.UTC(y!, m! - 1, d!, 23, 59, 59, 999)
+      : Date.UTC(y!, m! - 1, d!, 0, 0, 0, 0);
   }
   return Date.parse(s);
 }
 
 /**
- * Whether a FHIR `Consent`'s root `provision.period` is outside `atDateTime`
- * (expired after `period.end` or not yet in effect before `period.start`).
+ * Single canonical check in `fhir-harness` for whether a FHIR `Consent`'s root
+ * `provision.period` is outside `atDateTime` (expired after `period.end` or
+ * not yet in effect before `period.start`; bean `folio-assistant-6jnx`).
  */
-export function isConsentExpired(consent: FhirConsent, atDateTime?: string): boolean {
+export function isConsentExpired(consent: FhirConsent, atDateTime?: string | Date): boolean {
   const period = consent.provision?.period;
-  if (!period || !atDateTime) return false;
-  const nowMs = parseBoundMs(atDateTime, "point");
+  if (!period || atDateTime === undefined) return false;
+  const nowMs =
+    atDateTime instanceof Date ? atDateTime.getTime() : parseFhirPeriodBound(atDateTime, "point");
   if (Number.isNaN(nowMs)) return false;
   if (period.start) {
-    const startMs = parseBoundMs(period.start, "start");
-    if (!Number.isNaN(startMs) && nowMs < startMs) return true;
+    const startMs = parseFhirPeriodBound(period.start, "start");
+    if (Number.isNaN(startMs) || nowMs < startMs) return true;
   }
   if (period.end) {
-    const endMs = parseBoundMs(period.end, "end");
-    if (!Number.isNaN(endMs) && nowMs > endMs) return true;
+    const endMs = parseFhirPeriodBound(period.end, "end");
+    if (Number.isNaN(endMs) || nowMs > endMs) return true;
   }
   return false;
 }
@@ -1097,7 +1499,7 @@ function readScopeOperand(
   }
 }
 
-function compareNumbers(lhs: number, rhs: number, op: string): boolean {
+function compareNum(lhs: number, rhs: number, op: string): boolean {
   switch (op) {
     case "odrl:eq":
       return lhs === rhs;
@@ -1124,56 +1526,56 @@ function evaluateConstraint(c: PcfOdrlConstraint, scope: PcfRequestScope): boole
   const rhs = c.rightOperand;
 
   if (left === "odrl:purpose") {
-    const v = String(raw);
-    if (v.startsWith("dpv:") || v.includes("/dpv")) return false;
-    const normV = normalizePurposeCode(v);
+    const reqPurpose = normalizePurposeCode(String(raw));
     if (op === "odrl:isA") {
-      if (Array.isArray(rhs)) return false;
-      const normRhs = normalizePurposeCode(rhs as string);
-      if (!isKnownHl7PurposeOfUse(normV) || !isKnownHl7PurposeOfUse(normRhs)) return false;
-      return broaderOrSelf(normV, PURPOSE_GRAPH).has(normRhs);
+      if (typeof rhs !== "string") return false;
+      const targetPurpose = normalizePurposeCode(rhs);
+      if (isKnownHl7PurposeOfUse(reqPurpose) && isKnownHl7PurposeOfUse(targetPurpose)) {
+        return broaderOrSelf(reqPurpose, PURPOSE_GRAPH).has(targetPurpose);
+      }
+      return reqPurpose === targetPurpose;
     }
-    if (op === "odrl:eq") return !Array.isArray(rhs) && normV === normalizePurposeCode(rhs as string);
-    if (op === "odrl:neq") return !Array.isArray(rhs) && normV !== normalizePurposeCode(rhs as string);
+    if (op === "odrl:eq") {
+      return typeof rhs === "string" && reqPurpose === normalizePurposeCode(rhs);
+    }
+    if (op === "odrl:neq") {
+      return typeof rhs === "string" && reqPurpose !== normalizePurposeCode(rhs);
+    }
     if (op === "odrl:isAnyOf") {
-      return Array.isArray(rhs) && rhs.map(normalizePurposeCode).includes(normV);
+      if (!Array.isArray(rhs)) return false;
+      return rhs.some((code) => {
+        const target = normalizePurposeCode(code);
+        return isKnownHl7PurposeOfUse(reqPurpose) && isKnownHl7PurposeOfUse(target)
+          ? broaderOrSelf(reqPurpose, PURPOSE_GRAPH).has(target)
+          : reqPurpose === target;
+      });
     }
     if (op === "odrl:isNoneOf") {
       if (!Array.isArray(rhs)) return false;
-      const normList = rhs.map(normalizePurposeCode);
-      if (isKnownHl7PurposeOfUse(normV)) {
-        const ancestors = broaderOrSelf(normV, PURPOSE_GRAPH);
-        return !normList.some((code) => ancestors.has(code));
-      }
-      return !normList.includes(normV);
+      return !rhs.some((code) => {
+        const target = normalizePurposeCode(code);
+        return isKnownHl7PurposeOfUse(reqPurpose) && isKnownHl7PurposeOfUse(target)
+          ? broaderOrSelf(reqPurpose, PURPOSE_GRAPH).has(target)
+          : reqPurpose === target;
+      });
     }
     return false;
   }
 
   if (left === "odrl:dateTime" || left === "pcf:dataPeriod") {
-    if (Array.isArray(rhs)) return false;
-    const boundKind =
-      op === "odrl:lteq" || op === "odrl:lt" ? "end" : op === "odrl:gteq" || op === "odrl:gt" ? "start" : "point";
-    const lhsMs = parseBoundMs(String(raw), "point");
-    const rhsMs = parseBoundMs(rhs as string, boundKind);
+    if (typeof rhs !== "string") return false;
+    const lhsMs = parseFhirPeriodBound(String(raw), "point");
+    const rhsMs = parseFhirPeriodBound(rhs, op === "odrl:lteq" ? "end" : "start");
     if (Number.isNaN(lhsMs) || Number.isNaN(rhsMs)) return false;
-    return compareNumbers(lhsMs, rhsMs, op);
+    return compareNum(lhsMs, rhsMs, op);
   }
 
   if (left === "pcf:securityLabel") {
-    const tags = Array.isArray(raw) ? raw.map(String) : [String(raw)];
-    if (op === "odrl:eq") {
-      return !Array.isArray(rhs) && tags.includes(rhs as string);
-    }
-    if (op === "odrl:neq") {
-      return !Array.isArray(rhs) && !tags.includes(rhs as string);
-    }
-    if (op === "odrl:isAnyOf") {
-      return Array.isArray(rhs) && tags.some((t) => (rhs as readonly string[]).includes(t));
-    }
-    if (op === "odrl:isNoneOf") {
-      return Array.isArray(rhs) && !tags.some((t) => (rhs as readonly string[]).includes(t));
-    }
+    const reqTags = Array.isArray(raw) ? raw.map(String) : [String(raw)];
+    if (op === "odrl:eq") return typeof rhs === "string" && reqTags.includes(rhs);
+    if (op === "odrl:neq") return typeof rhs === "string" && !reqTags.includes(rhs);
+    if (op === "odrl:isAnyOf") return Array.isArray(rhs) && reqTags.some((t) => rhs.includes(t));
+    if (op === "odrl:isNoneOf") return Array.isArray(rhs) && !reqTags.some((t) => rhs.includes(t));
     return false;
   }
 
@@ -1184,24 +1586,44 @@ function evaluateConstraint(c: PcfOdrlConstraint, scope: PcfRequestScope): boole
     case "odrl:neq":
       return !Array.isArray(rhs) && v !== rhs;
     case "odrl:isAnyOf":
-      return Array.isArray(rhs) && (rhs as readonly string[]).includes(v);
+      return Array.isArray(rhs) && rhs.includes(v);
     case "odrl:isNoneOf":
-      return Array.isArray(rhs) && !(rhs as readonly string[]).includes(v);
+      return Array.isArray(rhs) && !rhs.includes(v);
+    case "odrl:lt":
+      return !Array.isArray(rhs) && v < rhs;
+    case "odrl:lteq":
+      return !Array.isArray(rhs) && v <= rhs;
+    case "odrl:gt":
+      return !Array.isArray(rhs) && v > rhs;
+    case "odrl:gteq":
+      return !Array.isArray(rhs) && v >= rhs;
+    case "odrl:isA":
+      return !Array.isArray(rhs) && v === rhs;
     default:
       return false;
   }
 }
 
-function actorMatchesAssignee(assignee: string, req: PcfDecisionRequest): boolean {
+function actorMatchesAssignee(req: PcfDecisionRequest, assignee: string): boolean {
   if (assignee === ANYONE) return true;
-  const who = req.actor;
-  if (who && assignee === who) return true;
-  if (req.actorGroups && req.actorGroups.includes(assignee)) return true;
-  if (req.actorRoles && req.actorRoles.includes(assignee)) return true;
+  if (req.actor && req.actor === assignee) return true;
+  if (req.actorGroups?.includes(assignee)) return true;
+  if (req.actorRoles?.includes(assignee)) return true;
   return false;
 }
 
-type RuleOutcome = "permitted" | "violated" | "unknown" | "no-match";
+function hasActorContext(req: PcfDecisionRequest): boolean {
+  return (
+    (req.actor !== undefined && req.actor !== null && req.actor !== "") ||
+    (req.actorGroups !== undefined && req.actorGroups.length > 0) ||
+    (req.actorRoles !== undefined && req.actorRoles.length > 0)
+  );
+}
+
+const DEFAULT_ACTION_GRAPH: ActionGraph = actionGraph([]);
+
+type PermissionEval = "permitted" | "violated" | "unknown" | "no-match";
+type ProhibitionEval = "prohibited" | "not-prohibited" | "unknown";
 
 function evaluatePermission(
   r: PcfOdrlRule,
@@ -1209,16 +1631,15 @@ function evaluatePermission(
   action: string,
   scope: PcfRequestScope,
   graph: ActionGraph,
-): RuleOutcome {
+): PermissionEval {
   if (!broaderOrSelf(action, graph).has(r.action)) return "no-match";
 
   let hasUnknown = false;
 
   if (r.assignee !== ANYONE) {
-    const hasActor = (req.actor !== undefined && req.actor !== null) || Boolean(req.actorGroups?.length) || Boolean(req.actorRoles?.length);
-    if (!hasActor) {
+    if (!hasActorContext(req)) {
       hasUnknown = true;
-    } else if (!actorMatchesAssignee(r.assignee, req)) {
+    } else if (!actorMatchesAssignee(req, r.assignee)) {
       return "violated";
     }
   }
@@ -1238,6 +1659,7 @@ function evaluatePermission(
       return "violated";
     }
   }
+
   return hasUnknown ? "unknown" : "permitted";
 }
 
@@ -1247,16 +1669,15 @@ function evaluateProhibition(
   action: string,
   scope: PcfRequestScope,
   graph: ActionGraph,
-): "prohibited" | "not-prohibited" | "unknown" {
+): ProhibitionEval {
   if (!broaderOrSelf(action, graph).has(r.action)) return "not-prohibited";
 
   let hasUnknown = false;
 
   if (r.assignee !== ANYONE) {
-    const hasActor = (req.actor !== undefined && req.actor !== null) || Boolean(req.actorGroups?.length) || Boolean(req.actorRoles?.length);
-    if (!hasActor) {
+    if (!hasActorContext(req)) {
       hasUnknown = true;
-    } else if (!actorMatchesAssignee(r.assignee, req)) {
+    } else if (!actorMatchesAssignee(req, r.assignee)) {
       return "not-prohibited";
     }
   }
@@ -1307,9 +1728,6 @@ export function evaluatePcfPolicy(
     return strategy === "odrl:perm" ? "permit" : "deny";
   }
   if (prohibited) {
-    // Under odrl:perm (e.g. dissent except for Break-Glass), if a permission
-    // exception is still unknown due to missing scope, report unknown rather
-    // than prematurely denying.
     if (policy.conflict === "odrl:perm" && permUnknown) return "unknown";
     return "deny";
   }
@@ -1363,24 +1781,33 @@ export type ConsentOrPolicyInput =
   | null
   | undefined;
 
+function refForConsent(consent: FhirConsent): ConsentDecisionRef {
+  return {
+    id: consent.id?.trim() || "anonymous",
+    versionId: consent.meta?.versionId?.trim() || "1",
+    uid: consentPolicyUid(consent),
+  };
+}
+
+function refForSet(set: PcfOdrlSet): ConsentDecisionRef {
+  const m = /^urn:ihe:pcf:consent:([^:]+?)(?::v(.+))?$/.exec(set.uid);
+  return {
+    id: m?.[1] ?? set.uid,
+    versionId: m?.[2] ?? "1",
+    uid: set.uid,
+  };
+}
+
 /**
- * Three-valued IHE PCF access-control decision (`"permit"` | `"deny"` | `"unknown"`)
- * over a FHIR `Consent`, a translated ODRL `Set`, a collection of Consents/Sets,
- * or `null`/`undefined` (with optional fallback to one of the four IHE PCF
- * Volume 1 §1:53.2.1 implicit-policy `Set`s).
- *
- * Per IHE PCF Volume 1 §1:53.2.2 & §1:53.4.2.5:
- * - When an active, non-expired `Consent` is present, its terms govern (and override
- *   any implicit policy).
- * - When no `Consent` is found, or its `status` is not `"active"`, or it has
- *   expired at the request's `dateTime`, `options.implicitPolicy` is enforced if
- *   configured; otherwise `"unknown"` is returned when no active Consent exists.
+ * Evaluate {@link decide} together with the deciding `ConsentDecisionRef`
+ * (`{ id, versionId, uid }`) for `cat-harness` `odrl:obtainConsent` duty
+ * evaluation and `prov:used` citations (beans `a7c1`, `2egb`, `6jnx`).
  */
-export function decide(
+export function decideWithCitation(
   consentOrPolicy: ConsentOrPolicyInput,
   req: PcfDecisionRequest,
   options: PcfDecideOptions = {},
-): Decision {
+): ConsentEvaluation {
   const graph = options.actionGraph ?? DEFAULT_ACTION_GRAPH;
   const fallback = resolveImplicitPolicy(options.implicitPolicy);
   const scope = normalizeScope(req);
@@ -1397,42 +1824,105 @@ export function decide(
     items.push(consentOrPolicy);
   }
 
-  const activeSets: PcfOdrlSet[] = [];
+  const activeEntries: { set: PcfOdrlSet; ref: ConsentDecisionRef }[] = [];
   let hadExpiredActiveConsent = false;
+  let expiredRef: ConsentDecisionRef | undefined;
 
   for (const item of items) {
     if (isFhirConsent(item)) {
       if (item.status !== "active") continue;
+      const ref = refForConsent(item);
       if (reqDateTime && isConsentExpired(item, String(reqDateTime))) {
         hadExpiredActiveConsent = true;
+        expiredRef ??= ref;
         if (!fallback) {
-          activeSets.push(consentToOdrl(item));
+          activeEntries.push({ set: consentToOdrl(item), ref });
         }
         continue;
       }
-      activeSets.push(consentToOdrl(item));
+      activeEntries.push({ set: consentToOdrl(item), ref });
     } else if (isPcfOdrlSet(item)) {
       if (item.permission.length > 0 || item.prohibition.length > 0) {
-        activeSets.push(item);
+        activeEntries.push({ set: item, ref: refForSet(item) });
       }
     }
   }
 
-  if (activeSets.length === 0) {
+  if (activeEntries.length === 0) {
     if (fallback) {
-      return evaluatePcfPolicy(fallback, req, graph);
+      const verdict = evaluatePcfPolicy(fallback, req, graph);
+      return { verdict, consent: refForSet(fallback) };
     }
-    return hadExpiredActiveConsent ? "deny" : "unknown";
+    return hadExpiredActiveConsent
+      ? { verdict: "deny", ...(expiredRef ? { consent: expiredRef } : {}) }
+      : { verdict: "unknown" };
   }
 
-  let anyPermit = false;
-  let anyUnknown = false;
-  for (const set of activeSets) {
+  let firstPermitRef: ConsentDecisionRef | undefined;
+  let firstUnknownRef: ConsentDecisionRef | undefined;
+  for (const { set, ref } of activeEntries) {
     const d = evaluatePcfPolicy(set, req, graph);
-    if (d === "deny") return "deny";
-    if (d === "permit") anyPermit = true;
-    if (d === "unknown") anyUnknown = true;
+    if (d === "deny") return { verdict: "deny", consent: ref };
+    if (d === "permit" && firstPermitRef === undefined) firstPermitRef = ref;
+    if (d === "unknown" && firstUnknownRef === undefined) firstUnknownRef = ref;
   }
-  if (anyPermit) return "permit";
-  return anyUnknown ? "unknown" : "unknown";
+  if (firstPermitRef !== undefined) {
+    return { verdict: "permit", consent: firstPermitRef };
+  }
+  return {
+    verdict: "unknown",
+    ...(firstUnknownRef !== undefined ? { consent: firstUnknownRef } : {}),
+  };
+}
+
+/**
+ * Three-valued IHE PCF access-control decision (`"permit"` | `"deny"` | `"unknown"`)
+ * over a FHIR `Consent`, a translated ODRL `Set`, a collection of Consents/Sets,
+ * or `null`/`undefined` (with optional fallback to one of the four IHE PCF
+ * Volume 1 §1:53.2.1 implicit-policy `Set`s).
+ */
+export function decide(
+  consentOrPolicy: ConsentOrPolicyInput,
+  req: PcfDecisionRequest,
+  options: PcfDecideOptions = {},
+): Decision {
+  return decideWithCitation(consentOrPolicy, req, options).verdict;
+}
+
+/**
+ * Build an injected {@link ConsentEvaluator} for `cat-harness`'s
+ * `odrl:obtainConsent` duty (`permits`, `decide`, `permitsWithConsent`,
+ * `decideWithConsent`) backed by this single PCF Consent evaluator (beans
+ * `a7c1`, `2egb`, `6jnx`).
+ */
+export function createPcfConsentEvaluator(
+  consentOrPolicy: ConsentOrPolicyInput,
+  options: PcfDecideOptions & {
+    pcfScope?: Partial<PcfRequestScope>;
+  } = {},
+): ConsentEvaluator {
+  return (req: PermitRequest, _duty, rule): ConsentEvaluation => {
+    const graph = options.actionGraph ?? DEFAULT_ACTION_GRAPH;
+    const effectiveAction =
+      req.action && broaderOrSelf(req.action, graph).has("odrl:use")
+        ? req.action
+        : rule?.action && broaderOrSelf(rule.action, graph).has("odrl:use")
+          ? rule.action
+          : "odrl:use";
+    const scope: PcfRequestScope = {
+      ...(req.scope ?? {}),
+      ...(options.pcfScope ?? {}),
+    };
+    return decideWithCitation(
+      consentOrPolicy,
+      {
+        actor: req.actor,
+        actorRoles: req.actorRoles,
+        actorGroups: req.actorGroups,
+        action: effectiveAction,
+        scope,
+      },
+      options,
+    );
+  };
 }
