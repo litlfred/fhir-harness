@@ -1822,7 +1822,13 @@ function declaredRoutePages(site?: string): { abs: string; html: string }[] {
     if (v.harness === INSTANCE_NAME) out.push(place(parts));
     // A harness covering the KIND per instance (`subgraphs: "instance"`):
     // this instance's sub-graph view, `<base>/<harness>/<id>/<instance>/`.
-    if (v.subgraphs === "instance" && (v.coversKinds ?? []).includes("fhir-artifact-index") && directoriesForGraph(INSTANCE, "fhir-artifact-index").length > 0) {
+    // An IG instance declares no `fhir-artifact-index` directory since #124:
+    // its index is built at publish (`ig-index:build`), so the index on disk
+    // counts as well as a declared directory. The coverage gate counts it too,
+    // and without this the site was refused for the missing page
+    // (smart-base-clinical, 2026-10-30).
+    const hasIndex = directoriesForGraph(INSTANCE, "fhir-artifact-index").length > 0 || existsSync(INDEX);
+    if (v.subgraphs === "instance" && (v.coversKinds ?? []).includes("fhir-artifact-index") && hasIndex) {
       out.push(place({ ...parts, subgraph: INSTANCE_NAME }));
     }
   }
