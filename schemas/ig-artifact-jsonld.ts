@@ -48,7 +48,7 @@
  */
 import { z } from "zod";
 
-import { nodeKind } from "../../cat-harness/schemas/kg/node-kind.ts";
+import { nodeKind } from "@litlfred/cat-harness-tools/schemas/kg/node-kind.ts";
 
 export const IG_ARTIFACT_JSONLD_SCHEMA_TAG = "folio-ig-artifact-jsonld/v1";
 

@@ -31,7 +31,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
-import { declarationPathIn } from "../../cat-harness/schemas/kg/cat-harness.js";
+import { declarationPathIn } from "@litlfred/cat-harness-tools/schemas/kg/cat-harness.js";
 import { readChangedFiles, siteFilter } from "../../cat-harness-tools/scripts/staging-cone.ts";
 
 const ROOT = resolve(import.meta.dir, "..", "..");

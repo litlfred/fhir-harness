@@ -56,7 +56,7 @@ import {
   readIgSection,
   type IgSection,
 } from "../schemas/ig-content-type.ts";
-import { INDEX_SECTION_FILE } from "../../cat-harness/schemas/content/content-type.js";
+import { INDEX_SECTION_FILE } from "@litlfred/cat-harness-tools/schemas/content/content-type.js";
 
 /** The paths an IG reader may read in one repository. */
 export interface IgReadScope {

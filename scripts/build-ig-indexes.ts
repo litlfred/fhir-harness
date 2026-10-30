@@ -104,8 +104,8 @@ import { parse as parseYaml } from "yaml";
 import { tmpdir } from "node:os";
 import { basename, join, resolve } from "node:path";
 
-import { checkoutRootFor, instanceRootsIn } from "../../cat-harness/schemas/kg/cat-harness.js";
-import { scriptTable } from "../../cat-harness/schemas/sdlc/script-table.ts";
+import { checkoutRootFor, instanceRootsIn } from "@litlfred/cat-harness-tools/schemas/kg/cat-harness.js";
+import { scriptTable } from "@litlfred/cat-harness-tools/schemas/sdlc/script-table.ts";
 import { IG_API_DESCRIPTOR, IG_API_WORK } from "./ig-repo-site.ts";
 import { igApiHubPageOf } from "./ig-api-hub.ts";
 import { AST_FAMILY_PREFIXES, LAYER, lsRemote, needing, type BranchLister, type InstanceFacts } from "./gen-ig-ast-pages.ts";
