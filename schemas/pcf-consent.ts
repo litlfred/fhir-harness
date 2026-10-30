@@ -44,6 +44,7 @@ import {
   type OdrlPolicy,
   type OdrlRule,
   type PermitRequest,
+  parseDurationMs,
 } from "@litlfred/cat-harness-tools/schemas/content/odrl.js";
 
 export {
@@ -1889,6 +1890,115 @@ export function decide(
   return decideWithCitation(consentOrPolicy, req, options).verdict;
 }
 
+/** One version of an agreement, as its DCAT 3 record describes it. */
+export interface AgreementVersion {
+  /** The version's ODRL policy; its `uid` is the fixed-version URL. */
+  policy: OdrlPolicy;
+  /** The fixed-version URL of the version this one amends (`dcat:previousVersion`). */
+  previousVersion?: string;
+}
+
+const bareOperand = (x: string): string => x.replace(/^odrl:/, "");
+const sameJson = (a: unknown, b: unknown): boolean => JSON.stringify(a) === JSON.stringify(b);
+type OdrlConstraintLike = NonNullable<OdrlRule["constraint"]>[number];
+
+function boundValue(left: string, value: string): number | undefined {
+  if (left === "dateTime") {
+    const ms = Date.parse(value);
+    return Number.isNaN(ms) ? undefined : ms;
+  }
+  if (left === "elapsedTime") return parseDurationMs(value);
+  return undefined;
+}
+
+/** Is constraint `n` at least as tight as constraint `o`? Unknown cases answer no. */
+function constraintAtLeastAsTight(n: OdrlConstraintLike, o: OdrlConstraintLike): boolean {
+  const left = bareOperand(n.leftOperand);
+  if (left !== bareOperand(o.leftOperand)) return false;
+  const nOp = bareOperand(n.operator);
+  const oOp = bareOperand(o.operator);
+  if (nOp === oOp && sameJson(n.rightOperand, o.rightOperand)) return true;
+  if (left === "purpose" && oOp === "isA" && typeof o.rightOperand === "string") {
+    const within = (code: string) => broaderOrSelf(normalizePurposeCode(code), PURPOSE_GRAPH).has(normalizePurposeCode(o.rightOperand as string));
+    if ((nOp === "isA" || nOp === "eq") && typeof n.rightOperand === "string") return within(n.rightOperand);
+    if (nOp === "isAnyOf" && Array.isArray(n.rightOperand)) return n.rightOperand.every(within);
+    return false;
+  }
+  if ((left === "dateTime" || left === "elapsedTime") && typeof n.rightOperand === "string" && typeof o.rightOperand === "string") {
+    const nv = boundValue(left, n.rightOperand);
+    const ov = boundValue(left, o.rightOperand);
+    if (nv === undefined || ov === undefined) return false;
+    const upper = (op: string) => op === "lt" || op === "lteq";
+    const lower = (op: string) => op === "gt" || op === "gteq";
+    if (upper(nOp) && upper(oOp)) return nv < ov || (nv === ov && !(nOp === "lteq" && oOp === "lt"));
+    if (lower(nOp) && lower(oOp)) return nv > ov || (nv === ov && !(nOp === "gteq" && oOp === "gt"));
+  }
+  return false;
+}
+
+/** Does newer permission `n` allow nothing that older permission `o` did not? */
+function permissionWithin(n: OdrlRule, o: OdrlRule, graph: ActionGraph): boolean {
+  if (o.assignee !== ANYONE && n.assignee !== o.assignee) return false;
+  if (!broaderOrSelf(n.action, graph).has(o.action)) return false;
+  if (o.target !== undefined && n.target !== o.target) return false;
+  for (const oc of o.constraint ?? []) {
+    if (!(n.constraint ?? []).some((nc) => constraintAtLeastAsTight(nc, oc))) return false;
+  }
+  for (const od of o.duty ?? []) {
+    if (!(n.duty ?? []).some((nd) => sameJson(nd, od))) return false;
+  }
+  return true;
+}
+
+/**
+ * Is `newer` a narrowing amendment of `older`: does it permit nothing the
+ * older version did not? Computed from the ODRL rules alone, with no extra
+ * field (owner card 2026-10-30 19:55Z). Every newer permission must sit
+ * inside some older permission (same or narrower action, same target and
+ * assignee, every older constraint matched by one at least as tight, every
+ * older duty kept); every older prohibition and policy obligation must still
+ * be there; parties and conflict strategy must not change. Anything this
+ * cannot compare, such as `inheritFrom`, answers false, so the old Consent
+ * does not count and new consent is needed.
+ */
+export function isNarrowingAmendment(newer: OdrlPolicy, older: OdrlPolicy, graph: ActionGraph = DEFAULT_ACTION_GRAPH): boolean {
+  if (newer.inheritFrom?.length || older.inheritFrom?.length) return false;
+  if (newer.assigner !== older.assigner || newer.assignee !== older.assignee) return false;
+  if ((newer.conflict ?? FOLIO_DEFAULT_CONFLICT) !== (older.conflict ?? FOLIO_DEFAULT_CONFLICT)) return false;
+  for (const np of newer.permission ?? []) {
+    if (!(older.permission ?? []).some((op) => permissionWithin(np, op, graph))) return false;
+  }
+  for (const oq of older.prohibition ?? []) {
+    if (!(newer.prohibition ?? []).some((nq) => sameJson(nq, oq))) return false;
+  }
+  for (const ob of older.obligation ?? []) {
+    if (!(newer.obligation ?? []).some((nb) => sameJson(nb, ob))) return false;
+  }
+  return true;
+}
+
+/**
+ * The agreement versions whose Consents still count for `currentUri`: the
+ * current version, then each `dcat:previousVersion` reached while every step
+ * is a narrowing amendment. The walk stops at the first widening step, at a
+ * version missing from `versions`, or at a loop.
+ */
+export function versionsCoveredByConsent(
+  currentUri: string,
+  versions: ReadonlyMap<string, AgreementVersion>,
+  graph: ActionGraph = DEFAULT_ACTION_GRAPH,
+): Set<string> {
+  const covered = new Set([currentUri]);
+  let current = versions.get(currentUri);
+  while (current?.previousVersion && !covered.has(current.previousVersion)) {
+    const previous = versions.get(current.previousVersion);
+    if (!previous || !isNarrowingAmendment(current.policy, previous.policy, graph)) break;
+    covered.add(current.previousVersion);
+    current = previous;
+  }
+  return covered;
+}
+
 /**
  * Keep only the FHIR `Consent`s whose `policy[].uri` names this exact agreement
  * version (owner rule 2, 2026-10-30 19:27Z). A Consent given for an earlier or
@@ -1898,14 +2008,15 @@ export function decide(
  */
 export function consentsCitingAgreement(
   consentOrPolicy: ConsentOrPolicyInput,
-  agreementUri: string,
+  agreementUri: string | ReadonlySet<string>,
 ): (FhirConsent | PcfOdrlSet)[] {
+  const accepted = typeof agreementUri === "string" ? new Set([agreementUri]) : agreementUri;
   const items: (FhirConsent | PcfOdrlSet)[] = [];
   if (consentOrPolicy === null || consentOrPolicy === undefined) return items;
   if (consentOrPolicy instanceof Map) items.push(...consentOrPolicy.values());
   else if (Array.isArray(consentOrPolicy)) items.push(...consentOrPolicy);
   else items.push(consentOrPolicy as FhirConsent | PcfOdrlSet);
-  return items.filter((item) => !isFhirConsent(item) || (item.policy ?? []).some((p) => p.uri === agreementUri));
+  return items.filter((item) => !isFhirConsent(item) || (item.policy ?? []).some((p) => p.uri !== undefined && accepted.has(p.uri)));
 }
 
 /**
@@ -1925,11 +2036,27 @@ export function createPcfConsentEvaluator(
      * policy's `uid`; with neither, Consents are not filtered.
      */
     agreementPolicyUri?: string;
+    /**
+     * The agreement's version chain, from its DCAT 3 records: each version's
+     * fixed-version URL, its ODRL policy, and its `dcat:previousVersion`.
+     * With it, a Consent for an earlier version still counts when every
+     * amendment from that version to the current one narrows use (owner rule
+     * 2 and card 2026-10-30 19:55Z "Follow version chain"); see
+     * {@link versionsCoveredByConsent}.
+     */
+    agreementVersions?: ReadonlyMap<string, AgreementVersion>;
   } = {},
 ): ConsentEvaluator {
   return (req: PermitRequest, _duty, rule, policy): ConsentEvaluation => {
     const agreementUri = options.agreementPolicyUri ?? policy?.uid;
-    const pinned = agreementUri ? consentsCitingAgreement(consentOrPolicy, agreementUri) : consentOrPolicy;
+    const pinned = agreementUri
+      ? consentsCitingAgreement(
+          consentOrPolicy,
+          options.agreementVersions
+            ? versionsCoveredByConsent(agreementUri, options.agreementVersions, options.actionGraph ?? DEFAULT_ACTION_GRAPH)
+            : agreementUri,
+        )
+      : consentOrPolicy;
     const graph = options.actionGraph ?? DEFAULT_ACTION_GRAPH;
     const effectiveAction =
       req.action && broaderOrSelf(req.action, graph).has("odrl:use")
