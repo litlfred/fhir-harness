@@ -17,250 +17,137 @@
  *   diagnostic `reason` when the registry is unreachable, times out, returns a
  *   non-2xx HTTP status, or returns malformed JSON / a non-searchset payload.
  *
- * No IUA claim is required or assumed; optional HTTP headers (such as a
- * standard `Authorization` header) may be supplied by the caller. IHE PCF
- * profiles are referenced by canonical URL only.
+ * Follow-up bean `folio-assistant-6jnx`:
+ * - `FhirConsentSchema`, `FhirSearchsetBundleSchema`, `FhirOperationOutcomeSchema`,
+ *   `parseFhirPeriodBound`, and `isConsentExpired` are imported from
+ *   `./pcf-consent.js` (built from `hl7.fhir.r4.core#4.0.1` `StructureDefinition-*.json`
+ *   and `CodeSystem-*.json`, with a single `isConsentExpired` definition).
  *
  * @module fhir-harness/schemas/iti-108-consent-client
  * @graphNode schema
  * @conformsTo hl7-fhir
  */
-import { z } from "zod";
+import {
+  FhirCodeableConceptSchema,
+  FhirCodingSchema,
+  FhirConsentDataMeaningSchema,
+  FhirConsentMetaSchema,
+  FhirConsentProvisionTypeSchema,
+  FhirConsentSchema,
+  FhirConsentStatusSchema,
+  FhirIdentifierSchema,
+  FhirOperationOutcomeSchema,
+  FhirPeriodSchema,
+  FhirReferenceSchema,
+  FhirSearchsetBundleSchema,
+  FhirStrictConsentSchema,
+  PCF_CONSENT_ADVANCED_PROFILE,
+  PCF_CONSENT_BASIC_PROFILE,
+  PCF_CONSENT_INTERMEDIATE_PROFILE,
+  isConsentExpired,
+  parseFhirPeriodBound,
+  type FhirBundleEntry,
+  type FhirBundleLink,
+  type FhirCodeableConcept,
+  type FhirCoding,
+  type FhirConsent,
+  type FhirConsentActor,
+  type FhirConsentData,
+  type FhirConsentDataMeaning,
+  type FhirConsentMeta,
+  type FhirConsentPolicy,
+  type FhirConsentProvision,
+  type FhirConsentProvisionType,
+  type FhirConsentStatus,
+  type FhirIdentifier,
+  type FhirOperationOutcome,
+  type FhirPeriod,
+  type FhirReference,
+  type FhirSearchsetBundle,
+} from "./pcf-consent.js";
+
+export {
+  FhirCodeableConceptSchema,
+  FhirCodingSchema,
+  FhirConsentDataMeaningSchema,
+  FhirConsentMetaSchema,
+  FhirConsentProvisionTypeSchema,
+  FhirConsentSchema,
+  FhirConsentStatusSchema,
+  FhirIdentifierSchema,
+  FhirOperationOutcomeSchema,
+  FhirPeriodSchema,
+  FhirReferenceSchema,
+  FhirSearchsetBundleSchema,
+  FhirStrictConsentSchema,
+  isConsentExpired,
+  parseFhirPeriodBound,
+  type FhirBundleEntry,
+  type FhirBundleLink,
+  type FhirCodeableConcept,
+  type FhirCoding,
+  type FhirConsent,
+  type FhirConsentActor,
+  type FhirConsentData,
+  type FhirConsentDataMeaning,
+  type FhirConsentMeta,
+  type FhirConsentPolicy,
+  type FhirConsentProvision,
+  type FhirConsentProvisionType,
+  type FhirConsentStatus,
+  type FhirIdentifier,
+  type FhirOperationOutcome,
+  type FhirPeriod,
+  type FhirReference,
+  type FhirSearchsetBundle,
+};
 
 export const ITI_108_TRANSACTION = "ITI-108" as const;
 export const FHIR_JSON_MEDIA_TYPE = "application/fhir+json" as const;
 
 export const PCF_CONSENT_PROFILE_URLS = {
-  basic: "https://profiles.ihe.net/ITI/PCF/StructureDefinition/IHE.PCF.consentBasic",
-  intermediate: "https://profiles.ihe.net/ITI/PCF/StructureDefinition/IHE.PCF.consentIntermediate",
-  advanced: "https://profiles.ihe.net/ITI/PCF/StructureDefinition/IHE.PCF.consentAdvanced",
+  basic: PCF_CONSENT_BASIC_PROFILE,
+  intermediate: PCF_CONSENT_INTERMEDIATE_PROFILE,
+  advanced: PCF_CONSENT_ADVANCED_PROFILE,
 } as const;
 
-export const FhirCodingSchema = z
-  .object({
-    system: z.string().min(1).optional(),
-    version: z.string().min(1).optional(),
-    code: z.string().min(1).optional(),
-    display: z.string().optional(),
-    userSelected: z.boolean().optional(),
-  })
-  .passthrough();
-export type FhirCoding = z.infer<typeof FhirCodingSchema>;
-
-export const FhirCodeableConceptSchema = z
-  .object({
-    coding: z.array(FhirCodingSchema).optional(),
-    text: z.string().optional(),
-  })
-  .passthrough();
-export type FhirCodeableConcept = z.infer<typeof FhirCodeableConceptSchema>;
-
-export const FhirIdentifierSchema = z
-  .object({
-    use: z.string().optional(),
-    type: FhirCodeableConceptSchema.optional(),
-    system: z.string().optional(),
-    value: z.string().optional(),
-  })
-  .passthrough();
-export type FhirIdentifier = z.infer<typeof FhirIdentifierSchema>;
-
-export const FhirReferenceSchema = z
-  .object({
-    reference: z.string().min(1).optional(),
-    type: z.string().min(1).optional(),
-    identifier: FhirIdentifierSchema.optional(),
-    display: z.string().optional(),
-  })
-  .passthrough();
-export type FhirReference = z.infer<typeof FhirReferenceSchema>;
-
-export const FhirPeriodSchema = z
-  .object({
-    start: z.string().min(1).optional(),
-    end: z.string().min(1).optional(),
-  })
-  .passthrough();
-export type FhirPeriod = z.infer<typeof FhirPeriodSchema>;
-
-export const FhirConsentActorSchema = z
-  .object({
-    role: FhirCodeableConceptSchema.optional(),
-    reference: FhirReferenceSchema,
-  })
-  .passthrough();
-export type FhirConsentActor = z.infer<typeof FhirConsentActorSchema>;
-
-export const FhirConsentDataMeaningSchema = z.enum(["instance", "related", "dependents", "authoredby"]);
-export type FhirConsentDataMeaning = z.infer<typeof FhirConsentDataMeaningSchema>;
-
-export const FhirConsentDataSchema = z
-  .object({
-    meaning: FhirConsentDataMeaningSchema,
-    reference: FhirReferenceSchema,
-  })
-  .passthrough();
-export type FhirConsentData = z.infer<typeof FhirConsentDataSchema>;
-
-export const FhirConsentProvisionTypeSchema = z.enum(["deny", "permit"]);
-export type FhirConsentProvisionType = z.infer<typeof FhirConsentProvisionTypeSchema>;
-
-export interface FhirConsentProvision {
-  type?: FhirConsentProvisionType;
-  period?: FhirPeriod;
-  actor?: FhirConsentActor[];
-  action?: FhirCodeableConcept[];
-  securityLabel?: FhirCoding[];
-  purpose?: FhirCoding[];
-  class?: FhirCoding[];
-  code?: FhirCodeableConcept[];
-  dataPeriod?: FhirPeriod;
-  data?: FhirConsentData[];
-  provision?: FhirConsentProvision[];
-  [key: string]: unknown;
-}
-
-export const FhirConsentProvisionSchema: z.ZodType<FhirConsentProvision> = z.lazy(() =>
-  z
-    .object({
-      type: FhirConsentProvisionTypeSchema.optional(),
-      period: FhirPeriodSchema.optional(),
-      actor: z.array(FhirConsentActorSchema).optional(),
-      action: z.array(FhirCodeableConceptSchema).optional(),
-      securityLabel: z.array(FhirCodingSchema).optional(),
-      purpose: z.array(FhirCodingSchema).optional(),
-      class: z.array(FhirCodingSchema).optional(),
-      code: z.array(FhirCodeableConceptSchema).optional(),
-      dataPeriod: FhirPeriodSchema.optional(),
-      data: z.array(FhirConsentDataSchema).optional(),
-      provision: z.array(FhirConsentProvisionSchema).optional(),
-    })
-    .passthrough(),
-);
-
-export const FhirConsentStatusSchema = z.enum([
-  "draft",
-  "proposed",
-  "active",
-  "rejected",
-  "inactive",
-  "entered-in-error",
-]);
-export type FhirConsentStatus = z.infer<typeof FhirConsentStatusSchema>;
-
-export const FhirConsentMetaSchema = z
-  .object({
-    versionId: z.string().min(1).optional(),
-    lastUpdated: z.string().min(1).optional(),
-    source: z.string().optional(),
-    profile: z.array(z.string().min(1)).optional(),
-    security: z.array(FhirCodingSchema).optional(),
-    tag: z.array(FhirCodingSchema).optional(),
-  })
-  .passthrough();
-export type FhirConsentMeta = z.infer<typeof FhirConsentMetaSchema>;
-
-export const FhirConsentPolicySchema = z
-  .object({
-    authority: z.string().optional(),
-    uri: z.string().optional(),
-  })
-  .passthrough();
-export type FhirConsentPolicy = z.infer<typeof FhirConsentPolicySchema>;
-
-export const FhirConsentSchema = z
-  .object({
-    resourceType: z.literal("Consent"),
-    id: z.string().min(1).optional(),
-    meta: FhirConsentMetaSchema.optional(),
-    status: FhirConsentStatusSchema,
-    scope: FhirCodeableConceptSchema.optional(),
-    category: z.array(FhirCodeableConceptSchema).optional(),
-    patient: FhirReferenceSchema.optional(),
-    dateTime: z.string().optional(),
-    performer: z.array(FhirReferenceSchema).optional(),
-    organization: z.array(FhirReferenceSchema).optional(),
-    sourceAttachment: z.record(z.string(), z.unknown()).optional(),
-    sourceReference: FhirReferenceSchema.optional(),
-    policy: z.array(FhirConsentPolicySchema).optional(),
-    policyRule: FhirCodeableConceptSchema.optional(),
-    provision: FhirConsentProvisionSchema.optional(),
-  })
-  .passthrough();
-export type FhirConsent = z.infer<typeof FhirConsentSchema>;
-
-export const FhirBundleLinkSchema = z
-  .object({
-    relation: z.string().min(1),
-    url: z.string().min(1),
-  })
-  .passthrough();
-export type FhirBundleLink = z.infer<typeof FhirBundleLinkSchema>;
-
-export const FhirBundleEntrySchema = z
-  .object({
-    fullUrl: z.string().optional(),
-    resource: z.record(z.string(), z.unknown()).optional(),
-    search: z
-      .object({
-        mode: z.string().optional(),
-        score: z.number().optional(),
-      })
-      .passthrough()
-      .optional(),
-  })
-  .passthrough();
-export type FhirBundleEntry = z.infer<typeof FhirBundleEntrySchema>;
-
-export const FhirSearchsetBundleSchema = z
-  .object({
-    resourceType: z.literal("Bundle"),
-    id: z.string().optional(),
-    type: z.string().min(1),
-    total: z.number().int().nonnegative().optional(),
-    link: z.array(FhirBundleLinkSchema).optional(),
-    entry: z.array(FhirBundleEntrySchema).optional(),
-  })
-  .passthrough();
-export type FhirSearchsetBundle = z.infer<typeof FhirSearchsetBundleSchema>;
-
 export interface Iti108Query {
-  // Base URL of the FHIR R4 Consent Registry (e.g. "https://registry.example.org/fhir").
+  /** Base URL of the FHIR R4 Consent Registry (e.g. `"https://registry.example.org/fhir"`). */
   baseUrl: string;
-  // Patient reference (e.g. "Patient/pat-1" or "pat-1").
+  /** Patient reference (e.g. `"Patient/pat-1"` or `"pat-1"`). */
   patient?: string;
-  // Patient business identifier token (e.g. "urn:oid:1.2.3|12345"), sent as `patient.identifier`.
+  /** Patient business identifier token (e.g. `"urn:oid:1.2.3|12345"`), sent as `patient.identifier`. */
   patientIdentifier?: string;
-  // Status parameter sent on the query (defaults to "active").
+  /** Status parameter sent on the query (defaults to `"active"`). */
   status?: string | readonly string[];
-  // Actor reference(s) (e.g. "Practitioner/prac-1" or "Organization/org-1").
+  /** Actor reference(s) (e.g. `"Practitioner/prac-1"` or `"Organization/org-1"`). */
   actor?: string | readonly string[];
-  // PurposeOfUse token(s) (e.g. "TREAT", "HRESCH").
+  /** PurposeOfUse token(s) (e.g. `"TREAT"`, `"HRESCH"`). */
   purpose?: string | readonly string[];
-  // Category token(s) (e.g. "http://loinc.org|59284-0").
+  /** Category token(s) (e.g. `"http://loinc.org|59284-0"`). */
   category?: string | readonly string[];
-  // Security label token(s), sent as `security-label`.
+  /** Security label token(s), sent as `security-label`. */
   securityLabel?: string | readonly string[];
-  // Date filter(s), e.g. "ge2026-01-01".
+  /** Date filter(s), e.g. `"ge2026-01-01"`. */
   date?: string | readonly string[];
-  // Action token(s).
+  /** Action token(s). */
   action?: string | readonly string[];
-  // Source reference filter, sent as `source-reference`.
+  /** Source reference filter, sent as `source-reference`. */
   sourceReference?: string;
-  // Profile canonical URL filter, sent as `_profile`.
-  profile?: string;
-  // Reference evaluation time for checking `provision.period` (defaults to current time).
-  now?: string | Date;
-  // HTTP request timeout in milliseconds (defaults to 10_000).
-  timeoutMs?: number;
-  // Optional HTTP headers (e.g. Authorization).
+  /** Profile canonical URL filter(s), sent as `_profile`. */
+  profile?: string | readonly string[];
+  /** Optional HTTP headers (e.g. `{ Authorization: "Bearer ..." }`); no IUA claim is required. */
   headers?: Readonly<Record<string, string>>;
-  // Injectable fetch implementation for testing or custom transport.
-  fetchImpl?: typeof fetch;
-  // Follow `Bundle.link` with `relation === "next"` (defaults to true).
+  /** Request timeout in milliseconds (defaults to `10_000`). */
+  timeoutMs?: number;
+  /** Follow `Bundle.link[relation="next"]` pagination links (defaults to `true`). */
   followNext?: boolean;
-  // Maximum number of pages to fetch when following `next` links (defaults to 10).
+  /** Maximum number of Bundle pages to fetch when `followNext` is `true` (defaults to `10`). */
   maxPages?: number;
+  /** Reference timestamp (`ISO-8601` string or `Date`) used to evaluate `provision.period` expiry (defaults to `new Date()`). */
+  now?: string | Date;
+  /** Custom `fetch` implementation (defaults to `globalThis.fetch`). */
+  fetchImpl?: typeof fetch;
 }
 
 export type Iti108IgnoredReason =
@@ -279,22 +166,27 @@ export interface Iti108IgnoredEntry {
   detail: string;
 }
 
-export interface Iti108DeterminedResult {
-  status: "determined";
-  consents: FhirConsent[];
-  ignored: Iti108IgnoredEntry[];
-  requestUrl: string;
-  evaluatedAt: string;
-  bundleTotal?: number;
-}
-
 export type Iti108UnknownReason =
+  | "invalid-query"
   | "unreachable"
   | "timeout"
   | "http-error"
   | "invalid-json"
-  | "invalid-bundle"
-  | "invalid-query";
+  | "invalid-bundle";
+
+export interface Iti108DeterminedResult {
+  status: "determined";
+  /** Active, non-expired FHIR R4 `Consent` resources returned by the registry. */
+  consents: FhirConsent[];
+  /** Entries in the searchset `Bundle` that were filtered out (inactive, expired, not-yet-valid, informational `OperationOutcome`, etc.). */
+  ignored: Iti108IgnoredEntry[];
+  /** The initial ITI-108 search URL issued to the Consent Registry. */
+  requestUrl: string;
+  /** ISO-8601 timestamp against which `provision.period` validity was evaluated. */
+  evaluatedAt: string;
+  /** Total reported by the first Bundle page, if present. */
+  bundleTotal?: number;
+}
 
 export interface Iti108UnknownResult {
   status: "unknown";
@@ -306,7 +198,7 @@ export interface Iti108UnknownResult {
 
 export type Iti108Result = Iti108DeterminedResult | Iti108UnknownResult;
 
-function appendParam(params: URLSearchParams, key: string, value: string | readonly string[] | undefined): void {
+function appendParam(params: URLSearchParams, key: string, value?: string | readonly string[]): void {
   if (value === undefined) return;
   if (typeof value === "string") {
     if (value.trim().length > 0) params.append(key, value.trim());
@@ -344,46 +236,6 @@ export function buildIti108SearchUrl(query: Iti108Query): URL {
   return url;
 }
 
-/**
- * Parse a FHIR date / dateTime boundary into epoch milliseconds.
- *
- * For `bound === "end"`, date-only values (`YYYY`, `YYYY-MM`, `YYYY-MM-DD`)
- * resolve to the end of that calendar unit in UTC; for `bound === "start"`,
- * they resolve to the start of that unit in UTC. Full ISO-8601 dateTime strings
- * are parsed via `Date.parse`.
- */
-export function parseFhirPeriodBound(raw: string, bound: "start" | "end"): number {
-  const s = raw.trim();
-  if (/^\d{4}$/.test(s)) {
-    const year = Number(s);
-    return bound === "start"
-      ? Date.UTC(year, 0, 1, 0, 0, 0, 0)
-      : Date.UTC(year, 11, 31, 23, 59, 59, 999);
-  }
-  if (/^\d{4}-\d{2}$/.test(s)) {
-    const [y, m] = s.split("-").map(Number);
-    if (m! < 1 || m! > 12) return Number.NaN;
-    return bound === "start"
-      ? Date.UTC(y!, m! - 1, 1, 0, 0, 0, 0)
-      : Date.UTC(y!, m!, 0, 23, 59, 59, 999);
-  }
-  if (/^\d{4}-\d{2}-\d{2}$/.test(s)) {
-    const [y, m, d] = s.split("-").map(Number);
-    const probe = new Date(Date.UTC(y!, m! - 1, d!));
-    if (
-      probe.getUTCFullYear() !== y ||
-      probe.getUTCMonth() !== m! - 1 ||
-      probe.getUTCDate() !== d
-    ) {
-      return Number.NaN;
-    }
-    return bound === "start"
-      ? Date.UTC(y!, m! - 1, d!, 0, 0, 0, 0)
-      : Date.UTC(y!, m! - 1, d!, 23, 59, 59, 999);
-  }
-  return Date.parse(s);
-}
-
 function resolveNowMs(now?: string | Date): number {
   if (now === undefined) return Date.now();
   if (now instanceof Date) return now.getTime();
@@ -399,18 +251,6 @@ export function normalizePatientId(ref: string): string {
   const match = /(?:^|\/)Patient\/([^/?#]+)$/.exec(trimmed);
   if (match) return match[1]!;
   return trimmed;
-}
-
-/**
- * Check whether a FHIR `Consent` is expired at `now` (`provision.period.end < now`).
- */
-export function isConsentExpired(consent: FhirConsent, now?: string | Date): boolean {
-  const end = consent.provision?.period?.end;
-  if (!end) return false;
-  const nowMs = resolveNowMs(now);
-  const endMs = parseFhirPeriodBound(end, "end");
-  if (Number.isNaN(endMs) || Number.isNaN(nowMs)) return true;
-  return endMs < nowMs;
 }
 
 /**
@@ -564,8 +404,11 @@ export function filterIti108Bundle(
     const resourceId = typeof resource.id === "string" ? resource.id : undefined;
 
     if (resourceType === "OperationOutcome") {
+      const parsedOutcome = FhirOperationOutcomeSchema.safeParse(resource);
       const issues = Array.isArray(resource.issue) ? (resource.issue as Array<Record<string, unknown>>) : [];
-      const hasError = issues.some((iss) => iss && (iss.severity === "error" || iss.severity === "fatal"));
+      const hasError =
+        !parsedOutcome.success ||
+        issues.some((iss) => iss && (iss.severity === "error" || iss.severity === "fatal"));
       if (hasError) {
         return {
           status: "unknown",
@@ -628,25 +471,33 @@ export function filterIti108Bundle(
   };
 }
 
-function classifyFetchError(err: unknown, timeoutFired: boolean): { reason: "timeout" | "unreachable"; detail: string } {
+function classifyFetchError(
+  err: unknown,
+  abortedByTimeout: boolean,
+): { reason: "timeout" | "unreachable"; detail: string } {
+  if (abortedByTimeout) {
+    return {
+      reason: "timeout",
+      detail: "Consent Registry ITI-108 request timed out",
+    };
+  }
   const msg = err instanceof Error ? err.message : String(err);
   const name = err instanceof Error ? err.name : "";
-  if (timeoutFired || name === "TimeoutError" || name === "AbortError" || /timed?\s*out|abort/i.test(msg)) {
-    return { reason: "timeout", detail: `Consent Registry request timed out: ${msg}` };
+  if (name === "TimeoutError" || name === "AbortError" || /timeout|timed out|aborted/i.test(msg)) {
+    return {
+      reason: "timeout",
+      detail: `Consent Registry ITI-108 request timed out: ${msg}`,
+    };
   }
-  return { reason: "unreachable", detail: `Consent Registry unreachable: ${msg}` };
+  return {
+    reason: "unreachable",
+    detail: `Consent Registry unreachable: ${msg}`,
+  };
 }
 
 /**
- * Execute an IHE ITI-108 (*Find Access Consent*) query against a FHIR R4
- * Consent Registry (`GET [base]/Consent?...`).
- *
- * Returns:
- * - `{ status: "determined", consents, ignored, ... }` when the server responds
- *   with a valid `searchset` `Bundle` (even when `consents` is empty);
- * - `{ status: "unknown", reason, detail, ... }` when the server is
- *   unreachable, times out, returns a non-2xx HTTP status, or returns a
- *   malformed payload.
+ * Execute an IHE ITI-108 (*Find Access Consent*) read query against a FHIR R4
+ * Consent Registry.
  */
 export async function findAccessConsents(query: Iti108Query): Promise<Iti108Result> {
   let initialUrl: URL;
@@ -776,7 +627,7 @@ export async function findAccessConsents(query: Iti108Query): Promise<Iti108Resu
 
     if (!followNext) break;
     const parsedBundle = FhirSearchsetBundleSchema.parse(payload);
-    const nextLink = parsedBundle.link?.find((l) => l.relation === "next")?.url;
+    const nextLink = parsedBundle.link?.find((l: FhirBundleLink) => l.relation === "next")?.url;
     currentUrl = nextLink ? new URL(nextLink, currentUrl).toString() : undefined;
   }
 

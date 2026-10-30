@@ -3,18 +3,38 @@
  * and three-valued access-control decisions (`decide`), plus the four IHE PCF
  * Volume 1 §1:53.2.1 implicit-policy ODRL `Set`s (bean `jx7m`, PCF5).
  */
-import { existsSync, readFileSync, readdirSync } from "node:fs";
-import { homedir } from "node:os";
-import { join } from "node:path";
+import { createHash } from "node:crypto";
+import { readFileSync, readdirSync } from "node:fs";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { describe, expect, test } from "bun:test";
 
+import * as odrlModule from "../../cat-harness/schemas/content/odrl.js";
+import {
+  OdrlPolicySchema,
+  actionGraph,
+  decide as odrlDecide,
+  permits as odrlPermits,
+  type OdrlPolicy,
+  type PermitRequest,
+} from "../../cat-harness/schemas/content/odrl.js";
+import { isConsentExpired as clientIsConsentExpired } from "./iti-108-consent-client.js";
 import {
   ANYONE,
+  CONSENT_DATA_MEANING_CODES,
+  CONSENT_PROVISION_TYPE_CODES,
+  CONSENT_STATE_CODES,
+  FhirConsentSchema,
+  FhirStrictConsentSchema,
   HL7_ACT_CODE_SYSTEM,
   HL7_ACT_REASON_SYSTEM,
   HL7_CONFIDENTIALITY_SYSTEM,
   HL7_CONSENT_SCOPE_SYSTEM,
+  HL7_FHIR_R4_CORE_PACKAGE_ID,
   HL7_PARTICIPATION_TYPE_SYSTEM,
+  HL7_PURPOSE_OF_USE,
+  HL7_TERMINOLOGY_PACKAGE_ID,
+  IHE_ITI_PCF_PACKAGE_ID,
   LOINC_CONSENT_CODE,
   LOINC_SYSTEM,
   PCF_BASIC_PURPOSES,
@@ -33,11 +53,14 @@ import {
   PCF_POLICY_DENY_URI,
   consentPolicyUid,
   consentToOdrl,
+  createPcfConsentEvaluator,
   decide,
+  decideWithCitation,
   detectPcfProfile,
   extractConsentCitation,
   getImplicitPolicySet,
   isConsentExpired,
+  resolvePublishedFhirPackageFile,
   type FhirCoding,
   type FhirConsent,
   type FhirConsentProvision,
@@ -113,8 +136,19 @@ describe("Four IHE PCF 1.1.0 Volume 1 §1:53.2.1 implicit-policy ODRL Sets", () 
     expect(decide(PCF_IMPLICIT_BASIC_NORMAL_SET, { actor: "Practitioner/ex-practitioner", purpose: "BTG" })).toBe(
       "permit",
     );
-    expect(decide(PCF_IMPLICIT_BASIC_NORMAL_SET, { actor: "Practitioner/ex-practitioner", purpose: "CAREMGT" })).toBe(
+    // In published v3-ActReason (hl7.terminology.r4#5.3.0), COC ("coordination of care"),
+    // CLINTRL, and POPHLTH are subsumedBy TREAT, whereas CAREMGT is subsumedBy HOPERAT only.
+    expect(decide(PCF_IMPLICIT_BASIC_NORMAL_SET, { actor: "Practitioner/ex-practitioner", purpose: "COC" })).toBe(
       "permit",
+    );
+    expect(decide(PCF_IMPLICIT_BASIC_NORMAL_SET, { actor: "Practitioner/ex-practitioner", purpose: "CLINTRL" })).toBe(
+      "permit",
+    );
+    expect(decide(PCF_IMPLICIT_BASIC_NORMAL_SET, { actor: "Practitioner/ex-practitioner", purpose: "POPHLTH" })).toBe(
+      "permit",
+    );
+    expect(decide(PCF_IMPLICIT_BASIC_NORMAL_SET, { actor: "Practitioner/ex-practitioner", purpose: "CAREMGT" })).toBe(
+      "deny",
     );
     expect(decide(PCF_IMPLICIT_BASIC_NORMAL_SET, { actor: "Practitioner/ex-practitioner", purpose: "HRESCH" })).toBe(
       "deny",
@@ -756,25 +790,256 @@ describe("IHE PCF Intermediate & Advanced Consent examples (nested exceptions, d
   });
 });
 
-const DEFAULT_PCF_PKG_EXAMPLES = join(homedir(), ".fhir/packages/ihe.iti.pcf#1.1.0/package/example");
-const PCF_EXAMPLES_DIR =
-  process.env.IHE_PCF_EXAMPLES_DIR ?? (existsSync(DEFAULT_PCF_PKG_EXAMPLES) ? DEFAULT_PCF_PKG_EXAMPLES : undefined);
+const HERE = dirname(fileURLToPath(import.meta.url));
+const SUPPORT_PCF_DIR = resolve(HERE, "..", "test", "support", "pcf");
+const PCF_EXAMPLES_DIR = dirname(
+  resolvePublishedFhirPackageFile(IHE_ITI_PCF_PACKAGE_ID, "example/Consent-ex-consent-basic-treat.json"),
+);
 
-describe.skipIf(!PCF_EXAMPLES_DIR)("Published ihe.iti.pcf#1.1.0 package Consent examples sweep", () => {
-  test("every Consent-ex-*.json in ihe.iti.pcf#1.1.0 translates and decides per PCF Volume 1", () => {
-    const files = readdirSync(PCF_EXAMPLES_DIR!)
+describe("Published ihe.iti.pcf#1.1.0 package Consent examples sweep", () => {
+  test("every Consent-ex-*.json in ihe.iti.pcf#1.1.0 validates against R4 StructureDefinition-Consent and translates/decides per PCF Volume 1", () => {
+    const files = readdirSync(PCF_EXAMPLES_DIR)
       .filter((f) => f.startsWith("Consent-") && f.endsWith(".json"))
       .sort();
-    expect(files.length).toBeGreaterThanOrEqual(23);
+    expect(files.length).toBe(23);
 
     for (const file of files) {
-      const consent = JSON.parse(readFileSync(join(PCF_EXAMPLES_DIR!, file), "utf-8")) as FhirConsent;
+      const raw = JSON.parse(readFileSync(join(PCF_EXAMPLES_DIR, file), "utf-8"));
+      const parsed = FhirStrictConsentSchema.safeParse(raw);
+      expect(parsed.success).toBe(true);
+
+      const consent = parsed.data!;
       const set = consentToOdrl(consent);
       expect(set["@type"]).toBe("Set");
       expect(set.permission.length + set.prohibition.length).toBeGreaterThan(0);
 
       // Missing scope always yields unknown
       expect(decide(consent, { actor: null })).toBe("unknown");
+    }
+  });
+});
+
+describe("Published package provenance, v3-ActReason hierarchy, R4 Consent schema, and injected ConsentEvaluator (bean 6jnx)", () => {
+  test("every file in test/support/pcf matches its recorded sha256 in provenance.json", () => {
+    const prov = JSON.parse(readFileSync(join(SUPPORT_PCF_DIR, "provenance.json"), "utf-8")) as {
+      packages: Record<string, { files: Record<string, { sha256: string }> }>;
+    };
+    expect(Object.keys(prov.packages).sort()).toEqual([
+      HL7_FHIR_R4_CORE_PACKAGE_ID,
+      HL7_TERMINOLOGY_PACKAGE_ID,
+      IHE_ITI_PCF_PACKAGE_ID,
+    ]);
+    for (const [pkgId, pkgMeta] of Object.entries(prov.packages)) {
+      const fileEntries = Object.entries(pkgMeta.files);
+      expect(fileEntries.length).toBeGreaterThan(0);
+      for (const [relPath, meta] of fileEntries) {
+        const bytes = readFileSync(join(SUPPORT_PCF_DIR, pkgId, relPath));
+        const actualSha = createHash("sha256").update(bytes).digest("hex");
+        expect(actualSha).toBe(meta.sha256);
+      }
+    }
+  });
+
+  test("HL7_PURPOSE_OF_USE is read from hl7.terminology.r4#5.3.0 CodeSystem-v3-ActReason.json without hand-typing", () => {
+    expect(Object.keys(HL7_PURPOSE_OF_USE).length).toBe(60);
+    // CLINTRL ("clinical trial" health care), POPHLTH ("population health"), and COC ("coordination of care")
+    // have subsumedBy: TREAT in v3-ActReason:
+    expect(HL7_PURPOSE_OF_USE.CLINTRL).toEqual(["TREAT"]);
+    expect(HL7_PURPOSE_OF_USE.POPHLTH).toEqual(["TREAT"]);
+    expect(HL7_PURPOSE_OF_USE.COC).toEqual(["TREAT"]);
+    // CAREMGT has subsumedBy: HOPERAT only (not TREAT):
+    expect(HL7_PURPOSE_OF_USE.CAREMGT).toEqual(["HOPERAT"]);
+    // HTEST is subsumedBy SYSDEV (-> HOPERAT); LABELING and METAMGT are subsumedBy HSYSADMIN (-> HOPERAT):
+    expect(HL7_PURPOSE_OF_USE.HTEST).toEqual(["SYSDEV"]);
+    expect(HL7_PURPOSE_OF_USE.SYSDEV).toEqual(["HOPERAT"]);
+    expect(HL7_PURPOSE_OF_USE.LABELING).toEqual(["HSYSADMIN"]);
+    expect(HL7_PURPOSE_OF_USE.METAMGT).toEqual(["HSYSADMIN"]);
+    expect(HL7_PURPOSE_OF_USE.HSYSADMIN).toEqual(["HOPERAT"]);
+    // HAAUTH does not exist in v3-ActReason:
+    expect("HAAUTH" in HL7_PURPOSE_OF_USE).toBe(false);
+
+    // Transitive subsumption via SYSDEV -> HOPERAT and HSYSADMIN -> HOPERAT:
+    const hoperatConsent = makeConsent("ex-hoperat-only", {
+      type: "permit",
+      purpose: [{ system: HL7_ACT_REASON_SYSTEM, code: "HOPERAT" }],
+    });
+    expect(decide(hoperatConsent, { actor: "Practitioner/ex-practitioner", purpose: "HTEST" })).toBe("permit");
+    expect(decide(hoperatConsent, { actor: "Practitioner/ex-practitioner", purpose: "LABELING" })).toBe("permit");
+    expect(decide(hoperatConsent, { actor: "Practitioner/ex-practitioner", purpose: "METAMGT" })).toBe("permit");
+  });
+
+  test("FhirConsentSchema and code lists come from hl7.fhir.r4.core#4.0.1 and isConsentExpired is deduplicated", () => {
+    expect(isConsentExpired).toBe(clientIsConsentExpired);
+    expect([...CONSENT_STATE_CODES]).toEqual([
+      "draft",
+      "proposed",
+      "active",
+      "rejected",
+      "inactive",
+      "entered-in-error",
+    ]);
+    expect([...CONSENT_PROVISION_TYPE_CODES]).toEqual(["deny", "permit"]);
+    expect([...CONSENT_DATA_MEANING_CODES]).toEqual(["instance", "related", "dependents", "authoredby"]);
+
+    // Rejects invalid status, invalid provision.type, invalid data.meaning, and unknown elements
+    expect(
+      FhirConsentSchema.safeParse({
+        resourceType: "Consent",
+        status: "not-a-valid-status",
+      }).success,
+    ).toBe(false);
+    expect(
+      FhirConsentSchema.safeParse({
+        resourceType: "Consent",
+        status: "active",
+        provision: { type: "maybe" },
+      }).success,
+    ).toBe(false);
+    expect(
+      FhirConsentSchema.safeParse({
+        resourceType: "Consent",
+        status: "active",
+        provision: {
+          type: "permit",
+          data: [{ meaning: "bogus", reference: { reference: "Patient/ex-patient" } }],
+        },
+      }).success,
+    ).toBe(false);
+    expect(
+      FhirConsentSchema.safeParse({
+        resourceType: "Consent",
+        status: "active",
+        notAnR4ConsentElement: true,
+      }).success,
+    ).toBe(false);
+
+    // Source files contain no hand-typed HL7_PURPOSE_OF_USE literal and no hand-written FhirConsent interface
+    const pcfSrc = readFileSync(join(HERE, "pcf-consent.ts"), "utf-8");
+    const clientSrc = readFileSync(join(HERE, "iti-108-consent-client.ts"), "utf-8");
+    expect(pcfSrc).not.toMatch(/export\s+interface\s+FhirConsent\b/);
+    expect(pcfSrc).not.toMatch(/HL7_PURPOSE_OF_USE[^=]*=\s*\{/);
+    expect(clientSrc).not.toMatch(/function\s+isConsentExpired\b/);
+    expect(clientSrc).not.toMatch(/z\.literal\(["']Consent["']\)/);
+  });
+
+  test("createPcfConsentEvaluator integrates with cat-harness odrl:obtainConsent duty (a7c1 + 2egb citation)", () => {
+    const g = actionGraph([{ id: "read-dataset", includedIn: ["odrl:use"] }]);
+    const dsa = OdrlPolicySchema.parse({
+      "@context": "http://www.w3.org/ns/odrl.jsonld",
+      "@type": "Agreement",
+      uid: "urn:dsa:pcf6",
+      profile: "https://litlfred.github.io/cat-harness/policies/profile",
+      assigner: "org:who",
+      assignee: "Practitioner/ex-practitioner",
+      permission: [
+        {
+          assignee: "Practitioner/ex-practitioner",
+          action: "odrl:use",
+          target: "Patient/ex-patient",
+          constraint: [{ leftOperand: "odrl:purpose", operator: "odrl:isA", rightOperand: "PurposeOfUse" }],
+          duty: [{ action: "odrl:obtainConsent" }],
+        },
+      ],
+    });
+    const policies = new Map<string, OdrlPolicy>([[dsa.uid, dsa]]);
+
+    const activePermitConsent = makeConsent(
+      "c-basic-treat",
+      {
+        type: "permit",
+        period: { start: "2026-01-01", end: "2026-12-31" },
+        actor: [{ reference: { reference: "Practitioner/ex-practitioner" } }],
+        purpose: [{ system: HL7_ACT_REASON_SYSTEM, code: "TREAT" }],
+        data: [{ meaning: "instance", reference: { reference: "Patient/ex-patient" } }],
+      },
+      { meta: { versionId: "3", profile: [PCF_CONSENT_BASIC_PROFILE] } },
+    );
+
+    const activeDenyConsent = makeConsent(
+      "c-dissent",
+      { type: "deny" },
+      { meta: { versionId: "2", profile: [PCF_CONSENT_BASIC_PROFILE] } },
+    );
+
+    const inactiveConsent = makeConsent(
+      "c-inactive",
+      { type: "permit", purpose: TPO_PURPOSES },
+      { status: "inactive" },
+    );
+
+    const baseReq = {
+      actor: "Practitioner/ex-practitioner",
+      action: "read-dataset",
+      scope: {
+        target: "Patient/ex-patient",
+        "odrl:purpose": "ETREAT",
+        "odrl:dateTime": "2026-06-15T12:00:00Z",
+      },
+    };
+
+    const withConsent = (consentInput: FhirConsent | null): PermitRequest =>
+      ({
+        ...baseReq,
+        consentEvaluator: createPcfConsentEvaluator(consentInput, { actionGraph: g }),
+        consent: consentInput,
+      }) as unknown as PermitRequest;
+
+    // 1. DSA + no Consent (or inactive Consent) -> unknown
+    expect(odrlPermits(withConsent(null), dsa, policies, g)).toBe("unknown");
+    expect(odrlPermits(withConsent(inactiveConsent), dsa, policies, g)).toBe("unknown");
+    expect(createPcfConsentEvaluator(null, { actionGraph: g })(baseReq)).toEqual({
+      verdict: "unknown",
+    });
+
+    // 2. DSA + deny Consent -> deny + deciding Consent citation
+    expect(odrlPermits(withConsent(activeDenyConsent), dsa, policies, g)).toBe("deny");
+    expect(
+      createPcfConsentEvaluator(activeDenyConsent, { actionGraph: g })(
+        baseReq,
+        { action: "odrl:obtainConsent" },
+        dsa.permission[0]!,
+        dsa,
+      ),
+    ).toEqual({
+      verdict: "deny",
+      consent: {
+        id: "c-dissent",
+        versionId: "2",
+        uid: "urn:ihe:pcf:consent:c-dissent:v2",
+      },
+    });
+
+    // 3. DSA + matching active permit Consent -> permit + deciding Consent citation
+    expect(odrlPermits(withConsent(activePermitConsent), dsa, policies, g)).toBe("permit");
+    expect(odrlDecide(withConsent(activePermitConsent), policies, g)).toBe("permit");
+    expect(
+      decideWithCitation(
+        activePermitConsent,
+        {
+          actor: "Practitioner/ex-practitioner",
+          action: "read-dataset",
+          scope: baseReq.scope,
+        },
+        { actionGraph: g },
+      ),
+    ).toEqual({
+      verdict: "permit",
+      consent: {
+        id: "c-basic-treat",
+        versionId: "3",
+        uid: "urn:ihe:pcf:consent:c-basic-treat:v3",
+      },
+    });
+
+    if ("permitsWithConsent" in odrlModule && typeof odrlModule.permitsWithConsent === "function") {
+      expect(odrlModule.permitsWithConsent(withConsent(activePermitConsent), dsa, policies, g)).toEqual({
+        decision: "permit",
+        consent: {
+          id: "c-basic-treat",
+          versionId: "3",
+          uid: "urn:ihe:pcf:consent:c-basic-treat:v3",
+        },
+      });
     }
   });
 });
