@@ -28,6 +28,13 @@ site, deploy.
 - **out** — `version`, `publishedUrl`, `releaseTag`, `releaseBranch`,
   `publicationRequestPath`, `buildStatus`
 
+How `versionIncrement` (`"major" | "minor" | "patch"`) is chosen from the AST
+delta against the previous release — and which files in `igRoot` are
+authoritative source versus compiled, cached or rendered output — is defined in
+[`ig-build-pipeline`](../../fhir-ig-base/ig-build-pipeline.md) §"Source of
+truth versus compiled, cached and rendered output" and §"Version numbering:
+SEMVER for a FHIR IG" (`litlfred/folio-assistant#222`, bean `l1nl`).
+
 ## Authorising a release is not the same as managing one, and the split is load-bearing
 
 Two permissions, two holders:

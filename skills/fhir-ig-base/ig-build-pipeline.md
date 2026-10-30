@@ -45,6 +45,76 @@ SUSHI and the Publisher both need `packages.fhir.org`. Where it is refused,
 see [`fhir-validation`](../content/fhir-ig-authoring/fhir-validation.md)
 §"When a package host refuses you" before concluding either cannot run.
 
+## Source of truth versus compiled, cached and rendered output
+
+Owner, 2026-10-30 (`litlfred/folio-assistant#222`, bean `l1nl`): spell out which
+artefact is authoritative and which is compiled, cached or rendered output, so
+nobody edits a rendered file and loses the change on the next build.
+
+The boundary is declared in [`schemas/ig-content-type.ts`](../../schemas/ig-content-type.ts)
+(bean `cz17`): `contentTypes.ig.include` in `index.config.json` defaults to
+`["input/**", "sushi-config.yaml", "ig.ini", "publication-request.json"]` and
+excludes `output/**`, `temp/**`, `template/**`, `fsh-generated/**` and
+`input-cache/**`. Only the files inside `contentTypes.ig.include` (plus any
+declared `ig-annex` directory) are hand-authored source.
+
+| Authoritative source (edit here) | Compiled, cached or rendered output (never hand-edit; overwritten on build or publish) | Basis |
+|---|---|---|
+| `sushi-config.yaml` (`id`, `canonical`, `version`, `status`, `releaseLabel`, `fhirVersion`, `dependencies`, `pages`, `menu`), `ig.ini`, `publication-request.json` | `fsh-generated/resources/ImplementationGuide-*.json`, `output/`, `fhir-artifact-index/ig-identity.json`, `fhir-artifact-index/menu.json`, `fhir-artifact-index/releases.json`, `site.data.fhir` | `schemas/ig-content-type.ts` (`IG_DEFAULT_INCLUDE`), [`ig-render-jekyll`](ig-render-jekyll.md) |
+| `input/fsh/**/*.fsh` | `fsh-generated/resources/*.json`, `fsh-generated/data/fsh-index.json`, `fsh-generated/includes/fsh-link-references.md` (even when `fsh-generated/` is committed in a legacy checkout, it is SUSHI's compiler output — edit the `.fsh` source, never the generated JSON) | `schemas/ig-content-type.ts` (`IG_DEFAULT_EXCLUDE`), [`ig-ast-delta`](ig-ast-delta.md) §"`fsh-index.json`" |
+| `input/cql/**/*.cql` and `input/maps/**/*.fml` | Compiled `Library` (base64 ELM/CQL `content[]`) and `StructureMap` resources in `output/` and `output-ast/` | [`l3-fhir-authoring`](../content/fhir-ig-authoring/l3-fhir-authoring.md), [`ig-ast-delta`](ig-ast-delta.md) |
+| `input/pagecontent/**/*.md`, `input/includes/**`, `input/translations/**/*.po`, and declared `ig-annex` directories (`annexes.json`) | Rendered HTML in `output/`, composed thin pages in `$SITE_WORK/` / `docs/`, and copied `assets/annex/*` | [`ig-render-jekyll`](ig-render-jekyll.md) §"Thin pages, the default", §"The IG repository's site route" |
+| `input/images-source/*.plantuml` | `input/images/*.svg` written by the Publisher when a same-stem `.plantuml` exists in `input/images-source/` (hand-placed static assets under `input/images/` with no `.plantuml` stem are source) | [`ig-ast-delta`](ig-ast-delta.md) §"`validity`" |
+| `input/**` + `sushi-config.yaml` + `ig.ini` | `output-ast/` and the AST cache branch `cat/fhir-harness/fhir-ast/<package id>` (`manifest.json` with `"authority": "cache"`, `dependencies.json`, `fsh-index.json`, `expansions.json`, `txcache/`), written only by `ig-ast-refresh.yml` | §"The AST cache lifecycle", [`ig-ast-delta`](ig-ast-delta.md) |
+| The AST + `sushi-config.yaml` | `fhir-artifact-index/` (`index.json`, `menu.json`, `ig-identity.json`, `releases.json`, `sidecars/`), `ast-data/`, `artifact/<Type>-<id>.{html,jsonld,json}`, `assets/ig-search.json`, `folio-build.json`, and the published site on `gh-pages` (root and `STAGING/<branch>/`) | §"The IG repository's site route", `#124` |
+
+An overlay that generates intermediate inputs before the Publisher runs (via
+`pre-export`) or sidecars after the AST is restored (via `ig-site:sidecars`)
+states its own upstream-to-downstream authority table in its own skill; this
+layer puts back everything `pre-export` touched before recording the clean
+commit's input digest (§"The AST cache lifecycle").
+
+## Version numbering: SEMVER for a FHIR IG
+
+Owner, 2026-10-30 (`litlfred/folio-assistant#222`, bean `l1nl`): define the
+SEMVER rule for IG versions — what bumps `major`, `minor` and `patch`.
+
+An IG's version is declared in `sushi-config.yaml` `version` (and mirrored in
+`publication-request.json` `version` when cutting a release). It is always an
+exact `MAJOR.MINOR.PATCH` semantic version triple (`versionIncrement: "major" |
+"minor" | "patch"` in [`ig-publication`](../content/fhir-ig-authoring/ig-publication.md);
+[`directory-conventions`](../../../cat-harness/skills/kg/kg-core/directory-conventions.md)
+§"Pinning a reference"), never a range or floating tag. Which segment bumps is
+determined by the delta on the IG's published conformance and canonical surface
+since the previous release — measured over the AST with `ig-ast.ts diff
+<prev-ast> <next-ast>` ([`ig-ast-delta`](ig-ast-delta.md) §"Diffing two ASTs"),
+not from commit messages:
+
+| Increment | What triggers the bump on a FHIR IG | Examples |
+|---|---|---|
+| **`major`** (`X+1.0.0`) | Any **breaking** change to the IG's canonical conformance surface, terminology bindings, CQL/operation signatures or FHIR version that can invalidate a conforming instance or downstream dependent IG | Removing or renaming a canonical resource (`StructureDefinition`, `ValueSet`, `CodeSystem`, `Library`, `PlanDefinition`, `Measure`, `Questionnaire`, `OperationDefinition`, `ConceptMap`, `StructureMap`); tightening cardinality (`0..*` → `1..*`, `0..1` → `1..1`) or adding a new required (`min >= 1`) element or `error`-severity invariant on an existing profile or logical model; strengthening a binding to `required` or replacing its bound `ValueSet` incompatibly; removing or changing the meaning of a concept in a published `CodeSystem`; incompatible change to a CQL library's public expression names/types or an `OperationDefinition`'s parameters; changing `fhirVersion`; or a breaking major bump in `dependencies:` |
+| **`minor`** (`X.Y+1.0`) | Any **backward-compatible addition** to the IG's canonical resources, profiles, terminology, logic or narrative structure | Adding a new canonical resource (profile, logical model, extension, `ValueSet`, `CodeSystem`, `ConceptMap`, `Library`, `PlanDefinition`, `Measure`, `Questionnaire`, `ActivityDefinition`, `ActorDefinition`, `Requirements`); adding an optional (`min = 0`) element, optional slice or `warning`/`guideline`-severity invariant to a profile or logical model; adding concepts to a `CodeSystem` or widening a `ValueSet` expansion (`extensible` / `preferred` / `example` bindings); adding examples/instances or new narrative pages in `sushi-config.yaml` `pages:`; or a compatible minor update in `dependencies:` |
+| **`patch`** (`X.Y.Z+1`) | Any **backward-compatible fix** that adds no canonical resource and breaks no conforming instance | Narrative prose, layout or typo fixes in `input/pagecontent/**`; description, title, comment or mapping metadata edits on existing elements; translation updates in `input/translations/**`; fixing invalid example instances; bug fixes in CQL expressions or FML maps that preserve declared inputs, outputs and clinical/functional intent; or rendering/theme fixes |
+
+**Release vs development cycle and dependency pinning:**
+
+1. **Cutting a release (`vX.Y.Z`)**: requires human `release-authorization`
+   ([`ig-publication`](../content/fhir-ig-authoring/ig-publication.md)), a
+   full AST build (`ig-ast.ts build-kind output-ast --require-full`),
+   `status: active` and `releaseLabel: release` in `sushi-config.yaml`, a
+   matching `version: "X.Y.Z"` entry in `publication-request.json`, and every
+   entry under `sushi-config.yaml` `dependencies:` pinned to an exact
+   `MAJOR.MINOR.PATCH` release version — never `current`, `dev`, a branch name
+   or a commit SHA (`bun run cat check:published-refs`; bean `dhvf`).
+2. **Between releases on the default branch**: `sushi-config.yaml` carries
+   `status: draft` and `releaseLabel: ci-build` (or `ballot` during a ballot
+   cycle) with the next target `MAJOR.MINOR.PATCH` version. Pre-release ballot
+   or candidate cuts may append `-ballot` or `-rc.N` while keeping the target
+   `MAJOR.MINOR.PATCH` core.
+3. **Overlay co-versioning**: when an overlay pairs the IG with an upstream
+   domain model in `index.config.json` `contentTypes`, the overlay's own skill
+   defines how the two version numbers relate.
+
 ## What the Publisher run emits
 
 Stated in [`ig-publication`](../content/fhir-ig-authoring/ig-publication.md)
