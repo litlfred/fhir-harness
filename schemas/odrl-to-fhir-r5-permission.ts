@@ -121,7 +121,7 @@ interface StructureDefinitionJson {
   };
 }
 
-function isPlainRecord(x: unknown): x is Record<string, any> {
+function isPlainRecord(x: unknown): x is Record<string, unknown> {
   return Boolean(x && typeof x === "object" && !Array.isArray(x));
 }
 
@@ -137,7 +137,7 @@ const DATATYPE_ALLOWED_KEYS: Readonly<Record<string, ReadonlySet<string>>> = {
 };
 
 function checkAllowedDatatypeKeys(
-  obj: Record<string, any>,
+  obj: Record<string, unknown>,
   typeName: string,
   issuePath: (string | number)[],
   ctx: z.RefinementCtx,
@@ -355,7 +355,7 @@ function validateR5DatatypeValue(
  */
 export function buildSchemaFromR5StructureDefinition(
   sdFilename: string,
-): z.ZodType<Record<string, any>> {
+): z.ZodType<Record<string, unknown>> {
   const sd = JSON.parse(
     readFileSync(resolvePublishedFhirPackageFile(HL7_FHIR_R5_CORE_PACKAGE_ID, sdFilename), "utf-8"),
   ) as StructureDefinitionJson;
@@ -372,7 +372,7 @@ export function buildSchemaFromR5StructureDefinition(
   }
 
   const validateBackbone = (
-    obj: Record<string, any>,
+    obj: Record<string, unknown>,
     sdPath: string,
     issuePath: (string | number)[],
     ctx: z.RefinementCtx,
@@ -491,7 +491,7 @@ export function buildSchemaFromR5StructureDefinition(
     }
   };
 
-  return z.any().superRefine((val, ctx) => {
+  return z.custom<Record<string, unknown>>().superRefine((val, ctx) => {
     if (!isPlainRecord(val)) {
       ctx.addIssue({ code: "custom", path: [], message: `Expected FHIR ${sd.type} object` });
       return;
@@ -630,21 +630,21 @@ function buildPartyOrTargetReference(
   iriOrRef: string,
   options: OdrlToFhirR5PermissionOptions,
   isTarget = false,
-): Record<string, any> {
+): Record<string, unknown> {
   const mapped = options.partyReferences?.[iriOrRef];
   if (mapped?.reference) {
-    const out: Record<string, any> = { reference: mapped.reference };
+    const out: Record<string, unknown> = { reference: mapped.reference };
     if (mapped.type) out.type = mapped.type;
     if (mapped.display) out.display = mapped.display;
     return out;
   }
   if (FHIR_RELATIVE_REF_RE.test(iriOrRef)) {
-    const out: Record<string, any> = { reference: iriOrRef };
+    const out: Record<string, unknown> = { reference: iriOrRef };
     const disp = isTarget ? options.targetDisplays?.[iriOrRef] : mapped?.display;
     if (disp) out.display = disp;
     return out;
   }
-  const out: Record<string, any> = {
+  const out: Record<string, unknown> = {
     identifier: {
       system: RFC_3986_URI_SYSTEM,
       value: iriOrRef,
@@ -773,7 +773,7 @@ function mapOdrlActionToActivityAction(
   rawAction: string,
   actionPath: string,
   dropped: DroppedOdrlTerm[],
-): Record<string, any> {
+): Record<string, unknown> {
   const bare = stripOdrlPrefix(rawAction);
   switch (bare) {
     case "use":
@@ -845,7 +845,7 @@ function mapOdrlActionToActivityAction(
  * `Permission` and the explicit list of `dropped` ODRL / DCAT / SPDX terms.
  */
 export function odrlAgreementToFhirR5Permission(
-  agreement: Record<string, any>,
+  agreement: Record<string, unknown>,
   options: OdrlToFhirR5PermissionOptions = {},
 ): OdrlToFhirR5PermissionResult {
   const dropped: DroppedOdrlTerm[] = [];
@@ -955,11 +955,11 @@ export function odrlAgreementToFhirR5Permission(
           ? agreement["odrl:source"]
           : undefined;
 
-  const evidenceList: Record<string, any>[] = [];
-  const basisList: Record<string, any>[] = [];
+  const evidenceList: Record<string, unknown>[] = [];
+  const basisList: Record<string, unknown>[] = [];
 
   if (uid) {
-    const ev: Record<string, any> = {
+    const ev: Record<string, unknown> = {
       identifier: {
         system: RFC_3986_URI_SYSTEM,
         value: uid,
@@ -999,9 +999,9 @@ export function odrlAgreementToFhirR5Permission(
         distUrl &&
         distUrl !== uid &&
         distUrl !== dctermsSource &&
-        !evidenceList.some((e) => e.identifier?.value === distUrl)
+        !evidenceList.some((e) => isPlainRecord(e.identifier) && e.identifier.value === distUrl)
       ) {
-        const ev: Record<string, any> = {
+        const ev: Record<string, unknown> = {
           identifier: {
             system: RFC_3986_URI_SYSTEM,
             value: distUrl,
@@ -1024,11 +1024,11 @@ export function odrlAgreementToFhirR5Permission(
   }
 
   // 6. Rules (permission[] -> permit, prohibition[] -> deny) and dateTime extraction
-  const renderedRules: Record<string, any>[] = [];
+  const renderedRules: Record<string, unknown>[] = [];
   const extractedPeriods: ExtractedRulePeriod[] = [];
 
   const processRuleList = (
-    rules: readonly unknown[] | undefined,
+    rules: unknown,
     listKey: "permission" | "prohibition",
     ruleType: "permit" | "deny",
   ): void => {
@@ -1058,7 +1058,7 @@ export function odrlAgreementToFhirR5Permission(
         });
       }
 
-      const dataEntries: Record<string, any>[] = [];
+      const dataEntries: Record<string, unknown>[] = [];
       if (typeof rawRule.target === "string" && rawRule.target.trim().length > 0) {
         dataEntries.push({
           resource: [
@@ -1080,7 +1080,7 @@ export function odrlAgreementToFhirR5Permission(
       }
 
       // Activity: actor, action, purpose
-      const actorRefs: Record<string, any>[] = [];
+      const actorRefs: Record<string, unknown>[] = [];
       const effectiveAssignee =
         typeof rawRule.assignee === "string" && rawRule.assignee.trim().length > 0
           ? rawRule.assignee
@@ -1100,7 +1100,7 @@ export function odrlAgreementToFhirR5Permission(
         });
       }
 
-      const actionConcepts: Record<string, any>[] = [];
+      const actionConcepts: Record<string, unknown>[] = [];
       if (typeof rawRule.action === "string" && rawRule.action.trim().length > 0) {
         actionConcepts.push(
           mapOdrlActionToActivityAction(rawRule.action, `${rulePath}.action`, dropped),
@@ -1132,7 +1132,7 @@ export function odrlAgreementToFhirR5Permission(
       }
 
       // Constraints on rule
-      const purposeConcepts: Record<string, any>[] = [];
+      const purposeConcepts: Record<string, unknown>[] = [];
       let ruleStart: string | undefined;
       let ruleEnd: string | undefined;
       let startHasTime = false;
@@ -1198,7 +1198,7 @@ export function odrlAgreementToFhirR5Permission(
                 }
                 const display =
                   options.purposeDisplays?.[code] ?? DEFAULT_PURPOSE_DISPLAYS[code];
-                const codingEntry: Record<string, any> = {
+                const codingEntry: Record<string, unknown> = {
                   system: HL7_ACT_REASON_SYSTEM,
                   code,
                 };
@@ -1296,7 +1296,7 @@ export function odrlAgreementToFhirR5Permission(
       }
 
       // Duties on rule
-      const limitConcepts: Record<string, any>[] = [];
+      const limitConcepts: Record<string, unknown>[] = [];
       if (Array.isArray(rawRule.duty)) {
         rawRule.duty.forEach((rawDuty: unknown, dIdx: number) => {
           const dutyPath = `${rulePath}.duty[${dIdx}]`;
@@ -1376,14 +1376,14 @@ export function odrlAgreementToFhirR5Permission(
         });
       }
 
-      const ruleObj: Record<string, any> = {
+      const ruleObj: Record<string, unknown> = {
         type: ruleType,
       };
       if (dataEntries.length > 0) {
         ruleObj.data = dataEntries;
       }
       if (actorRefs.length > 0 || actionConcepts.length > 0 || purposeConcepts.length > 0) {
-        const activityObj: Record<string, any> = {};
+        const activityObj: Record<string, unknown> = {};
         if (actorRefs.length > 0) activityObj.actor = actorRefs;
         if (actionConcepts.length > 0) activityObj.action = actionConcepts;
         if (purposeConcepts.length > 0) activityObj.purpose = purposeConcepts;
@@ -1424,7 +1424,7 @@ export function odrlAgreementToFhirR5Permission(
   }
 
   // 8. Assemble FHIR R5 Permission
-  const permission: Record<string, any> = {
+  const permission: Record<string, unknown> = {
     resourceType: "Permission",
     status: deriveStatusFromDcat(options.dcat, options.status),
   };
@@ -1441,7 +1441,7 @@ export function odrlAgreementToFhirR5Permission(
     permission.validity = validity;
   }
   if (basisList.length > 0 || evidenceList.length > 0) {
-    const justification: Record<string, any> = {};
+    const justification: Record<string, unknown> = {};
     if (basisList.length > 0) justification.basis = basisList;
     if (evidenceList.length > 0) justification.evidence = evidenceList;
     permission.justification = justification;
@@ -1486,7 +1486,7 @@ export function fhirR5PermissionToFsh(
   }
   lines.push(`* status = #${permission.status}`);
 
-  const emitReference = (prefix: string, ref: Record<string, any>): void => {
+  const emitReference = (prefix: string, ref: Record<string, unknown>): void => {
     if (typeof ref.reference === "string") {
       lines.push(`* ${prefix}.reference = ${JSON.stringify(ref.reference)}`);
     }
@@ -1506,9 +1506,10 @@ export function fhirR5PermissionToFsh(
     }
   };
 
-  const emitCodeableConcept = (prefix: string, cc: Record<string, any>): void => {
+  const emitCodeableConcept = (prefix: string, cc: Record<string, unknown>): void => {
     if (Array.isArray(cc.coding)) {
-      cc.coding.forEach((c: Record<string, any>, idx: number) => {
+      cc.coding.forEach((c: unknown, idx: number) => {
+        if (!isPlainRecord(c)) return;
         if (typeof c.system === "string" && typeof c.code === "string") {
           const disp = typeof c.display === "string" ? ` ${JSON.stringify(c.display)}` : "";
           lines.push(`* ${prefix}.coding[${idx}] = ${c.system}#${c.code}${disp}`);
@@ -1524,8 +1525,10 @@ export function fhirR5PermissionToFsh(
     emitReference("asserter", permission.asserter);
   }
   if (Array.isArray(permission.date)) {
-    permission.date.forEach((d: string, i: number) => {
-      lines.push(`* date[${i}] = ${JSON.stringify(d)}`);
+    permission.date.forEach((d: unknown, i: number) => {
+      if (typeof d === "string") {
+        lines.push(`* date[${i}] = ${JSON.stringify(d)}`);
+      }
     });
   }
   if (isPlainRecord(permission.validity)) {
@@ -1538,31 +1541,34 @@ export function fhirR5PermissionToFsh(
   }
   if (isPlainRecord(permission.justification)) {
     if (Array.isArray(permission.justification.basis)) {
-      permission.justification.basis.forEach((b: Record<string, any>, i: number) => {
-        emitCodeableConcept(`justification.basis[${i}]`, b);
+      permission.justification.basis.forEach((b: unknown, i: number) => {
+        if (isPlainRecord(b)) emitCodeableConcept(`justification.basis[${i}]`, b);
       });
     }
     if (Array.isArray(permission.justification.evidence)) {
-      permission.justification.evidence.forEach((ev: Record<string, any>, i: number) => {
-        emitReference(`justification.evidence[${i}]`, ev);
+      permission.justification.evidence.forEach((ev: unknown, i: number) => {
+        if (isPlainRecord(ev)) emitReference(`justification.evidence[${i}]`, ev);
       });
     }
   }
-  lines.push(`* combining = #${permission.combining}`);
+  lines.push(`* combining = #${String(permission.combining)}`);
 
   if (Array.isArray(permission.rule)) {
-    permission.rule.forEach((r: Record<string, any>, rIdx: number) => {
+    permission.rule.forEach((r: unknown, rIdx: number) => {
+      if (!isPlainRecord(r)) return;
       const rPrefix = `rule[${rIdx}]`;
       if (typeof r.type === "string") {
         lines.push(`* ${rPrefix}.type = #${r.type}`);
       }
       if (Array.isArray(r.data)) {
-        r.data.forEach((d: Record<string, any>, dIdx: number) => {
+        r.data.forEach((d: unknown, dIdx: number) => {
+          if (!isPlainRecord(d)) return;
           const dPrefix = `${rPrefix}.data[${dIdx}]`;
           if (Array.isArray(d.resource)) {
-            d.resource.forEach((res: Record<string, any>, resIdx: number) => {
+            d.resource.forEach((res: unknown, resIdx: number) => {
+              if (!isPlainRecord(res)) return;
               const resPrefix = `${dPrefix}.resource[${resIdx}]`;
-              lines.push(`* ${resPrefix}.meaning = #${res.meaning}`);
+              lines.push(`* ${resPrefix}.meaning = #${String(res.meaning)}`);
               if (isPlainRecord(res.reference)) {
                 emitReference(`${resPrefix}.reference`, res.reference);
               }
@@ -1571,28 +1577,29 @@ export function fhirR5PermissionToFsh(
         });
       }
       if (Array.isArray(r.activity)) {
-        r.activity.forEach((act: Record<string, any>, actIdx: number) => {
+        r.activity.forEach((act: unknown, actIdx: number) => {
+          if (!isPlainRecord(act)) return;
           const actPrefix = `${rPrefix}.activity[${actIdx}]`;
           if (Array.isArray(act.actor)) {
-            act.actor.forEach((actorRef: Record<string, any>, aIdx: number) => {
-              emitReference(`${actPrefix}.actor[${aIdx}]`, actorRef);
+            act.actor.forEach((actorRef: unknown, aIdx: number) => {
+              if (isPlainRecord(actorRef)) emitReference(`${actPrefix}.actor[${aIdx}]`, actorRef);
             });
           }
           if (Array.isArray(act.action)) {
-            act.action.forEach((actionCc: Record<string, any>, aIdx: number) => {
-              emitCodeableConcept(`${actPrefix}.action[${aIdx}]`, actionCc);
+            act.action.forEach((actionCc: unknown, aIdx: number) => {
+              if (isPlainRecord(actionCc)) emitCodeableConcept(`${actPrefix}.action[${aIdx}]`, actionCc);
             });
           }
           if (Array.isArray(act.purpose)) {
-            act.purpose.forEach((purposeCc: Record<string, any>, pIdx: number) => {
-              emitCodeableConcept(`${actPrefix}.purpose[${pIdx}]`, purposeCc);
+            act.purpose.forEach((purposeCc: unknown, pIdx: number) => {
+              if (isPlainRecord(purposeCc)) emitCodeableConcept(`${actPrefix}.purpose[${pIdx}]`, purposeCc);
             });
           }
         });
       }
       if (Array.isArray(r.limit)) {
-        r.limit.forEach((limCc: Record<string, any>, lIdx: number) => {
-          emitCodeableConcept(`${rPrefix}.limit[${lIdx}]`, limCc);
+        r.limit.forEach((limCc: unknown, lIdx: number) => {
+          if (isPlainRecord(limCc)) emitCodeableConcept(`${rPrefix}.limit[${lIdx}]`, limCc);
         });
       }
     });
