@@ -66,7 +66,7 @@ import {
   type FhirConsentProvision,
 } from "./pcf-consent.js";
 
-const TPO_PURPOSES: readonly FhirCoding[] = PCF_BASIC_PURPOSES.map((code) => ({
+const TPO_PURPOSES: FhirCoding[] = PCF_BASIC_PURPOSES.map((code) => ({
   system: HL7_ACT_REASON_SYSTEM,
   code,
 }));

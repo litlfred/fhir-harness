@@ -11,6 +11,7 @@
     "zod": "^4.6.5"
   },
   "devDependencies": {
+    "@types/fhir": "0.0.44",
     "ajv": "^6.15.0"
   },
   "checkoutScripts": {
