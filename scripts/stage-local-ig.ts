@@ -634,10 +634,16 @@ export const IG_SITE_STEPS = { ast: "ig-site:ast", source: "ig-site:compose", si
  * - `sidecars`, a pre step after `ast`: run when the LANDING layer provides it,
  *   since the site wears that layer's chrome and its API surface; a provider
  *   elsewhere is not run, and the plan says so;
+ * - `index`, a pre step after `sidecars`: run when a mounted layer provides
+ *   it. The mounted layers' artefact indexes (`fhir-artifact-index/`) are no
+ *   longer committed but built at publish (fhir-harness#124), and their
+ *   `ig-pages` visualisers read them: without this step the coverage gate
+ *   refuses the site (smart-base-clinical, 2026-10-30; smart-ra#101 for a
+ *   declared recipe);
  * - `openapi`, a site step before `site`: run when the checkout holds an
  *   OpenAPI graph (`openapi/cat-openapi.config.json`).
  */
-export const IG_SITE_OPTIONAL = { sidecars: "ig-site:sidecars", openapi: "ig-site:openapi", bar: "ig-site:bar" } as const;
+export const IG_SITE_OPTIONAL = { sidecars: "ig-site:sidecars", index: "ig-index:build", openapi: "ig-site:openapi", bar: "ig-site:bar" } as const;
 
 /**
  * What an IG repository's root used to serve and no longer does, by the
@@ -798,6 +804,10 @@ export function igFolioSite(o: {
     pre.push(IG_SITE_OPTIONAL.sidecars);
     notes.push(`${IG_SITE_OPTIONAL.sidecars}: run, provided by the landing layer ${o.landing.name} (${side.manifest})`);
   } else notes.push(`${IG_SITE_OPTIONAL.sidecars}: NOT run — provided by ${side.manifest}, not by the landing layer ${o.landing.name}`);
+  if (o.scripts.has(IG_SITE_OPTIONAL.index)) {
+    pre.push(IG_SITE_OPTIONAL.index);
+    notes.push(`${IG_SITE_OPTIONAL.index}: run, the mounted layers' artefact indexes are built at publish`);
+  } else notes.push(`${IG_SITE_OPTIONAL.index}: no mounted layer provides it — no artefact index is built`);
   const siteSteps: string[] = [];
   if (!o.hasOpenapi) notes.push(`${IG_SITE_OPTIONAL.openapi}: the checkout holds no openapi/cat-openapi.config.json — no OpenAPI pages`);
   else if (!o.scripts.has(IG_SITE_OPTIONAL.openapi)) notes.push(`${IG_SITE_OPTIONAL.openapi}: the checkout holds an OpenAPI graph, and no mounted layer provides the step — its pages are NOT built`);
