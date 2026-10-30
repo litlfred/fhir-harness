@@ -405,7 +405,8 @@ export function filterIti108Bundle(
 
     if (resourceType === "OperationOutcome") {
       const parsedOutcome = FhirOperationOutcomeSchema.safeParse(resource);
-      const issues = Array.isArray(resource.issue) ? (resource.issue as Array<Record<string, unknown>>) : [];
+      // A valid OperationOutcome always carries `issue` (1..*); an invalid one is an error anyway.
+      const issues = parsedOutcome.success ? parsedOutcome.data.issue : [];
       const hasError =
         !parsedOutcome.success ||
         issues.some((iss) => iss && (iss.severity === "error" || iss.severity === "fatal"));

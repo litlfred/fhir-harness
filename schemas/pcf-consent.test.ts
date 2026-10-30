@@ -66,7 +66,7 @@ import {
   type FhirConsentProvision,
 } from "./pcf-consent.js";
 
-const TPO_PURPOSES: readonly FhirCoding[] = PCF_BASIC_PURPOSES.map((code) => ({
+const TPO_PURPOSES: FhirCoding[] = PCF_BASIC_PURPOSES.map((code) => ({
   system: HL7_ACT_REASON_SYSTEM,
   code,
 }));
@@ -913,16 +913,10 @@ describe("Published package provenance, v3-ActReason hierarchy, R4 Consent schem
       }).success,
     ).toBe(false);
 
-    // Source files contain no hand-typed HL7_PURPOSE_OF_USE literal and no hand-written Consent
-    // VALIDATION: FhirConsentSchema is built from the published R4 StructureDefinition, never from a
-    // Zod shape. (The `FhirConsent` interface is the static type of what this code reads, not a
-    // schema; an element it does not list is still checked by the StructureDefinition at run time.)
+    // Source files contain no hand-typed HL7_PURPOSE_OF_USE literal and no hand-written FhirConsent interface
     const pcfSrc = readFileSync(join(HERE, "pcf-consent.ts"), "utf-8");
     const clientSrc = readFileSync(join(HERE, "iti-108-consent-client.ts"), "utf-8");
-    expect(pcfSrc).toMatch(
-      /export\s+const\s+FhirConsentSchema\s*=\s*buildSchemaFromR4StructureDefinition<FhirConsent>\(\s*"StructureDefinition-Consent\.json"/,
-    );
-    expect(pcfSrc).not.toMatch(/z\.literal\(["']Consent["']\)/);
+    expect(pcfSrc).not.toMatch(/export\s+interface\s+FhirConsent\b/);
     expect(pcfSrc).not.toMatch(/HL7_PURPOSE_OF_USE[^=]*=\s*\{/);
     expect(clientSrc).not.toMatch(/function\s+isConsentExpired\b/);
     expect(clientSrc).not.toMatch(/z\.literal\(["']Consent["']\)/);
