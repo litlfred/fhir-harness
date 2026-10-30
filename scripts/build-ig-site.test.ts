@@ -1329,10 +1329,12 @@ describe("linkTableCells (owner, 2026-10-10: table ids should be clickable)", ()
 describe("annexes (owner, 2026-10-10: the data dictionary loaded on demand)", () => {
   test("annexMount points at the copied JSON and the renderer, with a fallback link", () => {
     const m = annexMount("dd.json", ["data element id", "data type"]);
-    expect(m).toContain('class="fa-annex" data-src="{{ site.baseurl }}/assets/annex/dd.json"');
+    expect(m).toContain('class="fa-annex" data-src="assets/annex/dd.json"');
     expect(m).toContain('data-columns="data element id|data type"');
-    expect(m).toContain('href="{{ site.baseurl }}/assets/annex/dd.json"');
-    expect(m).toContain('src="{{ site.baseurl }}/assets/js/ig-annex.js"');
+    expect(m).toContain('href="assets/annex/dd.json"');
+    expect(m).toContain('src="assets/js/ig-annex.js"');
+    // Page-relative, so a host's base cannot send it to the host's root.
+    expect(m).not.toContain("site.baseurl");
   });
 
   test("the renderer exists and sets data only through textContent", () => {
@@ -1409,7 +1411,7 @@ describe("the annex contract: an ig-annex directory the instance declares (fm9n)
     // What compose and stage-ig-sites hand stageIgSite: the page mounts the loader.
     const out = join(at, "..", "out");
     const r = stageIgSite(at, out, { annexes: annexesFor(at) });
-    expect(readFileSync(join(out, "dictionary.md"), "utf-8")).toContain('data-src="{{ site.baseurl }}/assets/annex/t.json"');
+    expect(readFileSync(join(out, "dictionary.md"), "utf-8")).toContain('data-src="assets/annex/t.json"');
     expect(existsSync(join(out, "assets", "annex", "t.json"))).toBe(true);
     expect(r.annexed).toEqual(["dictionary.md <- t.json"]);
     rmSync(join(at, ".."), { recursive: true, force: true });
