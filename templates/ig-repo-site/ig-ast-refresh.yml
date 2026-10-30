@@ -11,6 +11,10 @@
 #
 # Needs: index.lock.json mounting fhir-harness (as site-publish.yml does).
 #
+# A WHO IG whose ig.ini names `who.template.root#current` adds, under `with:`,
+#   template-repos: who.template.root=WorldHealthOrganization/smart-ig-template
+# so a cold runner seeds the template from its repository (fhir-harness#196).
+#
 # An IG whose own build prepares its inputs before the Publisher runs (an
 # overlay: generated pages, generated resources) passes that command as
 # `pre-export` under `with:` below; the reusable workflow runs it before the
