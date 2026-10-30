@@ -11,6 +11,9 @@ import {
   PCF_CONSENT_BASIC_PROFILE,
   consentsCitingAgreement,
   createPcfConsentEvaluator,
+  isNarrowingAmendment,
+  versionsCoveredByConsent,
+  type AgreementVersion,
   type FhirConsent,
 } from "./pcf-consent.ts";
 
@@ -56,6 +59,84 @@ describe("rule 2: a Consent counts only for the agreement version it cites", () 
   test("agreementPolicyUri overrides the agreement's uid; with neither, Consents are not filtered", () => {
     expect(createPcfConsentEvaluator([consent("a", V1)], { agreementPolicyUri: V2 })(req)).toEqual({ verdict: "unknown" });
     expect(createPcfConsentEvaluator([consent("c", undefined)])(req)).toMatchObject({ verdict: "permit" });
+  });
+});
+
+const V3 = "https://example.org/dsa/research-registry/3.0.0";
+
+function agreement(uid: string, purpose: string, until: string, extra: Record<string, unknown> = {}) {
+  return {
+    "@context": "http://www.w3.org/ns/odrl.jsonld",
+    "@type": "Agreement",
+    uid,
+    profile: "https://litlfred.github.io/cat-harness/policies/profile",
+    assigner: "org:registry",
+    assignee: "org:research-unit",
+    permission: [
+      {
+        assignee: "org:research-unit",
+        action: "odrl:use",
+        target: "dataset:registry",
+        constraint: [
+          { leftOperand: "odrl:purpose", operator: "odrl:isA", rightOperand: purpose },
+          { leftOperand: "odrl:dateTime", operator: "odrl:lt", rightOperand: until },
+        ],
+        duty: [{ action: "odrl:obtainConsent" }],
+      },
+    ],
+    prohibition: [],
+    ...extra,
+  } as never;
+}
+
+describe("rule 2 with the version chain (owner card 2026-10-30 19:55Z)", () => {
+  test("a narrower purpose or an earlier end date is a narrowing amendment; the reverse is not", () => {
+    const base = agreement(V1, "PurposeOfUse", "2028-01-01");
+    expect(isNarrowingAmendment(agreement(V2, "TREAT", "2028-01-01"), base)).toBe(true);
+    expect(isNarrowingAmendment(agreement(V2, "PurposeOfUse", "2027-01-01"), base)).toBe(true);
+    expect(isNarrowingAmendment(base, agreement(V2, "TREAT", "2028-01-01"))).toBe(false);
+    expect(isNarrowingAmendment(agreement(V2, "PurposeOfUse", "2029-01-01"), base)).toBe(false);
+  });
+
+  test("dropping a duty, a prohibition or changing a party widens use", () => {
+    const withProhibition = agreement(V1, "TREAT", "2028-01-01", {
+      prohibition: [{ assignee: "org:research-unit", action: "odrl:distribute", target: "dataset:registry" }],
+    });
+    const noDuty = agreement(V2, "TREAT", "2028-01-01") as unknown as { permission: { duty?: unknown }[] };
+    delete noDuty.permission[0].duty;
+    expect(isNarrowingAmendment(noDuty as never, agreement(V1, "TREAT", "2028-01-01"))).toBe(false);
+    expect(isNarrowingAmendment(agreement(V2, "TREAT", "2028-01-01"), withProhibition)).toBe(false);
+    expect(isNarrowingAmendment(agreement(V2, "TREAT", "2028-01-01", { assignee: "org:other" }), agreement(V1, "TREAT", "2028-01-01"))).toBe(false);
+  });
+
+  test("a Consent for an earlier version counts only while every step back narrows", () => {
+    const narrowing = new Map<string, AgreementVersion>([
+      [V1, { policy: agreement(V1, "PurposeOfUse", "2028-01-01") }],
+      [V2, { policy: agreement(V2, "TREAT", "2028-01-01"), previousVersion: V1 }],
+      [V3, { policy: agreement(V3, "TREAT", "2027-06-01"), previousVersion: V2 }],
+    ]);
+    expect([...versionsCoveredByConsent(V3, narrowing)]).toEqual([V3, V2, V1]);
+    const evaluate = createPcfConsentEvaluator([consent("a", V1)], { agreementVersions: narrowing });
+    expect(evaluate(req, undefined, undefined, { uid: V3 } as never)).toMatchObject({ verdict: "permit" });
+
+    const widenedInMiddle = new Map<string, AgreementVersion>([
+      [V1, { policy: agreement(V1, "TREAT", "2028-01-01") }],
+      [V2, { policy: agreement(V2, "PurposeOfUse", "2028-01-01"), previousVersion: V1 }],
+      [V3, { policy: agreement(V3, "TREAT", "2027-06-01"), previousVersion: V2 }],
+    ]);
+    expect([...versionsCoveredByConsent(V3, widenedInMiddle)]).toEqual([V3, V2]);
+    const evaluate2 = createPcfConsentEvaluator([consent("a", V1)], { agreementVersions: widenedInMiddle });
+    expect(evaluate2(req, undefined, undefined, { uid: V3 } as never)).toEqual({ verdict: "unknown" });
+  });
+
+  test("a missing version or a loop stops the walk", () => {
+    const missing = new Map<string, AgreementVersion>([[V2, { policy: agreement(V2, "TREAT", "2028-01-01"), previousVersion: V1 }]]);
+    expect([...versionsCoveredByConsent(V2, missing)]).toEqual([V2]);
+    const loop = new Map<string, AgreementVersion>([
+      [V1, { policy: agreement(V1, "TREAT", "2028-01-01"), previousVersion: V2 }],
+      [V2, { policy: agreement(V2, "TREAT", "2028-01-01"), previousVersion: V1 }],
+    ]);
+    expect([...versionsCoveredByConsent(V2, loop)].sort()).toEqual([V1, V2]);
   });
 });
 
