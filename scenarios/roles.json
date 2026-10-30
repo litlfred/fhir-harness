@@ -19,7 +19,8 @@
       "role": "fhir-modeller",
       "skills": [
         "l3-fhir-authoring",
-        "fhir-questionnaire-wireframe"
+        "fhir-questionnaire-wireframe",
+        "pcf-consent"
       ]
     },
     {
