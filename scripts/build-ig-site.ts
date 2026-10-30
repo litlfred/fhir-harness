@@ -878,7 +878,7 @@ export function composeIgSite(
     // The shared page layout's two files, unless the staged site brings them
     // (the artefact pages' generator writes them beside `ig-artifact.css`).
     // The thin layout links `ig-artifact.css` too; an IG whose instance has no
-    // artefact pages (smart-immunizations, folio-assistant#2738) had none, so
+    // artefact pages (an IG with no docs of its own, folio-assistant#2738) had none, so
     // its pages lost their styling.
     for (const [rel, src] of [[PAGE_LAYOUT_CSS_FILE, PAGE_LAYOUT_CSS_SOURCE], [PAGE_LAYOUT_JS_FILE, PAGE_LAYOUT_JS_SOURCE], [IG_THIN_CSS_FILE, IG_THIN_CSS_SOURCE]] as const) {
       if (!existsSync(join(staged, rel))) put(join(dest, rel), readFileSync(src));
