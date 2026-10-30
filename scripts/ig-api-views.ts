@@ -27,7 +27,7 @@ import { hasJsonView } from "./resource-views.ts";
 import { hasIgApi, igApiHubNodeFill } from "./ig-api-hub.ts";
 import { basename, join } from "node:path";
 import { artifactPageName, type FhirArtifact, type FhirArtifactIndex } from "../schemas/fhir-artifact-index.js";
-import { declarationPathIn } from "../../cat-harness/schemas/kg/cat-harness.js";
+import { declarationPathIn } from "@litlfred/cat-harness-tools/schemas/kg/cat-harness.js";
 
 /** The two sidecars the Publisher renders a page for, in its tab order. */
 export const IG_API_VIEW_KINDS = [

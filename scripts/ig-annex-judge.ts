@@ -35,7 +35,7 @@
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { join, relative, resolve, sep } from "node:path";
 
-import { readDeclaration } from "../../cat-harness/schemas/kg/cat-harness.js";
+import { readDeclaration } from "@litlfred/cat-harness-tools/schemas/kg/cat-harness.js";
 import { IG_ANNEX_KIND, IG_ANNEXES_FILE, IgAnnexesSchema } from "../schemas/ig-annexes.ts";
 
 /** Where an IG keeps its narrative pages, relative to its root. */

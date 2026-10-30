@@ -10,7 +10,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
-import { reviewList } from "../../cat-harness/schemas/ui/rendered-impact";
+import { reviewList } from "@litlfred/cat-harness-tools/schemas/ui/rendered-impact";
 import { igRenderedImpact } from "./ig-rendered-impact";
 
 const IG = mkdtempSync(join(tmpdir(), "ig-impact-"));

@@ -44,7 +44,7 @@ import {
   type OdrlPolicy,
   type OdrlRule,
   type PermitRequest,
-} from "../../cat-harness/schemas/content/odrl.js";
+} from "@litlfred/cat-harness-tools/schemas/content/odrl.js";
 
 export {
   ANYONE,

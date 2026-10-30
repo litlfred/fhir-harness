@@ -9,7 +9,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, test } from "bun:test";
 
-import * as odrlModule from "../../cat-harness/schemas/content/odrl.js";
+import * as odrlModule from "@litlfred/cat-harness-tools/schemas/content/odrl.js";
 import {
   OdrlPolicySchema,
   actionGraph,
@@ -17,7 +17,7 @@ import {
   permits as odrlPermits,
   type OdrlPolicy,
   type PermitRequest,
-} from "../../cat-harness/schemas/content/odrl.js";
+} from "@litlfred/cat-harness-tools/schemas/content/odrl.js";
 import { isConsentExpired as clientIsConsentExpired } from "./iti-108-consent-client.js";
 import {
   ANYONE,

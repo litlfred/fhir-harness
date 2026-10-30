@@ -118,7 +118,7 @@ import { IG_API_HUB_DEFAULT_PAGE, IG_API_HUB_NODE, IG_API_HUB_NODE_LOADER, IG_AP
 import { IG_API_VIEW_SCRIPT, igApiServed, igApiViewData, igApiViews } from "./ig-api-views.ts";
 import { IG_CHROME_SCOPE, igFooterData } from "./ig-footer.ts";
 import { JSON_VIEW_SCRIPT, VIEW_PAGE, examplesPage, hasJsonView, historyPage, jsonViewData, mappingsPage, mdText, packageEntries, rebaseDescriptionLinks, profileJsonViewData, resourceFacts, resourceTabs, testingPage, type TabPageData } from "./resource-views.ts";
-import { isDirectoryReadme } from "../../cat-harness/schemas/kg/kg-node.js";
+import { isDirectoryReadme } from "@litlfred/cat-harness-tools/schemas/kg/kg-node.js";
 import { ARTIFACT_INDEX_FILE, artifactJsonLdFiles, localResourceHref } from "./ig-artifact-jsonld.ts";
 import { THIN_PAGE_SCRIPT, THIN_PAGE_STYLE, artifactTabs, thinArtifactPath, thinArtifactView } from "./ig-thin-pages.ts";
 import { PAGE_LAYOUT_CSS_FILE, PAGE_LAYOUT_CSS_SOURCE, PAGE_LAYOUT_JS_FILE, PAGE_LAYOUT_JS_SOURCE } from "../../cat-harness-tools/scripts/page-layout.ts";
@@ -135,14 +135,14 @@ import {
 import { readIgIdentity, statusOf, type IgIdentity } from "../schemas/ig-identity.js";
 import { declaredVisualisers, pageParts, siteOwnerDir, visualiserPageDir, withRenderedBy, withRenderedByFrontMatter } from "../../cat-harness-tools/scripts/viewer-declarations.js";
 import { siteArg, sitePageAt } from "../../cat-harness-tools/scripts/lib/site-target.ts";
-import { siteRootFrom, visualiserRoute } from "../../cat-harness/schemas/kg/visualiser-route.js";
+import { siteRootFrom, visualiserRoute } from "@litlfred/cat-harness-tools/schemas/kg/visualiser-route.js";
 import {
   declarationPathIn,
   directoriesForGraph,
   instanceRootsIn,
   checkoutRootFor,
   readDeclaration,
-} from "../../cat-harness/schemas/kg/cat-harness.js";
+} from "@litlfred/cat-harness-tools/schemas/kg/cat-harness.js";
 
 import {
   FhirArtifactIndexSchema,
@@ -1822,7 +1822,13 @@ function declaredRoutePages(site?: string): { abs: string; html: string }[] {
     if (v.harness === INSTANCE_NAME) out.push(place(parts));
     // A harness covering the KIND per instance (`subgraphs: "instance"`):
     // this instance's sub-graph view, `<base>/<harness>/<id>/<instance>/`.
-    if (v.subgraphs === "instance" && (v.coversKinds ?? []).includes("fhir-artifact-index") && directoriesForGraph(INSTANCE, "fhir-artifact-index").length > 0) {
+    // An IG instance declares no `fhir-artifact-index` directory since #124:
+    // its index is built at publish (`ig-index:build`), so the index on disk
+    // counts as well as a declared directory. The coverage gate counts it too,
+    // and without this the site was refused for the missing page
+    // (smart-base-clinical, 2026-10-30).
+    const hasIndex = directoriesForGraph(INSTANCE, "fhir-artifact-index").length > 0 || existsSync(INDEX);
+    if (v.subgraphs === "instance" && (v.coversKinds ?? []).includes("fhir-artifact-index") && hasIndex) {
       out.push(place({ ...parts, subgraph: INSTANCE_NAME }));
     }
   }

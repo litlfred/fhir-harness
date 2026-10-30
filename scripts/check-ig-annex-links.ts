@@ -34,8 +34,8 @@
 import { existsSync, readFileSync } from "node:fs";
 import { basename, join } from "node:path";
 
-import { repoRootFor } from "../../cat-harness/schemas/kg/cat-harness.js";
-import { gitTopLevelDirs } from "../../cat-harness/schemas/sdlc/git-corpus.js";
+import { repoRootFor } from "@litlfred/cat-harness-tools/schemas/kg/cat-harness.js";
+import { gitTopLevelDirs } from "@litlfred/cat-harness-tools/schemas/sdlc/git-corpus.js";
 import { PUBLISHER_PAGES, kramdownId } from "./build-ig-site.ts";
 import { annexesFor } from "./stage-ig-sites.ts";
 

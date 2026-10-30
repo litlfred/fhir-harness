@@ -672,6 +672,8 @@ export const IG_SOURCE_LINKS_FILE = "assets/ig-source-links.js";
 export const IG_TOPBAR_RE = /<div class="ig-topbar[ "][\s\S]*?<\/div>(?=\n|$)/;
 /** The thin narrative layout's stylesheet: the one every thin IG page links (`gen-ig-pages` writes it). */
 export const IG_THIN_CSS_FILE = "assets/ig-artifact.css";
+/** Its source, the same file `gen-ig-pages` copies. */
+const IG_THIN_CSS_SOURCE = join(import.meta.dir, "templates", "ig-pages", "ig-artifact.css");
 
 /**
  * The reader's folio on an IG page (bean `95sk`, R24). The owner, 2026-09-21:
@@ -805,13 +807,18 @@ export function composeIgSite(
   staged: string,
   docsRoot: string,
   instance: string,
-  opts: { atRoot?: boolean; fullPages?: boolean; siteBase?: string } = {},
+  opts: { atRoot?: boolean; at?: "." | "ig"; fullPages?: boolean; siteBase?: string } = {},
 ): { pages: number; files: number; includes: number; collisions: string[] } {
   const title = /^title:\s*(.+)$/m.exec(readFileSync(join(staged, "_config.yml"), "utf-8"))?.[1]?.replace(/^"(.*)"$/, "$1") ?? instance;
   const q = JSON.stringify(title);
   // `atRoot`: the IG IS the site (an IG repository's own site, composed into
   // the chrome-only shell — #2235 F1), so its pages land at the root.
-  const dest = opts.atRoot ? docsRoot : join(docsRoot, instance);
+  // `at` (stage-ig-sites `igSiteAt`): the IG was staged with a base URL ending
+  // `/<instance>/ig` or `/<instance>`, and it lands where that base says
+  // (folio-assistant#2738: composed at `/<instance>/` under an `/ig` base,
+  // every menu link was dead).
+  const sub = opts.at === "ig" ? "ig" : "";
+  const dest = opts.atRoot ? docsRoot : join(docsRoot, instance, sub);
   const incDest = join(docsRoot, "_includes", "ig", instance);
   const dataDest = join(docsRoot, "_data", "ig", instance);
   const collisions: string[] = [];
@@ -856,7 +863,7 @@ export function composeIgSite(
   // chrome is written into them; their own top bar, edit links and footer stay,
   // with every style and script linked. `fullPages` keeps the host's layout.
   const thin = !opts.fullPages;
-  const assetsAt = opts.atRoot ? "/" : `/${instance}/`;
+  const assetsAt = opts.atRoot ? "/" : `/${instance}/${sub ? `${sub}/` : ""}`;
   const layoutName = `ig-thin-${instance}`;
   const chrome = igChromeIncludes(topBar, thin ? { assetsAt } : undefined);
   put(join(incDest, "_top.html"), chrome.top);
@@ -870,7 +877,10 @@ export function composeIgSite(
     put(join(docsRoot, "_layouts", `${layoutName}.html`), thinIgLayout(assetsAt, tocNav, label?.replace(/&quot;/g, '"').replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&"), topBar));
     // The shared page layout's two files, unless the staged site brings them
     // (the artefact pages' generator writes them beside `ig-artifact.css`).
-    for (const [rel, src] of [[PAGE_LAYOUT_CSS_FILE, PAGE_LAYOUT_CSS_SOURCE], [PAGE_LAYOUT_JS_FILE, PAGE_LAYOUT_JS_SOURCE]] as const) {
+    // The thin layout links `ig-artifact.css` too; an IG whose instance has no
+    // artefact pages (an IG with no docs of its own, folio-assistant#2738) had none, so
+    // its pages lost their styling.
+    for (const [rel, src] of [[PAGE_LAYOUT_CSS_FILE, PAGE_LAYOUT_CSS_SOURCE], [PAGE_LAYOUT_JS_FILE, PAGE_LAYOUT_JS_SOURCE], [IG_THIN_CSS_FILE, IG_THIN_CSS_SOURCE]] as const) {
       if (!existsSync(join(staged, rel))) put(join(dest, rel), readFileSync(src));
     }
     put(join(dest, IG_SOURCE_LINKS_FILE), `${EDIT_LINKS_RUNTIME}\n${SOURCE_LINKS_JS}\n`);

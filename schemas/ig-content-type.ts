@@ -44,8 +44,8 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { defaultContentTypes, INDEX_SECTION_FILE, type ContentTypeRegistry } from "../../cat-harness/schemas/content/content-type.js";
-import { ownNamespace } from "../../cat-harness/schemas/kg/namespaces.js";
+import { defaultContentTypes, INDEX_SECTION_FILE, type ContentTypeRegistry } from "@litlfred/cat-harness-tools/schemas/content/content-type.js";
+import { ownNamespace } from "@litlfred/cat-harness-tools/schemas/kg/namespaces.js";
 
 /** The key under `index.config.json` `contentTypes` that declares an IG. */
 export const IG_INDEX_SECTION = "ig";

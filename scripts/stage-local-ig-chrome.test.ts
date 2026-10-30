@@ -16,7 +16,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, writeFileSync } from 
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { DOCS_SITE_BASE } from "../../cat-harness/schemas/kg/jsonld.js";
+import { DOCS_SITE_BASE } from "@litlfred/cat-harness-tools/schemas/kg/jsonld.js";
 import { railStandalonePages } from "../../cat-harness-tools/scripts/mount-instance-docs.js";
 import { formatPlan, stageLocal } from "../../cat-harness-tools/scripts/stage-local.ts";
 import { applyIgDeploy, chromeCoverage, chromeShortfall, IG_PUBLISHER, igTarget, readIgDeploys, readWorkflow } from "./stage-local-ig.ts";
