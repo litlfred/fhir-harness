@@ -14,7 +14,7 @@
  * `shownOnPublishedPages`), which takes such links out of the harness's
  * source-tree link sweep (`check:subgraphs`). This gate is the other half:
  * without it, a genuinely broken annex link would be checked by nothing.
- * Owner, 2026-10-26 (smart-immunizations#81, option A).
+ * Owner, 2026-10-26 (https://github.com/litlfred/smart-immunizations/issues/81, option A).
  *
  * What is checked, from the host page:
  *
