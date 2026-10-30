@@ -6,6 +6,7 @@
     "fhir-questionnaire-wireframe",
     "fhir-validation",
     "ig-publication",
+    "ig-publisher-service-contract",
     "l3-fhir-authoring",
     "terminology-management"
   ],
