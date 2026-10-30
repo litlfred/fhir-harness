@@ -641,21 +641,45 @@ export async function findAccessConsents(query: Iti108Query): Promise<Iti108Resu
   };
 }
 
+/** Options for {@link Iti108ConsentClient}'s optional result cache. */
+export interface Iti108CacheOptions {
+  /** How long a determined result may be reused, in milliseconds. */
+  ttlMs: number;
+  /** Clock for expiry, in epoch milliseconds (tests). Defaults to `Date.now`. */
+  clock?: () => number;
+}
+
+interface Iti108CacheEntry {
+  result: Iti108DeterminedResult;
+  expiresAtMs: number;
+  consentIds: ReadonlySet<string>;
+}
+
 /**
  * Reusable IHE ITI-108 Consent Registry read client bound to a base URL and
  * default request options.
+ *
+ * With `cache`, determined results are reused (owner rule 4, 2026-10-30
+ * 19:27Z: "registry lookups may be cached, but the cache entry ends when the
+ * Consent is withdrawn"). An entry ends at the earliest of its TTL and the
+ * earliest `provision.period.end` among its Consents, and
+ * {@link Iti108ConsentClient.consentWithdrawn} ends every entry holding that
+ * Consent at once. Unknown results are never cached.
  */
 export class Iti108ConsentClient {
   readonly baseUrl: string;
   private readonly defaults: Omit<Iti108Query, "baseUrl">;
+  private readonly cacheOptions?: Iti108CacheOptions;
+  private readonly cache = new Map<string, Iti108CacheEntry>();
 
-  constructor(baseUrl: string, defaults: Omit<Iti108Query, "baseUrl"> = {}) {
+  constructor(baseUrl: string, defaults: Omit<Iti108Query, "baseUrl"> = {}, cache?: Iti108CacheOptions) {
     this.baseUrl = baseUrl;
     this.defaults = defaults;
+    this.cacheOptions = cache;
   }
 
   async findAccessConsents(query: Omit<Iti108Query, "baseUrl"> = {}): Promise<Iti108Result> {
-    return findAccessConsents({
+    const full: Iti108Query = {
       ...this.defaults,
       ...query,
       baseUrl: this.baseUrl,
@@ -663,6 +687,55 @@ export class Iti108ConsentClient {
         ...(this.defaults.headers ?? {}),
         ...(query.headers ?? {}),
       },
-    });
+    };
+    if (!this.cacheOptions) return findAccessConsents(full);
+
+    const now = (this.cacheOptions.clock ?? Date.now)();
+    let key: string;
+    try {
+      key = buildIti108SearchUrl(full).toString();
+    } catch {
+      return findAccessConsents(full);
+    }
+    const hit = this.cache.get(key);
+    if (hit && hit.expiresAtMs > now) return hit.result;
+    if (hit) this.cache.delete(key);
+
+    const result = await findAccessConsents(full);
+    if (result.status === "determined") {
+      let expiresAtMs = now + this.cacheOptions.ttlMs;
+      for (const c of result.consents) {
+        const end = c.provision?.period?.end;
+        if (end) {
+          const endMs = parseFhirPeriodBound(end, "end");
+          if (!Number.isNaN(endMs)) expiresAtMs = Math.min(expiresAtMs, endMs);
+        }
+      }
+      const consentIds = new Set(result.consents.map((c) => c.id).filter((id): id is string => typeof id === "string"));
+      this.cache.set(key, { result, expiresAtMs, consentIds });
+    }
+    return result;
+  }
+
+  /**
+   * A Consent was withdrawn (its status left `active`): end every cached
+   * result that holds it, so the next lookup asks the registry again.
+   * Returns how many entries ended.
+   */
+  consentWithdrawn(consentId: string): number {
+    const id = consentId.replace(/^Consent\//, "").split("/_history/")[0];
+    let ended = 0;
+    for (const [key, entry] of this.cache) {
+      if (entry.consentIds.has(id)) {
+        this.cache.delete(key);
+        ended++;
+      }
+    }
+    return ended;
+  }
+
+  /** Drop every cached result. */
+  clearCache(): void {
+    this.cache.clear();
   }
 }

@@ -247,6 +247,15 @@ callback supplied from `fhir-harness/schemas/pcf-consent.ts` (returning
   target (and any other DSA constraints and duties hold), `permits()` returns
   `"permit"`.
 
+### 3.3a Owner consent rules (2026-10-30 19:27Z)
+
+The owner set four rules for consent-based agreements. Two are enforced here; the other two are authored in the agreement itself (the `dsa` document kind and its lifecycle process in folio-assistant-core).
+
+1. **Legal basis.** An agreement carries `odrl:obtainConsent` only when consent is its legal basis. Treatment, public-health law and research waivers do not rest on consent, so their agreements have no such duty and this evaluator is never asked.
+2. **Version pinning (enforced here).** A Consent names the agreement's fixed-version URL in R4 `Consent.policy.uri`. `createPcfConsentEvaluator` counts a Consent only when that URI equals the agreement's version (the agreement policy's `uid`, or `agreementPolicyUri`); `consentsCitingAgreement()` is the filter. An amendment that widens use is a new version URL, so the old Consent no longer counts and new consent is needed. An amendment that narrows use does not need new consent.
+3. **Plain language.** Every agreement that needs consent publishes a plain-language summary, hashed with the agreement. That summary is what the person consents to.
+4. **Scale (enforced here).** The jurisdiction picks one of PCF's implicit default policies (opt-in or opt-out) and passes it as `implicitPolicy`. Registry reads may be cached: `new Iti108ConsentClient(base, defaults, { ttlMs })`. An entry ends at its TTL, at the earliest `provision.period.end` of its Consents, or at once when `consentWithdrawn(id)` is called for one of its Consents.
+
 ### 3.4 Citing `Consent.id` + `Consent.meta.versionId` in PROV-O decision records (PCF8)
 
 Every consent-based access decision recorded in the hash-chained W3C PROV-O
