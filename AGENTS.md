@@ -79,9 +79,9 @@ be inherited", because the IG depends on this layer.
 
 <!-- skills:index:begin -->
 
-_16 skills in 3 directories, generated from each skill's front matter. `bun run cat readme:sync` rewrites this list and `readme:sync:check` fails when it is stale. Skills this repository inherits are listed by the repositories that publish them._
+_17 skills in 3 directories, generated from each skill's front matter. `bun run cat readme:sync` rewrites this list and `readme:sync:check` fails when it is stale. Skills this repository inherits are listed by the repositories that publish them._
 
-**`skills/content/fhir-ig-authoring/`** (5)
+**`skills/content/fhir-ig-authoring/`** (6)
 
 | Skill | What it is for |
 |---|---|
@@ -89,6 +89,7 @@ _16 skills in 3 directories, generated from each skill's front matter. `bun run 
 | [`fhir-validation`](skills/content/fhir-ig-authoring/fhir-validation.md) | Validate an IG's FHIR artefacts against the profiles and packages they claim to conform to. |
 | [`ig-publication`](skills/content/fhir-ig-authoring/ig-publication.md) | Build a FHIR Implementation Guide and publish it: version, tag, assemble the site, deploy. |
 | [`l3-fhir-authoring`](skills/content/fhir-ig-authoring/l3-fhir-authoring.md) | Derive the **L3** layer — machine-readable FHIR artefacts — from an authored L2 DAK, using FHIR Shorthand and SUSHI. |
+| [`pcf-consent`](skills/content/fhir-ig-authoring/pcf-consent.md) | Model IHE Privacy Consent on FHIR (PCF 1.1.0, Trial Implementation) and HL7 FHIR R4 `Consent` (Trial Use) resources referenced by canonical URL only, translate PCF Basic and Additional… |
 | [`terminology-management`](skills/content/fhir-ig-authoring/terminology-management.md) | Bind a DAK's data elements to standard terminologies, and manage the value sets and concept maps that result. |
 
 **`skills/fhir-client/`** (2)

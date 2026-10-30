@@ -11,7 +11,8 @@
       ],
       "skills": [
         "l3-fhir-authoring",
-        "fhir-questionnaire-wireframe"
+        "fhir-questionnaire-wireframe",
+        "pcf-consent"
       ],
       "persona": "Builds the L3 profiles. Fluent in FHIR and in the tooling; wants the model's constraints and invariants, not an introduction to the resource."
     },
