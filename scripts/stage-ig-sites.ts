@@ -292,7 +292,7 @@ export function igSiteDocs(root: string): string | undefined {
  * `igSite`, or when the instance declares no `docs` directory at all, so
  * nothing else would answer `/<instance>/`.
  *
- * The second case is folio-assistant#2738: smart-immunizations declares no
+ * The second case is folio-assistant#2738: an IG instance that declares no
  * docs, its IG was built with an `/ig` base but composed at `/<instance>/`,
  * so every menu link pointed at an `ig/` folder that was never published.
  * One answer, read by the base URL, the relative links and the composer alike.
