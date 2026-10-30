@@ -72,6 +72,10 @@ on:
         description: "Optional command run with bash at the IG root before the AST export: the caller's overlay. Its changes to the IG's inputs are not part of the source the AST is recorded against"
         type: string
         default: ""
+      template-repos:
+        description: "Space-separated name=owner/repo for a `#current` template FHIR/ig-registry's templates.json does not list, e.g. who.template.root=WorldHealthOrganization/smart-ig-template. Named by the caller, never stored here"
+        type: string
+        default: ""
     outputs:
       verdict:
         description: "The cache's verdict before the run: valid, stale, cannot-tell or missing"
@@ -189,6 +193,7 @@ jobs:
           AST_EXPORT_REF: ${{ inputs.ast-export-ref }}
           TX_SERVER: ${{ inputs.tx }}
           PRE_EXPORT: ${{ inputs.pre-export }}
+          TEMPLATE_REPOS: ${{ inputs.template-repos }}
           VERDICT: ${{ steps.ast.outputs.verdict }}
           FORCE: ${{ inputs.force }}
         run: |
@@ -200,6 +205,23 @@ jobs:
           git -C "$RUNNER_TEMP/igp" checkout -q "$AST_EXPORT_REF"
           (cd "$RUNNER_TEMP/igp/ast-export" && mvn -q -B -DskipTests compile dependency:build-classpath -Dmdep.outputFile=cp.txt)
           CP="$RUNNER_TEMP/igp/ast-export/target/classes:$(cat "$RUNNER_TEMP/igp/ast-export/cp.txt")"
+          # The ig.ini template, when it is a `#current` package the cache lacks,
+          # is seeded from the template's own repository at HEAD (the fork's
+          # seeder, Tool fhir-cache-seed-npm; skill ig-publisher-fork). The
+          # Publisher's own route is the CI build server, which can lose a
+          # template's build: who.template.root#current was a 404 there on
+          # 2026-10-30. Best effort: when seeding fails the Publisher tries its
+          # own route. A cached template is kept by the Publisher when the
+          # server cannot say it is out of date.
+          tpl=$(sed -n 's/^[[:space:]]*template[[:space:]]*=[[:space:]]*\([A-Za-z0-9._-]*#current\)[[:space:]]*$/\1/p' ig.ini 2>/dev/null | head -n 1)
+          if [ -n "$tpl" ] && [ ! -d "$HOME/.fhir/packages/$tpl" ]; then
+            targs=()
+            for m in $TEMPLATE_REPOS; do targs+=(--template-repo "$m"); done
+            echo "::group::seed the template $tpl from its repository"
+            python3 -I "$RUNNER_TEMP/igp/ast-export/scripts/seed-fhir-cache-from-npm.py" --cache "$HOME/.fhir/packages" "${targs[@]}" "$tpl" \
+              || echo "::warning::could not seed the template $tpl from its repository: the Publisher tries the CI build server"
+            echo "::endgroup::"
+          fi
           # Incremental only over a STALE cache, from a clean tree (the build
           # refuses any other), never for a release (force). Anything it cannot
           # account for ends in its own full build; a failure here falls back
