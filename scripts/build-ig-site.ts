@@ -1623,13 +1623,25 @@ export interface IgAnnex {
 
 export const ANNEX_SCRIPT_PATH = join(import.meta.dir, "templates", "ig-site", "ig-annex.js");
 
-/** The mount point an annex page carries; `ig-annex.js` finds it by class. */
+/**
+ * The mount point an annex page carries; `ig-annex.js` finds it by class.
+ *
+ * The links are relative to the PAGE, not `{{ site.baseurl }}`. The JSON and
+ * the renderer are written beside the IG's pages (`<out>/assets/…`), and the
+ * pages are flat in `<out>`. Composed into a host at `/<instance>/`, the
+ * base is the HOST's, so `{{ site.baseurl }}/assets/annex/` pointed at the
+ * host's root, where nothing is (measured 2026-10-30 on the published
+ * `smart-immunizations/dictionary.html`: `../assets/annex/…` from
+ * `smart-immunizations/`, while the file is at
+ * `smart-immunizations/assets/annex/…`). A page-relative path is right both
+ * at a site's root and inside a host.
+ */
 export function annexMount(file: string, columns?: ReadonlyArray<string>): string {
   const cols = columns?.length ? ` data-columns="${columns.map((c) => c.replace(/"/g, "&quot;")).join("|")}"` : "";
   return (
-    `\n\n<div class="fa-annex" data-src="{{ site.baseurl }}/assets/annex/${file}"${cols}>` +
-    `<p>Loading the annex… If it does not appear, <a href="{{ site.baseurl }}/assets/annex/${file}">the data is here as JSON</a>.</p></div>\n` +
-    `<script src="{{ site.baseurl }}/assets/js/ig-annex.js" defer></script>\n`
+    `\n\n<div class="fa-annex" data-src="assets/annex/${file}"${cols}>` +
+    `<p>Loading the annex… If it does not appear, <a href="assets/annex/${file}">the data is here as JSON</a>.</p></div>\n` +
+    `<script src="assets/js/ig-annex.js" defer></script>\n`
   );
 }
 
