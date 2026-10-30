@@ -949,11 +949,36 @@ describe("composeIgSite: a staged IG moved into a host Jekyll source", () => {
     stageIgSite(src, staged, { menu: { groups: [{ label: "Home", items: [{ label: "Summary", href: "index.html" }] }] }, baseurl: `${site}/x/ig` });
     const host = join(d, "host");
     mkdirSync(host, { recursive: true });
-    expect(composeIgSite(staged, host, "x", { siteBase: site }).collisions).toEqual([]);
+    expect(composeIgSite(staged, host, "x", { siteBase: site, at: "ig" }).collisions).toEqual([]);
     const written = [readFileSync(join(host, "_layouts", "ig-thin-x.html"), "utf-8"), readFileSync(join(host, "_includes", "ig", "x", "_top.html"), "utf-8")].join("\n");
     expect(written).not.toContain("some-branch");
     expect(written).toContain('"href":"{{ site.baseurl }}/x/ig/index.html"');
     expect(written).toContain('href="{{ site.baseurl }}/x/ig/index.html"');
+    // folio-assistant#2738: the pages land where the menu points.
+    expect(existsSync(join(host, "x", "ig", "index.md"))).toBe(true);
+    expect(existsSync(join(host, "x", "index.md"))).toBe(false);
+    rmSync(d, { recursive: true, force: true });
+  });
+
+  // folio-assistant#2738: an IG at its instance's root, with no artefact pages
+  // to bring `ig-artifact.css`, still gets the stylesheet its layout links.
+  test("an IG composed at /<instance>/ lands there and carries the thin stylesheet its layout links", () => {
+    const d = mkdtempSync(join(tmpdir(), "ig-compose-at-"));
+    const src = join(d, "src");
+    mkdirSync(join(src, "input", "pagecontent"), { recursive: true });
+    writeFileSync(join(src, "sushi-config.yaml"), "id: x.ig\ntitle: X IG\n");
+    writeFileSync(join(src, "input", "pagecontent", "index.md"), "# Home\n");
+    const staged = join(d, "site");
+    stageIgSite(src, staged, { menu: { groups: [{ label: "Home", items: [{ label: "Summary", href: "index.html" }] }] }, baseurl: "/b/x" });
+    const host = join(d, "host");
+    mkdirSync(host, { recursive: true });
+    expect(composeIgSite(staged, host, "x", { siteBase: "/b", at: "." }).collisions).toEqual([]);
+    expect(existsSync(join(host, "x", "index.md"))).toBe(true);
+    expect(existsSync(join(host, "x", "ig"))).toBe(false);
+    expect(existsSync(join(host, "x", "assets", "ig-artifact.css"))).toBe(true);
+    const layout = readFileSync(join(host, "_layouts", "ig-thin-x.html"), "utf-8");
+    expect(layout).toContain("/x/assets/ig-artifact.css");
+    expect(layout).toContain('href="{{ site.baseurl }}/x/index.html"');
     rmSync(d, { recursive: true, force: true });
   });
 
