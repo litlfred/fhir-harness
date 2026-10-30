@@ -35,7 +35,7 @@ const actor = json<{ id: string; kind: string; description: string; roles: strin
 const publisher = json<Capability>("scenarios/capabilities/ig-publisher.json");
 const validator = json<Capability>("scenarios/capabilities/fhir-validator.json");
 const java = json<Capability>("scenarios/capabilities/java-runtime.json", HARNESS_ROOT);
-const statements = json<{ statements: Statement[] }>("skills/requirements/fhir-validation.json", HARNESS_ROOT).statements;
+const statements = json<{ statements: Statement[] }>("skills/requirements/fhir-validation.json").statements;
 
 describe("the role is mechanical, and its contract is a skill it carries", () => {
   test("played only by a system Actor, carrying ig-publisher-service-contract", () => {
