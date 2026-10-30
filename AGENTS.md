@@ -113,3 +113,12 @@ _16 skills in 3 directories, generated from each skill's front matter. `bun run 
 | [`ig-site-theme`](skills/fhir-ig-base/ig-site-theme.md) | How an IG rendered through just-the-docs wears the theme its instance ALREADY declares: the one `webpage` theme becomes the IG site's colour scheme. |
 
 <!-- skills:index:end -->
+
+`schemas/ig-content-type.ts` registers the `ig` content type. A repository
+declares itself an IG source with `contentTypes.ig` in its root
+`index.config.json` (owner, 2026-10-30), not by carrying `sushi-config.yaml`.
+The section's `include` lists the repository paths this layer reads, and a
+path not on that list is not read. The owner's principle, 2026-10-30: "a
+harness can point to a repo, but doesnt want to automatically slurpo up all
+content in a repo. harness desclares what it it pays attention to in the
+repo."
