@@ -1630,10 +1630,10 @@ export const ANNEX_SCRIPT_PATH = join(import.meta.dir, "templates", "ig-site", "
  * the renderer are written beside the IG's pages (`<out>/assets/…`), and the
  * pages are flat in `<out>`. Composed into a host at `/<instance>/`, the
  * base is the HOST's, so `{{ site.baseurl }}/assets/annex/` pointed at the
- * host's root, where nothing is (measured 2026-10-30 on the published
- * `smart-immunizations/dictionary.html`: `../assets/annex/…` from
- * `smart-immunizations/`, while the file is at
- * `smart-immunizations/assets/annex/…`). A page-relative path is right both
+ * host's root, where nothing is (measured 2026-10-30 on a published IG
+ * composed at `/<instance>/`: `<instance>/dictionary.html` asked for
+ * `../assets/annex/…`, while the file is at `<instance>/assets/annex/…`).
+ * A page-relative path is right both
  * at a site's root and inside a host.
  */
 export function annexMount(file: string, columns?: ReadonlyArray<string>): string {
