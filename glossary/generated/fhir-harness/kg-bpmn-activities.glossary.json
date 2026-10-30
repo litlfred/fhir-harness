@@ -7,6 +7,46 @@
   "source": "BPMN activities of fhir-harness",
   "terms": [
     {
+      "id": "process_igastcache.task_buildsite",
+      "prefLabel": "Build and publish the site from the AST [ig-render-jekyll]",
+      "definition": "The site route's steps, provided by the mounted layers and run by `stage-local.ts` → `build-instance-site.ts`: the landing layer's IG API sidecars when it has the step (`ig-site:sidecars`), the artefact index from the AST and the thin pages with the IG composed at the root (`ig-site:compose`: `ast-to-artifact-index.ts`, `gen-ig-pages.ts --compiled-data ast-data`), the OpenAPI pages when the IG holds them (`ig-site:openapi`), the AST's resources served as `ast-data/` and the build stamp (`ig-site:publisher-pages`). Published at the root from the default branch, as a preview otherwise.",
+      "notation": "Task_BuildSite",
+      "source": "fhir-harness/processes/content/ig-ast-cache.bpmn#Task_BuildSite",
+      "status": "candidate"
+    },
+    {
+      "id": "process_igastcache.task_dispatch",
+      "prefLabel": "Dispatch the IG's ig-ast-refresh.yml [ig-build-pipeline]",
+      "definition": "Actions → \"IG AST refresh (by hand)\" → Run workflow on the default branch, inputs `ref` = the default branch, `force` = false. The publish refused, so the verdict already says the cache is not valid; `force` is for a cache that is valid but suspected wrong.",
+      "notation": "Task_Dispatch",
+      "source": "fhir-harness/processes/content/ig-ast-cache.bpmn#Task_Dispatch",
+      "status": "candidate"
+    },
+    {
+      "id": "process_igastcache.task_export",
+      "prefLabel": "Build the IG with the Publisher AST exporter [ig-publisher-fork]",
+      "definition": "The runner mounts the layers the IG repository's `index.lock.json` pins, restores and judges the cache itself, and, when it is not valid, runs the caller's optional `pre-export` overlay command, then `AstExportCli` (Tool `ig-ast-export`, `litlfred/fhir-ig-publisher` at the pinned `claude/ast-export` commit) with `-tx`. The inputs `pre-export` changed are put back and the AST is recorded against the clean commit's input digest (`ig-ast.ts source-inputs`). The AST just built must itself be `valid` for the commit, or the run fails.",
+      "notation": "Task_Export",
+      "source": "fhir-harness/processes/content/ig-ast-cache.bpmn#Task_Export",
+      "status": "candidate"
+    },
+    {
+      "id": "process_igastcache.task_restore",
+      "prefLabel": "Restore the AST from its cache branch and judge it [ig-ast-delta]",
+      "definition": "`ig-cache.sh restore --ig-root .` fetches `cat/fhir-harness/fhir-ast/<package id>` into `output-ast/` (with the Publisher's `txcache/`), then `ig-cache.sh verify` runs `ig-ast.ts validity`: exit 0 valid, 1 stale-inputs (naming which input), 2 cannot-tell. A restore that finds no branch is a miss, judged as not valid. In an IG repository's site route this is the first `pre` step, `ig-site:ast` (`ig-repo-site.ts ast`).",
+      "notation": "Task_Restore",
+      "source": "fhir-harness/processes/content/ig-ast-cache.bpmn#Task_Restore",
+      "status": "candidate"
+    },
+    {
+      "id": "process_igastcache.task_seed",
+      "prefLabel": "Seed the cache branch (ig-cache seed --push) [compiled-artefact-cache]",
+      "definition": "`ig-cache.sh seed --ig-root . --push`: one commit holding the AST, the Publisher's expansions and `txcache/`, its subject recording the package, counts, Publisher version and source commit. Refused when the candidate is under 90% of the incumbent's resources or edges (the no-shrink gate).",
+      "notation": "Task_Seed",
+      "source": "fhir-harness/processes/content/ig-ast-cache.bpmn#Task_Seed",
+      "status": "candidate"
+    },
+    {
       "id": "process_igastdeltareview.task_diff",
       "prefLabel": "Diff base → head and render the delta pages [ig-ast-delta]",
       "definition": "`ig-ast.ts diff <base> <head> --plan plan.json --site <site>/ast-delta/`: resources added, removed, changed (with an element-level differential) and version-changed; edges added and removed; the plan's decision. Every page opens with the provisional mark and is wrapped in raw so narrative Liquid is not executed.",
@@ -41,7 +81,7 @@
     {
       "id": "process_igincremental.task_checkout",
       "prefLabel": "Restricted checkout of the backward cone",
-      "definition": "git sparse-checkout of the cone's files plus sushi-config.yaml, ig.ini and the alias files — a median of three files, p90 eleven, on smart-immunizations.",
+      "definition": "git sparse-checkout of the cone's files plus sushi-config.yaml, ig.ini and the alias files — a median of three files, p90 eleven, measured on the SMART Immunizations IG.",
       "notation": "Task_Checkout",
       "source": "fhir-harness/processes/content/ig-incremental-build.bpmn#Task_Checkout",
       "status": "candidate"
@@ -244,6 +284,86 @@
       "definition": "Validate the compiled resources against their profiles and the packages they constrain. A validator that could not start is could-not-determine, never a pass with an empty findings list. Failures return to authoring.",
       "notation": "Task_Validate",
       "source": "fhir-harness/processes/content/l3-fhir-pipeline.bpmn#Task_Validate",
+      "status": "candidate"
+    },
+    {
+      "id": "process_questionnairewireframereview.call_review",
+      "prefLabel": "Design review [wireframe-design-review]",
+      "definition": "cat-harness Process_WireframeDesignReview: as-is use for a form that exists, design use for one being designed. This process does not restate the method.",
+      "notation": "Call_Review",
+      "source": "fhir-harness/processes/content/questionnaire-wireframe-review.bpmn#Call_Review",
+      "status": "candidate"
+    },
+    {
+      "id": "process_questionnairewireframereview.task_apply",
+      "prefLabel": "Apply it, bring the other side in line [l3-fhir-authoring]",
+      "definition": "The side the request edited is the source of the change (owner, 2026-10-14). An edited Questionnaire is applied as an FSH edit and the wireframe is redrawn to match; an edited wireframe is kept and the Questionnaire re-derived from it. Then back to Task_Read.",
+      "notation": "Task_Apply",
+      "source": "fhir-harness/processes/content/questionnaire-wireframe-review.bpmn#Task_Apply",
+      "status": "candidate"
+    },
+    {
+      "id": "process_questionnairewireframereview.task_askreview",
+      "prefLabel": "Ask for review with deep links [staging-review]",
+      "definition": "One deep link per rendered Questionnaire and wireframe, before and after. Where the request goes — the conversation, an issue, the pull request — is a judgement, and more than one may be right: staging-review's deep-link rule, point 5.",
+      "notation": "Task_AskReview",
+      "source": "fhir-harness/processes/content/questionnaire-wireframe-review.bpmn#Task_AskReview",
+      "status": "candidate"
+    },
+    {
+      "id": "process_questionnairewireframereview.task_fidelity",
+      "prefLabel": "Check field for field [check-wireframe-questionnaire]",
+      "definition": "fhir-harness/scripts/check-wireframe-questionnaire.ts <wireframe.html> <Questionnaire.json>, per layout. Exit 0 faithful, 1 a finding, 2 cannot tell, which is never a pass. The findings become the output's fidelity[] and are shown to the reviewers.",
+      "notation": "Task_Fidelity",
+      "source": "fhir-harness/processes/content/questionnaire-wireframe-review.bpmn#Task_Fidelity",
+      "status": "candidate"
+    },
+    {
+      "id": "process_questionnairewireframereview.task_read",
+      "prefLabel": "Read the built Questionnaire JSON",
+      "definition": "fsh-generated/resources/Questionnaire-<id>.json, or the IG's published Questionnaire-<id>.json — never FSH. The JSON is what every renderer and reader receives, so it is what is judged.",
+      "notation": "Task_Read",
+      "source": "fhir-harness/processes/content/questionnaire-wireframe-review.bpmn#Task_Read",
+      "status": "candidate"
+    },
+    {
+      "id": "process_questionnairewireframereview.task_render",
+      "prefLabel": "Render the wireframe and the LHC-Forms view",
+      "definition": "A mid-fidelity wireframe with one field per answerable item, each carrying data-element and sitting in a data-layout web or mobile subtree; and the form view, the same JSON in the vendored <lhc-forms> web component on the IG site's form page. Never a CDN at runtime (owner, 2026-10-14).",
+      "notation": "Task_Render",
+      "source": "fhir-harness/processes/content/questionnaire-wireframe-review.bpmn#Task_Render",
+      "status": "candidate"
+    },
+    {
+      "id": "process_questionnairewireframereview.task_reviewstaged",
+      "prefLabel": "Review the staged form and wireframe",
+      "definition": "At the deep links. A change is requested through ✍ suggest in its Questionnaire mode, or the questionnaire-change issue form, and says which side was edited: the Questionnaire or the wireframe.",
+      "notation": "Task_ReviewStaged",
+      "source": "fhir-harness/processes/content/questionnaire-wireframe-review.bpmn#Task_ReviewStaged",
+      "status": "candidate"
+    },
+    {
+      "id": "process_questionnairewireframereview.task_screens",
+      "prefLabel": "Screenshots, web and mobile [wireframe-check]",
+      "definition": "cat-harness Tool wireframe-check: 1280×800 and 390×844; renders, no-overflow and no-placeholder, each a script entry. A rendering missing either viewport does not enter review.",
+      "notation": "Task_Screens",
+      "source": "fhir-harness/processes/content/questionnaire-wireframe-review.bpmn#Task_Screens",
+      "status": "candidate"
+    },
+    {
+      "id": "process_questionnairewireframereview.task_stage",
+      "prefLabel": "Stage the renderings [feature-staging]",
+      "definition": "The branch's wireframes and form pages published under STAGING/<slug>/ by feature-staging.",
+      "notation": "Task_Stage",
+      "source": "fhir-harness/processes/content/questionnaire-wireframe-review.bpmn#Task_Stage",
+      "status": "candidate"
+    },
+    {
+      "id": "process_questionnairewireframereview.task_triage",
+      "prefLabel": "Triage the change request [content-feedback]",
+      "definition": "content-feedback triages the issue; when a review round is open it joins a change-set through public-comment instead.",
+      "notation": "Task_Triage",
+      "source": "fhir-harness/processes/content/questionnaire-wireframe-review.bpmn#Task_Triage",
       "status": "candidate"
     }
   ]

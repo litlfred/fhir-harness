@@ -23,6 +23,13 @@
       "status": "candidate"
     },
     {
+      "id": "fhir-questionnaire-wireframe",
+      "prefLabel": "fhir-questionnaire-wireframe",
+      "notation": "fhir-questionnaire-wireframe",
+      "source": "fhir-harness/skills/content/fhir-ig-authoring/fhir-questionnaire-wireframe.md",
+      "status": "candidate"
+    },
+    {
       "id": "fhir-validation",
       "prefLabel": "fhir-validation",
       "notation": "fhir-validation",
@@ -48,7 +55,7 @@
     {
       "id": "ig-build-pipeline",
       "prefLabel": "ig-build-pipeline",
-      "definition": "The bare FHIR IG pipeline — FSH to SUSHI to the IG Publisher to a pages branch, with no pre-processing and no post-processing. What this layer runs, what it emits, and the list of things it deliberately refuses to know about. Also owns the two questions put to the owner when an IG repository is adopted or found publishing on its own: whether automatic gh-pages builds become manual-only, and whether to install the just-the-docs site (default yes). Read before adding anything to fhir-harness, and before onboarding, converting or changing the workflows of an IG repository.",
+      "definition": "The bare FHIR IG pipeline — FSH to SUSHI to the IG Publisher to a pages branch, with no pre-processing and no post-processing. What this layer runs, what it emits, and the list of things it deliberately refuses to know about. Also owns the two questions put to the owner when an IG repository is adopted or found publishing on its own: whether automatic gh-pages builds become manual-only, and whether to install the just-the-docs site (default yes). Owns the AST cache lifecycle: an IG site is built from the AST on its cache branch, the publish refuses a stale one, and the reusable `ig-ast-refresh.yml` is the one writer. Owns what an IG reader may read: `contentTypes.ig.include` in the repository's `index.config.json`, and the legacy warning for a repository that declares none. Read before adding anything to fhir-harness, before onboarding, converting or changing the workflows of an IG repository, and before publishing an IG site.",
       "notation": "ig-build-pipeline",
       "source": "fhir-harness/skills/fhir-ig-base/ig-build-pipeline.md",
       "status": "candidate"
@@ -74,6 +81,14 @@
       "definition": "The phased transition that reduces the IG Publisher to AST + QA — five phases, each with an exit criterion that is measured rather than asserted, and the staleness contract that makes an AST-backed staging build honest. Read before starting any phase, and before claiming one is done.",
       "notation": "ig-publisher-reduction",
       "source": "fhir-harness/skills/fhir-ig-base/ig-publisher-reduction.md",
+      "status": "candidate"
+    },
+    {
+      "id": "ig-publisher-service-contract",
+      "prefLabel": "ig-publisher-service-contract",
+      "definition": "The contract the `ig-publisher-service` role is held to: what the JVM services an IG build shells out to must produce, and how a caller tells a pass from a run that never happened. A mechanical role's skill is a contract to test against, not instructions to read.",
+      "notation": "ig-publisher-service-contract",
+      "source": "fhir-harness/skills/content/fhir-ig-authoring/ig-publisher-service-contract.md",
       "status": "candidate"
     },
     {

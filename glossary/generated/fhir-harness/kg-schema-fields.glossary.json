@@ -413,6 +413,13 @@
       "status": "candidate"
     },
     {
+      "id": "ig-content-type.igsection.include",
+      "prefLabel": "IgSection.include",
+      "definition": "Repository-relative POSIX paths. A trailing `/` marks a directory.",
+      "source": "fhir-harness/schemas/ig-content-type.ts#IgSection.include",
+      "status": "candidate"
+    },
+    {
       "id": "ig-identity.igidentityschema.id",
       "prefLabel": "IgIdentitySchema.id",
       "definition": "The IG's `id` from `sushi-config.yaml`; SUSHI's `packageId` defaults to it.",
@@ -571,6 +578,321 @@
       "prefLabel": "ReleaseAssetSchema.url",
       "definition": "Where to fetch the bytes: GitHub's `browser_download_url`.",
       "source": "fhir-harness/schemas/ig-releases.ts#ReleaseAssetSchema.url",
+      "status": "candidate"
+    },
+    {
+      "id": "iti-108-consent-client.iti108cacheoptions.clock",
+      "prefLabel": "Iti108CacheOptions.clock",
+      "definition": "Clock for expiry, in epoch milliseconds (tests). Defaults to `Date.now`.",
+      "source": "fhir-harness/schemas/iti-108-consent-client.ts#Iti108CacheOptions.clock",
+      "status": "candidate"
+    },
+    {
+      "id": "iti-108-consent-client.iti108cacheoptions.ttlms",
+      "prefLabel": "Iti108CacheOptions.ttlMs",
+      "definition": "How long a determined result may be reused, in milliseconds.",
+      "source": "fhir-harness/schemas/iti-108-consent-client.ts#Iti108CacheOptions.ttlMs",
+      "status": "candidate"
+    },
+    {
+      "id": "iti-108-consent-client.iti108determinedresult.bundletotal",
+      "prefLabel": "Iti108DeterminedResult.bundleTotal",
+      "definition": "Total reported by the first Bundle page, if present.",
+      "source": "fhir-harness/schemas/iti-108-consent-client.ts#Iti108DeterminedResult.bundleTotal",
+      "status": "candidate"
+    },
+    {
+      "id": "iti-108-consent-client.iti108determinedresult.consents",
+      "prefLabel": "Iti108DeterminedResult.consents",
+      "definition": "Active, non-expired FHIR R4 `Consent` resources returned by the registry.",
+      "source": "fhir-harness/schemas/iti-108-consent-client.ts#Iti108DeterminedResult.consents",
+      "status": "candidate"
+    },
+    {
+      "id": "iti-108-consent-client.iti108determinedresult.evaluatedat",
+      "prefLabel": "Iti108DeterminedResult.evaluatedAt",
+      "definition": "ISO-8601 timestamp against which `provision.period` validity was evaluated.",
+      "source": "fhir-harness/schemas/iti-108-consent-client.ts#Iti108DeterminedResult.evaluatedAt",
+      "status": "candidate"
+    },
+    {
+      "id": "iti-108-consent-client.iti108determinedresult.ignored",
+      "prefLabel": "Iti108DeterminedResult.ignored",
+      "definition": "Entries in the searchset `Bundle` that were filtered out (inactive, expired, not-yet-valid, informational `OperationOutcome`, etc.).",
+      "source": "fhir-harness/schemas/iti-108-consent-client.ts#Iti108DeterminedResult.ignored",
+      "status": "candidate"
+    },
+    {
+      "id": "iti-108-consent-client.iti108determinedresult.requesturl",
+      "prefLabel": "Iti108DeterminedResult.requestUrl",
+      "definition": "The initial ITI-108 search URL issued to the Consent Registry.",
+      "source": "fhir-harness/schemas/iti-108-consent-client.ts#Iti108DeterminedResult.requestUrl",
+      "status": "candidate"
+    },
+    {
+      "id": "iti-108-consent-client.iti108query.action",
+      "prefLabel": "Iti108Query.action",
+      "definition": "Action token(s).",
+      "source": "fhir-harness/schemas/iti-108-consent-client.ts#Iti108Query.action",
+      "status": "candidate"
+    },
+    {
+      "id": "iti-108-consent-client.iti108query.actor",
+      "prefLabel": "Iti108Query.actor",
+      "definition": "Actor reference(s) (e.g. `\"Practitioner/prac-1\"` or `\"Organization/org-1\"`).",
+      "source": "fhir-harness/schemas/iti-108-consent-client.ts#Iti108Query.actor",
+      "status": "candidate"
+    },
+    {
+      "id": "iti-108-consent-client.iti108query.baseurl",
+      "prefLabel": "Iti108Query.baseUrl",
+      "definition": "Base URL of the FHIR R4 Consent Registry (e.g. `\"https://registry.example.org/fhir\"`).",
+      "source": "fhir-harness/schemas/iti-108-consent-client.ts#Iti108Query.baseUrl",
+      "status": "candidate"
+    },
+    {
+      "id": "iti-108-consent-client.iti108query.category",
+      "prefLabel": "Iti108Query.category",
+      "definition": "Category token(s) (e.g. `\"http://loinc.org|59284-0\"`).",
+      "source": "fhir-harness/schemas/iti-108-consent-client.ts#Iti108Query.category",
+      "status": "candidate"
+    },
+    {
+      "id": "iti-108-consent-client.iti108query.date",
+      "prefLabel": "Iti108Query.date",
+      "definition": "Date filter(s), e.g. `\"ge2026-01-01\"`.",
+      "source": "fhir-harness/schemas/iti-108-consent-client.ts#Iti108Query.date",
+      "status": "candidate"
+    },
+    {
+      "id": "iti-108-consent-client.iti108query.fetchimpl",
+      "prefLabel": "Iti108Query.fetchImpl",
+      "definition": "Custom `fetch` implementation (defaults to `globalThis.fetch`).",
+      "source": "fhir-harness/schemas/iti-108-consent-client.ts#Iti108Query.fetchImpl",
+      "status": "candidate"
+    },
+    {
+      "id": "iti-108-consent-client.iti108query.follownext",
+      "prefLabel": "Iti108Query.followNext",
+      "definition": "Follow `Bundle.link[relation=\"next\"]` pagination links (defaults to `true`).",
+      "source": "fhir-harness/schemas/iti-108-consent-client.ts#Iti108Query.followNext",
+      "status": "candidate"
+    },
+    {
+      "id": "iti-108-consent-client.iti108query.headers",
+      "prefLabel": "Iti108Query.headers",
+      "definition": "Optional HTTP headers (e.g. `{ Authorization: \"Bearer ...\" }`); no IUA claim is required.",
+      "source": "fhir-harness/schemas/iti-108-consent-client.ts#Iti108Query.headers",
+      "status": "candidate"
+    },
+    {
+      "id": "iti-108-consent-client.iti108query.maxpages",
+      "prefLabel": "Iti108Query.maxPages",
+      "definition": "Maximum number of Bundle pages to fetch when `followNext` is `true` (defaults to `10`).",
+      "source": "fhir-harness/schemas/iti-108-consent-client.ts#Iti108Query.maxPages",
+      "status": "candidate"
+    },
+    {
+      "id": "iti-108-consent-client.iti108query.now",
+      "prefLabel": "Iti108Query.now",
+      "definition": "Reference timestamp (`ISO-8601` string or `Date`) used to evaluate `provision.period` expiry (defaults to `new Date()`).",
+      "source": "fhir-harness/schemas/iti-108-consent-client.ts#Iti108Query.now",
+      "status": "candidate"
+    },
+    {
+      "id": "iti-108-consent-client.iti108query.patient",
+      "prefLabel": "Iti108Query.patient",
+      "definition": "Patient reference (e.g. `\"Patient/pat-1\"` or `\"pat-1\"`).",
+      "source": "fhir-harness/schemas/iti-108-consent-client.ts#Iti108Query.patient",
+      "status": "candidate"
+    },
+    {
+      "id": "iti-108-consent-client.iti108query.patientidentifier",
+      "prefLabel": "Iti108Query.patientIdentifier",
+      "definition": "Patient business identifier token (e.g. `\"urn:oid:1.2.3|12345\"`), sent as `patient.identifier`.",
+      "source": "fhir-harness/schemas/iti-108-consent-client.ts#Iti108Query.patientIdentifier",
+      "status": "candidate"
+    },
+    {
+      "id": "iti-108-consent-client.iti108query.profile",
+      "prefLabel": "Iti108Query.profile",
+      "definition": "Profile canonical URL filter(s), sent as `_profile`.",
+      "source": "fhir-harness/schemas/iti-108-consent-client.ts#Iti108Query.profile",
+      "status": "candidate"
+    },
+    {
+      "id": "iti-108-consent-client.iti108query.purpose",
+      "prefLabel": "Iti108Query.purpose",
+      "definition": "PurposeOfUse token(s) (e.g. `\"TREAT\"`, `\"HRESCH\"`).",
+      "source": "fhir-harness/schemas/iti-108-consent-client.ts#Iti108Query.purpose",
+      "status": "candidate"
+    },
+    {
+      "id": "iti-108-consent-client.iti108query.securitylabel",
+      "prefLabel": "Iti108Query.securityLabel",
+      "definition": "Security label token(s), sent as `security-label`.",
+      "source": "fhir-harness/schemas/iti-108-consent-client.ts#Iti108Query.securityLabel",
+      "status": "candidate"
+    },
+    {
+      "id": "iti-108-consent-client.iti108query.sourcereference",
+      "prefLabel": "Iti108Query.sourceReference",
+      "definition": "Source reference filter, sent as `source-reference`.",
+      "source": "fhir-harness/schemas/iti-108-consent-client.ts#Iti108Query.sourceReference",
+      "status": "candidate"
+    },
+    {
+      "id": "iti-108-consent-client.iti108query.status",
+      "prefLabel": "Iti108Query.status",
+      "definition": "Status parameter sent on the query (defaults to `\"active\"`).",
+      "source": "fhir-harness/schemas/iti-108-consent-client.ts#Iti108Query.status",
+      "status": "candidate"
+    },
+    {
+      "id": "iti-108-consent-client.iti108query.timeoutms",
+      "prefLabel": "Iti108Query.timeoutMs",
+      "definition": "Request timeout in milliseconds (defaults to `10_000`).",
+      "source": "fhir-harness/schemas/iti-108-consent-client.ts#Iti108Query.timeoutMs",
+      "status": "candidate"
+    },
+    {
+      "id": "pcf-consent.agreementversion.policy",
+      "prefLabel": "AgreementVersion.policy",
+      "definition": "The version's ODRL policy; its `uid` is the fixed-version URL.",
+      "source": "fhir-harness/schemas/pcf-consent.ts#AgreementVersion.policy",
+      "status": "candidate"
+    },
+    {
+      "id": "pcf-consent.agreementversion.previousversion",
+      "prefLabel": "AgreementVersion.previousVersion",
+      "definition": "The fixed-version URL of the version this one amends (`dcat:previousVersion`).",
+      "source": "fhir-harness/schemas/pcf-consent.ts#AgreementVersion.previousVersion",
+      "status": "candidate"
+    },
+    {
+      "id": "pcf-consent.consenttoodrloptions.defaultaction",
+      "prefLabel": "ConsentToOdrlOptions.defaultAction",
+      "definition": "Default ODRL action when `provision.action` is omitted (default: `\"odrl:use\"`).",
+      "source": "fhir-harness/schemas/pcf-consent.ts#ConsentToOdrlOptions.defaultAction",
+      "status": "candidate"
+    },
+    {
+      "id": "pcf-consent.consenttoodrloptions.profile",
+      "prefLabel": "ConsentToOdrlOptions.profile",
+      "definition": "ODRL profile URI written into `Set.profile` (default: {@link PCF_IG_CANONICAL}).",
+      "source": "fhir-harness/schemas/pcf-consent.ts#ConsentToOdrlOptions.profile",
+      "status": "candidate"
+    },
+    {
+      "id": "pcf-consent.consenttoodrloptions.uidprefix",
+      "prefLabel": "ConsentToOdrlOptions.uidPrefix",
+      "definition": "Prefix for minted policy `uid`s (default: `\"urn:ihe:pcf:consent:\"`).",
+      "source": "fhir-harness/schemas/pcf-consent.ts#ConsentToOdrlOptions.uidPrefix",
+      "status": "candidate"
+    },
+    {
+      "id": "pcf-consent.pcfdecideoptions.actiongraph",
+      "prefLabel": "PcfDecideOptions.actionGraph",
+      "definition": "Custom ODRL action graph (defaults to `ODRL_ACTIONS`).",
+      "source": "fhir-harness/schemas/pcf-consent.ts#PcfDecideOptions.actionGraph",
+      "status": "candidate"
+    },
+    {
+      "id": "pcf-consent.pcfdecideoptions.implicitpolicy",
+      "prefLabel": "PcfDecideOptions.implicitPolicy",
+      "definition": "Overarching implicit policy (`Policy-basic-normal`, `Policy-all-normal`, `Policy-break-glass-only`, `Policy-deny`, or a custom `PcfOdrlSet`) used when no active Consent is on file or when the Consent has expired (IHE PCF Volume 1 §1:53.2.1 & §1:53.4.2.5).",
+      "source": "fhir-harness/schemas/pcf-consent.ts#PcfDecideOptions.implicitPolicy",
+      "status": "candidate"
+    },
+    {
+      "id": "pcf-consent.pcfdecisionrequest.action",
+      "prefLabel": "PcfDecisionRequest.action",
+      "definition": "Requested ODRL action (defaults to `\"odrl:use\"`).",
+      "source": "fhir-harness/schemas/pcf-consent.ts#PcfDecisionRequest.action",
+      "status": "candidate"
+    },
+    {
+      "id": "pcf-consent.pcfdecisionrequest.actor",
+      "prefLabel": "PcfDecisionRequest.actor",
+      "definition": "Requesting actor (FHIR reference such as `\"Practitioner/ex-practitioner\"`, DID, actor id, or `null`).",
+      "source": "fhir-harness/schemas/pcf-consent.ts#PcfDecisionRequest.actor",
+      "status": "candidate"
+    },
+    {
+      "id": "pcf-consent.pcfdecisionrequest.actorgroups",
+      "prefLabel": "PcfDecisionRequest.actorGroups",
+      "definition": "Groups or organizations the actor belongs to (e.g. `[\"Group/ex-privilegedUsers\"]`).",
+      "source": "fhir-harness/schemas/pcf-consent.ts#PcfDecisionRequest.actorGroups",
+      "status": "candidate"
+    },
+    {
+      "id": "pcf-consent.pcfdecisionrequest.actorroles",
+      "prefLabel": "PcfDecisionRequest.actorRoles",
+      "definition": "Roles the actor holds (or group memberships).",
+      "source": "fhir-harness/schemas/pcf-consent.ts#PcfDecisionRequest.actorRoles",
+      "status": "candidate"
+    },
+    {
+      "id": "pcf-consent.pcfdecisionrequest.author",
+      "prefLabel": "PcfDecisionRequest.author",
+      "definition": "Convenience shorthand: top-level `author` when `scope.author` is not passed.",
+      "source": "fhir-harness/schemas/pcf-consent.ts#PcfDecisionRequest.author",
+      "status": "candidate"
+    },
+    {
+      "id": "pcf-consent.pcfdecisionrequest.dataperiod",
+      "prefLabel": "PcfDecisionRequest.dataPeriod",
+      "definition": "Convenience shorthand: top-level `dataPeriod` / `dataDateTime` when `scope.dataPeriod` is not passed.",
+      "source": "fhir-harness/schemas/pcf-consent.ts#PcfDecisionRequest.dataPeriod",
+      "status": "candidate"
+    },
+    {
+      "id": "pcf-consent.pcfdecisionrequest.datetime",
+      "prefLabel": "PcfDecisionRequest.dateTime",
+      "definition": "Convenience shorthand: top-level `dateTime` when `scope.dateTime` is not passed.",
+      "source": "fhir-harness/schemas/pcf-consent.ts#PcfDecisionRequest.dateTime",
+      "status": "candidate"
+    },
+    {
+      "id": "pcf-consent.pcfdecisionrequest.encounter",
+      "prefLabel": "PcfDecisionRequest.encounter",
+      "definition": "Convenience shorthand: top-level `encounter` when `scope.encounter` is not passed.",
+      "source": "fhir-harness/schemas/pcf-consent.ts#PcfDecisionRequest.encounter",
+      "status": "candidate"
+    },
+    {
+      "id": "pcf-consent.pcfdecisionrequest.purpose",
+      "prefLabel": "PcfDecisionRequest.purpose",
+      "definition": "Convenience shorthand: top-level `purpose` when `scope.purpose` is not passed.",
+      "source": "fhir-harness/schemas/pcf-consent.ts#PcfDecisionRequest.purpose",
+      "status": "candidate"
+    },
+    {
+      "id": "pcf-consent.pcfdecisionrequest.scope",
+      "prefLabel": "PcfDecisionRequest.scope",
+      "definition": "Request context: `purpose`, `dateTime`, `target`, `securityLabel`, `dataPeriod`, `author`, `encounter`.",
+      "source": "fhir-harness/schemas/pcf-consent.ts#PcfDecisionRequest.scope",
+      "status": "candidate"
+    },
+    {
+      "id": "pcf-consent.pcfdecisionrequest.securitylabel",
+      "prefLabel": "PcfDecisionRequest.securityLabel",
+      "definition": "Convenience shorthand: top-level `securityLabel` when `scope.securityLabel` is not passed.",
+      "source": "fhir-harness/schemas/pcf-consent.ts#PcfDecisionRequest.securityLabel",
+      "status": "candidate"
+    },
+    {
+      "id": "pcf-consent.pcfdecisionrequest.target",
+      "prefLabel": "PcfDecisionRequest.target",
+      "definition": "Convenience shorthand: top-level `target` when `scope.target` is not passed.",
+      "source": "fhir-harness/schemas/pcf-consent.ts#PcfDecisionRequest.target",
+      "status": "candidate"
+    },
+    {
+      "id": "vocab-mapping-fhir.loss.path",
+      "prefLabel": "Loss.path",
+      "definition": "Where in the table, e.g. `group[0].element[2].target[1]`.",
+      "source": "fhir-harness/schemas/vocab-mapping-fhir.ts#Loss.path",
       "status": "candidate"
     }
   ]
