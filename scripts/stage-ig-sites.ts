@@ -8,8 +8,9 @@
  * (the commit). That pair is the declared source, so no workflow names an IG:
  * this clones `of` at `ref`, stages it with `build-ig-site` using the IG's own
  * menu, and prints one `<instance> <jekyll source> <at>` line per IG for the
- * caller to build into `<site>/<instance>/<at>/` — `ig` beside the instance's
- * own pages, or `.` when the instance's docs directory declares `igSite`
+ * caller to build into `<site>/<instance>/<at>/` ({@link igSiteAt}) — `ig`
+ * beside the instance's own pages, or `.` when there are none (#2738) or
+ * when the instance's docs directory declares `igSite`
  * (bean `mftp`): the IG site is then the instance's root, and the docs
  * directory's pages (artefact pages, their assets) are copied into its
  * Jekyll source to build under the IG's own menu. One site, one menu, as the
@@ -286,6 +287,23 @@ export function igSiteDocs(root: string): string | undefined {
 }
 
 /**
+ * Where the IG site sits under `/<instance>/`: `"ig"` beside the instance's own
+ * pages, `"."` (the IG IS the instance's root) when its docs directory declares
+ * `igSite`, or when the instance declares no `docs` directory at all, so
+ * nothing else would answer `/<instance>/`.
+ *
+ * The second case is folio-assistant#2738: smart-immunizations declares no
+ * docs, its IG was built with an `/ig` base but composed at `/<instance>/`,
+ * so every menu link pointed at an `ig/` folder that was never published.
+ * One answer, read by the base URL, the relative links and the composer alike.
+ */
+export function igSiteAt(root: string): "." | "ig" {
+  if (igSiteDocs(root) !== undefined) return ".";
+  const ownPages = (readDeclaration(root)?.directories ?? []).some((d) => d.graphTypologies?.includes("docs"));
+  return ownPages ? "ig" : ".";
+}
+
+/**
  * The site paths a later step publishes inside an `igSite` instance's IG site:
  * one `/`-ended prefix per directory the instance declares `served`. The
  * served-directory mount refuses a route the site already holds, so an IG's
@@ -293,7 +311,7 @@ export function igSiteDocs(root: string): string | undefined {
  * sits at `/<instance>/ig/`, where no served route can meet it.
  */
 export function servedPathsFor(root: string): { prefix: string; by: string }[] {
-  if (igSiteDocs(root) === undefined) return [];
+  if (igSiteAt(root) === "ig") return [];
   return (readDeclaration(root)?.directories ?? [])
     .filter((d) => d.served === true)
     .map((d) => ({ prefix: `${d.path.replace(/^\/+|\/+$/g, "")}/`, by: `served directory ${d.id ?? d.path}` }));
@@ -481,21 +499,23 @@ if (import.meta.main) {
     const theme = webpagePalette(resolve("."), ig.declaredAs);
     console.error(theme.note);
     const docs = igSiteDocs(ig.root);
+    const at = igSiteAt(ig.root);
+    const up = at === "." ? "" : "../";
     const editBase = githubEditBase(ig.repo);
     const r = stageIgSite(src, site, {
       palette: theme.palette,
       // At the root, the IG IS the site, so its base is the site's own; else
       // it is mounted under its instance name inside the host site.
-      baseurl: atRoot ? base.replace(/\/$/, "") : `${base.replace(/\/$/, "")}/${ig.instance}${docs ? "" : "/ig"}`,
+      baseurl: atRoot ? base.replace(/\/$/, "") : `${base.replace(/\/$/, "")}/${ig.instance}${at === "." ? "" : `/${at}`}`,
       plantumlJar: opt("--plantuml-jar"),
       menu: JSON.parse(readFileSync(ig.menuPath, "utf-8")) as IgMenu,
       remoteTheme: opt("--remote-theme"),
-      artifacts: artifactsFor(ig.root, docs ? "artifact/" : "../artifact/", { fullPages }),
-      footer: footerFor(ig.root, docs ? "" : "../"),
+      artifacts: artifactsFor(ig.root, `${up}artifact/`, { fullPages }),
+      footer: footerFor(ig.root, up),
       releases: releasesFor(ig.root),
       ...(editBase ? { editBase } : {}),
       // The IG's post-processing output, where its source holds only a marker.
-      fills: [igApiHubFill(ig.root, docs ? "" : "../")].filter((x) => x !== undefined),
+      fills: [igApiHubFill(ig.root, up)].filter((x) => x !== undefined),
       annexes: annexesFor(ig.root),
       // A declared served directory is published by a later step at its own route.
       reservedPaths: servedPathsFor(ig.root),
@@ -527,14 +547,14 @@ if (import.meta.main) {
     }
     const into = opt("--compose-into");
     if (into) {
-      const c = composeIgSite(site, resolve(into), ig.instance, { atRoot, fullPages, siteBase: base });
-      console.error(`${ig.instance}: composed into ${relative(resolve("."), atRoot ? resolve(into) : resolve(into, ig.instance))} — ${c.pages} page(s), ${c.files - c.pages} other file(s), ${c.includes} include(s)`);
+      const c = composeIgSite(site, resolve(into), ig.instance, { atRoot, at, fullPages, siteBase: base });
+      console.error(`${ig.instance}: composed into ${relative(resolve("."), atRoot ? resolve(into) : resolve(into, ig.instance, at))} — ${c.pages} page(s), ${c.files - c.pages} other file(s), ${c.includes} include(s)`);
       if (c.collisions.length) {
         console.error(`${ig.instance}: ${c.collisions.length} path(s) already in the host source — refusing two answers for one URL:\n  ${c.collisions.slice(0, 20).join("\n  ")}`);
         process.exit(1);
       }
     }
     // stdout carries only the build list, one IG per line.
-    console.log(`${ig.instance} ${site} ${docs ? "." : "ig"}`);
+    console.log(`${ig.instance} ${site} ${at}`);
   }
 }

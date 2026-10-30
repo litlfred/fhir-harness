@@ -288,4 +288,22 @@ describe("gen-ig-pages --site: only the declared route pages, under the site", (
   it("--site and --out together are refused", () => {
     expect(run("--site", site, "--out", join(site, "x")).exitCode).toBe(2);
   });
+
+  it("an IG instance that declares no index directory (#124: built at publish) still gets its sub-graph view", () => {
+    const bare = scratchRepo({ bare: { index: artifactIndex(IPS, "bare") } });
+    const d = join(bare, "bare", "bare.json");
+    writeFileSync(d, JSON.stringify({
+      ...JSON.parse(readFileSync(d, "utf8")),
+      directories: [],
+      visualisers: [{ id: "artifact-index", renderedBy: "ig-pages", coversKinds: ["fhir-artifact-index"], subgraphs: "instance", title: "Artefact index" }],
+    }));
+    const out = mkdtempSync(join(tmpdir(), "fhir-harness-site-"));
+    try {
+      const r = Bun.spawnSync(["bun", "run", SCRIPT, "--instance", join(bare, "bare"), "--site", out, "--label", "Bare IG"], { cwd: ROOT });
+      expect(r.exitCode).toBe(0);
+      expect(existsSync(join(out, "en", "bare", "artifact-index", "bare", "index.html"))).toBe(true);
+    } finally {
+      [bare, out].forEach((x) => rmSync(x, { recursive: true, force: true }));
+    }
+  });
 });
