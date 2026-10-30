@@ -390,16 +390,43 @@ const TYPE_MAPPING: Record<string, Json> = {
   Address: { type: "object" },
 };
 
-function typeSchema(type: string, valueset: string): Json {
+/**
+ * The schema of a type named by a StructureDefinition canonical. A logical
+ * model of this IG's own is a sibling file, so a relative `$ref`. One from
+ * another package (a dependency's model, say) is not in this IG's sidecars, so
+ * a relative `$ref` would dangle: it is referenced by the absolute URL that
+ * package's own run of this generator gives it as `$id`
+ * (`<its canonical base>/StructureDefinition-<name>.schema.json`, see
+ * {@link logicalModelSchema}), and the description names the canonical.
+ */
+function canonicalTypeSchema(type: string, local: TypeScope): Json {
+  const [base, name] = [type.split("/StructureDefinition/")[0]!, type.split("/StructureDefinition/").slice(-1)[0]!];
+  const isLocal = local.urls ? local.urls.has(type) : base === local.canonicalBase;
+  if (isLocal) return { $ref: `StructureDefinition-${name}.schema.json` };
+  return { $ref: `${base}/StructureDefinition-${name}.schema.json`, description: `${name}, defined in another package: ${type}` };
+}
+
+/**
+ * What counts as this IG's own when a type names a StructureDefinition: the
+ * canonical URLs of the logical models being generated, when the caller knows
+ * them, else any canonical under the IG's canonical base.
+ */
+interface TypeScope {
+  canonicalBase: string;
+  urls?: ReadonlySet<string>;
+}
+
+function typeSchema(type: string, valueset: string, local: TypeScope): Json {
   if (type.startsWith("Reference(")) return { type: "object", description: `Reference to ${type}` };
-  if (type.startsWith("http") && type.includes("/StructureDefinition/")) return { $ref: `StructureDefinition-${type.split("/StructureDefinition/").slice(-1)[0]}.schema.json` };
+  if (type.startsWith("http") && type.includes("/StructureDefinition/")) return canonicalTypeSchema(type, local);
   if (valueset && ["code", "Coding", "CodeableConcept"].includes(type)) return { $ref: `./ValueSet-${valueset}.schema.json`, description: `Coding-shaped {system, code} object from ValueSet ${valueset}` };
   if (TYPE_MAPPING[type]) return { ...TYPE_MAPPING[type] };
   return { type: "object", description: `FHIR ${type}` };
 }
 
 /** A logical model's JSON Schema: the shared base for `FHIRSchemaBase`, else one deriving from it. */
-export function logicalModelSchema(m: Model, canonicalBase: string): Json {
+export function logicalModelSchema(m: Model, canonicalBase: string, localModelUrls?: ReadonlySet<string>): Json {
+  const scope: TypeScope = localModelUrls ? { canonicalBase, urls: localModelUrls } : { canonicalBase };
   const schemaId = `${canonicalBase}/StructureDefinition-${m.name}.schema.json`;
   if (m.name === FHIR_SCHEMA_BASE_NAME) {
     return {
@@ -446,10 +473,10 @@ export function logicalModelSchema(m: Model, canonicalBase: string): Json {
     let s: Json;
     if (e.choice) {
       if (e.type.includes(" or ")) {
-        const options = e.type.split(" or ").map((t) => typeSchema(t.trim(), e.valueset));
+        const options = e.type.split(" or ").map((t) => typeSchema(t.trim(), e.valueset, scope));
         s = options.length === 1 ? options[0]! : { oneOf: options };
-      } else s = typeSchema(e.type, e.valueset);
-    } else s = typeSchema(e.type, e.valueset);
+      } else s = typeSchema(e.type, e.valueset, scope);
+    } else s = typeSchema(e.type, e.valueset, scope);
     if (e.cardinality && (e.cardinality.includes("*") || e.cardinality.endsWith("..n"))) {
       s = { type: "array", items: s };
       if (e.cardinality.startsWith("1")) s["minItems"] = 1;
@@ -690,11 +717,14 @@ export function generateIgApi(ast: string, o: { label?: string; vocabBase?: stri
   const expansions = existsSync(expPath);
   if (expansions) for (const [k, v] of valueSetFiles(JSON.parse(readFileSync(expPath, "utf-8")) as Json, { vocabBase, now })) docs.set(k, v);
   const m = JSON.parse(readFileSync(join(ast, "manifest.json"), "utf-8")) as Manifest;
+  const models: Model[] = [];
   for (const r of m.resources ?? []) {
     if (r.resourceType !== "StructureDefinition" || !existsSync(join(ast, r.file))) continue;
     const model = logicalModel(JSON.parse(readFileSync(join(ast, r.file), "utf-8")) as Json);
-    if (model) docs.set(`StructureDefinition-${model.name}.schema.json`, logicalModelSchema(model, canonicalBase));
+    if (model) models.push(model);
   }
+  const localModelUrls = new Set(models.map((x) => x.url).filter(Boolean));
+  for (const model of models) docs.set(`StructureDefinition-${model.name}.schema.json`, logicalModelSchema(model, canonicalBase, localModelUrls));
   const sidecars = new Map<string, string>();
   const site = new Map<string, string>();
   const byKind: Record<SchemaKind, [string, Json][]> = { valueset: [], logical_model: [] };

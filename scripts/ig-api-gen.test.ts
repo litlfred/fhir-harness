@@ -95,6 +95,32 @@ describe("logical models", () => {
     expect(logicalModel({ ...sd, kind: "resource" })).toBeUndefined();
   });
 
+  it("refers to a model of this IG by sibling file, and to one from another package by that package's absolute schema URL", () => {
+    const withTypes = {
+      ...sd,
+      differential: {
+        element: [
+          { path: "PatientLite" },
+          { path: "PatientLite.address", min: 0, max: "1", type: [{ code: "https://example.org/ig/StructureDefinition/AddressLite" }] },
+          { path: "PatientLite.link", min: 0, max: "1", type: [{ code: "https://example.org/other/StructureDefinition/LinkPayload" }] },
+        ],
+      },
+    };
+    const local = new Set(["https://example.org/ig/StructureDefinition/PatientLite", "https://example.org/ig/StructureDefinition/AddressLite"]);
+    const s = plain(logicalModelSchema(logicalModel(withTypes)!, "https://example.org/ig", local)) as Json;
+    expect(s.properties.address).toEqual({ $ref: "StructureDefinition-AddressLite.schema.json" });
+    expect(s.properties.link).toEqual({
+      $ref: "https://example.org/other/StructureDefinition-LinkPayload.schema.json",
+      description: "LinkPayload, defined in another package: https://example.org/other/StructureDefinition/LinkPayload",
+    });
+    // Without the list of local models, the IG's canonical base decides; an overridden base does not make a dependency's model local.
+    const byBase = plain(logicalModelSchema(logicalModel(withTypes)!, "https://example.org/ig")) as Json;
+    expect(byBase.properties.address.$ref).toBe("StructureDefinition-AddressLite.schema.json");
+    expect(byBase.properties.link.$ref).toBe("https://example.org/other/StructureDefinition-LinkPayload.schema.json");
+    const overridden = plain(logicalModelSchema(logicalModel(withTypes)!, "https://example.org/elsewhere", local)) as Json;
+    expect(overridden.properties.address.$ref).toBe("StructureDefinition-AddressLite.schema.json");
+  });
+
   it("files every non-ValueSet, non-CodeSystem schema as a logical model, and lists them in its enumeration", () => {
     expect(schemaKind("ValueSet-x.schema.json")).toBe("valueset");
     expect(schemaKind("StructureDefinition-x.schema.json")).toBe("logical_model");
