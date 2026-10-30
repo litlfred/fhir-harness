@@ -826,6 +826,7 @@ describe("Published package provenance, v3-ActReason hierarchy, R4 Consent schem
     };
     expect(Object.keys(prov.packages).sort()).toEqual([
       HL7_FHIR_R4_CORE_PACKAGE_ID,
+      "hl7.fhir.r5.core#5.0.0",
       HL7_TERMINOLOGY_PACKAGE_ID,
       IHE_ITI_PCF_PACKAGE_ID,
     ]);

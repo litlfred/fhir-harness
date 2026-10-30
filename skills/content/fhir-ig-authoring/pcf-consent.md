@@ -272,3 +272,31 @@ and `folio-assistant-2egb`) must cite the exact `Consent` resource version used:
   auditor can verify which version of the patient's consent directive was in
   force when the decision hash (`cat-harness:recordHash` chained via
   `cat-harness:previousHash`) was computed.
+
+### 3.5 One-way renderer: ODRL 2.2 Agreement to FHIR R5 `Permission` (output only, bean `jfbm`)
+
+Per owner card 2026-10-30 19:23Z ("A: Yes, later bean"), HL7 FHIR R5 `Permission`
+(Trial Use) is approved **for output only**: W3C ODRL 2.2 stays the source of
+truth and nothing reads `Permission` back.
+[`schemas/odrl-to-fhir-r5-permission.ts`](../../../schemas/odrl-to-fhir-r5-permission.ts)
+provides `odrlAgreementToFhirR5Permission(agreement, options)` and
+`fhirR5PermissionToFsh(permission, options)`:
+
+- `FhirR5PermissionSchema` and its required value-set code lists are built from
+  `hl7.fhir.r5.core#5.0.0`'s `StructureDefinition-Permission.json` and
+  `CodeSystem-*.json` (`permission-status`, `permission-rule-combining`,
+  `consent-provision-type`, `consent-data-meaning`), so no field outside FHIR R5
+  `Permission` is ever invented.
+- Maps `conflict` (`prohibit` / `perm`) to `combining` (`deny-overrides` /
+  `permit-overrides`); `assigner` to `asserter`; shared `dateTime` constraints
+  to `validity`; the agreement's fixed-version `uid` and `dcterms:source` to
+  `justification.evidence` / `justification.basis`; `permission` / `prohibition`
+  to `rule.type` (`permit` / `deny`); `target` to `rule.data.resource`;
+  `assignee`, `action` (`consentaction`), and `purpose` (HL7 `v3-ActReason`
+  `PurposeOfUse`) to `rule.activity`; and `delete` duty roughly to `rule.limit`
+  (`v3-ActCode#DELAU`).
+- Every ODRL 2.2, DCAT 3, or SPDX term with no exact home in FHIR R5
+  `Permission` (including `@type`, `profile`, `inheritFrom`, `spdx:checksum`,
+  `isA`, exclusive `lt`/`gt` bounds, `elapsedTime`, `refinement`, and duties or
+  duty constraints) is returned explicitly in `dropped: DroppedOdrlTerm[]`
+  rather than dropped silently.

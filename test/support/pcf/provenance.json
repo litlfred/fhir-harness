@@ -132,6 +132,30 @@
           "sha256": "caa6f7f0e4bb909d5ef0ed5f39fee743f6832639d21e063cb04e0359f3491beb"
         }
       }
+    },
+    "hl7.fhir.r5.core#5.0.0": {
+      "name": "hl7.fhir.r5.core",
+      "version": "5.0.0",
+      "canonical": "http://hl7.org/fhir",
+      "npmPackage": "@hl7/hl7.fhir.r5.core@5.0.0",
+      "source": "https://registry.npmjs.org/@hl7/hl7.fhir.r5.core/-/hl7.fhir.r5.core-5.0.0.tgz",
+      "files": {
+        "StructureDefinition-Permission.json": {
+          "sha256": "0cc441c07ab08634edaccd590e991278292fd65cb4f6fd8a230812d7cc83fa25"
+        },
+        "CodeSystem-permission-status.json": {
+          "sha256": "357eee0aac68bdfe644631c3f1eee7faffb99e3956f02db289f9bdd7fa1337f0"
+        },
+        "CodeSystem-permission-rule-combining.json": {
+          "sha256": "3190a33a2db22f5e481d1744a4c011de96f825566888f3a2edd498107e1a098d"
+        },
+        "CodeSystem-consent-provision-type.json": {
+          "sha256": "488d677f201e3ef0654422784f40c36ff95244b4bb34a5a5e9ebf2d4cced64fd"
+        },
+        "CodeSystem-consent-data-meaning.json": {
+          "sha256": "d272452ce02540481fd18ededd4e6ec18275c5abc00a644525e01fd571b1b37c"
+        }
+      }
     }
   }
 }
