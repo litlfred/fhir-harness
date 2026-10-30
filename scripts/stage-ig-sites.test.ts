@@ -8,7 +8,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { writeDeclaration } from "../../cat-harness-tools/test/support/instance-fixture";
-import { igsToBuild, servedPathsFor } from "./stage-ig-sites";
+import { igsToBuild, igSiteAt, servedPathsFor } from "./stage-ig-sites";
 
 let repo: string;
 const menu = (source?: object) => JSON.stringify({ $schema: "folio-ig-menu/v1", groups: [], ...(source ? { source } : {}) });
@@ -77,7 +77,25 @@ test("an IG site at /<instance>/ig/ reserves nothing: no served route can meet i
   mkdirSync(root, { recursive: true });
   writeDeclaration(root, {
     name: "served-no-igsite",
-    directories: [{ id: "served-no-igsite-openapi", path: "openapi/", graphTypologies: ["openapi"], served: true }],
+    directories: [
+      { id: "served-no-igsite-docs", path: "docs/", graphTypologies: ["docs"] },
+      { id: "served-no-igsite-openapi", path: "openapi/", graphTypologies: ["openapi"], served: true },
+    ],
   });
+  expect(igSiteAt(root)).toBe("ig");
   expect(servedPathsFor(root)).toEqual([]);
+});
+
+// folio-assistant#2738: smart-immunizations declares no docs, so nothing else
+// answers /<instance>/. Its IG was staged under an `/ig` base but composed at
+// the instance root, and every menu link was dead.
+test("an instance with no pages of its own gets its IG at /<instance>/, and reserves its served routes", () => {
+  const root = join(repo, "served-no-docs");
+  mkdirSync(root, { recursive: true });
+  writeDeclaration(root, {
+    name: "served-no-docs",
+    directories: [{ id: "served-no-docs-openapi", path: "openapi/", graphTypologies: ["openapi"], served: true }],
+  });
+  expect(igSiteAt(root)).toBe(".");
+  expect(servedPathsFor(root)).toEqual([{ prefix: "openapi/", by: "served directory served-no-docs-openapi" }]);
 });
