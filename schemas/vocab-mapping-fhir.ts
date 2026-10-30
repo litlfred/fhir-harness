@@ -45,7 +45,7 @@ import {
   type Target,
   type TypedValue,
   type VocabMapping,
-} from "../../cat-harness/schemas/content/vocab-mapping.js";
+} from "@litlfred/cat-harness-tools/schemas/content/vocab-mapping.js";
 
 export type FhirRelease = "R4" | "R5";
 type Json = Record<string, unknown>;

@@ -52,7 +52,7 @@ import {
   broaderOrSelf,
   type ActionGraph,
   type Decision,
-} from "../../cat-harness/schemas/content/odrl.js";
+} from "@litlfred/cat-harness-tools/schemas/content/odrl.js";
 
 export { ANYONE, FOLIO_DEFAULT_CONFLICT, ODRL_ACTIONS, ODRL_NS, actionGraph, broaderOrSelf, type ActionGraph, type Decision };
 

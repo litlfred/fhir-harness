@@ -59,8 +59,8 @@ import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { FhirArtifactIndexSchema, materializationCensus } from "../schemas/fhir-artifact-index.js";
-import { declarationPathIn, repoRootFor } from "../../cat-harness/schemas/kg/cat-harness.js";
-import { gitTopLevelDirs } from "../../cat-harness/schemas/sdlc/git-corpus.js";
+import { declarationPathIn, repoRootFor } from "@litlfred/cat-harness-tools/schemas/kg/cat-harness.js";
+import { gitTopLevelDirs } from "@litlfred/cat-harness-tools/schemas/sdlc/git-corpus.js";
 import { judgeInstanceAnnexes } from "./ig-annex-judge.ts";
 
 const ROOT = repoRootFor(join(import.meta.dir, ".."));

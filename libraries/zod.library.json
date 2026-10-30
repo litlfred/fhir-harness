@@ -23,6 +23,7 @@
     "schemas/ig-identity.ts",
     "schemas/ig-menu.ts",
     "schemas/ig-metadata-index.ts",
-    "schemas/ig-releases.ts"
+    "schemas/ig-releases.ts",
+    "schemas/iti-108-consent-client.ts"
   ]
 }

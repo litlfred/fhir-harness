@@ -17,7 +17,7 @@ import { describe, expect, test } from "bun:test";
 import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 
-import { readPolicyGrants } from "../../cat-harness/schemas/content/odrl.ts";
+import { readPolicyGrants } from "@litlfred/cat-harness-tools/schemas/content/odrl.ts";
 
 const ROOT = resolve(import.meta.dir, "..");
 const HARNESS_ROOT = resolve(ROOT, "..", "cat-harness");

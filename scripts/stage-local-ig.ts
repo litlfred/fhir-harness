@@ -69,10 +69,10 @@ import { join, resolve } from "node:path";
 
 import { parse as parseYaml } from "yaml";
 
-import { siteFileFor } from "../../cat-harness/schemas/kg/cat-harness.ts";
-import { resolveLandingInstance } from "../../cat-harness/schemas/kg/harness-config.ts";
-import { findDeclarationFile } from "../../cat-harness/schemas/kg/instance-roots.ts";
-import { scriptTable } from "../../cat-harness/schemas/sdlc/script-table.ts";
+import { siteFileFor } from "@litlfred/cat-harness-tools/schemas/kg/cat-harness.ts";
+import { resolveLandingInstance } from "@litlfred/cat-harness-tools/schemas/kg/harness-config.ts";
+import { findDeclarationFile } from "@litlfred/cat-harness-tools/schemas/kg/instance-roots.ts";
+import { scriptTable } from "@litlfred/cat-harness-tools/schemas/sdlc/script-table.ts";
 import { buildInstanceSite, keepPinned, lockedMountPaths, recipeRead, siteFields, stagingDir } from "../../cat-harness-tools/scripts/build-instance-site.ts";
 import { igOpenapiGraph } from "../../cat-harness-tools/openapi/scripts/ig-site-openapi.ts";
 import { igPreviewData, openPrFor, proseRenderer } from "./ig-review-data.ts";

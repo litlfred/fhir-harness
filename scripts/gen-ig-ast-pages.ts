@@ -60,8 +60,8 @@ import { spawnSync } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { basename, join, relative, resolve, sep } from "node:path";
 
-import { checkoutRootFor, declarationPathIn } from "../../cat-harness/schemas/kg/cat-harness.js";
-import { checkoutDirectories } from "../../cat-harness/schemas/kg/harness-config.js";
+import { checkoutRootFor, declarationPathIn } from "@litlfred/cat-harness-tools/schemas/kg/cat-harness.js";
+import { checkoutDirectories } from "@litlfred/cat-harness-tools/schemas/kg/harness-config.js";
 import { declaredVisualisers, pageParts, siteOwnerDir, visualiserPageDir, withRenderedByFrontMatter, type DeclaredVisualiser } from "../../cat-harness-tools/scripts/viewer-declarations.js";
 import { siteArg } from "../../cat-harness-tools/scripts/lib/site-target.ts";
 import { AstPlanSchema, type AstPlan } from "../schemas/ig-ast.ts";

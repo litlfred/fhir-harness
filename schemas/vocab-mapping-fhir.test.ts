@@ -27,8 +27,8 @@ import {
   loadVocabMappings,
   vocabMappingDirs,
   type VocabMapping,
-} from "../../cat-harness/schemas/content/vocab-mapping.js";
-import { ownPrefixTable } from "../../cat-harness/schemas/kg/graph-typology-registry.js";
+} from "@litlfred/cat-harness-tools/schemas/content/vocab-mapping.js";
+import { ownPrefixTable } from "@litlfred/cat-harness-tools/schemas/kg/graph-typology-registry.js";
 import { STANDARD_PREFIXES, detectRelease, fromConceptMap, toConceptMap, type FhirRelease } from "./vocab-mapping-fhir.js";
 
 const FIX = resolve(import.meta.dir, "../test/support/conceptmap");

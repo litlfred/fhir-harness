@@ -10,7 +10,7 @@ import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { ContentTypeRegistry, describeRepository } from "../../cat-harness/schemas/content/content-type.js";
+import { ContentTypeRegistry, describeRepository } from "@litlfred/cat-harness-tools/schemas/content/content-type.js";
 import {
   IG_INDEX_SECTION,
   IG_TYPE,

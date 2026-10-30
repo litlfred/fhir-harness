@@ -15,7 +15,7 @@ import { ARTIFACT_LIST_TEMPLATE_PATH, artifactListInclude, publisherPlural, FOOT
 import { annexDirsFor, annexesFor, annexesIn, copyDocsInto, igSiteDocs, webpagePalette } from "./stage-ig-sites";
 import type { IgReleases } from "../schemas/ig-releases.ts";
 import { artifactPageName } from "../schemas/fhir-artifact-index.js";
-import { siteFileFor } from "../../cat-harness/schemas/kg/cat-harness.js";
+import { siteFileFor } from "@litlfred/cat-harness-tools/schemas/kg/cat-harness.js";
 
 let dir: string;
 let out: string;
