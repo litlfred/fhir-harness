@@ -50,7 +50,7 @@ import {
   RenderedImpactSchema,
   type RenderedFile,
   type RenderedImpact,
-} from "../../cat-harness/schemas/rendered-impact.ts";
+} from "../../cat-harness/schemas/ui/rendered-impact.ts";
 import { gitBlobs } from "../../cat-harness-tools/scripts/git-blobs.ts";
 import { artifactPageName } from "../schemas/fhir-artifact-index.js";
 

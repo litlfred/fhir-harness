@@ -1,4 +1,4 @@
-import { webpage } from "@litlfred/cat-harness/schemas/webpage.ts";
+import { webpage } from "@litlfred/cat-harness/schemas/ui/webpage.ts";
 
 export default webpage({
   slug: "fhir/ig-publisher",

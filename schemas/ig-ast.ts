@@ -36,7 +36,7 @@
  * @graphNode schema
  */
 import { z } from "zod";
-import { ownNamespace } from "../../cat-harness/schemas/namespaces.js";
+import { ownNamespace } from "../../cat-harness/schemas/kg/namespaces.js";
 
 export const IG_AST_TAG = "ig-ast/v1" as const;
 export const IG_AST_DEPENDENCIES_TAG = "ig-ast-dependencies/v1" as const;

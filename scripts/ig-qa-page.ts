@@ -27,7 +27,7 @@
  */
 import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { basename, join, resolve } from "node:path";
-import { instanceDirectoriesForGraph } from "../../cat-harness/schemas/cat-harness.ts";
+import { instanceDirectoriesForGraph } from "../../cat-harness/schemas/kg/cat-harness.ts";
 
 export const QA_ASSETS = "assets/ig-qa";
 
