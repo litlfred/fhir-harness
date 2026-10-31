@@ -15,7 +15,7 @@ import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { referenceAbsent, contextsFrom, fhirVersionsOf, hubFrom, igTargets, isSafeInstanceName, lockedRepositories, packFromAst, publishedBase, rebaseOnMount } from "./build-ig-indexes.ts";
+import { cloneAt, lockedMounts, referenceAbsent, contextsFrom, fhirVersionsOf, hubFrom, igTargets, isSafeInstanceName, lockedRepositories, packFromAst, publishedBase, rebaseOnMount } from "./build-ig-indexes.ts";
 import type { BranchLister } from "./gen-ig-ast-pages.ts";
 
 const instances = [
@@ -234,5 +234,40 @@ describe("referenceAbsent", () => {
   it("leaves records that are not materialized alone", () => {
     const ix = { artifacts: [{ key: "C", materialization: { state: "referenced", provenance: { upstream: "u" } } }] };
     expect(referenceAbsent(ix, root)).toBe(0);
+  });
+});
+
+describe("lockedMounts and cloneAt (bean fwtz: the IG is read at its pin)", () => {
+  it("reads each instance's pinned commit from the lock, and only a full sha", () => {
+    const dir = mkdtempSync(join(tmpdir(), "ig-index-pin-"));
+    try {
+      const sha = "d1cfa96b0e83f088deaaba9e4672c77568663cbd";
+      writeFileSync(join(dir, "index.lock.json"), JSON.stringify({ instances: [{ instance: "ig", repository: "beta/ig", sha }, { instance: "short", repository: "beta/short", sha: "d1cfa96" }] }));
+      expect([...lockedMounts(dir)]).toEqual([["ig", { repository: "beta/ig", sha }], ["short", { repository: "beta/short" }]]);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("fetches the pinned commit rather than cloning the default branch", () => {
+    const calls: string[][] = [];
+    const git = (_cmd: string, args: string[]) => (calls.push(args), { ok: true, out: "" });
+    expect(cloneAt("beta/ig", "/w/ig", "d1cfa96b0e83f088deaaba9e4672c77568663cbd", git).ok).toBe(true);
+    expect(calls.map((a) => a.join(" "))).toEqual([
+      "init --quiet /w/ig",
+      "-C /w/ig remote add origin https://github.com/beta/ig",
+      "-C /w/ig fetch --quiet --depth 1 --no-tags origin d1cfa96b0e83f088deaaba9e4672c77568663cbd",
+      "-C /w/ig checkout --quiet --detach FETCH_HEAD",
+    ]);
+    calls.length = 0;
+    cloneAt("beta/ig", "/w/ig", undefined, git);
+    expect(calls).toEqual([["clone", "--quiet", "--depth", "1", "https://github.com/beta/ig", "/w/ig"]]);
+  });
+
+  it("stops at the first git step that fails", () => {
+    let n = 0;
+    const git = () => (++n === 3 ? { ok: false, out: "not our ref" } : { ok: true, out: "" });
+    expect(cloneAt("beta/ig", "/w/ig", "d1cfa96b0e83f088deaaba9e4672c77568663cbd", git)).toEqual({ ok: false, out: "not our ref" });
+    expect(n).toBe(3);
   });
 });
