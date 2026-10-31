@@ -303,6 +303,32 @@ export function relinkPublisherOutputs(text: string, publishedBase: string): { t
 }
 
 /**
+ * Point a staged `input/images/<dir>/*.html` file's links to the HL7 IG Publisher
+ * template's chrome assets (`fhir.css`, `fhir-table-scripts.js`,
+ * `assets/{css,js,ico}/*`) at the IG's published site (`canonical`).
+ *
+ * A pre-rendered HTML page under `input/images/` (such as the WHO SMART Trust
+ * IG's `input/images/openapi/index.html`) links the Publisher template's root
+ * assets via `../` relative paths (`../../fhir.css`, `../../assets/...`). This
+ * build wears the host site's chrome and does not emit the HL7 template's
+ * assets, so without rewriting they climb out of the IG's directory to the
+ * host site root and 404 (#2741). Sibling links (`./swagger-ui.css`,
+ * `index.css`) stay relative.
+ */
+export function relinkPublisherTemplateAssets(html: string, publishedBase: string): { text: string; count: number } {
+  let count = 0;
+  const base = publishedBase.replace(/\/$/, "");
+  const out = html.replace(
+    /((?:href|src)=["'])(?:\.\.\/)+(fhir\.css|fhir-table-scripts\.js|assets\/(?:css|js|ico)\/[^"'\s]+)(?=["'])/g,
+    (_w, pre: string, asset: string) => {
+      count++;
+      return `${pre}${base}/${asset}`;
+    },
+  );
+  return { text: out, count };
+}
+
+/**
  * Pages only the IG Publisher writes, beside the IG's own (its QA report, the
  * full TOC, the search form). This build does not produce them; the published
  * IG at the sushi `canonical` does, so a link to one goes there (#2235:
@@ -1999,7 +2025,13 @@ function stageDeclaredSource(igSrc: string, out: string, opts: StageOptions): St
     // A subdirectory is published as a subdirectory, as the Publisher does, so
     // a page's `<script src="demo/app.js">` resolves.
     if (f.includes("/")) mkdirSync(join(out, dirname(f)), { recursive: true });
-    copyFileSync(join(imagesDir, f), join(out, f));
+    if (f.endsWith(".html") && canonical) {
+      const r = relinkPublisherTemplateAssets(readFileSync(join(imagesDir, f), "utf-8"), canonical);
+      relinked += r.count;
+      writeFileSync(join(out, f), r.text);
+    } else {
+      copyFileSync(join(imagesDir, f), join(out, f));
+    }
     // `{% include x.svg %}` names a file, so only the top level is includable.
     if (f.endsWith(".svg") && !f.includes("/")) {
       copyFileSync(join(imagesDir, f), join(out, "_includes", f));
