@@ -4,19 +4,22 @@
  * release's binary assets, never the bytes (bean `b8ip`, skill
  * `ig-binary-artefacts`).
  *
- *   bun run fhir-harness/scripts/ingest-ig-releases.ts --instance <dir> [--repo owner/repo] [--from releases.json]
+ *   bun run fhir-harness/scripts/ingest-ig-releases.ts --instance <dir> [--repo owner/repo] [--from releases.json] [--as-of <ISO time>]
  *
  * `--repo` defaults to the repository the instance's `menu.json` records the
  * IG source from, else the instance declaration's `repository`. `--from` reads
  * a saved GitHub API response instead of asking the API, for a run with no
  * network. Re-running rewrites the file: GitHub is the authority on what a
  * release carries, and this is a record of it on the day it was read.
+ * `--as-of` records the releases as they stood at that time instead (those
+ * published at or before it), stamped with its date: `ig-index:build` passes
+ * the pinned commit's time, so the same pin writes the same file any day.
  *
  * @covers fhir-artifact-index
  */
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
-import { type GitHubRelease, releasesFromGitHub } from "../schemas/ig-releases.ts";
+import { type GitHubRelease, releasesAsOf, releasesFromGitHub } from "../schemas/ig-releases.ts";
 import { declarationPathIn } from "@litlfred/cat-harness-tools/schemas/kg/cat-harness.js";
 
 /** `owner/repo` from a GitHub URL or an `owner/repo` string. */
@@ -73,7 +76,8 @@ if (import.meta.main) {
     process.exit(2);
   }
   const list = opt("--from") ? (JSON.parse(readFileSync(opt("--from")!, "utf-8")) as GitHubRelease[]) : await fetchReleases(repo);
-  const rec = releasesFromGitHub(repo, new Date().toISOString().slice(0, 10), list);
+  const asOf = opt("--as-of");
+  const rec = asOf ? releasesAsOf(repo, asOf, list) : releasesFromGitHub(repo, new Date().toISOString().slice(0, 10), list);
   const at = join(root, "fhir-artifact-index", "releases.json");
   writeFileSync(at, `${JSON.stringify(rec, null, 2)}\n`);
   const assets = rec.releases.reduce((n, r) => n + r.assets.length, 0);
