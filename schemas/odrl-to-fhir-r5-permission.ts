@@ -491,7 +491,9 @@ export function buildSchemaFromR5StructureDefinition(
     }
   };
 
-  return z.custom<Record<string, unknown>>().superRefine((val, ctx) => {
+  // A record, not z.custom: z.custom has no JSON Schema form, so the site's
+  // schema export could not publish this schema.
+  return z.record(z.string(), z.unknown()).superRefine((val, ctx) => {
     if (!isPlainRecord(val)) {
       ctx.addIssue({ code: "custom", path: [], message: `Expected FHIR ${sd.type} object` });
       return;
