@@ -1524,7 +1524,7 @@ export function releaseVariables(r: IgReleases) {
 
 /**
  * The four roles a theme palette carries (`ThemePaletteSchema` in
- * `cat-harness/schemas/theme.ts`). Structural, so this layer takes a palette
+ * `cat-harness-tools/schemas/ui/theme.ts`). Structural, so this layer takes a palette
  * without knowing whose it is: fhir-harness never names an IG's branding.
  */
 export interface SitePalette {

@@ -2,7 +2,6 @@
   "id": "fhir-questionnaire-wireframe",
   "name": "FHIR Questionnaire wireframe",
   "description": "Render a built FHIR Questionnaire as a mid-fidelity wireframe (web and mobile) and as an LHC-Forms form view, check it field for field against the L2 wireframe it was derived from, review it as a design, stage it, and take change requests on either side back through authoring.",
-  "roles": ["fhir-modeller", "business-analyst", "clinical-sme", "build-pipeline"],
   "requiredCapabilities": [
     { "capabilityId": "node-runtime", "degradation": "fail" }
   ],

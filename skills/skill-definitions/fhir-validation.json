@@ -2,7 +2,6 @@
   "id": "fhir-validation",
   "name": "FHIR Validation",
   "description": "Validate FHIR IG content: SUSHI compilation, IG Publisher QA, CRMI conformance checks.",
-  "roles": ["fhir-modeller", "qc-reviewer", "admin"],
   "requiredCapabilities": [
     { "capabilityId": "sushi-compiler", "degradation": "fail" },
     { "capabilityId": "ig-publisher", "degradation": "warn" },
