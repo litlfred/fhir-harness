@@ -111,6 +111,7 @@ import { igApiHubPageOf } from "./ig-api-hub.ts";
 import { AST_FAMILY_PREFIXES, LAYER, lsRemote, needing, type BranchLister, type InstanceFacts } from "./gen-ig-ast-pages.ts";
 import { buildMenu } from "./ingest-ig-menu.ts";
 import { igReadScope } from "./ig-read-scope.ts";
+import { realPathWithin, safeSegment } from "../../cat-harness-tools/src/core/safe-path.js";
 
 const HERE = import.meta.dir;
 
@@ -142,6 +143,18 @@ function declarationOf(root: string): Record<string, unknown> | undefined {
 }
 
 const OWNER_REPO = /^[\w.-]+\/[\w.-]+$/;
+
+/**
+ * An instance name this run will use as a directory under `--work`: one path
+ * segment of letters, digits, `.`, `_` and `-`, starting with a letter or digit.
+ * Any other name is refused (skipped), never rewritten.
+ */
+const INSTANCE_NAME = /^[A-Za-z0-9][A-Za-z0-9._-]*$/;
+
+/** True when `name` is a name this run may use as a directory. */
+export function isSafeInstanceName(name: string): boolean {
+  return safeSegment(name) !== undefined && INSTANCE_NAME.test(name);
+}
 
 /** Each instance's repository as the checkout's `index.lock.json` mounts it; empty when there is no lock. */
 export function lockedRepositories(checkout: string): Map<string, string> {
@@ -181,6 +194,10 @@ export function igTargets(instances: readonly (InstanceFacts & { root: string; d
   for (const i of instances) {
     if (!need.has(i.name)) continue;
     if (only !== undefined && i.name !== only) continue;
+    if (!isSafeInstanceName(i.name)) {
+      skipped.push({ name: i.name, why: "name is not a single safe path segment ([A-Za-z0-9][A-Za-z0-9._-]*)" });
+      continue;
+    }
     if (i.repository === undefined || !OWNER_REPO.test(i.repository)) {
       skipped.push({ name: i.name, why: "declares no repository (owner/repo)" });
       continue;
@@ -268,15 +285,22 @@ export function publishedBase(committed: Record<string, unknown> | undefined, de
  * resource at `package/<Type>-<id>.json`, and `package/package.json` from the
  * IG's `sushi-config.yaml`. Returns the number of resources packed.
  */
-export function packFromAst(ast: string, igSource: string, out: string, stage: string): number {
+export function packFromAst(ast: string, igSource: string, out: string, stage: string, log: (s: string) => void = (s) => console.error(s)): number {
   const manifest = JSON.parse(readFileSync(join(ast, "manifest.json"), "utf-8")) as { resources: { resourceType: string; id: string; file: string }[] };
   rmSync(stage, { recursive: true, force: true });
   const pkg = join(stage, "package");
   mkdirSync(pkg, { recursive: true });
   let n = 0;
   for (const r of manifest.resources) {
-    const from = join(ast, r.file);
-    if (!existsSync(from) || !/^[A-Za-z]+$/.test(r.resourceType) || !/^[A-Za-z0-9.-]+$/.test(r.id)) continue;
+    if (typeof r.file !== "string" || !/^[A-Za-z]+$/.test(r.resourceType) || !/^[A-Za-z0-9.-]+$/.test(r.id)) continue;
+    const joined = join(ast, r.file);
+    if (!existsSync(joined)) continue;
+    // The manifest's file must resolve inside the AST, symlinks followed.
+    const from = realPathWithin(ast, joined);
+    if (from === undefined) {
+      log(`  package: refused ${r.resourceType}/${r.id}: its file is outside the AST`);
+      continue;
+    }
     cpSync(from, join(pkg, `${r.resourceType}-${r.id}.json`));
     n++;
   }
@@ -392,7 +416,9 @@ export function sidecarsFor(checkout: string, clone: string, work: string, dir: 
   }
   rmSync(work, { recursive: true, force: true });
   mkdirSync(work, { recursive: true });
-  const r = spawnSync("sh", ["-c", `${entry.command} --ig '${clone}' --work '${work}'`], {
+  // The step's command is a shell command by design; the paths are passed as
+  // positional parameters, never spliced into it.
+  const r = spawnSync("sh", ["-c", `${entry.command} --ig "$1" --work "$2"`, "sh", clone, work], {
     cwd: checkout,
     encoding: "utf-8",
     timeout: 900_000,
@@ -414,6 +440,7 @@ export function sidecarsFor(checkout: string, clone: string, work: string, dir: 
 /** Build one IG's index, menu and releases. Returns the problems; empty means built. */
 export function buildOne(t: IgTarget, work: string, log: (s: string) => void, checkout = resolve(t.root, "..")): string[] {
   const problems: string[] = [];
+  if (!isSafeInstanceName(t.name)) return [`refused: instance name is not a single safe path segment`];
   const clone = join(work, t.name);
   rmSync(clone, { recursive: true, force: true });
   const c = run("git", ["clone", "--quiet", "--depth", "1", `https://github.com/${t.repository}`, clone]);
@@ -448,7 +475,7 @@ export function buildOne(t: IgTarget, work: string, log: (s: string) => void, ch
     const next = JSON.parse(readFileSync(built, "utf-8")) as Record<string, unknown>;
     try {
       const tgz = join(dir, "package.tgz");
-      const packed = packFromAst(ast, clone, tgz, join(work, `${t.name}.package`));
+      const packed = packFromAst(ast, clone, tgz, join(work, `${t.name}.package`), log);
       next["package"] = { url: pub.base ? `${pub.base}/package.tgz` : "fhir-artifact-index/package.tgz", localPath: "fhir-artifact-index/package.tgz", bytes: statSync(tgz).size };
       log(`  package: ${packed} resource(s) packed from the AST`);
     } catch (e) {

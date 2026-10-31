@@ -10,12 +10,12 @@
  * @module fhir-harness/scripts/build-ig-indexes.test
  */
 import { afterAll, describe, expect, it } from "bun:test";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { referenceAbsent, contextsFrom, fhirVersionsOf, hubFrom, igTargets, lockedRepositories, packFromAst, publishedBase, rebaseOnMount } from "./build-ig-indexes.ts";
+import { referenceAbsent, contextsFrom, fhirVersionsOf, hubFrom, igTargets, isSafeInstanceName, lockedRepositories, packFromAst, publishedBase, rebaseOnMount } from "./build-ig-indexes.ts";
 import type { BranchLister } from "./gen-ig-ast-pages.ts";
 
 const instances = [
@@ -48,6 +48,16 @@ describe("igTargets", () => {
     expect(why["broken"]).toContain("could not determine");
     expect(why["seedless"]).toContain("no AST branch family");
     expect(why["lone"]).toBeUndefined();
+  });
+
+  it("refuses an instance name that is not one safe path segment, and says why", () => {
+    const odd = ["..", "../x", "a/b", "it's", "-x", ""].map((name) => ({ name, root: `/c/odd${name.length}`, repository: "example/ig", needs: ["fhir-harness"] }));
+    const { targets, skipped } = igTargets([instances[0]!, ...odd], list);
+    expect(targets).toEqual([]);
+    expect(skipped.map((s) => s.name).sort()).toEqual(odd.map((o) => o.name).sort());
+    for (const s of skipped) expect(s.why).toContain("not a single safe path segment");
+    expect(isSafeInstanceName("smart-base")).toBe(true);
+    expect(isSafeInstanceName("ig.v2_x")).toBe(true);
   });
 
   it("--only narrows to one instance", () => {
@@ -100,6 +110,36 @@ describe("lockedRepositories", () => {
 });
 
 describe("packFromAst", () => {
+  it("refuses a manifest file outside the AST, by path or by symlink", () => {
+    const dir = mkdtempSync(join(tmpdir(), "ig-index-pack-out-"));
+    try {
+      const ast = join(dir, "output-ast");
+      mkdirSync(join(ast, "resources"), { recursive: true });
+      writeFileSync(join(dir, "outside.json"), '{"resourceType":"ValueSet","id":"x"}');
+      symlinkSync(join(dir, "outside.json"), join(ast, "resources", "link.json"));
+      writeFileSync(join(ast, "resources", "ok.json"), '{"resourceType":"ValueSet","id":"ok"}');
+      writeFileSync(
+        join(ast, "manifest.json"),
+        JSON.stringify({ resources: [
+          { resourceType: "ValueSet", id: "up", file: "../outside.json" },
+          { resourceType: "ValueSet", id: "link", file: "resources/link.json" },
+          { resourceType: "ValueSet", id: "ok", file: "resources/ok.json" },
+        ] }),
+      );
+      writeFileSync(join(dir, "sushi-config.yaml"), "id: ex.ig\nversion: 1.0.0\n");
+      const out = join(dir, "pkg", "package.tgz");
+      const logged: string[] = [];
+      expect(packFromAst(ast, dir, out, join(dir, "stage"), (s) => logged.push(s))).toBe(1);
+      const names = spawnSync("tar", ["-tzf", out], { encoding: "utf-8" }).stdout.split("\n").filter(Boolean).sort();
+      expect(names).toEqual(["package/", "package/ValueSet-ok.json", "package/package.json"]);
+      expect(logged.length).toBe(2);
+      expect(existsSync(join(dir, "stage", "package", "ValueSet-up.json"))).toBe(false);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+
   it("packs each AST resource at package/<Type>-<id>.json, with a package.json from sushi-config.yaml", () => {
     const dir = mkdtempSync(join(tmpdir(), "ig-index-pack-"));
     try {
