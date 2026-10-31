@@ -303,18 +303,36 @@ export function igSiteAt(root: string): "." | "ig" {
   return ownPages ? "ig" : ".";
 }
 
+/** Every file under `dir`, `/`-separated and relative to it, sorted. */
+function servedFiles(dir: string, rel = ""): string[] {
+  return readdirSync(join(dir, rel), { withFileTypes: true })
+    .flatMap((e) => (e.isDirectory() ? servedFiles(dir, rel ? `${rel}/${e.name}` : e.name) : [rel ? `${rel}/${e.name}` : e.name]))
+    .sort();
+}
+
 /**
  * The site paths a later step publishes inside an `igSite` instance's IG site:
- * one `/`-ended prefix per directory the instance declares `served`. The
- * served-directory mount refuses a route the site already holds, so an IG's
- * own `input/images/<same path>/` must be left to it. Empty when the IG site
- * sits at `/<instance>/ig/`, where no served route can meet it.
+ * each FILE of every directory the instance declares `served`. The
+ * served-directory mount refuses a file the site already holds, so an IG's own
+ * `input/images/` copy must leave those files to it. Other files at the same
+ * route stay: an IG's vendored Swagger UI at `openapi/index.html` sits beside
+ * the served OpenAPI documents, as it does on the IG's own site
+ * (`ig-site:openapi`). A served directory the checkout does not hold reserves
+ * its whole `/`-ended prefix, since which files the mount writes is unknown.
+ * Empty when the IG site sits at `/<instance>/ig/`, where no served route can
+ * meet it.
  */
 export function servedPathsFor(root: string): { prefix: string; by: string }[] {
   if (igSiteAt(root) === "ig") return [];
   return (readDeclaration(root)?.directories ?? [])
     .filter((d) => d.served === true)
-    .map((d) => ({ prefix: `${d.path.replace(/^\/+|\/+$/g, "")}/`, by: `served directory ${d.id ?? d.path}` }));
+    .flatMap((d) => {
+      const dir = d.path.replace(/^\/+|\/+$/g, "");
+      const by = `served directory ${d.id ?? d.path}`;
+      const abs = join(root, dir);
+      if (!existsSync(abs) || !statSync(abs).isDirectory()) return [{ prefix: `${dir}/`, by }];
+      return servedFiles(abs).map((f) => ({ prefix: `${dir}/${f}`, by }));
+    });
 }
 
 /**

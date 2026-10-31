@@ -729,6 +729,24 @@ describe("a path a later site step writes is left to it", () => {
   });
 });
 
+describe("a reserved FILE leaves the rest of its directory to the IG", () => {
+  test("only the named file is withheld; the IG's other files at that route publish", () => {
+    const d = mkdtempSync(join(tmpdir(), "ig-reserved-file-"));
+    const src = join(d, "src");
+    mkdirSync(join(src, "input", "pagecontent"), { recursive: true });
+    mkdirSync(join(src, "input", "images", "openapi"), { recursive: true });
+    writeFileSync(join(src, "sushi-config.yaml"), "id: x.ig\ntitle: X IG\n");
+    writeFileSync(join(src, "input", "pagecontent", "index.md"), "# I\n");
+    writeFileSync(join(src, "input", "images", "openapi", "index.html"), "<html>swagger</html>");
+    writeFileSync(join(src, "input", "images", "openapi", "api.openapi.json"), "{}");
+    const s = stageIgSite(src, join(d, "out"), { reservedPaths: [{ prefix: "openapi/api.openapi.json", by: "served directory x-openapi" }] });
+    expect(readFileSync(join(d, "out", "openapi", "index.html"), "utf-8")).toBe("<html>swagger</html>");
+    expect(existsSync(join(d, "out", "openapi", "api.openapi.json"))).toBe(false);
+    expect(s.reserved).toEqual(["openapi/api.openapi.json (served directory x-openapi)"]);
+    rmSync(d, { recursive: true, force: true });
+  });
+});
+
 describe("a link into a subdirectory of input/images stays on the site", () => {
   test("it is served, so it is not relinked to the source", () => {
     const d = mkdtempSync(join(tmpdir(), "ig-nested-"));
