@@ -320,6 +320,18 @@ export const PUBLISHER_PAGES: ReadonlySet<string> = new Set(["qa.html", "qa-tx.h
  * source) is left as written and RETURNED, so the stage reports an upstream
  * dead link rather than hiding it.
  */
+/**
+ * Where a relative page link THIS build cannot serve goes: a Publisher page
+ * ({@link PUBLISHER_PAGES}, or `artifacts.html` when no artefact index was
+ * given) to the IG's published site at `canonical`. Anything else, and a page
+ * this build serves, comes back unchanged.
+ */
+export function offSiteHref(target: string, canonical: string | undefined, isServed: (target: string) => boolean): string {
+  if (!canonical || isServed(target)) return target;
+  if (!PUBLISHER_PAGES.has(target) && target !== "artifacts.html") return target;
+  return `${canonical.replace(/\/$/, "")}/${target}`;
+}
+
 export function relinkOffSite(
   text: string,
   o: { canonical?: string; sourceBlob?: string; srcRoot: string; isServed: (target: string) => boolean },
@@ -329,9 +341,10 @@ export function relinkOffSite(
   const out = text.replace(/(\]\(|href=["'])([^)"'\s#?]+)([#?][^)"'\s]*)?(?=[)"'])/g, (whole, pre: string, target: string, tail = "") => {
     if (/^([a-z][a-z0-9+.-]*:|\/|\.\.\/|\{)/i.test(target) || target.includes("{")) return whole;
     if (o.isServed(target) || o.isServed(target.replace(/^\.\//, ""))) return whole;
-    if (PUBLISHER_PAGES.has(target) && o.canonical) {
+    const off = offSiteHref(target, o.canonical, o.isServed);
+    if (off !== target) {
       count++;
-      return `${pre}${o.canonical.replace(/\/$/, "")}/${target}${tail}`;
+      return `${pre}${off}${tail}`;
     }
     if (!/\.(html|md)$/.test(target) && o.sourceBlob) {
       const at = [target, `input/${target}`].find((p) => existsSync(join(o.srcRoot, p)) && statSync(join(o.srcRoot, p)).isFile());
@@ -1171,7 +1184,8 @@ export interface StageOptions {
    * The instance's artefact index and where its artefact pages are, relative
    * to this site. Given, an `artifacts` page is written — the Publisher's
    * `artifacts.html` — linking each artefact to `<pagesHref><stem>.html`.
-   * Absent, `artifacts.html` stays a menu item this build does not hold.
+   * Absent, this build holds no `artifacts.html`, so a link or menu item to
+   * it goes to the IG's published site ({@link relinkOffSite}, {@link offSiteHref}).
    */
   artifacts?: {
     list: ReadonlyArray<IndexedArtifact>;
@@ -1797,7 +1811,7 @@ function stageDeclaredSource(igSrc: string, out: string, opts: StageOptions): St
   const pageHtml = new Set(files(pagecontent).filter((f) => f.endsWith(".md")).map((f) => `${basename(f, ".md")}.html`));
   const rootImages = new Set(filesDeep(join(src, "input", "images")));
   const isServed = (t: string): boolean =>
-    pageHtml.has(t) || rootImages.has(t) || t === "artifacts.html" || (opts.artifacts !== undefined && t.startsWith(opts.artifacts.pagesHref));
+    pageHtml.has(t) || rootImages.has(t) || (opts.artifacts !== undefined && (t === "artifacts.html" || t.startsWith(opts.artifacts.pagesHref)));
   const dead = new Set<string>();
   const relink = (text: string): string => {
     let t = text;
@@ -2142,8 +2156,21 @@ function stageDeclaredSource(igSrc: string, out: string, opts: StageOptions): St
     // The extra rows are the IG-level pages the Publisher links outside its
     // menu: its own table of contents, and the releases page when written.
     const extra = [{ label: "Table of Contents", href: "toc.html" }, ...(generated.includes("releases.md") ? [{ label: "Releases", href: "releases.html" }] : [])];
+    // A menu item this build does not serve goes where the page links do
+    // (`artifacts.html` with no artefact index: folio-assistant#2741, 50 dead
+    // links from smart-immunizations' top bar).
+    const written = (t: string): boolean => isServed(t) || generated.includes(t) || generated.includes(t.replace(/\.html$/, ".md"));
+    const off = (href: string): string => offSiteHref(href, canonical, written);
+    const menu: IgMenu = {
+      ...opts.menu,
+      groups: opts.menu.groups.map((g) => ({
+        ...g,
+        ...(g.href !== undefined ? { href: off(g.href) } : {}),
+        ...(g.items ? { items: g.items.map((it) => ({ ...it, href: off(it.href) })) } : {}),
+      })),
+    };
     mkdirSync(join(out, "_layouts"), { recursive: true });
-    writeFileSync(join(out, "_layouts", "default.html"), harnessLayout(igTopBar(opts.menu, baseurl, title, opts.search ? igSearchAt(baseurl) : undefined), igTocNav(opts.menu, baseurl, extra), title));
+    writeFileSync(join(out, "_layouts", "default.html"), harnessLayout(igTopBar(menu, baseurl, title, opts.search ? igSearchAt(baseurl) : undefined), igTocNav(menu, baseurl, extra), title));
   }
   writeFileSync(
     join(out, "_config.yml"),
