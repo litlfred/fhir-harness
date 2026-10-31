@@ -10,7 +10,8 @@
  * @module fhir-harness/scripts/build-ig-indexes.test
  */
 import { afterAll, describe, expect, it } from "bun:test";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, utimesSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -180,6 +181,51 @@ describe("packFromAst", () => {
       expect(list).toEqual(["package/", "package/ValueSet-vs.json", "package/package.json"]);
       const pj = JSON.parse(spawnSync("tar", ["-xzOf", out, "package/package.json"], { encoding: "utf-8" }).stdout);
       expect(pj).toMatchObject({ name: "ex.ig", version: "1.0.0", fhirVersions: ["4.0.1"] });
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("writes byte-for-byte identical package.tgz archives across runs with different mtimes and manifest orders (bean fwtz, cat-harness-tools#400)", () => {
+    const dir = mkdtempSync(join(tmpdir(), "ig-index-pack-det-"));
+    try {
+      const longId = "a".repeat(64);
+      const makeAst = (sub: string, mtimeSec: number, reverse: boolean): string => {
+        const root = join(dir, sub);
+        const ast = join(root, "output-ast");
+        mkdirSync(join(ast, "resources"), { recursive: true });
+        const f1 = join(ast, "resources", "vs.json");
+        const f2 = join(ast, "resources", "sd.json");
+        writeFileSync(f1, JSON.stringify({ resourceType: "ValueSet", id: "vs" }) + "\n");
+        writeFileSync(f2, `{"resourceType":"StructureDefinition","id":"${longId}"}\n`);
+        utimesSync(f1, mtimeSec, mtimeSec);
+        utimesSync(f2, mtimeSec + 3600, mtimeSec + 3600);
+        const resources = [
+          { resourceType: "ValueSet", id: "vs", file: "resources/vs.json" },
+          { resourceType: "StructureDefinition", id: longId, file: "resources/sd.json" },
+        ];
+        if (reverse) resources.reverse();
+        const mf = join(ast, "manifest.json");
+        writeFileSync(mf, JSON.stringify({ resources }));
+        utimesSync(mf, mtimeSec, mtimeSec);
+        const sc = join(root, "sushi-config.yaml");
+        writeFileSync(sc, "id: ex.ig\nversion: 1.0.0\nfhirVersion: 4.0.1\ncanonical: http://example.org/ig\n");
+        utimesSync(sc, mtimeSec, mtimeSec);
+        const tgz = join(root, "package.tgz");
+        expect(packFromAst(ast, root, tgz, join(root, "stage"))).toBe(2);
+        return tgz;
+      };
+      const tgzA = makeAst("run-a", 1_700_000_000, false);
+      const tgzB = makeAst("run-b", 1_800_000_000, true);
+      const bytesA = readFileSync(tgzA);
+      const bytesB = readFileSync(tgzB);
+      expect(bytesA.length).toBe(bytesB.length);
+      expect(createHash("sha256").update(bytesA).digest("hex")).toBe(createHash("sha256").update(bytesB).digest("hex"));
+      expect(bytesA.equals(bytesB)).toBe(true);
+      const list = spawnSync("tar", ["-tzf", tgzA], { encoding: "utf-8" }).stdout.split("\n").filter(Boolean);
+      expect(list).toEqual(["package/", `package/StructureDefinition-${longId}.json`, "package/ValueSet-vs.json", "package/package.json"]);
+      const sd = JSON.parse(spawnSync("tar", ["-xzOf", tgzA, `package/StructureDefinition-${longId}.json`], { encoding: "utf-8" }).stdout);
+      expect(sd).toEqual({ resourceType: "StructureDefinition", id: longId });
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
