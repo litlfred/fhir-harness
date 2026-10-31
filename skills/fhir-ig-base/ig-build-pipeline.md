@@ -88,8 +88,8 @@ exact `MAJOR.MINOR.PATCH` semantic version triple (`versionIncrement: "major" |
 [`directory-conventions`](../../../cat-harness/skills/kg/kg-core/directory-conventions.md)
 §"Pinning a reference"), never a range or floating tag. Which segment bumps is
 determined by the delta on the IG's published conformance and canonical surface
-since the previous release — measured over the AST with `ig-ast.ts diff
-<prev-ast> <next-ast>` ([`ig-ast-delta`](ig-ast-delta.md) §"Diffing two ASTs"),
+since the previous release — measured over the AST with
+`ig-ast.ts diff <prev-ast> <next-ast>` ([`ig-ast-delta`](ig-ast-delta.md) §"Diffing two ASTs"),
 not from commit messages:
 
 | Increment | What triggers the bump on a FHIR IG | Examples |
