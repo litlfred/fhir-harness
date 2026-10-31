@@ -2158,7 +2158,7 @@ function stageDeclaredSource(igSrc: string, out: string, opts: StageOptions): St
     const extra = [{ label: "Table of Contents", href: "toc.html" }, ...(generated.includes("releases.md") ? [{ label: "Releases", href: "releases.html" }] : [])];
     // A menu item this build does not serve goes where the page links do
     // (`artifacts.html` with no artefact index: folio-assistant#2741, 50 dead
-    // links from smart-immunizations' top bar).
+    // links from an immunization IG's top bar).
     const written = (t: string): boolean => isServed(t) || generated.includes(t) || generated.includes(t.replace(/\.html$/, ".md"));
     const off = (href: string): string => offSiteHref(href, canonical, written);
     const menu: IgMenu = {
