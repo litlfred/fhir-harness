@@ -38,6 +38,7 @@
  */
 
 import { EDIT_LINKS_RUNTIME } from "../../cat-harness-tools/src/core/edit-links.js";
+import { safeSegment } from "../../cat-harness-tools/src/core/safe-path.js";
 import { execFileSync } from "node:child_process";
 import { copyFileSync, cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
@@ -180,6 +181,8 @@ export interface StageResult {
   listed: string[];
   /** Included files the source does not hold and nothing rendered: a marker stands in. */
   notRendered: string[];
+  /** Include names that are not a single safe path segment: REFUSED, nothing written for them. */
+  refusedIncludes: string[];
   /** The Publisher's dependency tables (`dependency-table*.xhtml`) a page includes, written from `site.data.fhir.dependencies` (bean `4475`). */
   dependencyTables: string[];
   /** The Publisher's global profiles table, written from `site.data.fhir.globals` when a page includes it: where the rows came from, and how many. */
@@ -1078,6 +1081,15 @@ export function dataOverwritesQa(subject: string, producer: { script: string; sc
  */
 export function includeTargets(md: string): string[] {
   return [...md.matchAll(/\{%-?\s*(?:include|lang-fragment)\s+([^\s%]+)/g)].map((m) => m[1]!);
+}
+
+/**
+ * True when an include name may be used as a file under `_includes/`: a single
+ * path segment (no separator, not `.` or `..`, no NUL) of letters, digits, `.`,
+ * `_` and `-`, starting with a letter, digit or `_`. Anything else is refused.
+ */
+export function isSafeIncludeName(name: string): boolean {
+  return safeSegment(name) !== undefined && /^[A-Za-z0-9_][A-Za-z0-9._-]*$/.test(name);
 }
 
 /**
@@ -2001,11 +2013,17 @@ function stageDeclaredSource(igSrc: string, out: string, opts: StageOptions): St
   const rendered: string[] = [];
   const listed: string[] = [];
   const notRendered: string[] = [];
+  const refusedIncludes: string[] = [];
   const dependencyTables: string[] = [];
   let globalsIncluded = false;
   const imagesSource = join(src, "input", "images-source");
   const wanted = new Set(pages.flatMap((f) => includeTargets(readFileSync(join(out, f), "utf-8"))));
   for (const name of [...wanted].sort()) {
+    // An include name becomes a path under _includes: one safe segment, or refused.
+    if (!isSafeIncludeName(name)) {
+      refusedIncludes.push(name);
+      continue;
+    }
     if (existsSync(join(out, "_includes", name))) continue;
     const puml = join(imagesSource, basename(name, extname(name)) + ".plantuml");
     if (name.endsWith(".svg") && existsSync(puml) && plantumlJar) {
@@ -2188,7 +2206,7 @@ function stageDeclaredSource(igSrc: string, out: string, opts: StageOptions): St
     ].join("\n"),
   );
   const fillsResult = opts.fills?.length ? { filled, unused: opts.fills.map((x) => x.marker).filter((m) => !usedMarkers.has(m)) } : undefined;
-  return { annexed, unplaced, templateIncludes: templateIncludesResult, pages: pages.sort(), generated, fills: fillsResult, variables: lifted ? { artifacts: Object.keys(lifted.vars.artifacts).length, notSourced: lifted.notSourced } : undefined, unlisted: unlisted.sort(), menuMissing, includes, images, rendered, listed, notRendered, unparseable, reserved, relinked, deadLinks: [...dead].sort(), scheme, siteData, data, astData, ...(forms ? { forms } : {}), dependencyTables, dependencies, globals };
+  return { annexed, unplaced, templateIncludes: templateIncludesResult, pages: pages.sort(), generated, fills: fillsResult, variables: lifted ? { artifacts: Object.keys(lifted.vars.artifacts).length, notSourced: lifted.notSourced } : undefined, unlisted: unlisted.sort(), menuMissing, includes, images, rendered, listed, notRendered, refusedIncludes, unparseable, reserved, relinked, deadLinks: [...dead].sort(), scheme, siteData, data, astData, ...(forms ? { forms } : {}), dependencyTables, dependencies, globals };
 }
 
 /**
@@ -2247,6 +2265,7 @@ export function describeStage(r: StageResult): string {
     ...(r.deadLinks.length ? [`DEAD in the IG's own source — no page anywhere serves: ${r.deadLinks.join(", ")}`] : []),
     ...(r.listed.length ? [`artefact lists written from the artefact index (the Publisher generates these): ${r.listed.join(", ")}`] : []),
     ...(r.notRendered.length ? [`NOT RENDERED (a visible marker stands in): ${r.notRendered.join(", ")}`] : []),
+    ...(r.refusedIncludes?.length ? [`REFUSED include name(s), not a single safe path segment (nothing written): ${r.refusedIncludes.map((n) => JSON.stringify(n)).join(", ")}`] : []),
     ...(r.unparseable.length ? [`NOT PUBLISHED (not valid JSON in the IG source): ${r.unparseable.join("; ")}`] : []),
     ...(r.reserved.length ? [`not published from input/images, a later step writes the path: ${r.reserved.length} file(s), ${r.reserved.slice(0, 5).join("; ")}${r.reserved.length > 5 ? "; …" : ""}`] : []),
     ...(r.astData === undefined

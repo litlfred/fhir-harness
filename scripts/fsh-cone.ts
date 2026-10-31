@@ -59,7 +59,7 @@
  *
  * @module fhir-harness/scripts/fsh-cone
  */
-import { execSync } from "node:child_process";
+import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { join, relative, resolve as resolvePath } from "node:path";
 
@@ -735,14 +735,14 @@ export interface CommitImpact {
  * skipped, as are commits that touch no source file.
  */
 export function historyImpact(g: FshGraph, maxCount = 400): CommitImpact[] {
-  const git = (args: string): string =>
-    execSync(`git ${args}`, { cwd: g.root, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
-  const shas = git(`rev-list --max-count=${maxCount} HEAD`).split("\n").filter(Boolean);
+  const git = (...args: string[]): string =>
+    execFileSync("git", args, { cwd: g.root, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+  const shas = git("rev-list", `--max-count=${maxCount}`, "HEAD").split("\n").filter(Boolean);
   const rows: CommitImpact[] = [];
   for (const sha of shas) {
     let names: string;
     try {
-      names = git(`diff-tree --no-commit-id -r --name-only ${sha}^ ${sha}`);
+      names = git("diff-tree", "--no-commit-id", "-r", "--name-only", `${sha}^`, sha);
     } catch {
       continue;
     }
@@ -751,7 +751,7 @@ export function historyImpact(g: FshGraph, maxCount = 400): CommitImpact[] {
     const impact = changeImpact(g, src);
     rows.push({
       sha: sha.slice(0, 8),
-      date: git(`show -s --format=%ad --date=short ${sha}`),
+      date: git("show", "-s", "--format=%ad", "--date=short", sha),
       sourceFiles: src.length,
       changed: impact.changed.size,
       rebuild: impact.rebuild.size,

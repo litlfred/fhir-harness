@@ -11,7 +11,7 @@ import { join } from "node:path";
 import { igChromeIncludes, liquidInertScript, SOURCE_LINKS_JS } from "./build-ig-site";
 import { Liquid } from "liquidjs";
 import { EDIT_LINKS_RUNTIME } from "../../cat-harness-tools/src/core/edit-links.js";
-import { ARTIFACT_LIST_TEMPLATE_PATH, artifactListInclude, publisherPlural, FOOTER_TEMPLATE_PATH, ARTIFACTS_TEMPLATE_PATH,IG_FIGURE_IMAGES_STAMP, annexMount, ANNEX_SCRIPT_PATH, artifactVariables, artifactCellLookup, kramdownId, linkTableCells, colourScheme, composeIgSite, liquidSiteBase, contrast, dedupeIds, igTocNav, igTopBar, IG_TOPBAR_CSS, includeTargets, localTemplateIncludes, pageNav, relinkArtifacts, relinkTemplatedArtifacts, relinkOffSite, offSiteHref, rubyLiquidStrings, relinkPublisherOutputs, sourceHeadings, dataOverwritesQa, describeStage, RELEASES_TEMPLATE_PATH, releaseVariables, sizeLabel, stageIgSite, tocPage, type StageResult } from "./build-ig-site";
+import { ARTIFACT_LIST_TEMPLATE_PATH, artifactListInclude, publisherPlural, FOOTER_TEMPLATE_PATH, ARTIFACTS_TEMPLATE_PATH,IG_FIGURE_IMAGES_STAMP, annexMount, ANNEX_SCRIPT_PATH, artifactVariables, artifactCellLookup, kramdownId, linkTableCells, colourScheme, composeIgSite, liquidSiteBase, contrast, dedupeIds, igTocNav, igTopBar, IG_TOPBAR_CSS, includeTargets, isSafeIncludeName, localTemplateIncludes, pageNav, relinkArtifacts, relinkTemplatedArtifacts, relinkOffSite, offSiteHref, rubyLiquidStrings, relinkPublisherOutputs, sourceHeadings, dataOverwritesQa, describeStage, RELEASES_TEMPLATE_PATH, releaseVariables, sizeLabel, stageIgSite, tocPage, type StageResult } from "./build-ig-site";
 import { annexDirsFor, annexesFor, annexesIn, copyDocsInto, igSiteDocs, webpagePalette } from "./stage-ig-sites";
 import type { IgReleases } from "../schemas/ig-releases.ts";
 import { artifactPageName } from "../schemas/fhir-artifact-index.js";
@@ -1501,5 +1501,31 @@ describe("an inlined runtime is kept out of Liquid's reach (smart-trust, 2026-10
     const html = await liquid.parseAndRender(bottom, { page: { ig_source_lines: [1], ig_edit_url: "e" } });
     expect(html).toContain(EDIT_LINKS_RUNTIME);
     expect(html).toContain(SOURCE_LINKS_JS);
+  });
+});
+
+describe("include names are refused unless they are one safe path segment", () => {
+  test("ordinary include names pass; separators, dot segments and template text do not", () => {
+    for (const ok of ["foo.md", "bar.svg", "x.liquid", "list-simple-profiles.xhtml", "_top.html"]) expect(isSafeIncludeName(ok)).toBe(true);
+    for (const bad of ["", ".", "..", "../x.md", "a/b.md", "a\\b.md", "/abs.md", "{{", "x\0.md", "-x.md"]) expect(isSafeIncludeName(bad)).toBe(false);
+  });
+
+  test("staging writes nothing for a refused include name, and reports it", () => {
+    const d = mkdtempSync(join(tmpdir(), "ig-site-refuse-"));
+    try {
+      const src = join(d, "src");
+      mkdirSync(join(src, "input", "pagecontent"), { recursive: true });
+      writeFileSync(join(src, "sushi-config.yaml"), "id: example.ig\ncanonical: http://example.org/ig\nname: ExampleIG\ntitle: Example IG\nstatus: draft\nversion: 0.1.0\nfhirVersion: 4.0.1\npages:\n  index.md:\n    title: Home\n");
+      writeFileSync(join(src, "input", "pagecontent", "index.md"), "{% include ../../escaped.md %}\n{% include sub/nested.md %}\n{% include kept.md %}\n");
+      const out = join(d, "site");
+      const res = stageIgSite(src, out);
+      expect(res.refusedIncludes).toEqual(["../../escaped.md", "sub/nested.md"]);
+      expect(existsSync(join(d, "escaped.md"))).toBe(false);
+      expect(existsSync(join(out, "_includes", "sub"))).toBe(false);
+      expect(res.notRendered).toEqual(["kept.md"]);
+      expect(describeStage(res)).toContain("REFUSED include name(s)");
+    } finally {
+      rmSync(d, { recursive: true, force: true });
+    }
   });
 });
