@@ -2,7 +2,6 @@
   "id": "terminology-management",
   "name": "Terminology Management",
   "description": "Manage terminology: CodeSystems, ValueSets, ConceptMaps. Map to ICD-11, SNOMED CT, LOINC, WHO FIC.",
-  "roles": ["terminologist", "fhir-modeller", "admin"],
   "requiredCapabilities": [
     { "capabilityId": "sushi-compiler", "degradation": "warn" }
   ],

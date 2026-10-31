@@ -2,7 +2,6 @@
   "id": "ig-publication",
   "name": "IG Publication",
   "description": "Publish FHIR Implementation Guides: versioning, release branches, GitHub releases, platform deployment.",
-  "roles": ["publication-manager", "admin"],
   "requiredCapabilities": [
     { "capabilityId": "ig-publisher", "degradation": "fail" },
     { "capabilityId": "git-push", "degradation": "fail" },
