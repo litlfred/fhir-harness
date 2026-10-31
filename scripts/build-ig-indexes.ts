@@ -123,6 +123,13 @@ export interface IgTarget {
   repository: string;
   /** The repository the instance's declaration names, when the mount differs from it. */
   declaredRepository?: string;
+  /**
+   * The commit the checkout's lock pins the instance at. The IG is cloned AT
+   * this commit, so `menu.json`'s `source.ref` is the pin and not whatever the
+   * repository's default branch says at build time (a live read of an unpinned
+   * branch made the published index move without a re-pin, bean `fwtz`).
+   */
+  sha?: string;
   /** The family branches found on the repository. */
   branches: string[];
 }
@@ -156,13 +163,23 @@ export function isSafeInstanceName(name: string): boolean {
   return safeSegment(name) !== undefined && INSTANCE_NAME.test(name);
 }
 
-/** Each instance's repository as the checkout's `index.lock.json` mounts it; empty when there is no lock. */
-export function lockedRepositories(checkout: string): Map<string, string> {
-  const out = new Map<string, string>();
+/** One instance's mount in the checkout's `index.lock.json`: its repository and, when the lock records one, the commit it is pinned at. */
+export interface LockedMount {
+  repository: string;
+  sha?: string;
+}
+
+const SHA = /^[0-9a-f]{40}$/;
+
+/** Each instance's mount as the checkout's `index.lock.json` records it; empty when there is no lock. */
+export function lockedMounts(checkout: string): Map<string, LockedMount> {
+  const out = new Map<string, LockedMount>();
   try {
-    const lock = JSON.parse(readFileSync(join(checkout, "index.lock.json"), "utf-8")) as { instances?: { instance?: unknown; repository?: unknown }[] };
+    const lock = JSON.parse(readFileSync(join(checkout, "index.lock.json"), "utf-8")) as { instances?: { instance?: unknown; repository?: unknown; sha?: unknown }[] };
     for (const i of lock.instances ?? []) {
-      if (typeof i.instance === "string" && typeof i.repository === "string" && OWNER_REPO.test(i.repository)) out.set(i.instance, i.repository);
+      if (typeof i.instance === "string" && typeof i.repository === "string" && OWNER_REPO.test(i.repository)) {
+        out.set(i.instance, { repository: i.repository, ...(typeof i.sha === "string" && SHA.test(i.sha) ? { sha: i.sha } : {}) });
+      }
     }
   } catch {
     // No lock, or not one this reads: the declarations' repositories stand.
@@ -170,24 +187,30 @@ export function lockedRepositories(checkout: string): Map<string, string> {
   return out;
 }
 
+/** Each instance's repository as the checkout's `index.lock.json` mounts it; empty when there is no lock. */
+export function lockedRepositories(checkout: string): Map<string, string> {
+  return new Map([...lockedMounts(checkout)].map(([k, v]) => [k, v.repository]));
+}
+
 /** The checkout's instances, as the inheritance needs them, with their roots. The repository is the mounted one, else the declared one. */
-export function instancesIn(checkout: string): (InstanceFacts & { root: string; declaredRepository?: string })[] {
-  const out: (InstanceFacts & { root: string; declaredRepository?: string })[] = [];
-  const locked = lockedRepositories(checkout);
+export function instancesIn(checkout: string): (InstanceFacts & { root: string; declaredRepository?: string; sha?: string })[] {
+  const out: (InstanceFacts & { root: string; declaredRepository?: string; sha?: string })[] = [];
+  const locked = lockedMounts(checkout);
   for (const root of instanceRootsIn(checkout)) {
     const d = declarationOf(root);
     const name = typeof d?.["name"] === "string" ? (d["name"] as string) : basename(root);
     const declared = typeof d?.["repository"] === "string" ? (d["repository"] as string) : undefined;
-    const mounted = locked.get(name);
+    const mount = locked.get(name);
+    const mounted = mount?.repository;
     const repository = mounted ?? declared;
     const needs = Array.isArray(d?.["needs"]) ? (d!["needs"] as unknown[]).filter((x): x is string => typeof x === "string") : [];
-    out.push({ name, root, needs, ...(repository ? { repository } : {}), ...(declared && mounted && declared !== mounted ? { declaredRepository: declared } : {}) });
+    out.push({ name, root, needs, ...(repository ? { repository } : {}), ...(declared && mounted && declared !== mounted ? { declaredRepository: declared } : {}), ...(mount?.sha ? { sha: mount.sha } : {}) });
   }
   return out.sort((a, b) => a.name.localeCompare(b.name));
 }
 
 /** The IG instances to build, and every instance that needs this layer but is skipped. */
-export function igTargets(instances: readonly (InstanceFacts & { root: string; declaredRepository?: string })[], list: BranchLister, only?: string): { targets: IgTarget[]; skipped: Skipped[] } {
+export function igTargets(instances: readonly (InstanceFacts & { root: string; declaredRepository?: string; sha?: string })[], list: BranchLister, only?: string): { targets: IgTarget[]; skipped: Skipped[] } {
   const targets: IgTarget[] = [];
   const skipped: Skipped[] = [];
   const need = needing(instances, LAYER);
@@ -212,7 +235,7 @@ export function igTargets(instances: readonly (InstanceFacts & { root: string; d
       skipped.push({ name: i.name, why: `${i.repository} carries no AST branch family (${AST_FAMILY_PREFIXES.join(", ")}): not an IG, or its AST was never seeded` });
       continue;
     }
-    targets.push({ name: i.name, root: i.root, repository: i.repository, ...(i.declaredRepository ? { declaredRepository: i.declaredRepository } : {}), branches });
+    targets.push({ name: i.name, root: i.root, repository: i.repository, ...(i.declaredRepository ? { declaredRepository: i.declaredRepository } : {}), ...(i.sha ? { sha: i.sha } : {}), branches });
   }
   return { targets, skipped };
 }
@@ -437,14 +460,34 @@ export function sidecarsFor(checkout: string, clone: string, work: string, dir: 
   return { at: target };
 }
 
+/**
+ * A shallow clone of `repository` into `dir`: at `sha` when the lock pins one
+ * (fetched by commit, so a pin that is not a branch tip still works), else
+ * the default branch, as before.
+ */
+export function cloneAt(repository: string, dir: string, sha?: string, git: typeof run = run): { ok: boolean; out: string } {
+  const url = `https://github.com/${repository}`;
+  if (!sha) return git("git", ["clone", "--quiet", "--depth", "1", url, dir]);
+  for (const args of [
+    ["init", "--quiet", dir],
+    ["-C", dir, "remote", "add", "origin", url],
+    ["-C", dir, "fetch", "--quiet", "--depth", "1", "--no-tags", "origin", sha],
+    ["-C", dir, "checkout", "--quiet", "--detach", "FETCH_HEAD"],
+  ]) {
+    const r = git("git", args);
+    if (!r.ok) return r;
+  }
+  return { ok: true, out: "" };
+}
+
 /** Build one IG's index, menu and releases. Returns the problems; empty means built. */
 export function buildOne(t: IgTarget, work: string, log: (s: string) => void, checkout = resolve(t.root, "..")): string[] {
   const problems: string[] = [];
   if (!isSafeInstanceName(t.name)) return [`refused: instance name is not a single safe path segment`];
   const clone = join(work, t.name);
   rmSync(clone, { recursive: true, force: true });
-  const c = run("git", ["clone", "--quiet", "--depth", "1", `https://github.com/${t.repository}`, clone]);
-  if (!c.ok) return [`clone of ${t.repository} failed: ${c.out}`];
+  const c = cloneAt(t.repository, clone, t.sha);
+  if (!c.ok) return [`clone of ${t.repository}${t.sha ? `@${t.sha.slice(0, 7)}` : ""} failed: ${c.out}`];
   // The paths the harness reads in the IG: its contentTypes.ig.include. An IG
   // that declares none is read as before, and the warning lands in this log.
   try {
