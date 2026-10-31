@@ -11,7 +11,7 @@ import { join } from "node:path";
 import { igChromeIncludes, liquidInertScript, SOURCE_LINKS_JS } from "./build-ig-site";
 import { Liquid } from "liquidjs";
 import { EDIT_LINKS_RUNTIME } from "../../cat-harness-tools/src/core/edit-links.js";
-import { ARTIFACT_LIST_TEMPLATE_PATH, artifactListInclude, publisherPlural, FOOTER_TEMPLATE_PATH, ARTIFACTS_TEMPLATE_PATH,IG_FIGURE_IMAGES_STAMP, annexMount, ANNEX_SCRIPT_PATH, artifactVariables, artifactCellLookup, kramdownId, linkTableCells, colourScheme, composeIgSite, liquidSiteBase, contrast, dedupeIds, igTocNav, igTopBar, IG_TOPBAR_CSS, includeTargets, isSafeIncludeName, localTemplateIncludes, pageNav, relinkArtifacts, relinkTemplatedArtifacts, relinkOffSite, offSiteHref, rubyLiquidStrings, relinkPublisherOutputs, sourceHeadings, dataOverwritesQa, describeStage, RELEASES_TEMPLATE_PATH, releaseVariables, sizeLabel, stageIgSite, tocPage, type StageResult } from "./build-ig-site";
+import { ARTIFACT_LIST_TEMPLATE_PATH, artifactListInclude, publisherPlural, FOOTER_TEMPLATE_PATH, ARTIFACTS_TEMPLATE_PATH,IG_FIGURE_IMAGES_STAMP, annexMount, ANNEX_SCRIPT_PATH, artifactVariables, artifactCellLookup, kramdownId, linkTableCells, colourScheme, composeIgSite, liquidSiteBase, contrast, dedupeIds, igTocNav, igTopBar, IG_TOPBAR_CSS, includeTargets, isSafeIncludeName, localTemplateIncludes, pageNav, relinkArtifacts, relinkTemplatedArtifacts, relinkOffSite, offSiteHref, rubyLiquidStrings, relinkPublisherOutputs, relinkPublisherTemplateAssets, sourceHeadings, dataOverwritesQa, describeStage, RELEASES_TEMPLATE_PATH, releaseVariables, sizeLabel, stageIgSite, tocPage, type StageResult } from "./build-ig-site";
 import { annexDirsFor, annexesFor, annexesIn, copyDocsInto, igSiteDocs, webpagePalette } from "./stage-ig-sites";
 import type { IgReleases } from "../schemas/ig-releases.ts";
 import { artifactPageName } from "../schemas/fhir-artifact-index.js";
@@ -1524,6 +1524,58 @@ describe("include names are refused unless they are one safe path segment", () =
       expect(existsSync(join(out, "_includes", "sub"))).toBe(false);
       expect(res.notRendered).toEqual(["kept.md"]);
       expect(describeStage(res)).toContain("REFUSED include name(s)");
+    } finally {
+      rmSync(d, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("relinkPublisherTemplateAssets — staged input/images HTML pages point Publisher template assets at canonical (#2741)", () => {
+  test("rewrites ../ relative links to fhir.css, fhir-table-scripts.js and assets/{css,js,ico}/* while preserving sibling Swagger UI assets", () => {
+    const html = [
+      '<link href="../../fhir.css" rel="stylesheet"/>',
+      '<link href="../../assets/css/bootstrap-fhir.css" rel="stylesheet"/>',
+      '<link href="./swagger-ui.css" rel="stylesheet"/>',
+      '<link href="index.css" rel="stylesheet"/>',
+      '<link rel="apple-touch-icon-precomposed" sizes="144x144" href="../../assets/ico/icon-fhir-144.png"/>',
+      '<script src="../../fhir-table-scripts.js"></script>',
+      '<script src="../../assets/js/jquery.js"></script>',
+      '<script src="./swagger-ui-bundle.js"></script>',
+    ].join("\n");
+    const r = relinkPublisherTemplateAssets(html, "http://example.org/ig/");
+    expect(r.count).toBe(5);
+    expect(r.text).toContain('href="http://example.org/ig/fhir.css"');
+    expect(r.text).toContain('href="http://example.org/ig/assets/css/bootstrap-fhir.css"');
+    expect(r.text).toContain('href="http://example.org/ig/assets/ico/icon-fhir-144.png"');
+    expect(r.text).toContain('src="http://example.org/ig/fhir-table-scripts.js"');
+    expect(r.text).toContain('src="http://example.org/ig/assets/js/jquery.js"');
+    expect(r.text).toContain('href="./swagger-ui.css"');
+    expect(r.text).toContain('href="index.css"');
+    expect(r.text).toContain('src="./swagger-ui-bundle.js"');
+  });
+
+  test("stageIgSite rewrites Publisher template asset links in staged input/images/<dir>/*.html files", () => {
+    const d = mkdtempSync(join(tmpdir(), "ig-openapi-assets-"));
+    try {
+      const src = join(d, "src");
+      mkdirSync(join(src, "input", "pagecontent"), { recursive: true });
+      mkdirSync(join(src, "input", "images", "openapi"), { recursive: true });
+      writeFileSync(
+        join(src, "sushi-config.yaml"),
+        "id: example.ig\ncanonical: http://example.org/ig\nname: ExampleIG\ntitle: Example IG\nstatus: draft\nversion: 0.1.0\nfhirVersion: 4.0.1\npages:\n  index.md:\n    title: Home\n",
+      );
+      writeFileSync(join(src, "input", "pagecontent", "index.md"), "Home");
+      writeFileSync(
+        join(src, "input", "images", "openapi", "index.html"),
+        '<html><head><link href="../../fhir.css" rel="stylesheet"/><link href="./swagger-ui.css" rel="stylesheet"/></head><body><script src="../../assets/js/jquery.js"></script></body></html>',
+      );
+      const out = join(d, "out");
+      const res = stageIgSite(src, out);
+      expect(res.relinked).toBe(2);
+      const staged = readFileSync(join(out, "openapi", "index.html"), "utf-8");
+      expect(staged).toContain('href="http://example.org/ig/fhir.css"');
+      expect(staged).toContain('src="http://example.org/ig/assets/js/jquery.js"');
+      expect(staged).toContain('href="./swagger-ui.css"');
     } finally {
       rmSync(d, { recursive: true, force: true });
     }
