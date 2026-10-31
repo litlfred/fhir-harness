@@ -11,7 +11,7 @@ import { join } from "node:path";
 import { igChromeIncludes, liquidInertScript, SOURCE_LINKS_JS } from "./build-ig-site";
 import { Liquid } from "liquidjs";
 import { EDIT_LINKS_RUNTIME } from "../../cat-harness-tools/src/core/edit-links.js";
-import { ARTIFACT_LIST_TEMPLATE_PATH, artifactListInclude, publisherPlural, FOOTER_TEMPLATE_PATH, ARTIFACTS_TEMPLATE_PATH,IG_FIGURE_IMAGES_STAMP, annexMount, ANNEX_SCRIPT_PATH, artifactVariables, artifactCellLookup, kramdownId, linkTableCells, colourScheme, composeIgSite, liquidSiteBase, contrast, dedupeIds, igTocNav, igTopBar, IG_TOPBAR_CSS, includeTargets, localTemplateIncludes, pageNav, relinkArtifacts, relinkTemplatedArtifacts, relinkOffSite, rubyLiquidStrings, relinkPublisherOutputs, sourceHeadings, dataOverwritesQa, describeStage, RELEASES_TEMPLATE_PATH, releaseVariables, sizeLabel, stageIgSite, tocPage, type StageResult } from "./build-ig-site";
+import { ARTIFACT_LIST_TEMPLATE_PATH, artifactListInclude, publisherPlural, FOOTER_TEMPLATE_PATH, ARTIFACTS_TEMPLATE_PATH,IG_FIGURE_IMAGES_STAMP, annexMount, ANNEX_SCRIPT_PATH, artifactVariables, artifactCellLookup, kramdownId, linkTableCells, colourScheme, composeIgSite, liquidSiteBase, contrast, dedupeIds, igTocNav, igTopBar, IG_TOPBAR_CSS, includeTargets, localTemplateIncludes, pageNav, relinkArtifacts, relinkTemplatedArtifacts, relinkOffSite, offSiteHref, rubyLiquidStrings, relinkPublisherOutputs, sourceHeadings, dataOverwritesQa, describeStage, RELEASES_TEMPLATE_PATH, releaseVariables, sizeLabel, stageIgSite, tocPage, type StageResult } from "./build-ig-site";
 import { annexDirsFor, annexesFor, annexesIn, copyDocsInto, igSiteDocs, webpagePalette } from "./stage-ig-sites";
 import type { IgReleases } from "../schemas/ig-releases.ts";
 import { artifactPageName } from "../schemas/fhir-artifact-index.js";
@@ -1030,6 +1030,12 @@ describe("relinkOffSite — what this build cannot serve goes where it is served
     const r = relinkOffSite("[s](.github/skills/s.yaml) [d](bpmn/D.bpmn)", o);
     expect(r.text).toBe("[s](https://github.com/o/r/blob/main/.github/skills/s.yaml) [d](https://github.com/o/r/blob/main/input/bpmn/D.bpmn)");
     expect(r.count).toBe(2);
+  });
+  test("artifacts.html this build does not write goes to the published IG (folio-assistant#2741)", () => {
+    expect(relinkOffSite('<a href="artifacts.html">A</a>', o).text).toBe('<a href="http://example.org/ig/artifacts.html">A</a>');
+    expect(offSiteHref("artifacts.html", o.canonical, (t) => t === "artifacts.html")).toBe("artifacts.html");
+    expect(offSiteHref("downloads.html", o.canonical, o.isServed)).toBe("downloads.html");
+    expect(offSiteHref("artifacts.html", undefined, o.isServed)).toBe("artifacts.html");
   });
   test("a page nothing serves is left as written and REPORTED", () => {
     const r = relinkOffSite("[v](video_tutorial.html) [i](index.html)", o);
