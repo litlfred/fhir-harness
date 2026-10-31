@@ -99,7 +99,8 @@
  * Nothing here may know about WHO (fhir-harness/AGENTS.md).
  */
 import { spawnSync } from "node:child_process";
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, utimesSync, writeFileSync } from "node:fs";
+import { gzipSync } from "node:zlib";
 import { parse as parseYaml } from "yaml";
 import { tmpdir } from "node:os";
 import { basename, join, resolve } from "node:path";
@@ -304,6 +305,45 @@ export function publishedBase(committed: Record<string, unknown> | undefined, de
 }
 
 /**
+ * Build one 512-byte POSIX ustar header with zeroed mtime/uid/gid/uname/gname
+ * so `package.tgz` (and its compressed byte length in `index.json`) is
+ * byte-for-byte identical across runs and across Linux/macOS (bean `fwtz`,
+ * `cat-harness-tools#400`).
+ */
+function ustarHeader(entryPath: string, size: number, isDir: boolean): Buffer {
+  const header = Buffer.alloc(512);
+  let name = entryPath;
+  let prefix = "";
+  if (Buffer.byteLength(entryPath, "utf-8") > 100) {
+    const slash = entryPath.indexOf("/");
+    if (slash > 0) {
+      prefix = entryPath.slice(0, slash);
+      name = entryPath.slice(slash + 1);
+    }
+  }
+  if (Buffer.byteLength(name, "utf-8") > 100 || Buffer.byteLength(prefix, "utf-8") > 155) {
+    throw new Error(`tar entry path exceeds ustar limits: ${entryPath}`);
+  }
+  header.write(name, 0, 100, "utf-8");
+  header.write(isDir ? "0000755\0" : "0000644\0", 100, 8, "utf-8");
+  header.write("0000000\0", 108, 8, "utf-8");
+  header.write("0000000\0", 116, 8, "utf-8");
+  header.write(`${size.toString(8).padStart(11, "0")}\0`, 124, 12, "utf-8");
+  header.write("00000000000\0", 136, 12, "utf-8");
+  header.fill(0x20, 148, 156);
+  header.write(isDir ? "5" : "0", 156, 1, "utf-8");
+  header.write("ustar\0", 257, 6, "utf-8");
+  header.write("00", 263, 2, "utf-8");
+  header.write("0000000\0", 329, 8, "utf-8");
+  header.write("0000000\0", 337, 8, "utf-8");
+  if (prefix) header.write(prefix, 345, 155, "utf-8");
+  let sum = 0;
+  for (let i = 0; i < 512; i++) sum += header[i]!;
+  header.write(`${sum.toString(8).padStart(6, "0")}\0 `, 148, 8, "utf-8");
+  return header;
+}
+
+/**
  * Write `out` as a Publisher-shaped `package.tgz` from the AST in `ast`: each
  * resource at `package/<Type>-<id>.json`, and `package/package.json` from the
  * IG's `sushi-config.yaml`. Returns the number of resources packed.
@@ -343,9 +383,23 @@ export function packFromAst(ast: string, igSource: string, out: string, stage: s
       2,
     )}\n`,
   );
+  const files = readdirSync(pkg).sort();
+  const blocks: Buffer[] = [ustarHeader("package/", 0, true)];
+  for (const file of files) {
+    const fullPath = join(pkg, file);
+    utimesSync(fullPath, 0, 0);
+    const content = readFileSync(fullPath);
+    blocks.push(ustarHeader(`package/${file}`, content.length, false), content);
+    const pad = (512 - (content.length % 512)) % 512;
+    if (pad > 0) blocks.push(Buffer.alloc(pad));
+  }
+  utimesSync(pkg, 0, 0);
+  blocks.push(Buffer.alloc(1024));
+  const gz = gzipSync(Buffer.concat(blocks));
+  gz.fill(0, 4, 8);
+  gz[9] = 0x03;
   mkdirSync(join(out, ".."), { recursive: true });
-  const t = spawnSync("tar", ["-czf", out, "-C", stage, "package"], { encoding: "utf-8" });
-  if (t.status !== 0) throw new Error(`tar failed: ${t.stderr}`);
+  writeFileSync(out, gz);
   return n;
 }
 
