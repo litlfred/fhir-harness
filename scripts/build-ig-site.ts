@@ -1168,9 +1168,10 @@ export const notRenderedMarker = (name: string, from: string) =>
 export interface StageOptions {
   baseurl?: string;
   /**
-   * Site paths a later step writes, as a `/`-ended prefix and the step that
-   * owns it. An `input/images` file under one is left out and reported, so
-   * the site holds one answer for each URL.
+   * Site paths a later step writes, and the step that owns each: a
+   * `/`-ended prefix reserves everything under it, any other value that one
+   * file. An `input/images` file reserved this way is left out and reported,
+   * so the site holds one answer for each URL.
    */
   reservedPaths?: readonly { prefix: string; by: string }[];
   plantumlJar?: string;
@@ -1970,7 +1971,7 @@ function stageDeclaredSource(igSrc: string, out: string, opts: StageOptions): St
   const unparseable: string[] = [];
   const reserved: string[] = [];
   for (const f of filesDeep(imagesDir)) {
-    const owner = opts.reservedPaths?.find((p) => f.startsWith(p.prefix));
+    const owner = opts.reservedPaths?.find((p) => (p.prefix.endsWith("/") ? f.startsWith(p.prefix) : f === p.prefix));
     if (owner) {
       reserved.push(`${f} (${owner.by})`);
       continue;

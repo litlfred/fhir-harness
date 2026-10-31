@@ -72,6 +72,25 @@ test("an igSite instance reserves each served directory's path, so its IG's inpu
   expect(servedPathsFor(root)).toEqual([{ prefix: "openapi/", by: "served directory served-ig-openapi" }]);
 });
 
+test("a served directory the checkout holds reserves each of its files, not the whole route", () => {
+  const root = join(repo, "served-files");
+  mkdirSync(join(root, "docs"), { recursive: true });
+  mkdirSync(join(root, "openapi", "sub"), { recursive: true });
+  writeFileSync(join(root, "openapi", "api.openapi.json"), "{}");
+  writeFileSync(join(root, "openapi", "sub", "op.json"), "{}");
+  writeDeclaration(root, {
+    name: "served-files",
+    directories: [
+      { id: "served-files-docs", path: "docs/", graphTypologies: ["docs"], igSite: true },
+      { id: "served-files-openapi", path: "openapi/", graphTypologies: ["openapi"], served: true },
+    ],
+  });
+  expect(servedPathsFor(root)).toEqual([
+    { prefix: "openapi/api.openapi.json", by: "served directory served-files-openapi" },
+    { prefix: "openapi/sub/op.json", by: "served directory served-files-openapi" },
+  ]);
+});
+
 test("an IG site at /<instance>/ig/ reserves nothing: no served route can meet it", () => {
   const root = join(repo, "served-no-igsite");
   mkdirSync(root, { recursive: true });
