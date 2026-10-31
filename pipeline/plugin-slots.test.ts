@@ -17,7 +17,7 @@ describe("plugin-slots.ts", () => {
     const here = import.meta.dir;
     const script = [
       `require(${JSON.stringify(join(here, "plugin-slots.ts"))});`,
-      `const { defaultContentTypes } = require(${JSON.stringify(join(here, "..", "..", "cat-harness", "schemas", "content", "content-type.js"))});`,
+      `const { defaultContentTypes } = require(${JSON.stringify(join(here, "..", "..", "cat-harness-tools", "schemas", "content", "content-type.ts"))});`,
       `console.log(defaultContentTypes.get("ig") !== undefined);`,
     ].join("\n");
     const r = spawnSync("bun", ["-e", script], { encoding: "utf-8", cwd: join(here, "..") });

@@ -455,7 +455,7 @@ describe("copyDocsInto: a front-matter-only page declares something ABOUT a gene
 //
 // `leaf` → `mid` → `base`: two hops, the middle one declaring no theme, so
 // the palette is found THROUGH an instance that has none.
-const THEME_TS = join(import.meta.dir, "..", "..", "cat-harness", "schemas", "theme.ts");
+const THEME_TS = join(import.meta.dir, "..", "..", "cat-harness-tools", "schemas", "ui", "theme.ts");
 const BASE_THEME = `import { ResolvedThemeSchema } from ${JSON.stringify(THEME_TS)};
 export const INSTANCE_THEMES = [ResolvedThemeSchema.parse({
   $schema: "folio-theme/v1", kind: "webpage", id: "base-web", name: "Base",
