@@ -26,7 +26,9 @@
     "ig-site:publisher-pages": "bun run fhir-harness/scripts/ig-repo-site.ts publisher-pages",
     "ig-site:bar": "bun run fhir-harness/scripts/ig-repo-site.ts bar",
     "ig-ast:pages": "bun run fhir-harness/scripts/gen-ig-ast-pages.ts",
-    "ig-index:build": "bun run fhir-harness/scripts/build-ig-indexes.ts"
+    "ig-index:build": "bun run fhir-harness/scripts/build-ig-indexes.ts",
+    "ig-ast:pin": "bun run fhir-harness/scripts/ig-ast-pin.ts",
+    "ig-ast:lock:check": "bun run fhir-harness/scripts/ig-ast-pin.ts --check"
   },
   "overrides": {
     "node-forge": "^1.4.2",
