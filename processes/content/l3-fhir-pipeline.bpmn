@@ -168,10 +168,10 @@
         <dc:Bounds x="160" y="80" width="1960" height="897" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Lane_Modeller_di" bpmnElement="Lane_Modeller" isHorizontal="true">
-        <dc:Bounds x="190" y="80" width="1930" height="150" />
+        <dc:Bounds x="190" y="377" width="1930" height="150" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Lane_WorkPlan_di" bpmnElement="Lane_WorkPlan" isHorizontal="true">
-        <dc:Bounds x="190" y="230" width="1930" height="297" />
+        <dc:Bounds x="190" y="80" width="1930" height="297" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Lane_Build_di" bpmnElement="Lane_Build" isHorizontal="true">
         <dc:Bounds x="190" y="527" width="1930" height="150" />
@@ -183,13 +183,13 @@
         <dc:Bounds x="190" y="827" width="1930" height="150" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="StartEvent_ModelReady_di" bpmnElement="StartEvent_ModelReady">
-        <dc:Bounds x="262" y="137" width="36" height="36" />
+        <dc:Bounds x="262" y="434" width="36" height="36" />
         
       <bpmndi:BPMNLabel>
-          <dc:Bounds x="225" y="177" width="110" height="30" />
+          <dc:Bounds x="225" y="474" width="110" height="30" />
         </bpmndi:BPMNLabel></bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Task_AuthorFsh_di" bpmnElement="Task_AuthorFsh">
-        <dc:Bounds x="540" y="95" width="120" height="120" />
+        <dc:Bounds x="540" y="392" width="120" height="120" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Task_Sushi_di" bpmnElement="Task_Sushi">
         <dc:Bounds x="700" y="542" width="120" height="120" />
@@ -209,7 +209,7 @@
         
       <bpmndi:BPMNLabel><dc:Bounds x="1345" y="781" width="110" height="17" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Task_QcBeans_di" bpmnElement="Task_QcBeans">
-        <dc:Bounds x="1500" y="318.5" width="120" height="120" />
+        <dc:Bounds x="1500" y="168.5" width="120" height="120" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Task_IgPublisher_di" bpmnElement="Task_IgPublisher">
         <dc:Bounds x="1660" y="542" width="120" height="120" />
@@ -224,12 +224,12 @@
           <dc:Bounds x="1985" y="924" width="110" height="30" />
         </bpmndi:BPMNLabel></bpmndi:BPMNShape>
       <bpmndi:BPMNEdge id="C01_di" bpmnElement="C01">
-        <di:waypoint x="298" y="155" />
-        <di:waypoint x="540" y="155" />
+        <di:waypoint x="298" y="452" />
+        <di:waypoint x="540" y="452" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="C03_di" bpmnElement="C03">
-        <di:waypoint x="660" y="155" />
-        <di:waypoint x="680" y="155" />
+        <di:waypoint x="660" y="452" />
+        <di:waypoint x="680" y="452" />
         <di:waypoint x="680" y="602" />
         <di:waypoint x="700" y="602" />
       </bpmndi:BPMNEdge>
@@ -243,9 +243,9 @@
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="C06_di" bpmnElement="C06">
         <di:waypoint x="1080" y="577" />
-        <di:waypoint x="1080" y="215" />
-        <di:waypoint x="600" y="215" />
-        <di:waypoint x="600" y="200" />
+        <di:waypoint x="1080" y="512" />
+        <di:waypoint x="600" y="512" />
+        <di:waypoint x="600" y="497" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="C07_di" bpmnElement="C07">
         <di:waypoint x="1105" y="602" />
@@ -261,14 +261,14 @@
       <bpmndi:BPMNEdge id="C09_di" bpmnElement="C09">
         <di:waypoint x="1425" y="752" />
         <di:waypoint x="1462.5" y="752" />
-        <di:waypoint x="1462.5" y="378.5" />
-        <di:waypoint x="1500" y="378.5" />
+        <di:waypoint x="1462.5" y="228.5" />
+        <di:waypoint x="1500" y="228.5" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="C10_di" bpmnElement="C10">
-        <di:waypoint x="1500" y="378.5" />
-        <di:waypoint x="1080" y="378.5" />
-        <di:waypoint x="1080" y="155" />
-        <di:waypoint x="660" y="155" />
+        <di:waypoint x="1500" y="228.5" />
+        <di:waypoint x="1080" y="228.5" />
+        <di:waypoint x="1080" y="452" />
+        <di:waypoint x="660" y="452" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="C11_di" bpmnElement="C11">
         <di:waypoint x="1425" y="752" />
