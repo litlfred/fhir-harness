@@ -137,8 +137,19 @@ jobs:
           # unpublished @litlfred/folio-assistant-core; every run since
           # 2026-10-30 failed here).
           bun run "$M/scripts/mount-from-lock.ts" --root . --no-install
-          for d in fhir-harness folio-assistant-core cat-harness; do
+          for d in fhir-harness folio-assistant-core cat-harness cat-harness-tools bootstrap-tools; do
             [ -f "$d/package.json" ] && (cd "$d" && bun install --no-save)
+          done
+          # A mount imports another by its package name
+          # (`@litlfred/cat-harness-tools/...` in fhir-harness/schemas/ig-ast.ts),
+          # and an IG repository has no root workspace to resolve it. Link each
+          # mounted package into the root's node_modules, which no mount digest
+          # covers.
+          mkdir -p node_modules/@litlfred
+          for f in */package.json; do
+            d=${f%/package.json}
+            n=$(python3 -c "import json,sys;print(json.load(open(sys.argv[1])).get('name',''))" "$f")
+            case "$n" in @litlfred/*) ln -sfn "../../$d" "node_modules/$n" ;; esac
           done
           [ -f fhir-harness/scripts/ig-cache.sh ] || { echo "::error::the lock mounts no fhir-harness"; exit 2; }
 
