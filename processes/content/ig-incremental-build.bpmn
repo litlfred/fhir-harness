@@ -48,6 +48,7 @@
     </bpmn:extensionElements>
     <bpmn:laneSet id="Process_IgIncremental_LaneSet">
       <bpmn:lane id="Lane_Author" name="FHIR modeller / PR author (person + authoring agent)">
+        <bpmn:documentation>Starts the run with a source change, and owns every failure branch before the process ends rather than just stopping: Gateway_Valid's `no`, Gateway_QcPass's `no` and Gateway_Restore's `environment error` each write to the work plan here, in Task_LogFindings, Task_QcBeans and Task_LogEnvError, before EndEvent_Findings, EndEvent_FindingsQc or EndEvent_EnvError. A run that stops short therefore always leaves a record of why, not only a red check. The work plan is a data store these tasks write to, not a lane of its own.</bpmn:documentation>
         <bpmn:extensionElements><bootstrap.processes:role ref="fhir-modeller"/></bpmn:extensionElements>
         <bpmn:flowNodeRef>StartEvent_SourceChanged</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>EndEvent_Findings</bpmn:flowNodeRef>
