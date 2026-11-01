@@ -312,7 +312,7 @@
     },
     {
       "id": "process_questionnairewireframereview.task_fidelity",
-      "prefLabel": "Check field for field [check-wireframe-questionnaire]",
+      "prefLabel": "Check field for field",
       "definition": "fhir-harness/scripts/check-wireframe-questionnaire.ts <wireframe.html> <Questionnaire.json>, per layout. Exit 0 faithful, 1 a finding, 2 cannot tell, which is never a pass. The findings become the output's fidelity[] and are shown to the reviewers.",
       "notation": "Task_Fidelity",
       "source": "fhir-harness/processes/content/questionnaire-wireframe-review.bpmn#Task_Fidelity",
@@ -344,7 +344,7 @@
     },
     {
       "id": "process_questionnairewireframereview.task_screens",
-      "prefLabel": "Screenshots, web and mobile [wireframe-check]",
+      "prefLabel": "Screenshots, web and mobile",
       "definition": "cat-harness Tool wireframe-check: 1280×800 and 390×844; renders, no-overflow and no-placeholder, each a script entry. A rendering missing either viewport does not enter review.",
       "notation": "Task_Screens",
       "source": "fhir-harness/processes/content/questionnaire-wireframe-review.bpmn#Task_Screens",

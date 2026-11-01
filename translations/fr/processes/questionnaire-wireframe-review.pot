@@ -76,7 +76,7 @@ msgstr ""
 
 #: ../fhir-harness/processes/content/questionnaire-wireframe-review.bpmn:89
 #. Diagram label
-msgid "Check field for field [check-wireframe-questionnaire]"
+msgid "Check field for field"
 msgstr ""
 
 #: ../fhir-harness/processes/content/questionnaire-wireframe-review.bpmn:46
@@ -181,7 +181,7 @@ msgstr ""
 
 #: ../fhir-harness/processes/content/questionnaire-wireframe-review.bpmn:75
 #. Diagram label
-msgid "Screenshots, web and mobile [wireframe-check]"
+msgid "Screenshots, web and mobile"
 msgstr ""
 
 #: ../fhir-harness/processes/content/questionnaire-wireframe-review.bpmn:106

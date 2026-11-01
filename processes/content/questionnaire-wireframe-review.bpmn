@@ -72,7 +72,7 @@ WHAT IT DOES NOT CLAIM. A faithful Questionnaire is not therefore a good form, a
       <bpmn:incoming>Flow_2</bpmn:incoming>
       <bpmn:outgoing>Flow_3</bpmn:outgoing>
     </bpmn:task>
-    <bpmn:serviceTask id="Task_Screens" name="Screenshots, web and&#10;mobile [wireframe-check]">
+    <bpmn:serviceTask id="Task_Screens" name="Screenshots, web and&#10;mobile">
       <bpmn:documentation>cat-harness Tool wireframe-check: 1280×800 and 390×844; renders, no-overflow and no-placeholder, each a script entry. A rendering missing either viewport does not enter review.</bpmn:documentation>
       <bpmn:extensionElements>
         <bootstrap.processes:skill ref="wireframe-design-review"/>
@@ -86,7 +86,7 @@ WHAT IT DOES NOT CLAIM. A faithful Questionnaire is not therefore a good form, a
       <bpmn:outgoing>Flow_5</bpmn:outgoing>
       <bpmn:outgoing>Flow_6</bpmn:outgoing>
     </bpmn:exclusiveGateway>
-    <bpmn:serviceTask id="Task_Fidelity" name="Check field for field&#10;[check-wireframe-questionnaire]">
+    <bpmn:serviceTask id="Task_Fidelity" name="Check field for field">
       <bpmn:documentation>fhir-harness/scripts/check-wireframe-questionnaire.ts &lt;wireframe.html&gt; &lt;Questionnaire.json&gt;, per layout. Exit 0 faithful, 1 a finding, 2 cannot tell, which is never a pass. The findings become the output's fidelity[] and are shown to the reviewers.</bpmn:documentation>
       <bpmn:extensionElements>
         <bootstrap.processes:skill ref="fhir-questionnaire-wireframe"/>
