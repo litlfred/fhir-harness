@@ -73,7 +73,7 @@
       <bpmn:documentation>The IG's source model is ready: l3-fhir-authoring's required sourceModel. Which model, and how it was produced, is the calling process's to say — this pipeline names none, because L3 is derived and the layer above owns what it is derived from.</bpmn:documentation>
       <bpmn:outgoing>C01</bpmn:outgoing>
     </bpmn:startEvent>
-    <bpmn:userTask id="Task_AuthorFsh" name="Author FSH profiles&#10;[l3-fhir-authoring]">
+    <bpmn:userTask id="Task_AuthorFsh" name="Author FSH profiles">
       <bpmn:documentation>Write the FSH profiles, value sets and definitions the source model calls for. This is the stage where profiles, slicing and invariants belong — a decision that can only be expressed in FHIR comes here, not back into the source model.</bpmn:documentation>
       <bpmn:extensionElements>
         <bootstrap.processes:skill ref="l3-fhir-authoring" />
@@ -83,7 +83,7 @@
       <bpmn:incoming>C10</bpmn:incoming>
       <bpmn:outgoing>C03</bpmn:outgoing>
     </bpmn:userTask>
-    <bpmn:serviceTask id="Task_Sushi" name="SUSHI compile → FHIR JSON&#10;[l3-fhir-authoring]">
+    <bpmn:serviceTask id="Task_Sushi" name="SUSHI compile → FHIR JSON">
       <bpmn:documentation>Compile the FSH to FHIR JSON with SUSHI. Compiling is not conformance: a green SUSHI result goes on to validation and never stands in for it.</bpmn:documentation>
       <bpmn:extensionElements>
         <bootstrap.processes:skill ref="l3-fhir-authoring" />
@@ -91,7 +91,7 @@
       <bpmn:incoming>C03</bpmn:incoming>
       <bpmn:outgoing>C04</bpmn:outgoing>
     </bpmn:serviceTask>
-    <bpmn:serviceTask id="Task_Validate" name="Validate against profiles&#10;[fhir-validation]">
+    <bpmn:serviceTask id="Task_Validate" name="Validate against profiles">
       <bpmn:documentation>Validate the compiled resources against their profiles and the packages they constrain. A validator that could not start is could-not-determine, never a pass with an empty findings list. Failures return to authoring.</bpmn:documentation>
       <bpmn:extensionElements>
         <bootstrap.processes:skill ref="fhir-validation" />
@@ -105,7 +105,7 @@
       <bpmn:outgoing>C06</bpmn:outgoing>
       <bpmn:outgoing>C07</bpmn:outgoing>
     </bpmn:exclusiveGateway>
-    <bpmn:userTask id="Task_QcGates" name="QC gates&#10;[quality-control]">
+    <bpmn:userTask id="Task_QcGates" name="QC gates">
       <bpmn:documentation>The QC reviewer rules on the aggregate QA against the publication gates. Emitting the QA report is mechanical; ruling on it is a decision, which is why it sits in the reviewer's lane rather than the build's.</bpmn:documentation>
       <bpmn:extensionElements>
         <bootstrap.processes:skill ref="quality-control" />
@@ -119,7 +119,7 @@
       <bpmn:outgoing>C09</bpmn:outgoing>
       <bpmn:outgoing>C11</bpmn:outgoing>
     </bpmn:exclusiveGateway>
-    <bpmn:task id="Task_QcBeans" name="File QC findings as beans&#10;[todo-manager]">
+    <bpmn:task id="Task_QcBeans" name="File QC findings as beans">
       <bpmn:documentation>QC findings do not stay in a report nobody re-reads — each becomes a bean the modeller and the agents both see.</bpmn:documentation>
       <bpmn:extensionElements>
         <bootstrap.processes:skill ref="todo-manager" />
@@ -128,7 +128,7 @@
       <bpmn:incoming>C09</bpmn:incoming>
       <bpmn:outgoing>C10</bpmn:outgoing>
     </bpmn:task>
-    <bpmn:serviceTask id="Task_IgPublisher" name="IG Publisher build&#10;[ig-publication]">
+    <bpmn:serviceTask id="Task_IgPublisher" name="IG Publisher build">
       <bpmn:documentation>Run the IG Publisher: it renders output/, writes each resource's JSON, the package, canonicals and qa.json, and does the two things no cache can — validates every resource against its profiles and resolves the dependency closure with terminology expansion.</bpmn:documentation>
       <bpmn:extensionElements>
         <bootstrap.processes:skill ref="ig-publication" />
@@ -136,7 +136,7 @@
       <bpmn:incoming>C11</bpmn:incoming>
       <bpmn:outgoing>C12</bpmn:outgoing>
     </bpmn:serviceTask>
-    <bpmn:serviceTask id="Task_PublishIg" name="Publish the IG site&#10;[content-publish]">
+    <bpmn:serviceTask id="Task_PublishIg" name="Publish the IG site">
       <bpmn:documentation>Release authorisation and review follow draft-to-publication.bpmn.</bpmn:documentation>
       <bpmn:extensionElements>
         <cat-harness.processes:fulfilment kinds="person system" reason="publishing the built IG site is mechanical; the lane records who is accountable for what is live, and a publication manager may also publish by hand." />

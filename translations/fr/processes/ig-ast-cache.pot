@@ -61,17 +61,17 @@ msgstr ""
 
 #: ../fhir-harness/processes/content/ig-ast-cache.bpmn:71
 #. Diagram label
-msgid "Build and publish the site from the AST [ig-render-jekyll]"
+msgid "Build and publish the site from the AST"
 msgstr ""
 
 #: ../fhir-harness/processes/content/ig-ast-cache.bpmn:92
 #. Diagram label
-msgid "Build the IG with the Publisher AST exporter [ig-publisher-fork]"
+msgid "Build the IG with the Publisher AST exporter"
 msgstr ""
 
 #: ../fhir-harness/processes/content/ig-ast-cache.bpmn:84
 #. Diagram label
-msgid "Dispatch the IG's ig-ast-refresh.yml [ig-build-pipeline]"
+msgid "Dispatch the IG's ig-ast-refresh.yml"
 msgstr ""
 
 #: ../fhir-harness/processes/content/ig-ast-cache.bpmn:43
@@ -116,7 +116,7 @@ msgstr ""
 
 #: ../fhir-harness/processes/content/ig-ast-cache.bpmn:55
 #. Diagram label
-msgid "Restore the AST from its cache branch and judge it [ig-ast-delta]"
+msgid "Restore the AST from its cache branch and judge it"
 msgstr ""
 
 #: ../fhir-harness/processes/content/ig-ast-cache.bpmn:35
@@ -126,7 +126,7 @@ msgstr ""
 
 #: ../fhir-harness/processes/content/ig-ast-cache.bpmn:106
 #. Diagram label
-msgid "Seed the cache branch (ig-cache seed --push) [compiled-artefact-cache]"
+msgid "Seed the cache branch (ig-cache seed --push)"
 msgstr ""
 
 #: ../fhir-harness/processes/content/ig-ast-cache.bpmn:34

@@ -108,7 +108,7 @@ A proposed incremental build for a WHO SMART Implementation Guide: compile, vali
 - Answered by the push that started the process.
 - Call `workflow_complete` with `node: "Gateway_Path"` and `outcome` set to the label that holds:
   - «PR branch» → `Task_DeployPreview` (Deploy the preview site)
-  - «main / release» → `Task_Deploy` (Deploy the site [content-publish])
+  - «main / release» → `Task_Deploy` (Deploy the site)
 
 ### 10. Load or reuse the warm context (fhir_context_load) (`Task_ContextLoad`)
 
@@ -130,7 +130,7 @@ A proposed incremental build for a WHO SMART Implementation Guide: compile, vali
 - Record it: `workflow_complete` with `node: "Task_DeployPreview"`.
 - next: → `EndEvent_Preview` (Preview published)
 
-### 12. Deploy the site [content-publish] (`Task_Deploy`)
+### 12. Deploy the site (`Task_Deploy`)
 
 - Who: the `Publication manager — deploy and seed` lane (role `publication-manager`).
 - Skill: `content-publish`, `ig-publication`.

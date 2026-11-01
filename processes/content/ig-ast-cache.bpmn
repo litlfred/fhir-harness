@@ -52,7 +52,7 @@ WHAT IT DOES NOT CLAIM. A valid AST is a cache built from these inputs; it is no
       <bpmn:documentation>A publish of the IG repository's default branch (the site root) or of another branch (a preview), by `stage-local.ts`.</bpmn:documentation>
       <bpmn:outgoing>Flow_1</bpmn:outgoing>
     </bpmn:startEvent>
-    <bpmn:serviceTask id="Task_Restore" name="Restore the AST from its cache&#10;branch and judge it [ig-ast-delta]">
+    <bpmn:serviceTask id="Task_Restore" name="Restore the AST from its cache&#10;branch and judge it">
       <bpmn:documentation>`ig-cache.sh restore --ig-root .` fetches `cat/fhir-harness/fhir-ast/&lt;package id&gt;` into `output-ast/` (with the Publisher's `txcache/`), then `ig-cache.sh verify` runs `ig-ast.ts validity`: exit 0 valid, 1 stale-inputs (naming which input), 2 cannot-tell. A restore that finds no branch is a miss, judged as not valid. In an IG repository's site route this is the first `pre` step, `ig-site:ast` (`ig-repo-site.ts ast`).</bpmn:documentation>
       <bpmn:extensionElements>
         <bootstrap.processes:skill ref="ig-ast-delta"/>
@@ -68,7 +68,7 @@ WHAT IT DOES NOT CLAIM. A valid AST is a cache built from these inputs; it is no
       <bpmn:outgoing>Flow_3</bpmn:outgoing>
       <bpmn:outgoing>Flow_4</bpmn:outgoing>
     </bpmn:exclusiveGateway>
-    <bpmn:serviceTask id="Task_BuildSite" name="Build and publish the site&#10;from the AST [ig-render-jekyll]">
+    <bpmn:serviceTask id="Task_BuildSite" name="Build and publish the site&#10;from the AST">
       <bpmn:documentation>The site route's steps, provided by the mounted layers and run by `stage-local.ts` → `build-instance-site.ts`: the landing layer's IG API sidecars when it has the step (`ig-site:sidecars`), the artefact index from the AST and the thin pages with the IG composed at the root (`ig-site:compose`: `ast-to-artifact-index.ts`, `gen-ig-pages.ts --compiled-data ast-data`), the OpenAPI pages when the IG holds them (`ig-site:openapi`), the AST's resources served as `ast-data/` and the build stamp (`ig-site:publisher-pages`). Published at the root from the default branch, as a preview otherwise.</bpmn:documentation>
       <bpmn:extensionElements>
         <bootstrap.processes:skill ref="ig-render-jekyll"/>
@@ -81,7 +81,7 @@ WHAT IT DOES NOT CLAIM. A valid AST is a cache built from these inputs; it is no
       <bpmn:documentation>The site says what built it (`folio-build.json`), and every artefact page carries the AST's provisional mark.</bpmn:documentation>
       <bpmn:incoming>Flow_5</bpmn:incoming>
     </bpmn:endEvent>
-    <bpmn:userTask id="Task_Dispatch" name="Dispatch the IG's&#10;ig-ast-refresh.yml [ig-build-pipeline]">
+    <bpmn:userTask id="Task_Dispatch" name="Dispatch the IG's&#10;ig-ast-refresh.yml">
       <bpmn:documentation>Actions → "IG AST refresh (by hand)" → Run workflow on the default branch, inputs `ref` = the default branch, `force` = false. The publish refused, so the verdict already says the cache is not valid; `force` is for a cache that is valid but suspected wrong.</bpmn:documentation>
       <bpmn:extensionElements>
         <bootstrap.processes:skill ref="ig-build-pipeline"/>
@@ -89,7 +89,7 @@ WHAT IT DOES NOT CLAIM. A valid AST is a cache built from these inputs; it is no
       <bpmn:incoming>Flow_4</bpmn:incoming>
       <bpmn:outgoing>Flow_6</bpmn:outgoing>
     </bpmn:userTask>
-    <bpmn:serviceTask id="Task_Export" name="Build the IG with the Publisher&#10;AST exporter [ig-publisher-fork]">
+    <bpmn:serviceTask id="Task_Export" name="Build the IG with the Publisher&#10;AST exporter">
       <bpmn:documentation>The runner mounts the layers the IG repository's `index.lock.json` pins, restores and judges the cache itself, and, when it is not valid, runs the caller's optional `pre-export` overlay command, then `AstExportCli` (Tool `ig-ast-export`, `litlfred/fhir-ig-publisher` at the pinned `claude/ast-export` commit) with `-tx`. The inputs `pre-export` changed are put back and the AST is recorded against the clean commit's input digest (`ig-ast.ts source-inputs`). The AST just built must itself be `valid` for the commit, or the run fails.</bpmn:documentation>
       <bpmn:extensionElements>
         <bootstrap.processes:skill ref="ig-publisher-fork"/>
@@ -103,7 +103,7 @@ WHAT IT DOES NOT CLAIM. A valid AST is a cache built from these inputs; it is no
       <bpmn:outgoing>Flow_8</bpmn:outgoing>
       <bpmn:outgoing>Flow_10</bpmn:outgoing>
     </bpmn:exclusiveGateway>
-    <bpmn:serviceTask id="Task_Seed" name="Seed the cache branch&#10;(ig-cache seed --push) [compiled-artefact-cache]">
+    <bpmn:serviceTask id="Task_Seed" name="Seed the cache branch&#10;(ig-cache seed --push)">
       <bpmn:documentation>`ig-cache.sh seed --ig-root . --push`: one commit holding the AST, the Publisher's expansions and `txcache/`, its subject recording the package, counts, Publisher version and source commit. Refused when the candidate is under 90% of the incumbent's resources or edges (the no-shrink gate).</bpmn:documentation>
       <bpmn:extensionElements>
         <bootstrap.processes:skill ref="compiled-artefact-cache"/>

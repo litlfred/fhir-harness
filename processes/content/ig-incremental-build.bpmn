@@ -103,7 +103,7 @@
       <bpmn:documentation>A push to a PR branch (review path) or to main / a release (publish path). Both run this process; only the publish path may seed the cache.</bpmn:documentation>
       <bpmn:outgoing>F01</bpmn:outgoing>
     </bpmn:startEvent>
-    <bpmn:serviceTask id="Task_Restore" name="Restore derived state&#10;[ig-publication]">
+    <bpmn:serviceTask id="Task_Restore" name="Restore derived state">
       <bpmn:documentation>ig-cache restore: per-artefact records, the terminology cache, the package cache and temp/, keyed by the toolchain slug. Exit 0 usable, 1 miss, 2 environment error, 3 present but toolchain moved.</bpmn:documentation>
       <bpmn:extensionElements>
         <bootstrap.processes:skill ref="ig-publication" />
@@ -118,7 +118,7 @@
       <bpmn:outgoing>F04</bpmn:outgoing>
       <bpmn:outgoing>F04E</bpmn:outgoing>
     </bpmn:exclusiveGateway>
-    <bpmn:task id="Task_LogEnvError" name="Log the environment error&#10;on the bean [todo-manager]">
+    <bpmn:task id="Task_LogEnvError" name="Log the environment error&#10;on the bean">
       <bpmn:documentation>Exit 2 from restore: the cache store or the toolchain could not be reached. Record that on the change's bean, with the restore output, so the work plan says the build did not run and why. Check before creating — beans create is not idempotent.</bpmn:documentation>
       <bpmn:extensionElements>
         <bootstrap.processes:skill ref="todo-manager" />
@@ -131,7 +131,7 @@
       <bpmn:documentation>Nothing was built. The author (or whoever maintains the runner) fixes the environment and re-runs; a re-run with a readable cache takes `yes` or `no` as usual.</bpmn:documentation>
       <bpmn:incoming>F04F</bpmn:incoming>
     </bpmn:endEvent>
-    <bpmn:serviceTask id="Task_FullBuild" name="Full publisher build&#10;[ig-publication]">
+    <bpmn:serviceTask id="Task_FullBuild" name="Full publisher build">
       <bpmn:documentation>Exit 1 or 3 from restore: the whole IG is built as today. Its outputs become the records the next seed writes.</bpmn:documentation>
       <bpmn:extensionElements>
         <bootstrap.processes:skill ref="ig-publication" />
@@ -169,7 +169,7 @@
       <bpmn:incoming>F06</bpmn:incoming>
       <bpmn:outgoing>F07</bpmn:outgoing>
     </bpmn:serviceTask>
-    <bpmn:serviceTask id="Task_Sushi" name="SUSHI on the restricted tank&#10;[l3-fhir-authoring]">
+    <bpmn:serviceTask id="Task_Sushi" name="SUSHI on the restricted tank">
       <bpmn:documentation>Compile the restricted checkout with SUSHI — the cone's FSH, not the whole IG. A build optimisation, not a validation shortcut: SUSHI compiling is not conformance, so a green compile goes on to validation rather than standing in for it.</bpmn:documentation>
       <bpmn:extensionElements>
         <bootstrap.processes:skill ref="l3-fhir-authoring" />
@@ -187,7 +187,7 @@
       <bpmn:incoming>F08</bpmn:incoming>
       <bpmn:outgoing>F09</bpmn:outgoing>
     </bpmn:serviceTask>
-    <bpmn:serviceTask id="Task_Validate" name="Validate the cone&#10;(fhir_validate) [fhir-validation]">
+    <bpmn:serviceTask id="Task_Validate" name="Validate the cone&#10;(fhir_validate)">
       <bpmn:documentation>Validate the cone's resources against the warm validator and report the cone that was checked. A validator that could not start is could-not-determine, never a pass with no findings. A green cone is not a green IG: a profile the change did not touch can still be broken by it.</bpmn:documentation>
       <bpmn:extensionElements>
         <bootstrap.processes:skill ref="fhir-validation" />
@@ -201,7 +201,7 @@
       <bpmn:outgoing>F11</bpmn:outgoing>
       <bpmn:outgoing>F13</bpmn:outgoing>
     </bpmn:exclusiveGateway>
-    <bpmn:task id="Task_LogFindings" name="Log findings on the bean&#10;[todo-manager]">
+    <bpmn:task id="Task_LogFindings" name="Log findings on the bean">
       <bpmn:documentation>Validation failed: record the findings on the change's bean, so the work plan says what blocks it. Check before creating — beans create is not idempotent.</bpmn:documentation>
       <bpmn:extensionElements>
         <bootstrap.processes:skill ref="todo-manager" />
@@ -241,7 +241,7 @@
       <bpmn:incoming>F15</bpmn:incoming>
       <bpmn:outgoing>F16</bpmn:outgoing>
     </bpmn:serviceTask>
-    <bpmn:serviceTask id="Task_Site" name="Assemble the site&#10;(template · Jekyll) [ig-publication]">
+    <bpmn:serviceTask id="Task_Site" name="Assemble the site&#10;(template · Jekyll)">
       <bpmn:documentation>Assemble the site from the merged records: the IG template and a Jekyll build over output/. Only site assembly happens here — every artefact record already exists.</bpmn:documentation>
       <bpmn:extensionElements>
         <bootstrap.processes:skill ref="ig-publication" />
@@ -249,7 +249,7 @@
       <bpmn:incoming>F16</bpmn:incoming>
       <bpmn:outgoing>F17</bpmn:outgoing>
     </bpmn:serviceTask>
-    <bpmn:userTask id="Task_Qa" name="QC gates on the aggregate QA&#10;[quality-control]">
+    <bpmn:userTask id="Task_Qa" name="QC gates on the aggregate QA">
       <bpmn:documentation>qa.json is the aggregate of per-artefact outcomes; the reviewer reads the cone's rows first.</bpmn:documentation>
       <bpmn:extensionElements>
         <bootstrap.processes:skill ref="quality-control" />
@@ -264,7 +264,7 @@
       <bpmn:outgoing>F20</bpmn:outgoing>
       <bpmn:outgoing>F22</bpmn:outgoing>
     </bpmn:exclusiveGateway>
-    <bpmn:task id="Task_QcBeans" name="File QC findings as beans&#10;[todo-manager]">
+    <bpmn:task id="Task_QcBeans" name="File QC findings as beans">
       <bpmn:documentation>QC failed on the aggregate: file each finding as a bean, so it is tracked on the work plan rather than lost in qa.json. Check for an existing bean before creating one.</bpmn:documentation>
       <bpmn:extensionElements>
         <bootstrap.processes:skill ref="todo-manager" />
@@ -282,7 +282,7 @@
       <bpmn:outgoing>F23</bpmn:outgoing>
       <bpmn:outgoing>F25</bpmn:outgoing>
     </bpmn:exclusiveGateway>
-    <bpmn:serviceTask id="Task_DeployPreview" name="Deploy the preview site&#10;[content-publish]">
+    <bpmn:serviceTask id="Task_DeployPreview" name="Deploy the preview site">
       <bpmn:documentation>A preview never seeds the shared cache.</bpmn:documentation>
       <bpmn:extensionElements>
         <cat-harness.processes:fulfilment kinds="person system" reason="the preview deploy is mechanical but belongs to the reviewer’s lane because the preview exists FOR the review — moving it to Lane_Build would hide who the artefact is built for. A reviewer may also deploy one by hand." />
@@ -294,7 +294,7 @@
     <bpmn:endEvent id="EndEvent_Preview" name="Preview published">
       <bpmn:incoming>F24</bpmn:incoming>
     </bpmn:endEvent>
-    <bpmn:serviceTask id="Task_Deploy" name="Deploy the site&#10;[content-publish] [ig-publication]">
+    <bpmn:serviceTask id="Task_Deploy" name="Deploy the site">
       <bpmn:documentation>Deploy the site built from main or a release. Deploying is release-management, after a human authorised the release — an agent never records that authorisation. Report the published URL only once it answers: a returned deploy is not a serving site.</bpmn:documentation>
       <bpmn:extensionElements>
         <cat-harness.processes:fulfilment kinds="person system" reason="deploying the built site is mechanical; the lane records who is accountable for what is live, and its name “Publication manager — deploy and seed” says so. A publication manager may also deploy by hand." />

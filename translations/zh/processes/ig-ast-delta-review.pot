@@ -56,7 +56,7 @@ msgstr ""
 
 #: ../fhir-harness/processes/content/ig-ast-delta-review.bpmn:56
 #. Diagram label
-msgid "Check the base AST against the IG's inputs [ig-ast-delta]"
+msgid "Check the base AST against the IG's inputs"
 msgstr ""
 
 #: ../fhir-harness/processes/content/ig-ast-delta-review.bpmn:30
@@ -76,7 +76,7 @@ msgstr ""
 
 #: ../fhir-harness/processes/content/ig-ast-delta-review.bpmn:74
 #. Diagram label
-msgid "Diff base → head and render the delta pages [ig-ast-delta]"
+msgid "Diff base → head and render the delta pages"
 msgstr ""
 
 #: ../fhir-harness/processes/content/ig-ast-delta-review.bpmn:90
@@ -116,7 +116,7 @@ msgstr ""
 
 #: ../fhir-harness/processes/content/ig-ast-delta-review.bpmn:100
 #. Diagram label
-msgid "Note the missed coupling on the bean [todo-manager]"
+msgid "Note the missed coupling on the bean"
 msgstr ""
 
 #: ../fhir-harness/processes/content/ig-ast-delta-review.bpmn:38
@@ -131,7 +131,7 @@ msgstr ""
 
 #: ../fhir-harness/processes/content/ig-ast-delta-review.bpmn:82
 #. Diagram label
-msgid "Read the rendered delta [ig-ast-delta]"
+msgid "Read the rendered delta"
 msgstr ""
 
 #: ../fhir-harness/processes/content/ig-ast-delta-review.bpmn:39

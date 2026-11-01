@@ -46,7 +46,7 @@ msgstr ""
 
 #: ../fhir-harness/processes/content/ig-incremental-build.bpmn:244
 #. Diagram label
-msgid "Assemble the site (template · Jekyll) [ig-publication]"
+msgid "Assemble the site (template · Jekyll)"
 msgstr ""
 
 #: ../fhir-harness/processes/content/ig-incremental-build.bpmn:245
@@ -91,12 +91,12 @@ msgstr ""
 
 #: ../fhir-harness/processes/content/ig-incremental-build.bpmn:285
 #. Diagram label
-msgid "Deploy the preview site [content-publish]"
+msgid "Deploy the preview site"
 msgstr ""
 
 #: ../fhir-harness/processes/content/ig-incremental-build.bpmn:297
 #. Diagram label
-msgid "Deploy the site [content-publish] [ig-publication]"
+msgid "Deploy the site"
 msgstr ""
 
 #: ../fhir-harness/processes/content/ig-incremental-build.bpmn:298
@@ -126,7 +126,7 @@ msgstr ""
 
 #: ../fhir-harness/processes/content/ig-incremental-build.bpmn:267
 #. Diagram label
-msgid "File QC findings as beans [todo-manager]"
+msgid "File QC findings as beans"
 msgstr ""
 
 #: ../fhir-harness/processes/content/ig-incremental-build.bpmn:213
@@ -136,7 +136,7 @@ msgstr ""
 
 #: ../fhir-harness/processes/content/ig-incremental-build.bpmn:134
 #. Diagram label
-msgid "Full publisher build [ig-publication]"
+msgid "Full publisher build"
 msgstr ""
 
 #: ../fhir-harness/processes/content/ig-incremental-build.bpmn:163
@@ -171,12 +171,12 @@ msgstr ""
 
 #: ../fhir-harness/processes/content/ig-incremental-build.bpmn:204
 #. Diagram label
-msgid "Log findings on the bean [todo-manager]"
+msgid "Log findings on the bean"
 msgstr ""
 
 #: ../fhir-harness/processes/content/ig-incremental-build.bpmn:121
 #. Diagram label
-msgid "Log the environment error on the bean [todo-manager]"
+msgid "Log the environment error on the bean"
 msgstr ""
 
 #: ../fhir-harness/processes/content/ig-incremental-build.bpmn:347
@@ -266,7 +266,7 @@ msgstr ""
 
 #: ../fhir-harness/processes/content/ig-incremental-build.bpmn:252
 #. Diagram label
-msgid "QC gates on the aggregate QA [quality-control]"
+msgid "QC gates on the aggregate QA"
 msgstr ""
 
 #: ../fhir-harness/processes/content/ig-incremental-build.bpmn:216
@@ -286,7 +286,7 @@ msgstr ""
 
 #: ../fhir-harness/processes/content/ig-incremental-build.bpmn:106
 #. Diagram label
-msgid "Restore derived state [ig-publication]"
+msgid "Restore derived state"
 msgstr ""
 
 #: ../fhir-harness/processes/content/ig-incremental-build.bpmn:162
@@ -316,7 +316,7 @@ msgstr ""
 
 #: ../fhir-harness/processes/content/ig-incremental-build.bpmn:172
 #. Diagram label
-msgid "SUSHI on the restricted tank [l3-fhir-authoring]"
+msgid "SUSHI on the restricted tank"
 msgstr ""
 
 #: ../fhir-harness/processes/content/ig-incremental-build.bpmn:181
@@ -341,7 +341,7 @@ msgstr ""
 
 #: ../fhir-harness/processes/content/ig-incremental-build.bpmn:190
 #. Diagram label
-msgid "Validate the cone (fhir_validate) [fhir-validation]"
+msgid "Validate the cone (fhir_validate)"
 msgstr ""
 
 #: ../fhir-harness/processes/content/ig-incremental-build.bpmn:191

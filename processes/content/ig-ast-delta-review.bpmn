@@ -53,7 +53,7 @@ WHAT IT DOES NOT CLAIM. A clean review says the delta is explained, not that the
       <bpmn:documentation>Reached after an incremental build (IncrementalBuildCli) has merged the rebuilt cone into the base, or after a full build when comparing the two for W8.</bpmn:documentation>
       <bpmn:outgoing>Flow_1</bpmn:outgoing>
     </bpmn:startEvent>
-    <bpmn:serviceTask id="Task_Validity" name="Check the base AST against&#10;the IG's inputs [ig-ast-delta]">
+    <bpmn:serviceTask id="Task_Validity" name="Check the base AST against&#10;the IG's inputs">
       <bpmn:documentation>`ig-ast.ts validity &lt;base&gt; --ig &lt;root&gt;`: folio-assistant-core's compiledValidity on the manifest's inputs, with the input digest recomputed by the same algorithm as the Java writer. Exit 0 valid, 1 stale-inputs (names which input), 2 cannot-tell. Run against the BASE revision's checkout.</bpmn:documentation>
       <bpmn:extensionElements>
         <bootstrap.processes:skill ref="ig-ast-delta"/>
@@ -71,7 +71,7 @@ WHAT IT DOES NOT CLAIM. A clean review says the delta is explained, not that the
       <bpmn:documentation>No delta is shown. The caller runs a full build, whose AST becomes the next base.</bpmn:documentation>
       <bpmn:incoming>Flow_4</bpmn:incoming>
     </bpmn:endEvent>
-    <bpmn:serviceTask id="Task_Diff" name="Diff base → head and render&#10;the delta pages [ig-ast-delta]">
+    <bpmn:serviceTask id="Task_Diff" name="Diff base → head and render&#10;the delta pages">
       <bpmn:documentation>`ig-ast.ts diff &lt;base&gt; &lt;head&gt; --plan plan.json --site &lt;site&gt;/ast-delta/`: resources added, removed, changed (with an element-level differential) and version-changed; edges added and removed; the plan's decision. Every page opens with the provisional mark and is wrapped in raw so narrative Liquid is not executed.</bpmn:documentation>
       <bpmn:extensionElements>
         <bootstrap.processes:skill ref="ig-ast-delta"/>
@@ -79,7 +79,7 @@ WHAT IT DOES NOT CLAIM. A clean review says the delta is explained, not that the
       <bpmn:incoming>Flow_3</bpmn:incoming>
       <bpmn:outgoing>Flow_5</bpmn:outgoing>
     </bpmn:serviceTask>
-    <bpmn:userTask id="Task_Review" name="Read the rendered delta&#10;[ig-ast-delta]">
+    <bpmn:userTask id="Task_Review" name="Read the rendered delta">
       <bpmn:documentation>Start at the delta index; open each changed resource's page. Check `builtAt` before judging: a resource carried from the base was not rebuilt, so a difference there is the change itself or a missed coupling, never noise. The differential is structural: a reordered repeating element shows at every index.</bpmn:documentation>
       <bpmn:extensionElements>
         <bootstrap.processes:skill ref="ig-ast-delta"/>
@@ -97,7 +97,7 @@ WHAT IT DOES NOT CLAIM. A clean review says the delta is explained, not that the
       <bpmn:documentation>Hands back to ig-incremental-build at Task_Qa. The merged AST is still a cache; its pages keep the provisional mark.</bpmn:documentation>
       <bpmn:incoming>Flow_7</bpmn:incoming>
     </bpmn:endEvent>
-    <bpmn:task id="Task_FileCoupling" name="Note the missed coupling&#10;on the bean [todo-manager]">
+    <bpmn:task id="Task_FileCoupling" name="Note the missed coupling&#10;on the bean">
       <bpmn:documentation>Append to bean `a9tx` (W8): the resource key, the differential path, and why it is unexplained. Check before creating: beans create is not idempotent. A note, not a new bean, unless the owner asks for one.</bpmn:documentation>
       <bpmn:extensionElements>
         <bootstrap.processes:skill ref="todo-manager"/>

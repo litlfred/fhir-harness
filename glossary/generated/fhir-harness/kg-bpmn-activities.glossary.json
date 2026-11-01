@@ -8,7 +8,7 @@
   "terms": [
     {
       "id": "process_igastcache.task_buildsite",
-      "prefLabel": "Build and publish the site from the AST [ig-render-jekyll]",
+      "prefLabel": "Build and publish the site from the AST",
       "definition": "The site route's steps, provided by the mounted layers and run by `stage-local.ts` → `build-instance-site.ts`: the landing layer's IG API sidecars when it has the step (`ig-site:sidecars`), the artefact index from the AST and the thin pages with the IG composed at the root (`ig-site:compose`: `ast-to-artifact-index.ts`, `gen-ig-pages.ts --compiled-data ast-data`), the OpenAPI pages when the IG holds them (`ig-site:openapi`), the AST's resources served as `ast-data/` and the build stamp (`ig-site:publisher-pages`). Published at the root from the default branch, as a preview otherwise.",
       "notation": "Task_BuildSite",
       "source": "fhir-harness/processes/content/ig-ast-cache.bpmn#Task_BuildSite",
@@ -16,7 +16,7 @@
     },
     {
       "id": "process_igastcache.task_dispatch",
-      "prefLabel": "Dispatch the IG's ig-ast-refresh.yml [ig-build-pipeline]",
+      "prefLabel": "Dispatch the IG's ig-ast-refresh.yml",
       "definition": "Actions → \"IG AST refresh (by hand)\" → Run workflow on the default branch, inputs `ref` = the default branch, `force` = false. The publish refused, so the verdict already says the cache is not valid; `force` is for a cache that is valid but suspected wrong.",
       "notation": "Task_Dispatch",
       "source": "fhir-harness/processes/content/ig-ast-cache.bpmn#Task_Dispatch",
@@ -24,7 +24,7 @@
     },
     {
       "id": "process_igastcache.task_export",
-      "prefLabel": "Build the IG with the Publisher AST exporter [ig-publisher-fork]",
+      "prefLabel": "Build the IG with the Publisher AST exporter",
       "definition": "The runner mounts the layers the IG repository's `index.lock.json` pins, restores and judges the cache itself, and, when it is not valid, runs the caller's optional `pre-export` overlay command, then `AstExportCli` (Tool `ig-ast-export`, `litlfred/fhir-ig-publisher` at the pinned `claude/ast-export` commit) with `-tx`. The inputs `pre-export` changed are put back and the AST is recorded against the clean commit's input digest (`ig-ast.ts source-inputs`). The AST just built must itself be `valid` for the commit, or the run fails.",
       "notation": "Task_Export",
       "source": "fhir-harness/processes/content/ig-ast-cache.bpmn#Task_Export",
@@ -32,7 +32,7 @@
     },
     {
       "id": "process_igastcache.task_restore",
-      "prefLabel": "Restore the AST from its cache branch and judge it [ig-ast-delta]",
+      "prefLabel": "Restore the AST from its cache branch and judge it",
       "definition": "`ig-cache.sh restore --ig-root .` fetches `cat/fhir-harness/fhir-ast/<package id>` into `output-ast/` (with the Publisher's `txcache/`), then `ig-cache.sh verify` runs `ig-ast.ts validity`: exit 0 valid, 1 stale-inputs (naming which input), 2 cannot-tell. A restore that finds no branch is a miss, judged as not valid. In an IG repository's site route this is the first `pre` step, `ig-site:ast` (`ig-repo-site.ts ast`).",
       "notation": "Task_Restore",
       "source": "fhir-harness/processes/content/ig-ast-cache.bpmn#Task_Restore",
@@ -40,7 +40,7 @@
     },
     {
       "id": "process_igastcache.task_seed",
-      "prefLabel": "Seed the cache branch (ig-cache seed --push) [compiled-artefact-cache]",
+      "prefLabel": "Seed the cache branch (ig-cache seed --push)",
       "definition": "`ig-cache.sh seed --ig-root . --push`: one commit holding the AST, the Publisher's expansions and `txcache/`, its subject recording the package, counts, Publisher version and source commit. Refused when the candidate is under 90% of the incumbent's resources or edges (the no-shrink gate).",
       "notation": "Task_Seed",
       "source": "fhir-harness/processes/content/ig-ast-cache.bpmn#Task_Seed",
@@ -48,7 +48,7 @@
     },
     {
       "id": "process_igastdeltareview.task_diff",
-      "prefLabel": "Diff base → head and render the delta pages [ig-ast-delta]",
+      "prefLabel": "Diff base → head and render the delta pages",
       "definition": "`ig-ast.ts diff <base> <head> --plan plan.json --site <site>/ast-delta/`: resources added, removed, changed (with an element-level differential) and version-changed; edges added and removed; the plan's decision. Every page opens with the provisional mark and is wrapped in raw so narrative Liquid is not executed.",
       "notation": "Task_Diff",
       "source": "fhir-harness/processes/content/ig-ast-delta-review.bpmn#Task_Diff",
@@ -56,7 +56,7 @@
     },
     {
       "id": "process_igastdeltareview.task_filecoupling",
-      "prefLabel": "Note the missed coupling on the bean [todo-manager]",
+      "prefLabel": "Note the missed coupling on the bean",
       "definition": "Append to bean `a9tx` (W8): the resource key, the differential path, and why it is unexplained. Check before creating: beans create is not idempotent. A note, not a new bean, unless the owner asks for one.",
       "notation": "Task_FileCoupling",
       "source": "fhir-harness/processes/content/ig-ast-delta-review.bpmn#Task_FileCoupling",
@@ -64,7 +64,7 @@
     },
     {
       "id": "process_igastdeltareview.task_review",
-      "prefLabel": "Read the rendered delta [ig-ast-delta]",
+      "prefLabel": "Read the rendered delta",
       "definition": "Start at the delta index; open each changed resource's page. Check `builtAt` before judging: a resource carried from the base was not rebuilt, so a difference there is the change itself or a missed coupling, never noise. The differential is structural: a reordered repeating element shows at every index.",
       "notation": "Task_Review",
       "source": "fhir-harness/processes/content/ig-ast-delta-review.bpmn#Task_Review",
@@ -72,7 +72,7 @@
     },
     {
       "id": "process_igastdeltareview.task_validity",
-      "prefLabel": "Check the base AST against the IG's inputs [ig-ast-delta]",
+      "prefLabel": "Check the base AST against the IG's inputs",
       "definition": "`ig-ast.ts validity <base> --ig <root>`: folio-assistant-core's compiledValidity on the manifest's inputs, with the input digest recomputed by the same algorithm as the Java writer. Exit 0 valid, 1 stale-inputs (names which input), 2 cannot-tell. Run against the BASE revision's checkout.",
       "notation": "Task_Validity",
       "source": "fhir-harness/processes/content/ig-ast-delta-review.bpmn#Task_Validity",
@@ -112,7 +112,7 @@
     },
     {
       "id": "process_igincremental.task_deploy",
-      "prefLabel": "Deploy the site [content-publish] [ig-publication]",
+      "prefLabel": "Deploy the site",
       "definition": "Deploy the site built from main or a release. Deploying is release-management, after a human authorised the release — an agent never records that authorisation. Report the published URL only once it answers: a returned deploy is not a serving site.",
       "notation": "Task_Deploy",
       "source": "fhir-harness/processes/content/ig-incremental-build.bpmn#Task_Deploy",
@@ -120,7 +120,7 @@
     },
     {
       "id": "process_igincremental.task_deploypreview",
-      "prefLabel": "Deploy the preview site [content-publish]",
+      "prefLabel": "Deploy the preview site",
       "definition": "A preview never seeds the shared cache.",
       "notation": "Task_DeployPreview",
       "source": "fhir-harness/processes/content/ig-incremental-build.bpmn#Task_DeployPreview",
@@ -128,7 +128,7 @@
     },
     {
       "id": "process_igincremental.task_fullbuild",
-      "prefLabel": "Full publisher build [ig-publication]",
+      "prefLabel": "Full publisher build",
       "definition": "Exit 1 or 3 from restore: the whole IG is built as today. Its outputs become the records the next seed writes.",
       "notation": "Task_FullBuild",
       "source": "fhir-harness/processes/content/ig-incremental-build.bpmn#Task_FullBuild",
@@ -144,7 +144,7 @@
     },
     {
       "id": "process_igincremental.task_logenverror",
-      "prefLabel": "Log the environment error on the bean [todo-manager]",
+      "prefLabel": "Log the environment error on the bean",
       "definition": "Exit 2 from restore: the cache store or the toolchain could not be reached. Record that on the change's bean, with the restore output, so the work plan says the build did not run and why. Check before creating — beans create is not idempotent.",
       "notation": "Task_LogEnvError",
       "source": "fhir-harness/processes/content/ig-incremental-build.bpmn#Task_LogEnvError",
@@ -152,7 +152,7 @@
     },
     {
       "id": "process_igincremental.task_logfindings",
-      "prefLabel": "Log findings on the bean [todo-manager]",
+      "prefLabel": "Log findings on the bean",
       "definition": "Validation failed: record the findings on the change's bean, so the work plan says what blocks it. Check before creating — beans create is not idempotent.",
       "notation": "Task_LogFindings",
       "source": "fhir-harness/processes/content/ig-incremental-build.bpmn#Task_LogFindings",
@@ -168,7 +168,7 @@
     },
     {
       "id": "process_igincremental.task_qa",
-      "prefLabel": "QC gates on the aggregate QA [quality-control]",
+      "prefLabel": "QC gates on the aggregate QA",
       "definition": "qa.json is the aggregate of per-artefact outcomes; the reviewer reads the cone's rows first.",
       "notation": "Task_Qa",
       "source": "fhir-harness/processes/content/ig-incremental-build.bpmn#Task_Qa",
@@ -176,7 +176,7 @@
     },
     {
       "id": "process_igincremental.task_qcbeans",
-      "prefLabel": "File QC findings as beans [todo-manager]",
+      "prefLabel": "File QC findings as beans",
       "definition": "QC failed on the aggregate: file each finding as a bean, so it is tracked on the work plan rather than lost in qa.json. Check for an existing bean before creating one.",
       "notation": "Task_QcBeans",
       "source": "fhir-harness/processes/content/ig-incremental-build.bpmn#Task_QcBeans",
@@ -192,7 +192,7 @@
     },
     {
       "id": "process_igincremental.task_restore",
-      "prefLabel": "Restore derived state [ig-publication]",
+      "prefLabel": "Restore derived state",
       "definition": "ig-cache restore: per-artefact records, the terminology cache, the package cache and temp/, keyed by the toolchain slug. Exit 0 usable, 1 miss, 2 environment error, 3 present but toolchain moved.",
       "notation": "Task_Restore",
       "source": "fhir-harness/processes/content/ig-incremental-build.bpmn#Task_Restore",
@@ -208,7 +208,7 @@
     },
     {
       "id": "process_igincremental.task_site",
-      "prefLabel": "Assemble the site (template · Jekyll) [ig-publication]",
+      "prefLabel": "Assemble the site (template · Jekyll)",
       "definition": "Assemble the site from the merged records: the IG template and a Jekyll build over output/. Only site assembly happens here — every artefact record already exists.",
       "notation": "Task_Site",
       "source": "fhir-harness/processes/content/ig-incremental-build.bpmn#Task_Site",
@@ -216,7 +216,7 @@
     },
     {
       "id": "process_igincremental.task_sushi",
-      "prefLabel": "SUSHI on the restricted tank [l3-fhir-authoring]",
+      "prefLabel": "SUSHI on the restricted tank",
       "definition": "Compile the restricted checkout with SUSHI — the cone's FSH, not the whole IG. A build optimisation, not a validation shortcut: SUSHI compiling is not conformance, so a green compile goes on to validation rather than standing in for it.",
       "notation": "Task_Sushi",
       "source": "fhir-harness/processes/content/ig-incremental-build.bpmn#Task_Sushi",
@@ -224,7 +224,7 @@
     },
     {
       "id": "process_igincremental.task_validate",
-      "prefLabel": "Validate the cone (fhir_validate) [fhir-validation]",
+      "prefLabel": "Validate the cone (fhir_validate)",
       "definition": "Validate the cone's resources against the warm validator and report the cone that was checked. A validator that could not start is could-not-determine, never a pass with no findings. A green cone is not a green IG: a profile the change did not touch can still be broken by it.",
       "notation": "Task_Validate",
       "source": "fhir-harness/processes/content/ig-incremental-build.bpmn#Task_Validate",
@@ -232,7 +232,7 @@
     },
     {
       "id": "process_l3fhir.task_authorfsh",
-      "prefLabel": "Author FSH profiles [l3-fhir-authoring]",
+      "prefLabel": "Author FSH profiles",
       "definition": "Write the FSH profiles, value sets and definitions the source model calls for. This is the stage where profiles, slicing and invariants belong — a decision that can only be expressed in FHIR comes here, not back into the source model.",
       "notation": "Task_AuthorFsh",
       "source": "fhir-harness/processes/content/l3-fhir-pipeline.bpmn#Task_AuthorFsh",
@@ -240,7 +240,7 @@
     },
     {
       "id": "process_l3fhir.task_igpublisher",
-      "prefLabel": "IG Publisher build [ig-publication]",
+      "prefLabel": "IG Publisher build",
       "definition": "Run the IG Publisher: it renders output/, writes each resource's JSON, the package, canonicals and qa.json, and does the two things no cache can — validates every resource against its profiles and resolves the dependency closure with terminology expansion.",
       "notation": "Task_IgPublisher",
       "source": "fhir-harness/processes/content/l3-fhir-pipeline.bpmn#Task_IgPublisher",
@@ -248,7 +248,7 @@
     },
     {
       "id": "process_l3fhir.task_publishig",
-      "prefLabel": "Publish the IG site [content-publish]",
+      "prefLabel": "Publish the IG site",
       "definition": "Release authorisation and review follow draft-to-publication.bpmn.",
       "notation": "Task_PublishIg",
       "source": "fhir-harness/processes/content/l3-fhir-pipeline.bpmn#Task_PublishIg",
@@ -256,7 +256,7 @@
     },
     {
       "id": "process_l3fhir.task_qcbeans",
-      "prefLabel": "File QC findings as beans [todo-manager]",
+      "prefLabel": "File QC findings as beans",
       "definition": "QC findings do not stay in a report nobody re-reads — each becomes a bean the modeller and the agents both see.",
       "notation": "Task_QcBeans",
       "source": "fhir-harness/processes/content/l3-fhir-pipeline.bpmn#Task_QcBeans",
@@ -264,7 +264,7 @@
     },
     {
       "id": "process_l3fhir.task_qcgates",
-      "prefLabel": "QC gates [quality-control]",
+      "prefLabel": "QC gates",
       "definition": "The QC reviewer rules on the aggregate QA against the publication gates. Emitting the QA report is mechanical; ruling on it is a decision, which is why it sits in the reviewer's lane rather than the build's.",
       "notation": "Task_QcGates",
       "source": "fhir-harness/processes/content/l3-fhir-pipeline.bpmn#Task_QcGates",
@@ -272,7 +272,7 @@
     },
     {
       "id": "process_l3fhir.task_sushi",
-      "prefLabel": "SUSHI compile → FHIR JSON [l3-fhir-authoring]",
+      "prefLabel": "SUSHI compile → FHIR JSON",
       "definition": "Compile the FSH to FHIR JSON with SUSHI. Compiling is not conformance: a green SUSHI result goes on to validation and never stands in for it.",
       "notation": "Task_Sushi",
       "source": "fhir-harness/processes/content/l3-fhir-pipeline.bpmn#Task_Sushi",
@@ -280,7 +280,7 @@
     },
     {
       "id": "process_l3fhir.task_validate",
-      "prefLabel": "Validate against profiles [fhir-validation]",
+      "prefLabel": "Validate against profiles",
       "definition": "Validate the compiled resources against their profiles and the packages they constrain. A validator that could not start is could-not-determine, never a pass with an empty findings list. Failures return to authoring.",
       "notation": "Task_Validate",
       "source": "fhir-harness/processes/content/l3-fhir-pipeline.bpmn#Task_Validate",
@@ -288,7 +288,7 @@
     },
     {
       "id": "process_questionnairewireframereview.call_review",
-      "prefLabel": "Design review [wireframe-design-review]",
+      "prefLabel": "Design review",
       "definition": "cat-harness Process_WireframeDesignReview: as-is use for a form that exists, design use for one being designed. This process does not restate the method.",
       "notation": "Call_Review",
       "source": "fhir-harness/processes/content/questionnaire-wireframe-review.bpmn#Call_Review",
@@ -296,7 +296,7 @@
     },
     {
       "id": "process_questionnairewireframereview.task_apply",
-      "prefLabel": "Apply it, bring the other side in line [l3-fhir-authoring]",
+      "prefLabel": "Apply it, bring the other side in line",
       "definition": "The side the request edited is the source of the change (owner, 2026-10-14). An edited Questionnaire is applied as an FSH edit and the wireframe is redrawn to match; an edited wireframe is kept and the Questionnaire re-derived from it. Then back to Task_Read.",
       "notation": "Task_Apply",
       "source": "fhir-harness/processes/content/questionnaire-wireframe-review.bpmn#Task_Apply",
@@ -304,7 +304,7 @@
     },
     {
       "id": "process_questionnairewireframereview.task_askreview",
-      "prefLabel": "Ask for review with deep links [staging-review]",
+      "prefLabel": "Ask for review with deep links",
       "definition": "One deep link per rendered Questionnaire and wireframe, before and after. Where the request goes — the conversation, an issue, the pull request — is a judgement, and more than one may be right: staging-review's deep-link rule, point 5.",
       "notation": "Task_AskReview",
       "source": "fhir-harness/processes/content/questionnaire-wireframe-review.bpmn#Task_AskReview",
@@ -352,7 +352,7 @@
     },
     {
       "id": "process_questionnairewireframereview.task_stage",
-      "prefLabel": "Stage the renderings [feature-staging]",
+      "prefLabel": "Stage the renderings",
       "definition": "The branch's wireframes and form pages published under STAGING/<slug>/ by feature-staging.",
       "notation": "Task_Stage",
       "source": "fhir-harness/processes/content/questionnaire-wireframe-review.bpmn#Task_Stage",
@@ -360,7 +360,7 @@
     },
     {
       "id": "process_questionnairewireframereview.task_triage",
-      "prefLabel": "Triage the change request [content-feedback]",
+      "prefLabel": "Triage the change request",
       "definition": "content-feedback triages the issue; when a review round is open it joins a change-set through public-comment instead.",
       "notation": "Task_Triage",
       "source": "fhir-harness/processes/content/questionnaire-wireframe-review.bpmn#Task_Triage",
