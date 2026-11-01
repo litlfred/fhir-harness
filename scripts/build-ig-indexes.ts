@@ -112,6 +112,7 @@ import { AST_FAMILY_PREFIXES, LAYER, lsRemote, needing, type BranchLister, type 
 import { buildMenu } from "./ingest-ig-menu.ts";
 import { igReadScope } from "./ig-read-scope.ts";
 import { realPathWithin, safeSegment } from "../../cat-harness-tools/src/core/safe-path.js";
+import { astPinsIn, IG_AST_LOCK_FILE, type IgAstPin } from "../schemas/ig-ast-lock.ts";
 
 const HERE = import.meta.dir;
 
@@ -526,7 +527,16 @@ export function buildOne(t: IgTarget, work: string, log: (s: string) => void, ch
     return [(e as Error).message];
   }
 
-  const restore = run("bash", [join(HERE, "ig-cache.sh"), "restore", "--ig-root", clone]);
+  // The AST at its pin (ig-ast.lock.json), else the cache branch tip as before.
+  let astPin: IgAstPin | undefined;
+  try {
+    astPin = astPinsIn(checkout).get(t.name);
+  } catch (e) {
+    return [`${IG_AST_LOCK_FILE}: ${(e as Error).message}`];
+  }
+  if (astPin && astPin.repository !== t.repository) return [`${IG_AST_LOCK_FILE} pins ${t.name}'s AST in ${astPin.repository}, but the IG is mounted from ${t.repository}`];
+  log(astPin ? `  AST: pinned at ${astPin.branch}@${astPin.sha.slice(0, 7)} (${IG_AST_LOCK_FILE})` : `  AST: no pin in ${IG_AST_LOCK_FILE}; reading the cache branch tip`);
+  const restore = run("bash", [join(HERE, "ig-cache.sh"), "restore", "--ig-root", clone, ...(astPin ? ["--commit", astPin.sha] : [])]);
   if (!restore.ok) return [`no AST restored from ${t.repository}: ${restore.out.split("\n").slice(-3).join(" ")}`];
   const ast = join(clone, "output-ast");
   const head = run("git", ["-C", clone, "rev-parse", "HEAD"]);
