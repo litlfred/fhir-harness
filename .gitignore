@@ -10,3 +10,9 @@ node_modules/
 # instance can hold it current.
 /ns/context/v1.jsonld
 # END built at publish
+
+# The QA working copy (fhir-harness.json `qa`, storage `cat/cat-harness/qa-reports`).
+# Derived verdicts live on the qa-reports store branch, keyed by commit; a
+# local run writes them here and nothing commits them (bean folio-assistant-7mwa;
+# as cat-harness#857 and folio-assistant-core#482 did).
+/test/results/
