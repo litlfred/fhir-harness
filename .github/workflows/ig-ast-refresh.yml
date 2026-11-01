@@ -230,6 +230,13 @@ jobs:
           # own route. A cached template is kept by the Publisher when the
           # server cannot say it is out of date.
           tpl=$(sed -n 's/^[[:space:]]*template[[:space:]]*=[[:space:]]*\([A-Za-z0-9._-]*#current\)[[:space:]]*$/\1/p' ig.ini 2>/dev/null | head -n 1)
+          # A `#local-template` extends a base template named in its own
+          # package.json; when that base is `current`, it is the package to
+          # seed, since the Publisher fetches it from the same CI build server.
+          if [ -z "$tpl" ] && grep -Eq '^[[:space:]]*template[[:space:]]*=[[:space:]]*#local-template[[:space:]]*$' ig.ini 2>/dev/null \
+             && [ -f local-template/package/package.json ]; then
+            tpl=$(python3 -I -c 'import json,sys; p=json.load(open(sys.argv[1])); b=p.get("base",""); print(b+"#current" if b and p.get("dependencies",{}).get(b)=="current" else "")' local-template/package/package.json 2>/dev/null || true)
+          fi
           if [ -n "$tpl" ] && [ ! -d "$HOME/.fhir/packages/$tpl" ]; then
             targs=()
             for m in $TEMPLATE_REPOS; do targs+=(--template-repo "$m"); done
