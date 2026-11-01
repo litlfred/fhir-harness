@@ -688,6 +688,24 @@ ${section}
 
 interface Manifest {
   resources?: { resourceType: string; id: string; file: string }[];
+  /** When the AST was compiled. */
+  generatedAt?: string;
+}
+
+/**
+ * The time the ValueSet vocabularies carry as `generatedAt`: when the AST was
+ * compiled, so the same AST gives the same bytes on every run. The wall clock
+ * only for an AST whose manifest does not say. A wall-clock stamp rewrote every
+ * sidecar on every page build and made every writer that reads them run again
+ * (cat-harness-tools#1230).
+ */
+export function generatedAtOf(ast: string): string | undefined {
+  try {
+    const m = JSON.parse(readFileSync(join(ast, "manifest.json"), "utf-8")) as Manifest;
+    return typeof m.generatedAt === "string" && m.generatedAt !== "" ? m.generatedAt : undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 /** The IG's canonical base: its ImplementationGuide's `url` up to `/ImplementationGuide/`. */
@@ -709,7 +727,7 @@ export interface GenResult {
 
 /** Generate every IG API file from an AST. Pure but for reading the AST. */
 export function generateIgApi(ast: string, o: { label?: string; vocabBase?: string; canonicalBase?: string; now?: string } = {}): GenResult {
-  const now = o.now ?? new Date().toISOString();
+  const now = o.now ?? generatedAtOf(ast) ?? new Date().toISOString();
   const vocabBase = o.vocabBase ?? "http://hl7.org/fhir/";
   const canonicalBase = o.canonicalBase ?? canonicalBaseOf(ast) ?? "";
   const docs = new Map<string, Json>();
