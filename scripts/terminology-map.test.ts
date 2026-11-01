@@ -4,6 +4,8 @@
  * site, and none goes to the network.
  */
 import { describe, expect, test } from "bun:test";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import "./terminology-map.js";
 
 type Answer = { kind: string; status?: number; body?: unknown; type?: string; path?: string } | null;
@@ -70,5 +72,10 @@ describe("everything else is a local error, never the network", () => {
   });
   test("this site's own requests are not touched", () => {
     expect(answer("https://o.github.io/ig/assets/terminology/index.json", ctx)).toBeNull();
+  });
+  test("terminology-sw.js never forwards an unanswered cross-origin request to fetch(e.request)", () => {
+    const sw = readFileSync(join(import.meta.dir, "terminology-sw.js"), "utf-8");
+    expect(sw).not.toContain("fetch(e.request)");
+    expect(sw).toContain("status: 503");
   });
 });

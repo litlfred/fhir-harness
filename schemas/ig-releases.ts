@@ -99,3 +99,14 @@ export function releasesFromGitHub(repository: string, readAt: string, list: Git
       })),
   });
 }
+
+/**
+ * The releases as they stood at `asOf` (those published at or before it),
+ * stamped with its date. `ig-index:build` passes the pinned commit's time, so
+ * the record moves with the pin and not with the clock (bean fwtz).
+ */
+export function releasesAsOf(repository: string, asOf: string, list: GitHubRelease[]): IgReleases {
+  const cut = Date.parse(asOf);
+  if (Number.isNaN(cut)) throw new Error(`releasesAsOf: ${asOf} is not a date`);
+  return releasesFromGitHub(repository, new Date(cut).toISOString().slice(0, 10), list.filter((r) => r.published_at && Date.parse(r.published_at) <= cut));
+}

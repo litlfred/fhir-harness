@@ -10,12 +10,12 @@
  * @module fhir-harness/scripts/build-ig-indexes.test
  */
 import { afterAll, describe, expect, it } from "bun:test";
-import { existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { cloneAt, lockedMounts, referenceAbsent, contextsFrom, fhirVersionsOf, hubFrom, igTargets, isSafeInstanceName, lockedRepositories, packFromAst, publishedBase, rebaseOnMount } from "./build-ig-indexes.ts";
+import { astAgainstPin, cloneAt, lockedMounts, pinnedAt, referenceAbsent, contextsFrom, fhirVersionsOf, hubFrom, igTargets, isSafeInstanceName, lockedRepositories, packFromAst, publishedBase, rebaseOnMount } from "./build-ig-indexes.ts";
 import type { BranchLister } from "./gen-ig-ast-pages.ts";
 
 const instances = [
@@ -110,6 +110,29 @@ describe("lockedRepositories", () => {
 });
 
 describe("packFromAst", () => {
+  it("packs the same AST into the same bytes, a second later (cat-harness-tools#1230)", () => {
+    const dir = mkdtempSync(join(tmpdir(), "ig-index-pack-same-"));
+    try {
+      const ast = join(dir, "output-ast");
+      mkdirSync(join(ast, "resources"), { recursive: true });
+      writeFileSync(join(ast, "resources", "b.json"), '{"resourceType":"ValueSet","id":"b"}');
+      writeFileSync(join(ast, "resources", "a.json"), '{"resourceType":"ValueSet","id":"a"}');
+      writeFileSync(join(ast, "manifest.json"), JSON.stringify({ resources: [
+        { resourceType: "ValueSet", id: "b", file: "resources/b.json" },
+        { resourceType: "ValueSet", id: "a", file: "resources/a.json" },
+      ] }));
+      writeFileSync(join(dir, "sushi-config.yaml"), "id: ex.ig\nversion: 1.0.0\n");
+      const one = join(dir, "one.tgz");
+      const two = join(dir, "two.tgz");
+      packFromAst(ast, dir, one, join(dir, "stage"), () => {});
+      Bun.sleepSync(1100);
+      packFromAst(ast, dir, two, join(dir, "stage"), () => {});
+      expect(readFileSync(two).equals(readFileSync(one))).toBe(true);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it("refuses a manifest file outside the AST, by path or by symlink", () => {
     const dir = mkdtempSync(join(tmpdir(), "ig-index-pack-out-"));
     try {
@@ -269,5 +292,28 @@ describe("lockedMounts and cloneAt (bean fwtz: the IG is read at its pin)", () =
     const git = () => (++n === 3 ? { ok: false, out: "not our ref" } : { ok: true, out: "" });
     expect(cloneAt("beta/ig", "/w/ig", "d1cfa96b0e83f088deaaba9e4672c77568663cbd", git)).toEqual({ ok: false, out: "not our ref" });
     expect(n).toBe(3);
+  });
+});
+
+describe("pinnedAt and astAgainstPin (bean fwtz: a pinned read writes the same bytes any day)", () => {
+  it("stamps the pinned commit's time, never the clock", () => {
+    const git = () => ({ ok: true, out: "2026-10-30T18:07:13+00:00\n" });
+    expect(pinnedAt("/w/ig", git)).toBe("2026-10-30T18:07:13+00:00");
+    expect(pinnedAt("/w/ig", () => ({ ok: false, out: "no HEAD" }))).toBeUndefined();
+  });
+
+  it("says whether the restored AST was compiled from the pin", () => {
+    const dir = mkdtempSync(join(tmpdir(), "ig-index-ast-"));
+    try {
+      const pin = "633b11fb2e628a9aa6086815e78edfe2d47d2095";
+      const old = "adadd67d5a648c250df28ba489c5f82f28cc3356";
+      expect(astAgainstPin(dir, pin)).toEqual({});
+      writeFileSync(join(dir, "manifest.json"), JSON.stringify({ inputs: { sourceRevision: old } }));
+      expect(astAgainstPin(dir, pin)).toEqual({ sourceRevision: old, matchesPin: false });
+      expect(astAgainstPin(dir, old)).toEqual({ sourceRevision: old, matchesPin: true });
+      expect(astAgainstPin(dir, undefined)).toEqual({ sourceRevision: old });
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });

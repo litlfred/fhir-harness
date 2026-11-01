@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { type GitHubRelease, IgReleasesSchema, releasesFromGitHub } from "./ig-releases.ts";
+import { type GitHubRelease, IgReleasesSchema, releasesAsOf, releasesFromGitHub } from "./ig-releases.ts";
 
 const gh = (over: Partial<GitHubRelease>): GitHubRelease => ({
   tag_name: "v1",
@@ -59,5 +59,17 @@ describe("ig-releases/v1", () => {
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
+  });
+});
+
+describe("releasesAsOf (bean fwtz: the record moves with the pin, not the clock)", () => {
+  test("keeps releases published by the pinned time and stamps that date", () => {
+    const r = releasesAsOf("o/r", "2026-03-24T00:00:00+02:00", [gh({}), gh({ tag_name: "v2", published_at: "2026-03-24T09:00:00Z" })]);
+    expect(r.readAt).toBe("2026-03-23");
+    expect(r.releases.map((x) => x.tag)).toEqual(["v1"]);
+  });
+
+  test("refuses a time it cannot read", () => {
+    expect(() => releasesAsOf("o/r", "yesterday", [])).toThrow();
   });
 });

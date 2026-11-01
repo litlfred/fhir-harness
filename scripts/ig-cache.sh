@@ -4,7 +4,7 @@
 #
 # USAGE
 #   scripts/ig-cache.sh status     [--ig-root DIR]
-#   scripts/ig-cache.sh restore    [--ig-root DIR] [--package NAME] [--branch BR]
+#   scripts/ig-cache.sh restore    [--ig-root DIR] [--package NAME] [--branch BR] [--commit SHA]
 #   scripts/ig-cache.sh seed       [--ig-root DIR] [--package NAME] [--branch BR] [--remote REM] [--push] [--force]
 #   scripts/ig-cache.sh contribute [--ig-root DIR] [--package NAME] [--remote REM] [--force]
 #   scripts/ig-cache.sh verify     [--ig-root DIR]
@@ -51,6 +51,7 @@ CMD="${1:-}"; shift || true
 IG_ROOT=""
 PACKAGE=""
 BRANCH=""
+COMMIT=""
 REMOTE="origin"
 PUSH=0
 FORCE=0
@@ -60,6 +61,7 @@ while [ $# -gt 0 ]; do
     --ig-root) IG_ROOT="${2:-}"; shift 2 ;;
     --package) PACKAGE="${2:-}"; shift 2 ;;
     --branch)  BRANCH="${2:-}"; shift 2 ;;
+    --commit)  COMMIT="${2:-}"; shift 2 ;;
     --remote)  REMOTE="${2:-}"; shift 2 ;;
     --push)    PUSH=1; shift ;;
     --force)   FORCE=1; shift ;;
@@ -203,7 +205,15 @@ cmd_restore() {
   local root; root=$(resolve_ig_root)
   local pkg; pkg=$(resolve_package "$root") || die "could not resolve package id from $root/sushi-config.yaml"
   IGIT_ROOT="$root"
-  local br; br=$(resolve_branch "$pkg") || exit 2
+  # `--commit`: the AST at a PINNED commit of the cache branch (ig-ast.lock.json,
+  # bean fwtz). Fetched by sha, so no branch is looked up and the tip is never read.
+  local br
+  if [ -n "$COMMIT" ]; then
+    printf '%s' "$COMMIT" | grep -Eq '^[0-9a-f]{40}$' || die "--commit $COMMIT is not a full 40-character sha"
+    br="$COMMIT"
+  else
+    br=$(resolve_branch "$pkg") || exit 2
+  fi
   
   local out="$root/output-ast"
   if [ -d "$out" ] && [ "$(count_resources "$out")" -gt 0 ]; then
