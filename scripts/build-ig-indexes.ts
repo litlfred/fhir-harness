@@ -304,6 +304,9 @@ export function publishedBase(committed: Record<string, unknown> | undefined, de
   return { from: "nowhere: no published links" };
 }
 
+/** GNU tar flags that make an archive depend only on the files' names and contents. */
+export const REPRODUCIBLE_TAR: readonly string[] = ["--sort=name", "--mtime=@0", "--owner=0", "--group=0", "--numeric-owner", "--mode=a+rX,u+w,go-w", "--use-compress-program=gzip -n"];
+
 /**
  * Write `out` as a Publisher-shaped `package.tgz` from the AST in `ast`: each
  * resource at `package/<Type>-<id>.json`, and `package/package.json` from the
@@ -345,7 +348,11 @@ export function packFromAst(ast: string, igSource: string, out: string, stage: s
     )}\n`,
   );
   mkdirSync(join(out, ".."), { recursive: true });
-  const t = spawnSync("tar", ["-czf", out, "-C", stage, "package"], { encoding: "utf-8" });
+  // Same AST, same bytes (cat-harness-tools#1230): GNU tar with a fixed order,
+  // time and owner, gzip without its own name and time. A tar without those
+  // flags (bsdtar) packs as before.
+  let t = spawnSync("tar", [...REPRODUCIBLE_TAR, "-cf", out, "-C", stage, "package"], { encoding: "utf-8" });
+  if (t.status !== 0) t = spawnSync("tar", ["-czf", out, "-C", stage, "package"], { encoding: "utf-8" });
   if (t.status !== 0) throw new Error(`tar failed: ${t.stderr}`);
   return n;
 }

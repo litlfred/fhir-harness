@@ -10,7 +10,7 @@
  * @module fhir-harness/scripts/build-ig-indexes.test
  */
 import { afterAll, describe, expect, it } from "bun:test";
-import { existsSync, mkdirSync, mkdtempSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -110,6 +110,29 @@ describe("lockedRepositories", () => {
 });
 
 describe("packFromAst", () => {
+  it("packs the same AST into the same bytes, a second later (cat-harness-tools#1230)", () => {
+    const dir = mkdtempSync(join(tmpdir(), "ig-index-pack-same-"));
+    try {
+      const ast = join(dir, "output-ast");
+      mkdirSync(join(ast, "resources"), { recursive: true });
+      writeFileSync(join(ast, "resources", "b.json"), '{"resourceType":"ValueSet","id":"b"}');
+      writeFileSync(join(ast, "resources", "a.json"), '{"resourceType":"ValueSet","id":"a"}');
+      writeFileSync(join(ast, "manifest.json"), JSON.stringify({ resources: [
+        { resourceType: "ValueSet", id: "b", file: "resources/b.json" },
+        { resourceType: "ValueSet", id: "a", file: "resources/a.json" },
+      ] }));
+      writeFileSync(join(dir, "sushi-config.yaml"), "id: ex.ig\nversion: 1.0.0\n");
+      const one = join(dir, "one.tgz");
+      const two = join(dir, "two.tgz");
+      packFromAst(ast, dir, one, join(dir, "stage"), () => {});
+      Bun.sleepSync(1100);
+      packFromAst(ast, dir, two, join(dir, "stage"), () => {});
+      expect(readFileSync(two).equals(readFileSync(one))).toBe(true);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   it("refuses a manifest file outside the AST, by path or by symlink", () => {
     const dir = mkdtempSync(join(tmpdir(), "ig-index-pack-out-"));
     try {
