@@ -115,7 +115,7 @@
       <bpmn:outgoing>F04</bpmn:outgoing>
       <bpmn:outgoing>F04E</bpmn:outgoing>
     </bpmn:exclusiveGateway>
-    <bpmn:task id="Task_LogEnvError" name="Log the environment error&#10;on the bean [todo-manager]">
+    <bpmn:task id="Task_LogEnvError" name="Log the environment error on the bean">
       <bpmn:documentation>Exit 2 from restore: the cache store or the toolchain could not be reached. Record that on the change's bean, with the restore output, so the work plan says the build did not run and why. Check before creating — beans create is not idempotent.</bpmn:documentation>
       <bpmn:extensionElements>
         <bootstrap.processes:skill ref="todo-manager" />
@@ -139,7 +139,7 @@
       <bpmn:incoming>F04</bpmn:incoming>
       <bpmn:outgoing>F18</bpmn:outgoing>
     </bpmn:serviceTask>
-    <bpmn:serviceTask id="Task_Cone" name="Compute the cone of the change&#10;(fsh-cone --changed)">
+    <bpmn:serviceTask id="Task_Cone" name="Compute the cone of the change">
       <bpmn:documentation>content/pipeline/fsh-cone.ts over the changed files: the forward cone is what to rebuild, the backward cone is what to check out.</bpmn:documentation>
       <bpmn:extensionElements>
         <bootstrap.processes:skill ref="ig-publication" />
@@ -177,7 +177,7 @@
       <bpmn:incoming>F07</bpmn:incoming>
       <bpmn:outgoing>F08</bpmn:outgoing>
     </bpmn:serviceTask>
-    <bpmn:serviceTask id="Task_ContextLoad" name="Load or reuse the warm context&#10;(fhir_context_load)">
+    <bpmn:serviceTask id="Task_ContextLoad" name="Load or reuse the warm context">
       <bpmn:documentation>The validator's server mode holds the loaded dependency packages, snapshots and expansions in its session cache. Cold start loads the restored derived FHIR rather than regenerating it.</bpmn:documentation>
       <bpmn:extensionElements>
         <bootstrap.processes:skill ref="ig-publication" />
@@ -244,7 +244,7 @@
       <bpmn:incoming>F15</bpmn:incoming>
       <bpmn:outgoing>F16</bpmn:outgoing>
     </bpmn:serviceTask>
-    <bpmn:serviceTask id="Task_Site" name="Assemble the site&#10;(template · Jekyll) [ig-publication]">
+    <bpmn:serviceTask id="Task_Site" name="Assemble the site">
       <bpmn:documentation>Assemble the site from the merged records: the IG template and a Jekyll build over output/. Only site assembly happens here — every artefact record already exists.</bpmn:documentation>
       <bpmn:extensionElements>
         <bootstrap.processes:skill ref="ig-publication" />
@@ -252,7 +252,7 @@
       <bpmn:incoming>F16</bpmn:incoming>
       <bpmn:outgoing>F17</bpmn:outgoing>
     </bpmn:serviceTask>
-    <bpmn:userTask id="Task_Qa" name="QC gates on the aggregate QA&#10;[quality-control]">
+    <bpmn:userTask id="Task_Qa" name="Run QC gates on the aggregate QA">
       <bpmn:documentation>qa.json is the aggregate of per-artefact outcomes; the reviewer reads the cone's rows first.</bpmn:documentation>
       <bpmn:extensionElements>
         <bootstrap.processes:skill ref="quality-control" />
@@ -310,7 +310,7 @@
       <bpmn:incoming>F25</bpmn:incoming>
       <bpmn:outgoing>F26</bpmn:outgoing>
     </bpmn:serviceTask>
-    <bpmn:serviceTask id="Task_Seed" name="Seed the cache from the green build&#10;(ig-cache seed · verify · promote)">
+    <bpmn:serviceTask id="Task_Seed" name="Seed the cache from the green build">
       <bpmn:documentation>Only a green build of main or a release seeds. Seed writes to the -test branch, verifies a restore from a clean clone, then promotes.</bpmn:documentation>
       <bpmn:extensionElements>
         <cat-harness.processes:fulfilment kinds="person system" reason="seeding, verifying and promoting the cache is a fixed program the publication manager is accountable for; the manual promote is the same program run by hand." />

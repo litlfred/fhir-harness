@@ -18,9 +18,9 @@ How an L3 FHIR Implementation Guide is authored in FSH, built with SUSHI, the va
 - Skill: `l3-fhir-authoring`.
 - What: Write the FSH profiles, value sets and definitions the source model calls for.
 - Record it: `workflow_complete` with `node: "Task_AuthorFsh"`.
-- next: → `Task_Sushi` (SUSHI compile → FHIR JSON)
+- next: → `Task_Sushi` (Compile FSH to FHIR JSON)
 
-### 2. SUSHI compile → FHIR JSON (`Task_Sushi`)
+### 2. Compile FSH to FHIR JSON (`Task_Sushi`)
 
 - Who: the `Build pipeline — SUSHI · validator · IG Publisher` lane (role `build-pipeline`).
 - Skill: `l3-fhir-authoring`.

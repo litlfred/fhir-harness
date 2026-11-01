@@ -80,7 +80,7 @@
       <bpmn:incoming>C10</bpmn:incoming>
       <bpmn:outgoing>C03</bpmn:outgoing>
     </bpmn:userTask>
-    <bpmn:serviceTask id="Task_Sushi" name="SUSHI compile → FHIR JSON&#10;[l3-fhir-authoring]">
+    <bpmn:serviceTask id="Task_Sushi" name="Compile FSH to FHIR JSON">
       <bpmn:documentation>Compile the FSH to FHIR JSON with SUSHI. Compiling is not conformance: a green SUSHI result goes on to validation and never stands in for it.</bpmn:documentation>
       <bpmn:extensionElements>
         <bootstrap.processes:skill ref="l3-fhir-authoring" />

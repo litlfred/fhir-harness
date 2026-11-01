@@ -5,7 +5,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: questionnaire-wireframe-review\n"
-"POT-Creation-Date: 2026-10-14T18:08:02.964Z\n"
+"POT-Creation-Date: 2026-11-01T11:34:43.826Z\n"
 "PO-Revision-Date: \n"
 "Last-Translator: \n"
 "Language: es\n"
@@ -36,7 +36,7 @@ msgstr ""
 
 #: ../fhir-harness/processes/content/questionnaire-wireframe-review.bpmn:148
 #. Diagram label
-msgid "Apply it, bring the other side in line [l3-fhir-authoring]"
+msgid "Apply it to the other side"
 msgstr ""
 
 #: ../fhir-harness/processes/content/questionnaire-wireframe-review.bpmn:114
@@ -76,7 +76,7 @@ msgstr ""
 
 #: ../fhir-harness/processes/content/questionnaire-wireframe-review.bpmn:89
 #. Diagram label
-msgid "Check field for field [check-wireframe-questionnaire]"
+msgid "Check field for field"
 msgstr ""
 
 #: ../fhir-harness/processes/content/questionnaire-wireframe-review.bpmn:46
@@ -181,7 +181,7 @@ msgstr ""
 
 #: ../fhir-harness/processes/content/questionnaire-wireframe-review.bpmn:75
 #. Diagram label
-msgid "Screenshots, web and mobile [wireframe-check]"
+msgid "Screenshots, web and mobile"
 msgstr ""
 
 #: ../fhir-harness/processes/content/questionnaire-wireframe-review.bpmn:106

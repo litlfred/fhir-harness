@@ -10,9 +10,9 @@ How an IG repository's own site is published, and how the AST it is built from i
 
 - Begin here: A publish of the IG repository's default branch (the site root) or of another branch (a preview), by `stage-local.ts`.
 - Call `workflow_start` with `process: "Process_IgAstCache"` and the subject this run is about; keep the instance id it returns.
-- next: → `Task_Restore` (Restore the AST from its cache branch and judge it)
+- next: → `Task_Restore` (Restore and judge the cached AST)
 
-### 1. Restore the AST from its cache branch and judge it (`Task_Restore`)
+### 1. Restore and judge the cached AST (`Task_Restore`)
 
 - Who: the `Site build (agent, stage-local)` lane (role `build-pipeline`).
 - Skill: `ig-ast-delta`, `ig-build-pipeline`.
@@ -26,7 +26,7 @@ How an IG repository's own site is published, and how the AST it is built from i
 - Call `workflow_complete` with `node: "GW_Valid"` and `outcome` set to the label that holds:
   - «yes» → `Task_BuildSite` (Build and publish the site from the AST)
   - «no — refused:
-stale, cannot tell, miss» → `Task_Dispatch` (Dispatch the IG's ig-ast-refresh.yml)
+stale, cannot tell, miss» → `Task_Dispatch` (Dispatch AST refresh)
 
 ### 2. Build and publish the site from the AST (`Task_BuildSite`)
 
@@ -36,19 +36,19 @@ stale, cannot tell, miss» → `Task_Dispatch` (Dispatch the IG's ig-ast-refresh
 - Record it: `workflow_complete` with `node: "Task_BuildSite"`.
 - next: → `End_Published` (Site published from the AST)
 
-### 3. Dispatch the IG's ig-ast-refresh.yml (`Task_Dispatch`)
+### 3. Dispatch AST refresh (`Task_Dispatch`)
 
 - Who: the `Publication manager (owner, or the agent the owner delegates to)` lane (role `publication-manager`).
 - Skill: `ig-build-pipeline`.
 - What: Actions → "IG AST refresh (by hand)" → Run workflow on the default branch, inputs `ref` = the default branch, `force` = false.
 - Record it: `workflow_complete` with `node: "Task_Dispatch"`.
-- next: → `Task_Export` (Build the IG with the Publisher AST exporter)
+- next: → `Task_Export` (Build the IG with the AST exporter)
 
 ## Done — Site published from the AST (`End_Published`)
 
 - The instance completes here: The site says what built it (`folio-build.json`), and every artefact page carries the AST's provisional mark. `workflow_next` then reports nothing enabled — that, not this line, is the record of completion.
 
-### 4. Build the IG with the Publisher AST exporter (`Task_Export`)
+### 4. Build the IG with the AST exporter (`Task_Export`)
 
 - Who: the `AST refresh (GitHub runner: IG Publisher with the AST exporter)` lane (role `ig-publisher-service`).
 - Skill: `ig-publisher-fork`.
@@ -60,16 +60,16 @@ stale, cannot tell, miss» → `Task_Dispatch` (Dispatch the IG's ig-ast-refresh
 
 - Yes when the built commit is an ancestor of the default branch's tip AND `sushi-config.yaml`, `ig.ini` and `input/` are the same at both.
 - Call `workflow_complete` with `node: "GW_Seedable"` and `outcome` set to the label that holds:
-  - «yes» → `Task_Seed` (Seed the cache branch (ig-cache seed --push))
+  - «yes» → `Task_Seed` (Seed the cache branch)
   - «no» → `End_NotSeeded` (AST kept as a run artifact; cache unchanged)
 
-### 5. Seed the cache branch (ig-cache seed --push) (`Task_Seed`)
+### 5. Seed the cache branch (`Task_Seed`)
 
 - Who: the `AST refresh (GitHub runner: IG Publisher with the AST exporter)` lane (role `ig-publisher-service`).
 - Skill: `compiled-artefact-cache`.
 - What: `ig-cache.sh seed --ig-root .
 - Record it: `workflow_complete` with `node: "Task_Seed"`.
-- next: → `Task_Restore` (Restore the AST from its cache branch and judge it)
+- next: → `Task_Restore` (Restore and judge the cached AST)
 
 ## Done — AST kept as a run artifact; cache unchanged (`End_NotSeeded`)
 
