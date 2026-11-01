@@ -52,10 +52,6 @@
         <bpmn:flowNodeRef>EndEvent_Findings</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>EndEvent_FindingsQc</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>EndEvent_EnvError</bpmn:flowNodeRef>
-      </bpmn:lane>
-      <bpmn:lane id="Lane_WorkPlan" name="Work plan — beans (shared by humans and agents)">
-        <bpmn:documentation>Where every failure branch lands before the process ends rather than just stopping: Gateway_Valid's `no`, Gateway_QcPass's `no` and Gateway_Restore's `environment error` each write here — Task_LogFindings, Task_QcBeans, Task_LogEnvError — before EndEvent_Findings, EndEvent_FindingsQc or EndEvent_EnvError, so a run that stops short always leaves a record of why rather than only a red check.</bpmn:documentation>
-        <bpmn:extensionElements><bootstrap.processes:role ref="work-plan"/></bpmn:extensionElements>
         <bpmn:flowNodeRef>Task_LogFindings</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>Task_QcBeans</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>Task_LogEnvError</bpmn:flowNodeRef>
@@ -126,6 +122,9 @@
       </bpmn:extensionElements>
       <bpmn:incoming>F04E</bpmn:incoming>
       <bpmn:outgoing>F04F</bpmn:outgoing>
+      <bpmn:dataOutputAssociation id="DOA_Task_LogEnvError">
+        <bpmn:targetRef>DSR_work_plan</bpmn:targetRef>
+      </bpmn:dataOutputAssociation>
     </bpmn:task>
     <bpmn:endEvent id="EndEvent_EnvError" name="Build stopped:&#10;environment error">
       <bpmn:documentation>Nothing was built. The author (or whoever maintains the runner) fixes the environment and re-runs; a re-run with a readable cache takes `yes` or `no` as usual.</bpmn:documentation>
@@ -209,6 +208,9 @@
       </bpmn:extensionElements>
       <bpmn:incoming>F11</bpmn:incoming>
       <bpmn:outgoing>F12</bpmn:outgoing>
+      <bpmn:dataOutputAssociation id="DOA_Task_LogFindings">
+        <bpmn:targetRef>DSR_work_plan</bpmn:targetRef>
+      </bpmn:dataOutputAssociation>
     </bpmn:task>
     <bpmn:endEvent id="EndEvent_Findings" name="Findings back to the author">
       <bpmn:incoming>F12</bpmn:incoming>
@@ -272,6 +274,9 @@
       </bpmn:extensionElements>
       <bpmn:incoming>F20</bpmn:incoming>
       <bpmn:outgoing>F21</bpmn:outgoing>
+      <bpmn:dataOutputAssociation id="DOA_Task_QcBeans">
+        <bpmn:targetRef>DSR_work_plan</bpmn:targetRef>
+      </bpmn:dataOutputAssociation>
     </bpmn:task>
     <bpmn:endEvent id="EndEvent_FindingsQc" name="Findings back to the author">
       <bpmn:incoming>F21</bpmn:incoming>
@@ -347,6 +352,7 @@
     <bpmn:sequenceFlow id="F25" name="main / release" sourceRef="Gateway_Path" targetRef="Task_Deploy" />
     <bpmn:sequenceFlow id="F26" sourceRef="Task_Deploy" targetRef="Task_Seed" />
     <bpmn:sequenceFlow id="F27" sourceRef="Task_Seed" targetRef="EndEvent_Published" />
+    <bpmn:dataStoreReference id="DSR_work_plan" name="Work plan (beans)" dataStoreRef="work-plan"/>
   </bpmn:process>
 
   <bpmndi:BPMNDiagram id="BPMNDiagram_1">
@@ -355,10 +361,7 @@
         <dc:Bounds x="160" y="80" width="3105" height="900" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Lane_Author_di" bpmnElement="Lane_Author" isHorizontal="true">
-        <dc:Bounds x="190" y="80" width="3075" height="150" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Lane_WorkPlan_di" bpmnElement="Lane_WorkPlan" isHorizontal="true">
-        <dc:Bounds x="190" y="230" width="3075" height="150" />
+        <dc:Bounds x="190" y="80" width="3075" height="300" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Lane_Build_di" bpmnElement="Lane_Build" isHorizontal="true">
         <dc:Bounds x="190" y="380" width="3075" height="150" />
@@ -646,6 +649,10 @@
         <di:waypoint x="3065" y="905" />
         <di:waypoint x="3142" y="905" />
       </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="Shape_DSR_work_plan" bpmnElement="DSR_work_plan"><dc:Bounds x="1535" y="1020" width="50" height="50"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Edge_DOA_Task_LogFindings" bpmnElement="DOA_Task_LogFindings"><di:waypoint x="1560" y="350"/><di:waypoint x="1560" y="1020"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_DOA_Task_QcBeans" bpmnElement="DOA_Task_QcBeans"><di:waypoint x="2520" y="350"/><di:waypoint x="2520" y="995"/><di:waypoint x="1560" y="995"/><di:waypoint x="1560" y="1020"/></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_DOA_Task_LogEnvError" bpmnElement="DOA_Task_LogEnvError"><di:waypoint x="600" y="350"/><di:waypoint x="600" y="995"/><di:waypoint x="1560" y="995"/><di:waypoint x="1560" y="1020"/></bpmndi:BPMNEdge>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>
 </bpmn:definitions>

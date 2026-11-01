@@ -61,7 +61,7 @@ cannot tell» → `End_Stale` (Base stale — run a full build)
 
 ### 4. Note the missed coupling on the bean (`Task_FileCoupling`)
 
-- Who: the `Work plan — beans (shared by humans and agents)` lane (role `work-plan`).
+- Who: the `QC reviewer` lane (role `qc-reviewer`).
 - Skill: `todo-manager`.
 - What: Append to bean `a9tx` (W8): the resource key, the differential path, and why it is unexplained.
 - Record it: `workflow_complete` with `node: "Task_FileCoupling"`.

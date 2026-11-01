@@ -41,10 +41,6 @@ WHAT IT DOES NOT CLAIM. A clean review says the delta is explained, not that the
         <bpmn:flowNodeRef>Task_Review</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>GW_Explained</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>End_Accepted</bpmn:flowNodeRef>
-      </bpmn:lane>
-      <bpmn:lane id="Lane_WorkPlan" name="Work plan — beans (shared by humans and agents)">
-        <bpmn:documentation>Where an unexplained difference is recorded before the run falls back to a full build: a note on bean `a9tx` under W8, naming the resource and the path, so the cone rules get fixed rather than the difference being forgotten when the full build comes back green.</bpmn:documentation>
-        <bpmn:extensionElements><bootstrap.processes:role ref="work-plan"/></bpmn:extensionElements>
         <bpmn:flowNodeRef>Task_FileCoupling</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>End_FullBuild</bpmn:flowNodeRef>
       </bpmn:lane>
@@ -105,6 +101,9 @@ WHAT IT DOES NOT CLAIM. A clean review says the delta is explained, not that the
       </bpmn:extensionElements>
       <bpmn:incoming>Flow_8</bpmn:incoming>
       <bpmn:outgoing>Flow_9</bpmn:outgoing>
+      <bpmn:dataOutputAssociation id="DOA_Task_FileCoupling">
+        <bpmn:targetRef>DSR_work_plan</bpmn:targetRef>
+      </bpmn:dataOutputAssociation>
     </bpmn:task>
     <bpmn:endEvent id="End_FullBuild" name="Coupling filed —&#10;run a full build">
       <bpmn:documentation>The incremental result is not used. A full build produces the next base, and the filed coupling is what W8 fixes in the cone rules.</bpmn:documentation>
@@ -119,6 +118,7 @@ WHAT IT DOES NOT CLAIM. A clean review says the delta is explained, not that the
     <bpmn:sequenceFlow id="Flow_7" sourceRef="GW_Explained" targetRef="End_Accepted" name="yes"/>
     <bpmn:sequenceFlow id="Flow_8" sourceRef="GW_Explained" targetRef="Task_FileCoupling" name="no"/>
     <bpmn:sequenceFlow id="Flow_9" sourceRef="Task_FileCoupling" targetRef="End_FullBuild"/>
+    <bpmn:dataStoreReference id="DSR_work_plan" name="Work plan (beans)" dataStoreRef="work-plan"/>
   </bpmn:process>
   <bpmndi:BPMNDiagram id="Diagram_Process_IgAstDeltaReview">
     <bpmndi:BPMNPlane id="Plane_Process_IgAstDeltaReview" bpmnElement="Collaboration_Process_IgAstDeltaReview">
@@ -129,10 +129,7 @@ WHAT IT DOES NOT CLAIM. A clean review says the delta is explained, not that the
         <dc:Bounds x="90" y="60" width="1110" height="180"/>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Shape_Lane_Review" bpmnElement="Lane_Review" isHorizontal="true">
-        <dc:Bounds x="90" y="240" width="1110" height="180"/>
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Shape_Lane_WorkPlan" bpmnElement="Lane_WorkPlan" isHorizontal="true">
-        <dc:Bounds x="90" y="420" width="1110" height="180"/>
+        <dc:Bounds x="90" y="240" width="1110" height="360"/>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Shape_Start_Ready" bpmnElement="Start_Ready">
         <dc:Bounds x="122" y="132" width="36" height="36"/>
@@ -201,6 +198,8 @@ WHAT IT DOES NOT CLAIM. A clean review says the delta is explained, not that the
         <di:waypoint x="1035" y="510"/>
         <di:waypoint x="1100" y="510"/>
       </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="Shape_DSR_work_plan" bpmnElement="DSR_work_plan"><dc:Bounds x="930" y="640" width="50" height="50"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Edge_DOA_Task_FileCoupling" bpmnElement="DOA_Task_FileCoupling"><di:waypoint x="955" y="550"/><di:waypoint x="955" y="640"/></bpmndi:BPMNEdge>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>
 </bpmn:definitions>

@@ -46,7 +46,7 @@ A proposed incremental build for a WHO SMART Implementation Guide: compile, vali
 
 ### 4. Log the environment error on the bean (`Task_LogEnvError`)
 
-- Who: the `Work plan — beans (shared by humans and agents)` lane (role `work-plan`).
+- Who: the `FHIR modeller / PR author (person + authoring agent)` lane (role `fhir-modeller`).
 - Skill: `todo-manager`.
 - What: Exit 2 from restore: the cache store or the toolchain could not be reached.
 - Record it: `workflow_complete` with `node: "Task_LogEnvError"`.
@@ -97,7 +97,7 @@ A proposed incremental build for a WHO SMART Implementation Guide: compile, vali
 
 ### 9. File QC findings as beans (`Task_QcBeans`)
 
-- Who: the `Work plan — beans (shared by humans and agents)` lane (role `work-plan`).
+- Who: the `FHIR modeller / PR author (person + authoring agent)` lane (role `fhir-modeller`).
 - Skill: `todo-manager`.
 - What: QC failed on the aggregate: file each finding as a bean, so it is tracked on the work plan rather than lost in qa.json.
 - Record it: `workflow_complete` with `node: "Task_QcBeans"`.
@@ -171,7 +171,7 @@ A proposed incremental build for a WHO SMART Implementation Guide: compile, vali
 
 ### 15. Log findings on the bean (`Task_LogFindings`)
 
-- Who: the `Work plan — beans (shared by humans and agents)` lane (role `work-plan`).
+- Who: the `FHIR modeller / PR author (person + authoring agent)` lane (role `fhir-modeller`).
 - Skill: `todo-manager`.
 - What: Validation failed: record the findings on the change's bean, so the work plan says what blocks it.
 - Record it: `workflow_complete` with `node: "Task_LogFindings"`.

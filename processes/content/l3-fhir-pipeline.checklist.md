@@ -60,7 +60,7 @@ How an L3 FHIR Implementation Guide is authored in FSH, built with SUSHI, the va
 
 ### 5. File QC findings as beans (`Task_QcBeans`)
 
-- Who: the `Work plan — beans (shared by humans and agents)` lane (role `work-plan`).
+- Who: the `FHIR modeller` lane (role `fhir-modeller`).
 - Skill: `todo-manager`.
 - What: QC findings do not stay in a report nobody re-reads — each becomes a bean the modeller and the agents both see.
 - Record it: `workflow_complete` with `node: "Task_QcBeans"`.

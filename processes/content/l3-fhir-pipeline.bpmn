@@ -42,10 +42,6 @@
         <bpmn:extensionElements><bootstrap.processes:role ref="fhir-modeller"/></bpmn:extensionElements>
         <bpmn:flowNodeRef>StartEvent_ModelReady</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>Task_AuthorFsh</bpmn:flowNodeRef>
-      </bpmn:lane>
-      <bpmn:lane id="Lane_WorkPlan" name="Work plan — beans (shared by humans and agents)">
-        <bpmn:documentation>The only failure this diagram writes down: an invalid-FHIR loop at Gateway_Valid sends the modeller straight back with nothing recorded, but a QC finding always passes through here first, becoming a bean before Task_AuthorFsh sees it again — so a QC failure is discoverable outside the session that produced it and an invalid-FHIR one is not.</bpmn:documentation>
-        <bpmn:extensionElements><bootstrap.processes:role ref="work-plan"/></bpmn:extensionElements>
         <bpmn:flowNodeRef>Task_QcBeans</bpmn:flowNodeRef>
       </bpmn:lane>
       <bpmn:lane id="Lane_Build" name="Build pipeline — SUSHI · validator · IG Publisher">
@@ -127,6 +123,9 @@
       </bpmn:extensionElements>
       <bpmn:incoming>C09</bpmn:incoming>
       <bpmn:outgoing>C10</bpmn:outgoing>
+      <bpmn:dataOutputAssociation id="DOA_Task_QcBeans">
+        <bpmn:targetRef>DSR_work_plan</bpmn:targetRef>
+      </bpmn:dataOutputAssociation>
     </bpmn:task>
     <bpmn:serviceTask id="Task_IgPublisher" name="IG Publisher build&#10;[ig-publication]">
       <bpmn:documentation>Run the IG Publisher: it renders output/, writes each resource's JSON, the package, canonicals and qa.json, and does the two things no cache can — validates every resource against its profiles and resolves the dependency closure with terminology expansion.</bpmn:documentation>
@@ -161,6 +160,7 @@
     <bpmn:sequenceFlow id="C11" name="yes" sourceRef="Gateway_QcPass" targetRef="Task_IgPublisher" />
     <bpmn:sequenceFlow id="C12" sourceRef="Task_IgPublisher" targetRef="Task_PublishIg" />
     <bpmn:sequenceFlow id="C13" sourceRef="Task_PublishIg" targetRef="EndEvent_IgPublished" />
+    <bpmn:dataStoreReference id="DSR_work_plan" name="Work plan (beans)" dataStoreRef="work-plan"/>
   </bpmn:process>
   <bpmndi:BPMNDiagram id="BPMNDiagram_1">
     <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Collaboration_L3Fhir">
@@ -168,10 +168,7 @@
         <dc:Bounds x="160" y="80" width="1960" height="750" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Lane_Modeller_di" bpmnElement="Lane_Modeller" isHorizontal="true">
-        <dc:Bounds x="190" y="80" width="1930" height="150" />
-      </bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Lane_WorkPlan_di" bpmnElement="Lane_WorkPlan" isHorizontal="true">
-        <dc:Bounds x="190" y="230" width="1930" height="150" />
+        <dc:Bounds x="190" y="80" width="1930" height="300" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Lane_Build_di" bpmnElement="Lane_Build" isHorizontal="true">
         <dc:Bounds x="190" y="380" width="1930" height="150" />
@@ -296,6 +293,8 @@
         <di:waypoint x="1945" y="755" />
         <di:waypoint x="2022" y="755" />
       </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="Shape_DSR_work_plan" bpmnElement="DSR_work_plan"><dc:Bounds x="1535" y="870" width="50" height="50"/></bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Edge_DOA_Task_QcBeans" bpmnElement="DOA_Task_QcBeans"><di:waypoint x="1560" y="350"/><di:waypoint x="1560" y="870"/></bpmndi:BPMNEdge>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>
 </bpmn:definitions>
