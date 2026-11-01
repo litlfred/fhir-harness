@@ -5,7 +5,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: questionnaire-wireframe-review\n"
-"POT-Creation-Date: 2026-10-14T18:08:02.965Z\n"
+"POT-Creation-Date: 2026-11-01T11:34:43.827Z\n"
 "PO-Revision-Date: \n"
 "Last-Translator: \n"
 "Language: zh\n"
@@ -36,7 +36,7 @@ msgstr ""
 
 #: ../fhir-harness/processes/content/questionnaire-wireframe-review.bpmn:148
 #. Diagram label
-msgid "Apply it, bring the other side in line"
+msgid "Apply it to the other side"
 msgstr ""
 
 #: ../fhir-harness/processes/content/questionnaire-wireframe-review.bpmn:114
