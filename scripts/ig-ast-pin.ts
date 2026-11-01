@@ -15,7 +15,7 @@
  * @covers fhir-artifact-index
  */
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { astPinsIn, IG_AST_LOCK_FILE, IG_AST_LOCK_TAG, IgAstLockSchema, type IgAstPin } from "../schemas/ig-ast-lock.ts";
