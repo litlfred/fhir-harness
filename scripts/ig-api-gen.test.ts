@@ -10,7 +10,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { codeSystemIri, enumerationSchema, generateIgApi, logicalModel, logicalModelSchema, Ordered, plain, pyJson, schemaKind, valueSetDisplays, valueSetFileId, valueSetSchema, valueSetVocabulary } from "./ig-api-gen.ts";
+import { codeSystemIri, enumerationSchema, generateIgApi, generatedAtOf, logicalModel, logicalModelSchema, Ordered, plain, pyJson, schemaKind, valueSetDisplays, valueSetFileId, valueSetSchema, valueSetVocabulary } from "./ig-api-gen.ts";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- generated schemas and JSON-LD, indexed freely by each case
 type Json = Record<string, any>;
@@ -144,6 +144,24 @@ describe("generateIgApi", () => {
       expect([...r.site.keys()].sort()).toEqual(["ValueSets-enumeration.openapi.json", "ValueSets.schema.json", "openapi/index.html"]);
       expect(r.site.get("openapi/index.html")).toContain("<title>OpenAPI Documentation - Example API</title>");
       expect(r.site.get("openapi/index.html")).toContain('"url": "../ValueSet-colours.openapi.json"');
+    } finally {
+      rmSync(ast, { recursive: true, force: true });
+    }
+  });
+});
+
+describe("generatedAtOf (cat-harness-tools#1230)", () => {
+  it("stamps the vocabularies with when the AST was compiled, so two runs write the same bytes", () => {
+    const ast = mkdtempSync(join(tmpdir(), "ig-api-gen-"));
+    try {
+      writeFileSync(join(ast, "manifest.json"), JSON.stringify({ generatedAt: "2026-10-20T16:09:48Z", resources: [] }));
+      writeFileSync(join(ast, "expansions.json"), JSON.stringify({ resourceType: "Bundle", entry: [{ resource: vs }] }));
+      expect(generatedAtOf(ast)).toBe("2026-10-20T16:09:48Z");
+      const a = generateIgApi(ast).sidecars.get("ValueSet-colours.jsonld");
+      expect(a).toContain("2026-10-20T16:09:48Z");
+      expect(generateIgApi(ast).sidecars.get("ValueSet-colours.jsonld")).toBe(a);
+      writeFileSync(join(ast, "manifest.json"), JSON.stringify({ resources: [] }));
+      expect(generatedAtOf(ast)).toBeUndefined();
     } finally {
       rmSync(ast, { recursive: true, force: true });
     }
