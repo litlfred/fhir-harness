@@ -131,7 +131,12 @@ jobs:
           git init -q "$M"
           git -C "$M" fetch -q --depth 1 https://github.com/litlfred/cat-harness-tools.git "$ref"
           git -C "$M" checkout -q FETCH_HEAD
-          bun run "$M/scripts/mount-from-lock.ts" --root .
+          # --no-install: this job installs the three mounts it runs, below.
+          # Installing every mount failed the whole job when a mount it never
+          # runs could not install (smart-base's who-iris asks npm for an
+          # unpublished @litlfred/folio-assistant-core; every run since
+          # 2026-10-30 failed here).
+          bun run "$M/scripts/mount-from-lock.ts" --root . --no-install
           for d in fhir-harness folio-assistant-core cat-harness; do
             [ -f "$d/package.json" ] && (cd "$d" && bun install --no-save)
           done
