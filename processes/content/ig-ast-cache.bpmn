@@ -142,6 +142,7 @@ WHAT IT DOES NOT CLAIM. A valid AST is a cache built from these inputs; it is no
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Shape_Start_Publish" bpmnElement="Start_Publish">
         <dc:Bounds x="142" y="132" width="36" height="36"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="182" y="123.5" width="90" height="53" /></bpmndi:BPMNLabel>
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Shape_Task_Restore" bpmnElement="Task_Restore">
         <dc:Bounds x="210" y="290" width="160" height="80"/>
@@ -186,6 +187,7 @@ WHAT IT DOES NOT CLAIM. A valid AST is a cache built from these inputs; it is no
       <bpmndi:BPMNEdge id="Edge_Flow_4" bpmnElement="Flow_4">
         <di:waypoint x="455" y="305"/>
         <di:waypoint x="455" y="190"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="459" y="200.75" width="180" height="36" /></bpmndi:BPMNLabel>
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Edge_Flow_5" bpmnElement="Flow_5">
         <di:waypoint x="720" y="330"/>
@@ -212,6 +214,7 @@ WHAT IT DOES NOT CLAIM. A valid AST is a cache built from these inputs; it is no
         <di:waypoint x="760" y="430"/>
         <di:waypoint x="250" y="430"/>
         <di:waypoint x="250" y="370"/>
+        <bpmndi:BPMNLabel><dc:Bounds x="764" y="461" width="90" height="18" /></bpmndi:BPMNLabel>
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Edge_Flow_10" bpmnElement="Flow_10">
         <di:waypoint x="455" y="535"/>
