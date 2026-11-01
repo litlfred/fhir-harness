@@ -480,6 +480,35 @@ export function cloneAt(repository: string, dir: string, sha?: string, git: type
   return { ok: true, out: "" };
 }
 
+/**
+ * The pinned commit's committer time (ISO 8601), or undefined when the clone
+ * has no HEAD. A pinned read stamps this, never the wall clock: the same pin
+ * then writes the same bytes on any day, so the writer reads only its pin
+ * (bean fwtz, "Shrinking the cone" step 1).
+ */
+export function pinnedAt(clone: string, git: typeof run = run): string | undefined {
+  const r = git("git", ["-C", clone, "show", "-s", "--format=%cI", "HEAD"]);
+  const at = r.ok ? r.out.trim() : "";
+  return /^\d{4}-\d{2}-\d{2}T/.test(at) ? at : undefined;
+}
+
+/**
+ * How the restored AST relates to the pin: the AST cache branch is read at its
+ * tip, and its manifest names the IG commit it was compiled from. When that
+ * is not the pinned commit, the index describes the older commit's resources,
+ * and the log says so instead of letting a stale index pass as the pin's.
+ */
+export function astAgainstPin(ast: string, pin: string | undefined): { sourceRevision?: string; matchesPin?: boolean } {
+  try {
+    const m = JSON.parse(readFileSync(join(ast, "manifest.json"), "utf-8")) as { inputs?: { sourceRevision?: unknown } };
+    const src = typeof m.inputs?.sourceRevision === "string" ? m.inputs.sourceRevision : undefined;
+    if (!src) return {};
+    return { sourceRevision: src, ...(pin ? { matchesPin: src === pin } : {}) };
+  } catch {
+    return {};
+  }
+}
+
 /** Build one IG's index, menu and releases. Returns the problems; empty means built. */
 export function buildOne(t: IgTarget, work: string, log: (s: string) => void, checkout = resolve(t.root, "..")): string[] {
   const problems: string[] = [];
@@ -500,6 +529,13 @@ export function buildOne(t: IgTarget, work: string, log: (s: string) => void, ch
   const restore = run("bash", [join(HERE, "ig-cache.sh"), "restore", "--ig-root", clone]);
   if (!restore.ok) return [`no AST restored from ${t.repository}: ${restore.out.split("\n").slice(-3).join(" ")}`];
   const ast = join(clone, "output-ast");
+  const head = run("git", ["-C", clone, "rev-parse", "HEAD"]);
+  const pin = t.sha ?? (head.ok ? head.out.trim() : undefined);
+  const at = pinnedAt(clone);
+  const vs = astAgainstPin(ast, pin);
+  if (vs.matchesPin === false) {
+    log(`  ! AST is from ${t.repository}@${vs.sourceRevision!.slice(0, 7)}, not the pin ${pin!.slice(0, 7)}: the index describes that commit's resources until the AST cache is re-seeded at the pin`);
+  } else if (vs.matchesPin) log(`  AST: compiled from the pin ${pin!.slice(0, 7)}`);
 
   const dir = join(t.root, "fhir-artifact-index");
   mkdirSync(dir, { recursive: true });
@@ -541,14 +577,16 @@ export function buildOne(t: IgTarget, work: string, log: (s: string) => void, ch
   }
 
   try {
-    const menu = buildMenu(clone, new Date().toISOString().slice(0, 10));
+    // The pinned commit's date, not today's: a menu is the same bytes for the same pin.
+    const menu = buildMenu(clone, (at ?? new Date().toISOString()).slice(0, 10));
     writeFileSync(join(dir, "menu.json"), `${JSON.stringify(menu, null, 2)}\n`);
     log(`  menu: ${menu.groups.length} group(s) from ${t.repository}@${menu.source.ref.slice(0, 7)}`);
   } catch (e) {
     problems.push(`menu: ${(e as Error).message}`);
   }
 
-  const rel = run("bun", ["run", join(HERE, "ingest-ig-releases.ts"), "--instance", t.root, "--repo", t.repository]);
+  // As of the pinned commit: releases published later belong to a later pin.
+  const rel = run("bun", ["run", join(HERE, "ingest-ig-releases.ts"), "--instance", t.root, "--repo", t.repository, ...(t.sha && at ? ["--as-of", at] : [])]);
   if (!rel.ok) log(`  releases: not written, could not read ${t.repository}'s releases: ${rel.out.split("\n").find((l) => l.startsWith("error:")) ?? rel.out.split("\n").slice(-1)[0]}`);
   else log("  releases: written");
   return problems;

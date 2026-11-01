@@ -15,7 +15,7 @@ import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { cloneAt, lockedMounts, referenceAbsent, contextsFrom, fhirVersionsOf, hubFrom, igTargets, isSafeInstanceName, lockedRepositories, packFromAst, publishedBase, rebaseOnMount } from "./build-ig-indexes.ts";
+import { astAgainstPin, cloneAt, lockedMounts, pinnedAt, referenceAbsent, contextsFrom, fhirVersionsOf, hubFrom, igTargets, isSafeInstanceName, lockedRepositories, packFromAst, publishedBase, rebaseOnMount } from "./build-ig-indexes.ts";
 import type { BranchLister } from "./gen-ig-ast-pages.ts";
 
 const instances = [
@@ -269,5 +269,28 @@ describe("lockedMounts and cloneAt (bean fwtz: the IG is read at its pin)", () =
     const git = () => (++n === 3 ? { ok: false, out: "not our ref" } : { ok: true, out: "" });
     expect(cloneAt("beta/ig", "/w/ig", "d1cfa96b0e83f088deaaba9e4672c77568663cbd", git)).toEqual({ ok: false, out: "not our ref" });
     expect(n).toBe(3);
+  });
+});
+
+describe("pinnedAt and astAgainstPin (bean fwtz: a pinned read writes the same bytes any day)", () => {
+  it("stamps the pinned commit's time, never the clock", () => {
+    const git = () => ({ ok: true, out: "2026-10-30T18:07:13+00:00\n" });
+    expect(pinnedAt("/w/ig", git)).toBe("2026-10-30T18:07:13+00:00");
+    expect(pinnedAt("/w/ig", () => ({ ok: false, out: "no HEAD" }))).toBeUndefined();
+  });
+
+  it("says whether the restored AST was compiled from the pin", () => {
+    const dir = mkdtempSync(join(tmpdir(), "ig-index-ast-"));
+    try {
+      const pin = "633b11fb2e628a9aa6086815e78edfe2d47d2095";
+      const old = "adadd67d5a648c250df28ba489c5f82f28cc3356";
+      expect(astAgainstPin(dir, pin)).toEqual({});
+      writeFileSync(join(dir, "manifest.json"), JSON.stringify({ inputs: { sourceRevision: old } }));
+      expect(astAgainstPin(dir, pin)).toEqual({ sourceRevision: old, matchesPin: false });
+      expect(astAgainstPin(dir, old)).toEqual({ sourceRevision: old, matchesPin: true });
+      expect(astAgainstPin(dir, undefined)).toEqual({ sourceRevision: old });
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
   });
 });
