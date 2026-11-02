@@ -16,7 +16,7 @@
     },
     {
       "id": "process_igastcache.task_dispatch",
-      "prefLabel": "Dispatch the IG's ig-ast-refresh.yml",
+      "prefLabel": "Dispatch AST refresh",
       "definition": "Actions → \"IG AST refresh (by hand)\" → Run workflow on the default branch, inputs `ref` = the default branch, `force` = false. The publish refused, so the verdict already says the cache is not valid; `force` is for a cache that is valid but suspected wrong.",
       "notation": "Task_Dispatch",
       "source": "fhir-harness/processes/content/ig-ast-cache.bpmn#Task_Dispatch",
@@ -24,7 +24,7 @@
     },
     {
       "id": "process_igastcache.task_export",
-      "prefLabel": "Build the IG with the Publisher AST exporter",
+      "prefLabel": "Build the IG with the AST exporter",
       "definition": "The runner mounts the layers the IG repository's `index.lock.json` pins, restores and judges the cache itself, and, when it is not valid, runs the caller's optional `pre-export` overlay command, then `AstExportCli` (Tool `ig-ast-export`, `litlfred/fhir-ig-publisher` at the pinned `claude/ast-export` commit) with `-tx`. The inputs `pre-export` changed are put back and the AST is recorded against the clean commit's input digest (`ig-ast.ts source-inputs`). The AST just built must itself be `valid` for the commit, or the run fails.",
       "notation": "Task_Export",
       "source": "fhir-harness/processes/content/ig-ast-cache.bpmn#Task_Export",
@@ -32,7 +32,7 @@
     },
     {
       "id": "process_igastcache.task_restore",
-      "prefLabel": "Restore the AST from its cache branch and judge it",
+      "prefLabel": "Restore and judge the cached AST",
       "definition": "`ig-cache.sh restore --ig-root .` fetches `cat/fhir-harness/fhir-ast/<package id>` into `output-ast/` (with the Publisher's `txcache/`), then `ig-cache.sh verify` runs `ig-ast.ts validity`: exit 0 valid, 1 stale-inputs (naming which input), 2 cannot-tell. A restore that finds no branch is a miss, judged as not valid. In an IG repository's site route this is the first `pre` step, `ig-site:ast` (`ig-repo-site.ts ast`).",
       "notation": "Task_Restore",
       "source": "fhir-harness/processes/content/ig-ast-cache.bpmn#Task_Restore",
@@ -40,7 +40,7 @@
     },
     {
       "id": "process_igastcache.task_seed",
-      "prefLabel": "Seed the cache branch (ig-cache seed --push)",
+      "prefLabel": "Seed the cache branch",
       "definition": "`ig-cache.sh seed --ig-root . --push`: one commit holding the AST, the Publisher's expansions and `txcache/`, its subject recording the package, counts, Publisher version and source commit. Refused when the candidate is under 90% of the incumbent's resources or edges (the no-shrink gate).",
       "notation": "Task_Seed",
       "source": "fhir-harness/processes/content/ig-ast-cache.bpmn#Task_Seed",
@@ -48,7 +48,7 @@
     },
     {
       "id": "process_igastdeltareview.task_diff",
-      "prefLabel": "Diff base → head and render the delta pages",
+      "prefLabel": "Diff the two ASTs",
       "definition": "`ig-ast.ts diff <base> <head> --plan plan.json --site <site>/ast-delta/`: resources added, removed, changed (with an element-level differential) and version-changed; edges added and removed; the plan's decision. Every page opens with the provisional mark and is wrapped in raw so narrative Liquid is not executed.",
       "notation": "Task_Diff",
       "source": "fhir-harness/processes/content/ig-ast-delta-review.bpmn#Task_Diff",
@@ -64,7 +64,7 @@
     },
     {
       "id": "process_igastdeltareview.task_review",
-      "prefLabel": "Read the rendered delta",
+      "prefLabel": "Read the delta",
       "definition": "Start at the delta index; open each changed resource's page. Check `builtAt` before judging: a resource carried from the base was not rebuilt, so a difference there is the change itself or a missed coupling, never noise. The differential is structural: a reordered repeating element shows at every index.",
       "notation": "Task_Review",
       "source": "fhir-harness/processes/content/ig-ast-delta-review.bpmn#Task_Review",
@@ -72,7 +72,7 @@
     },
     {
       "id": "process_igastdeltareview.task_validity",
-      "prefLabel": "Check the base AST against the IG's inputs",
+      "prefLabel": "Check the base AST against the inputs",
       "definition": "`ig-ast.ts validity <base> --ig <root>`: folio-assistant-core's compiledValidity on the manifest's inputs, with the input digest recomputed by the same algorithm as the Java writer. Exit 0 valid, 1 stale-inputs (names which input), 2 cannot-tell. Run against the BASE revision's checkout.",
       "notation": "Task_Validity",
       "source": "fhir-harness/processes/content/ig-ast-delta-review.bpmn#Task_Validity",
@@ -88,7 +88,7 @@
     },
     {
       "id": "process_igincremental.task_cone",
-      "prefLabel": "Compute the cone of the change (fsh-cone --changed)",
+      "prefLabel": "Compute the cone of the change",
       "definition": "content/pipeline/fsh-cone.ts over the changed files: the forward cone is what to rebuild, the backward cone is what to check out.",
       "notation": "Task_Cone",
       "source": "fhir-harness/processes/content/ig-incremental-build.bpmn#Task_Cone",
@@ -104,7 +104,7 @@
     },
     {
       "id": "process_igincremental.task_contextload",
-      "prefLabel": "Load or reuse the warm context (fhir_context_load)",
+      "prefLabel": "Load or reuse the warm context",
       "definition": "The validator's server mode holds the loaded dependency packages, snapshots and expansions in its session cache. Cold start loads the restored derived FHIR rather than regenerating it.",
       "notation": "Task_ContextLoad",
       "source": "fhir-harness/processes/content/ig-incremental-build.bpmn#Task_ContextLoad",
@@ -168,7 +168,7 @@
     },
     {
       "id": "process_igincremental.task_qa",
-      "prefLabel": "QC gates on the aggregate QA",
+      "prefLabel": "Run QC gates on the aggregate QA",
       "definition": "qa.json is the aggregate of per-artefact outcomes; the reviewer reads the cone's rows first.",
       "notation": "Task_Qa",
       "source": "fhir-harness/processes/content/ig-incremental-build.bpmn#Task_Qa",
@@ -200,7 +200,7 @@
     },
     {
       "id": "process_igincremental.task_seed",
-      "prefLabel": "Seed the cache from the green build (ig-cache seed · verify · promote)",
+      "prefLabel": "Seed the cache from the green build",
       "definition": "Only a green build of main or a release seeds. Seed writes to the -test branch, verifies a restore from a clean clone, then promotes.",
       "notation": "Task_Seed",
       "source": "fhir-harness/processes/content/ig-incremental-build.bpmn#Task_Seed",
@@ -208,7 +208,7 @@
     },
     {
       "id": "process_igincremental.task_site",
-      "prefLabel": "Assemble the site (template · Jekyll)",
+      "prefLabel": "Assemble the site",
       "definition": "Assemble the site from the merged records: the IG template and a Jekyll build over output/. Only site assembly happens here — every artefact record already exists.",
       "notation": "Task_Site",
       "source": "fhir-harness/processes/content/ig-incremental-build.bpmn#Task_Site",
@@ -272,7 +272,7 @@
     },
     {
       "id": "process_l3fhir.task_sushi",
-      "prefLabel": "SUSHI compile → FHIR JSON",
+      "prefLabel": "Compile FSH to FHIR JSON",
       "definition": "Compile the FSH to FHIR JSON with SUSHI. Compiling is not conformance: a green SUSHI result goes on to validation and never stands in for it.",
       "notation": "Task_Sushi",
       "source": "fhir-harness/processes/content/l3-fhir-pipeline.bpmn#Task_Sushi",
@@ -296,7 +296,7 @@
     },
     {
       "id": "process_questionnairewireframereview.task_apply",
-      "prefLabel": "Apply it, bring the other side in line",
+      "prefLabel": "Apply it to the other side",
       "definition": "The side the request edited is the source of the change (owner, 2026-10-14). An edited Questionnaire is applied as an FSH edit and the wireframe is redrawn to match; an edited wireframe is kept and the Questionnaire re-derived from it. Then back to Task_Read.",
       "notation": "Task_Apply",
       "source": "fhir-harness/processes/content/questionnaire-wireframe-review.bpmn#Task_Apply",

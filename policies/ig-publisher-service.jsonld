@@ -3,7 +3,7 @@
   "@context": {
     "@vocab": "http://www.w3.org/ns/odrl/2/",
     "odrl": "http://www.w3.org/ns/odrl/2/",
-    "cat-harness": "https://litlfred.github.io/cat-harness/v0/ns#"
+    "cat-harness": "https://litlfred.github.io/cat-harness/v0/ns/"
   },
   "@type": "Set",
   "uid": "https://litlfred.github.io/fhir-harness/policies/ig-publisher-service",
