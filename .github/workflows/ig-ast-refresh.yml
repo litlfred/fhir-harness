@@ -63,7 +63,7 @@ on:
       ast-export-ref:
         description: "litlfred/fhir-ig-publisher commit carrying ast-export (AstExportCli)"
         type: string
-        default: ce950d286ac7410b9d3b2411afd9e289a9badac1
+        default: a7a58da244f2515f00bea5c9175b598c49974b69
       tx:
         description: "Terminology server the Publisher uses (its own default)"
         type: string
