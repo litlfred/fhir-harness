@@ -14,6 +14,14 @@
     "@types/fhir": "0.0.44",
     "ajv": "^6.15.0"
   },
+  "peerDependencies": {
+    "@litlfred/cat-harness-tools": "*"
+  },
+  "peerDependenciesMeta": {
+    "@litlfred/cat-harness-tools": {
+      "optional": true
+    }
+  },
   "checkoutScripts": {
     "check:artifact-index": "bun run fhir-harness/scripts/check-artifact-index.ts",
     "check:ig-annex-links": "bun run fhir-harness/scripts/check-ig-annex-links.ts",
