@@ -100,9 +100,9 @@ A built FHIR Questionnaire shown the way a person will meet it — a mid-fidelit
 - Skill: `content-feedback`.
 - What: content-feedback triages the issue; when a review round is open it joins a change-set through public-comment instead.
 - Record it: `workflow_complete` with `node: "Task_Triage"`.
-- next: → `Task_Apply` (Apply it, bring the other side in line)
+- next: → `Task_Apply` (Apply it to the other side)
 
-### 10. Apply it, bring the other side in line (`Task_Apply`)
+### 10. Apply it to the other side (`Task_Apply`)
 
 - Who: the `FHIR modeller` lane (role `fhir-modeller`).
 - Skill: `l3-fhir-authoring`.

@@ -63,7 +63,7 @@ on:
       ast-export-ref:
         description: "litlfred/fhir-ig-publisher commit carrying ast-export (AstExportCli)"
         type: string
-        default: ce950d286ac7410b9d3b2411afd9e289a9badac1
+        default: a7a58da244f2515f00bea5c9175b598c49974b69
       tx:
         description: "Terminology server the Publisher uses (its own default)"
         type: string
@@ -133,8 +133,8 @@ jobs:
           git -C "$M" checkout -q FETCH_HEAD
           # --no-install: this job installs the three mounts it runs, below.
           # Installing every mount failed the whole job when a mount it never
-          # runs could not install (smart-base's who-iris asks npm for an
-          # unpublished @litlfred/folio-assistant-core; every run since
+          # runs could not install (a mounted IG's own dependency asked npm
+          # for an unpublished @litlfred/folio-assistant-core; every run since
           # 2026-10-30 failed here).
           bun run "$M/scripts/mount-from-lock.ts" --root . --no-install
           for d in fhir-harness folio-assistant-core cat-harness cat-harness-tools bootstrap-tools; do
@@ -230,6 +230,13 @@ jobs:
           # own route. A cached template is kept by the Publisher when the
           # server cannot say it is out of date.
           tpl=$(sed -n 's/^[[:space:]]*template[[:space:]]*=[[:space:]]*\([A-Za-z0-9._-]*#current\)[[:space:]]*$/\1/p' ig.ini 2>/dev/null | head -n 1)
+          # A `#local-template` extends a base template named in its own
+          # package.json; when that base is `current`, it is the package to
+          # seed, since the Publisher fetches it from the same CI build server.
+          if [ -z "$tpl" ] && grep -Eq '^[[:space:]]*template[[:space:]]*=[[:space:]]*#local-template[[:space:]]*$' ig.ini 2>/dev/null \
+             && [ -f local-template/package/package.json ]; then
+            tpl=$(python3 -I -c 'import json,sys; p=json.load(open(sys.argv[1])); b=p.get("base",""); print(b+"#current" if b and p.get("dependencies",{}).get(b)=="current" else "")' local-template/package/package.json 2>/dev/null || true)
+          fi
           if [ -n "$tpl" ] && [ ! -d "$HOME/.fhir/packages/$tpl" ]; then
             targs=()
             for m in $TEMPLATE_REPOS; do targs+=(--template-repo "$m"); done
