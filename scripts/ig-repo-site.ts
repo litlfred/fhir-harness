@@ -147,7 +147,7 @@
  * thousands, measured on one IG), so the site build reports it and does not
  * refuse the publish over it, while a dead link in the chrome still refuses.
  */
-import { IG_API_HUB_DEFAULT_PAGE, hasIgApi, hubEntries, igApiHubPageOf, writeIgApiHubSite } from "./ig-api-hub.ts";
+import { IG_API_HUB_CONFIG_ID, IG_API_HUB_DEFAULT_PAGE, hasIgApi, hubEntries, igApiHubPageOf, writeIgApiHubSite } from "./ig-api-hub.ts";
 import { spawnSync } from "node:child_process";
 import { appendFileSync, cpSync, writeFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from "node:fs";
 import { homedir, tmpdir } from "node:os";
@@ -163,6 +163,7 @@ import { translationMetaBlock, withTranslationMeta } from "../../cat-harness-too
 import { igOpenapiGraph, OPENAPI_DIR } from "../../cat-harness-tools/openapi/scripts/ig-site-openapi.ts";
 import type { FhirArtifactIndex } from "../schemas/fhir-artifact-index.js";
 import { buildMenu } from "./ingest-ig-menu.ts";
+import { THIN_INDEX_CONFIG_ID, THIN_PAGE_CONFIG_ID } from "./ig-thin-pages.ts";
 import { copyDeclared, igReadScope, type IgReadScope } from "./ig-read-scope.ts";
 import { siteBuild, type SiteBuild, STAMP_FILE } from "./site-build-stamp.ts";
 import { annexesFor, artifactsFor, copyDocsInto, footerFor, githubEditBase, instanceNeeds, webpagePalette } from "./stage-ig-sites.ts";
@@ -654,6 +655,56 @@ export function stampIgBar(site: string, label: string): { pages: number } {
   return { pages: n };
 }
 
+/** The config block ids of the IG's thin pages: an artefact's page, the artifacts/toc lists, the IG API hub. */
+export const IG_THIN_CONFIG_IDS: readonly string[] = [THIN_PAGE_CONFIG_ID, THIN_INDEX_CONFIG_ID, IG_API_HUB_CONFIG_ID];
+const TOC_NAV_RE = /<script type="application\/json" data-fa-visualiser-nav>[\s\S]*?<\/script>/;
+const TOC_LABEL_RE = /<meta name="fa-visualiser-label" content="[^"]*">/;
+
+/**
+ * The IG's TOC in the rail on its THIN pages too (owner, 2026-11-02: "the LHS
+ * navbar should have TOC ... some pages have it but not artifact. why?").
+ *
+ * The rail's IG section is DECLARED (`igTocNav`), and only the layout the
+ * IG's narrative pages wear writes it. The thin pages (`artifacts.html`,
+ * `toc.html`, every `artifact/*.html`, the IG API hub) are finished HTML that
+ * never pass through that layout, and they draw their content by script, so
+ * the rail found no section on them and drew none.
+ *
+ * This copies the declaration and its label, read off a built page that has
+ * them (`index.html` first), into each thin page that lacks one, before the
+ * rail pass reads it. Only pages carrying one of {@link IG_THIN_CONFIG_IDS}
+ * are touched: a page of anybody else's keeps its own section. No page with
+ * the declaration, nothing to copy and nothing stamped.
+ */
+export function stampIgTocNav(site: string): { pages: number } {
+  const all = filesUnder(site).filter((f) => /\.html?$/i.test(f) && !f.startsWith("assets/"));
+  let nav: string | undefined;
+  let label: string | undefined;
+  for (const f of ["index.html", ...all.filter((x) => x !== "index.html")]) {
+    if (!existsSync(join(site, f))) continue;
+    const html = readFileSync(join(site, f), "utf-8");
+    const m = TOC_NAV_RE.exec(html);
+    if (!m) continue;
+    nav = m[0];
+    label = TOC_LABEL_RE.exec(html)?.[0];
+    break;
+  }
+  if (!nav) return { pages: 0 };
+  const thin = new RegExp(`<script type="application/json" id="(?:${IG_THIN_CONFIG_IDS.join("|")})">`);
+  let n = 0;
+  for (const f of all) {
+    const abs = join(site, f);
+    const html = readFileSync(abs, "utf-8");
+    if (!thin.test(html) || TOC_NAV_RE.test(html)) continue;
+    const at = html.search(/<\/head>/i);
+    if (at < 0) continue;
+    const add = `${label && !TOC_LABEL_RE.test(html) ? `${label}\n` : ""}${nav}\n`;
+    writeFileSync(abs, html.slice(0, at) + add + html.slice(at));
+    n++;
+  }
+  return { pages: n };
+}
+
 /** Every file under `dir`, relative to it, `/`-separated. */
 function filesUnder(dir: string): string[] {
   const out: string[] = [];
@@ -828,6 +879,8 @@ export function publisherPages(o: { site: string; ast: string; work?: string; ig
     log(`publisher pages: the language picker's block (fa-translation-meta) written on ${stamped} page(s) that lacked one`);
     const barred = stampIgBar(o.site, igTitle(o.ig) ?? basename(resolve(o.ig)));
     log(`publisher pages: the IG's slim bar given to ${barred.pages} page(s) that had another or none, with the shared page layout`);
+    const tocd = stampIgTocNav(o.site);
+    log(`publisher pages: the IG's TOC declared for the rail on ${tocd.pages} thin page(s) that lacked it`);
     const stamp = igSiteStamp(o.ig);
     const validity = o.work ? join(o.work, VALIDITY_FILE) : undefined;
     if (validity && existsSync(validity)) {
