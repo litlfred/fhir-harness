@@ -266,6 +266,41 @@
       "status": "candidate"
     },
     {
+      "id": "ig-ast-lock.igastpinschema.branch",
+      "prefLabel": "IgAstPinSchema.branch",
+      "definition": "The cache branch the commit was read from, for the reader; the commit is what is fetched.",
+      "source": "fhir-harness/schemas/ig-ast-lock.ts#IgAstPinSchema.branch",
+      "status": "candidate"
+    },
+    {
+      "id": "ig-ast-lock.igastpinschema.instance",
+      "prefLabel": "IgAstPinSchema.instance",
+      "definition": "The IG instance, as `index.lock.json` names it.",
+      "source": "fhir-harness/schemas/ig-ast-lock.ts#IgAstPinSchema.instance",
+      "status": "candidate"
+    },
+    {
+      "id": "ig-ast-lock.igastpinschema.repository",
+      "prefLabel": "IgAstPinSchema.repository",
+      "definition": "The repository the cache branch lives in: the IG's own.",
+      "source": "fhir-harness/schemas/ig-ast-lock.ts#IgAstPinSchema.repository",
+      "status": "candidate"
+    },
+    {
+      "id": "ig-ast-lock.igastpinschema.sha",
+      "prefLabel": "IgAstPinSchema.sha",
+      "definition": "The pinned cache commit.",
+      "source": "fhir-harness/schemas/ig-ast-lock.ts#IgAstPinSchema.sha",
+      "status": "candidate"
+    },
+    {
+      "id": "ig-ast-lock.igastpinschema.sourcerevision",
+      "prefLabel": "IgAstPinSchema.sourceRevision",
+      "definition": "The IG commit the AST says it was compiled from (`manifest.json` `inputs.sourceRevision`), when it says.",
+      "source": "fhir-harness/schemas/ig-ast-lock.ts#IgAstPinSchema.sourceRevision",
+      "status": "candidate"
+    },
+    {
       "id": "ig-ast.astmanifestschema.inputs",
       "prefLabel": "AstManifestSchema.inputs",
       "definition": "What the AST is valid for, in `CompiledInputsSchema`'s shape.",
