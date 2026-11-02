@@ -10,9 +10,9 @@ The review step of an incremental FHIR IG build, as its own subprocess: list and
 
 - Begin here: Reached after an incremental build (IncrementalBuildCli) has merged the rebuilt cone into the base, or after a full build when comparing the two for W8.
 - Call `workflow_start` with `process: "Process_IgAstDeltaReview"` and the subject this run is about; keep the instance id it returns.
-- next: → `Task_Validity` (Check the base AST against the IG's inputs)
+- next: → `Task_Validity` (Check the base AST against the inputs)
 
-### 1. Check the base AST against the IG's inputs (`Task_Validity`)
+### 1. Check the base AST against the inputs (`Task_Validity`)
 
 - Who: the `Incremental build (system)` lane (role `build-pipeline`).
 - Skill: `ig-ast-delta`.
@@ -24,23 +24,23 @@ The review step of an incremental FHIR IG build, as its own subprocess: list and
 
 - Answered by Task_Validity's exit code.
 - Call `workflow_complete` with `node: "GW_Valid"` and `outcome` set to the label that holds:
-  - «yes» → `Task_Diff` (Diff base → head and render the delta pages)
+  - «yes» → `Task_Diff` (Diff the two ASTs)
   - «no — stale or
 cannot tell» → `End_Stale` (Base stale — run a full build)
 
-### 2. Diff base → head and render the delta pages (`Task_Diff`)
+### 2. Diff the two ASTs (`Task_Diff`)
 
 - Who: the `Incremental build (system)` lane (role `build-pipeline`).
 - Skill: `ig-ast-delta`.
 - What: `ig-ast.ts diff <base> <head> --plan plan.json --site <site>/ast-delta/`: resources added, removed, changed (with an element-level differential) and version-changed; edges added and removed; the plan's decision.
 - Record it: `workflow_complete` with `node: "Task_Diff"`.
-- next: → `Task_Review` (Read the rendered delta)
+- next: → `Task_Review` (Read the delta)
 
 ## Done — Base stale — run a full build (`End_Stale`)
 
 - The instance completes here: No delta is shown. `workflow_next` then reports nothing enabled — that, not this line, is the record of completion.
 
-### 3. Read the rendered delta (`Task_Review`)
+### 3. Read the delta (`Task_Review`)
 
 - Who: the `QC reviewer` lane (role `qc-reviewer`).
 - Skill: `ig-ast-delta`.
@@ -61,7 +61,7 @@ cannot tell» → `End_Stale` (Base stale — run a full build)
 
 ### 4. Note the missed coupling on the bean (`Task_FileCoupling`)
 
-- Who: the `Work plan — beans (shared by humans and agents)` lane (role `work-plan`).
+- Who: the `QC reviewer` lane (role `qc-reviewer`).
 - Skill: `todo-manager`.
 - What: Append to bean `a9tx` (W8): the resource key, the differential path, and why it is unexplained.
 - Record it: `workflow_complete` with `node: "Task_FileCoupling"`.

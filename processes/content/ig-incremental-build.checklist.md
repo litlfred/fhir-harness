@@ -24,11 +24,11 @@ A proposed incremental build for a WHO SMART Implementation Guide: compile, vali
 
 - Answered by the exit code of `ig-cache restore` (Task_Restore): 0 is a usable cache and takes `yes`, into the cone machinery.
 - Call `workflow_complete` with `node: "Gateway_Restore"` and `outcome` set to the label that holds:
-  - «yes» → `Task_Cone` (Compute the cone of the change (fsh-cone --changed))
+  - «yes» → `Task_Cone` (Compute the cone of the change)
   - «no» → `Task_FullBuild` (Full publisher build)
   - «environment error» → `Task_LogEnvError` (Log the environment error on the bean)
 
-### 2. Compute the cone of the change (fsh-cone --changed) (`Task_Cone`)
+### 2. Compute the cone of the change (`Task_Cone`)
 
 - Who: the `Incremental build (system)` lane (role `build-pipeline`).
 - Skill: `ig-publication`, `ig-publication`, `ig-publication`.
@@ -42,11 +42,11 @@ A proposed incremental build for a WHO SMART Implementation Guide: compile, vali
 - Skill: `ig-publication`.
 - What: Exit 1 or 3 from restore: the whole IG is built as today.
 - Record it: `workflow_complete` with `node: "Task_FullBuild"`.
-- next: → `Task_Qa` (QC gates on the aggregate QA)
+- next: → `Task_Qa` (Run QC gates on the aggregate QA)
 
 ### 4. Log the environment error on the bean (`Task_LogEnvError`)
 
-- Who: the `Work plan — beans (shared by humans and agents)` lane (role `work-plan`).
+- Who: the `FHIR modeller / PR author (person + authoring agent)` lane (role `fhir-modeller`).
 - Skill: `todo-manager`.
 - What: Exit 2 from restore: the cache store or the toolchain could not be reached.
 - Record it: `workflow_complete` with `node: "Task_LogEnvError"`.
@@ -60,7 +60,7 @@ A proposed incremental build for a WHO SMART Implementation Guide: compile, vali
 - Record it: `workflow_complete` with `node: "Task_ConeReport"`.
 - next: → `Task_Checkout` (Restricted checkout of the backward cone)
 
-### 6. QC gates on the aggregate QA (`Task_Qa`)
+### 6. Run QC gates on the aggregate QA (`Task_Qa`)
 
 - Who: the `PR reviewer / QC reviewer` lane (role `qc-reviewer`).
 - Skill: `quality-control`.
@@ -93,11 +93,11 @@ A proposed incremental build for a WHO SMART Implementation Guide: compile, vali
 - Skill: `l3-fhir-authoring`.
 - What: Compile the restricted checkout with SUSHI — the cone's FSH, not the whole IG.
 - Record it: `workflow_complete` with `node: "Task_Sushi"`.
-- next: → `Task_ContextLoad` (Load or reuse the warm context (fhir_context_load))
+- next: → `Task_ContextLoad` (Load or reuse the warm context)
 
 ### 9. File QC findings as beans (`Task_QcBeans`)
 
-- Who: the `Work plan — beans (shared by humans and agents)` lane (role `work-plan`).
+- Who: the `FHIR modeller / PR author (person + authoring agent)` lane (role `fhir-modeller`).
 - Skill: `todo-manager`.
 - What: QC failed on the aggregate: file each finding as a bean, so it is tracked on the work plan rather than lost in qa.json.
 - Record it: `workflow_complete` with `node: "Task_QcBeans"`.
@@ -110,7 +110,7 @@ A proposed incremental build for a WHO SMART Implementation Guide: compile, vali
   - «PR branch» → `Task_DeployPreview` (Deploy the preview site)
   - «main / release» → `Task_Deploy` (Deploy the site [content-publish])
 
-### 10. Load or reuse the warm context (fhir_context_load) (`Task_ContextLoad`)
+### 10. Load or reuse the warm context (`Task_ContextLoad`)
 
 - Who: the `Publisher + validator services (JVM)` lane (role `ig-publisher-service`).
 - Skill: `ig-publication`, `ig-publication`, `ig-publication`.
@@ -136,7 +136,7 @@ A proposed incremental build for a WHO SMART Implementation Guide: compile, vali
 - Skill: `content-publish`, `ig-publication`.
 - What: Deploy the site built from main or a release.
 - Record it: `workflow_complete` with `node: "Task_Deploy"`.
-- next: → `Task_Seed` (Seed the cache from the green build (ig-cache seed · verify · promote))
+- next: → `Task_Seed` (Seed the cache from the green build)
 
 ### 13. Validate the cone (fhir_validate) (`Task_Validate`)
 
@@ -150,7 +150,7 @@ A proposed incremental build for a WHO SMART Implementation Guide: compile, vali
 
 - The instance completes here. `workflow_next` then reports nothing enabled — that, not this line, is the record of completion.
 
-### 14. Seed the cache from the green build (ig-cache seed · verify · promote) (`Task_Seed`)
+### 14. Seed the cache from the green build (`Task_Seed`)
 
 - Who: the `Publication manager — deploy and seed` lane (role `publication-manager`).
 - Skill: `ig-publication`, `ig-publication`, `ig-publication`.
@@ -171,7 +171,7 @@ A proposed incremental build for a WHO SMART Implementation Guide: compile, vali
 
 ### 15. Log findings on the bean (`Task_LogFindings`)
 
-- Who: the `Work plan — beans (shared by humans and agents)` lane (role `work-plan`).
+- Who: the `FHIR modeller / PR author (person + authoring agent)` lane (role `fhir-modeller`).
 - Skill: `todo-manager`.
 - What: Validation failed: record the findings on the change's bean, so the work plan says what blocks it.
 - Record it: `workflow_complete` with `node: "Task_LogFindings"`.
@@ -203,12 +203,12 @@ A proposed incremental build for a WHO SMART Implementation Guide: compile, vali
 - Skill: `ig-publication`, `ig-publication`, `ig-publication`.
 - What: The whole-IG aggregates only — artifacts, TOC, canonicals, expansions, package, QA aggregate.
 - Record it: `workflow_complete` with `node: "Task_Index"`.
-- next: → `Task_Site` (Assemble the site (template · Jekyll))
+- next: → `Task_Site` (Assemble the site)
 
-### 19. Assemble the site (template · Jekyll) (`Task_Site`)
+### 19. Assemble the site (`Task_Site`)
 
 - Who: the `Incremental build (system)` lane (role `build-pipeline`).
 - Skill: `ig-publication`.
 - What: Assemble the site from the merged records: the IG template and a Jekyll build over output/.
 - Record it: `workflow_complete` with `node: "Task_Site"`.
-- next: → `Task_Qa` (QC gates on the aggregate QA)
+- next: → `Task_Qa` (Run QC gates on the aggregate QA)
