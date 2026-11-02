@@ -116,7 +116,7 @@ msgstr ""
 
 #: ../fhir-harness/processes/content/ig-ast-delta-review.bpmn:97
 #. Diagram label
-msgid "Note the missed coupling on the bean [todo-manager]"
+msgid "Note the missed coupling on the bean"
 msgstr ""
 
 #: ../fhir-harness/processes/content/ig-ast-delta-review.bpmn:39

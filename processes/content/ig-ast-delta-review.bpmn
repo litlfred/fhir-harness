@@ -94,7 +94,7 @@ WHAT IT DOES NOT CLAIM. A clean review says the delta is explained, not that the
       <bpmn:documentation>Hands back to ig-incremental-build at Task_Qa. The merged AST is still a cache; its pages keep the provisional mark.</bpmn:documentation>
       <bpmn:incoming>Flow_7</bpmn:incoming>
     </bpmn:endEvent>
-    <bpmn:task id="Task_FileCoupling" name="Note the missed coupling&#10;on the bean [todo-manager]">
+    <bpmn:task id="Task_FileCoupling" name="Note the missed coupling&#10;on the bean">
       <bpmn:documentation>Append to bean `a9tx` (W8): the resource key, the differential path, and why it is unexplained. Check before creating: beans create is not idempotent. A note, not a new bean, unless the owner asks for one.</bpmn:documentation>
       <bpmn:extensionElements>
         <bootstrap.processes:skill ref="todo-manager"/>

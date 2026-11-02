@@ -91,12 +91,12 @@ msgstr ""
 
 #: ../fhir-harness/processes/content/ig-incremental-build.bpmn:292
 #. Diagram label
-msgid "Deploy the preview site [content-publish]"
+msgid "Deploy the preview site"
 msgstr ""
 
 #: ../fhir-harness/processes/content/ig-incremental-build.bpmn:304
 #. Diagram label
-msgid "Deploy the site [content-publish] [ig-publication]"
+msgid "Deploy the site"
 msgstr ""
 
 #: ../fhir-harness/processes/content/ig-incremental-build.bpmn:305
@@ -126,7 +126,7 @@ msgstr ""
 
 #: ../fhir-harness/processes/content/ig-incremental-build.bpmn:271
 #. Diagram label
-msgid "File QC findings as beans [todo-manager]"
+msgid "File QC findings as beans"
 msgstr ""
 
 #: ../fhir-harness/processes/content/ig-incremental-build.bpmn:217
@@ -136,7 +136,7 @@ msgstr ""
 
 #: ../fhir-harness/processes/content/ig-incremental-build.bpmn:135
 #. Diagram label
-msgid "Full publisher build [ig-publication]"
+msgid "Full publisher build"
 msgstr ""
 
 #: ../fhir-harness/processes/content/ig-incremental-build.bpmn:164
@@ -171,7 +171,7 @@ msgstr ""
 
 #: ../fhir-harness/processes/content/ig-incremental-build.bpmn:205
 #. Diagram label
-msgid "Log findings on the bean [todo-manager]"
+msgid "Log findings on the bean"
 msgstr ""
 
 #: ../fhir-harness/processes/content/ig-incremental-build.bpmn:119
@@ -281,7 +281,7 @@ msgstr ""
 
 #: ../fhir-harness/processes/content/ig-incremental-build.bpmn:104
 #. Diagram label
-msgid "Restore derived state [ig-publication]"
+msgid "Restore derived state"
 msgstr ""
 
 #: ../fhir-harness/processes/content/ig-incremental-build.bpmn:163
@@ -321,7 +321,7 @@ msgstr ""
 
 #: ../fhir-harness/processes/content/ig-incremental-build.bpmn:173
 #. Diagram label
-msgid "SUSHI on the restricted tank [l3-fhir-authoring]"
+msgid "SUSHI on the restricted tank"
 msgstr ""
 
 #: ../fhir-harness/processes/content/ig-incremental-build.bpmn:182
@@ -346,7 +346,7 @@ msgstr ""
 
 #: ../fhir-harness/processes/content/ig-incremental-build.bpmn:191
 #. Diagram label
-msgid "Validate the cone (fhir_validate) [fhir-validation]"
+msgid "Validate the cone (fhir_validate)"
 msgstr ""
 
 #: ../fhir-harness/processes/content/ig-incremental-build.bpmn:192

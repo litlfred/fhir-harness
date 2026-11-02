@@ -41,7 +41,7 @@ msgstr ""
 
 #: ../fhir-harness/processes/content/questionnaire-wireframe-review.bpmn:114
 #. Diagram label
-msgid "Ask for review with deep links [staging-review]"
+msgid "Ask for review with deep links"
 msgstr ""
 
 #: ../fhir-harness/processes/content/questionnaire-wireframe-review.bpmn:123
@@ -91,7 +91,7 @@ msgstr ""
 
 #: ../fhir-harness/processes/content/questionnaire-wireframe-review.bpmn:97
 #. Diagram label
-msgid "Design review [wireframe-design-review]"
+msgid "Design review"
 msgstr ""
 
 #: ../fhir-harness/processes/content/questionnaire-wireframe-review.bpmn:23
@@ -186,7 +186,7 @@ msgstr ""
 
 #: ../fhir-harness/processes/content/questionnaire-wireframe-review.bpmn:106
 #. Diagram label
-msgid "Stage the renderings [feature-staging]"
+msgid "Stage the renderings"
 msgstr ""
 
 #: ../fhir-harness/processes/content/questionnaire-wireframe-review.bpmn:107
@@ -211,7 +211,7 @@ msgstr ""
 
 #: ../fhir-harness/processes/content/questionnaire-wireframe-review.bpmn:140
 #. Diagram label
-msgid "Triage the change request [content-feedback]"
+msgid "Triage the change request"
 msgstr ""
 
 #: ../fhir-harness/processes/content/questionnaire-wireframe-review.bpmn:160

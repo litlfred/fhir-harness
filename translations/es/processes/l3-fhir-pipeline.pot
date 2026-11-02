@@ -26,7 +26,7 @@ msgstr ""
 
 #: ../fhir-harness/processes/content/l3-fhir-pipeline.bpmn:73
 #. Diagram label
-msgid "Author FSH profiles [l3-fhir-authoring]"
+msgid "Author FSH profiles"
 msgstr ""
 
 #: ../fhir-harness/processes/content/l3-fhir-pipeline.bpmn:48
@@ -61,7 +61,7 @@ msgstr ""
 
 #: ../fhir-harness/processes/content/l3-fhir-pipeline.bpmn:119
 #. Diagram label
-msgid "File QC findings as beans [todo-manager]"
+msgid "File QC findings as beans"
 msgstr ""
 
 #: ../fhir-harness/processes/content/l3-fhir-pipeline.bpmn:28
@@ -71,7 +71,7 @@ msgstr ""
 
 #: ../fhir-harness/processes/content/l3-fhir-pipeline.bpmn:131
 #. Diagram label
-msgid "IG Publisher build [ig-publication]"
+msgid "IG Publisher build"
 msgstr ""
 
 #: ../fhir-harness/processes/content/l3-fhir-pipeline.bpmn:27
@@ -91,7 +91,7 @@ msgstr ""
 
 #: ../fhir-harness/processes/content/l3-fhir-pipeline.bpmn:139
 #. Diagram label
-msgid "Publish the IG site [content-publish]"
+msgid "Publish the IG site"
 msgstr ""
 
 #: ../fhir-harness/processes/content/l3-fhir-pipeline.bpmn:149
@@ -111,7 +111,7 @@ msgstr ""
 
 #: ../fhir-harness/processes/content/l3-fhir-pipeline.bpmn:105
 #. Diagram label
-msgid "QC gates [quality-control]"
+msgid "QC gates"
 msgstr ""
 
 #: ../fhir-harness/processes/content/l3-fhir-pipeline.bpmn:56
@@ -166,7 +166,7 @@ msgstr ""
 
 #: ../fhir-harness/processes/content/l3-fhir-pipeline.bpmn:91
 #. Diagram label
-msgid "Validate against profiles [fhir-validation]"
+msgid "Validate against profiles"
 msgstr ""
 
 #: ../fhir-harness/processes/content/l3-fhir-pipeline.bpmn:92

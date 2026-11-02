@@ -94,7 +94,7 @@ WHAT IT DOES NOT CLAIM. A faithful Questionnaire is not therefore a good form, a
       <bpmn:incoming>Flow_5</bpmn:incoming>
       <bpmn:outgoing>Flow_7</bpmn:outgoing>
     </bpmn:serviceTask>
-    <bpmn:callActivity id="Call_Review" name="Design review&#10;[wireframe-design-review]" calledElement="Process_WireframeDesignReview">
+    <bpmn:callActivity id="Call_Review" name="Design review" calledElement="Process_WireframeDesignReview">
       <bpmn:documentation>cat-harness Process_WireframeDesignReview: as-is use for a form that exists, design use for one being designed. This process does not restate the method.</bpmn:documentation>
       <bpmn:extensionElements>
         <bootstrap.processes:skill ref="wireframe-design-review"/>
@@ -103,7 +103,7 @@ WHAT IT DOES NOT CLAIM. A faithful Questionnaire is not therefore a good form, a
       <bpmn:incoming>Flow_7</bpmn:incoming>
       <bpmn:outgoing>Flow_8</bpmn:outgoing>
     </bpmn:callActivity>
-    <bpmn:serviceTask id="Task_Stage" name="Stage the renderings&#10;[feature-staging]">
+    <bpmn:serviceTask id="Task_Stage" name="Stage the renderings">
       <bpmn:documentation>The branch's wireframes and form pages published under STAGING/&lt;slug&gt;/ by feature-staging.</bpmn:documentation>
       <bpmn:extensionElements>
         <bootstrap.processes:skill ref="feature-staging"/>
@@ -111,7 +111,7 @@ WHAT IT DOES NOT CLAIM. A faithful Questionnaire is not therefore a good form, a
       <bpmn:incoming>Flow_8</bpmn:incoming>
       <bpmn:outgoing>Flow_9</bpmn:outgoing>
     </bpmn:serviceTask>
-    <bpmn:task id="Task_AskReview" name="Ask for review with&#10;deep links [staging-review]">
+    <bpmn:task id="Task_AskReview" name="Ask for review with&#10;deep links">
       <bpmn:documentation>One deep link per rendered Questionnaire and wireframe, before and after. Where the request goes — the conversation, an issue, the pull request — is a judgement, and more than one may be right: staging-review's deep-link rule, point 5.</bpmn:documentation>
       <bpmn:extensionElements>
         <bootstrap.processes:skill ref="staging-review"/>
@@ -137,7 +137,7 @@ WHAT IT DOES NOT CLAIM. A faithful Questionnaire is not therefore a good form, a
       <bpmn:documentation>The Questionnaire and its wireframe agree and the reviewers raised no change. Conformance is still fhir-validation's to decide.</bpmn:documentation>
       <bpmn:incoming>Flow_12</bpmn:incoming>
     </bpmn:endEvent>
-    <bpmn:task id="Task_Triage" name="Triage the change&#10;request [content-feedback]">
+    <bpmn:task id="Task_Triage" name="Triage the change&#10;request">
       <bpmn:documentation>content-feedback triages the issue; when a review round is open it joins a change-set through public-comment instead.</bpmn:documentation>
       <bpmn:extensionElements>
         <bootstrap.processes:skill ref="content-feedback"/>
