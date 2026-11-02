@@ -34,6 +34,7 @@ import {
   readIgApi,
   serveAstData,
   SIDECARS_SERVED,
+  stampIgTocNav,
   topMounts,
   VALIDITY_FILE,
 } from "./ig-repo-site.ts";
@@ -372,4 +373,37 @@ test("an IG page composed into a host carries the reader's folio (bean 95sk, R24
   const html = await engine.parseAndRender(head, { page: { title: "x" }, site: { title: "y" } });
   expect(html).toContain('<script src="/folio-assistant/assets/js/docs-ui.js" defer');
   expect(html).toContain('href="/folio-assistant/assets/css/docs-ui.css"');
+});
+
+describe("the IG's TOC on its thin pages (owner, 2026-11-02: artifacts.html had no TOC in the rail)", () => {
+  const nav = `<script type="application/json" data-fa-visualiser-nav>[{"label":"Home","href":"/ig/index.html"}]</script>`;
+  const label = `<meta name="fa-visualiser-label" content="My IG">`;
+  const thin = (id: string): string => `<!doctype html><html><head><title>x</title></head><body><main></main><script type="application/json" id="${id}">{}</script></body></html>`;
+  test("every thin page gets the declaration and its label; other pages keep theirs", () => {
+    const site = mkdtempSync(join(dir, "toc-"));
+    mkdirSync(join(site, "artifact"));
+    mkdirSync(join(site, "docs"));
+    writeFileSync(join(site, "index.html"), `<html><head>${label}\n${nav}</head><body><h1>Home</h1></body></html>`);
+    writeFileSync(join(site, "artifacts.html"), thin("ig-index-page"));
+    writeFileSync(join(site, "toc.html"), thin("ig-index-page"));
+    writeFileSync(join(site, "api.html"), thin("ig-api-hub"));
+    writeFileSync(join(site, "artifact", "Patient-x.html"), thin("ig-artifact-page"));
+    const other = `<html><head></head><body><h2 id="a">A</h2><h2 id="b">B</h2></body></html>`;
+    writeFileSync(join(site, "docs", "other.html"), other);
+    expect(stampIgTocNav(site).pages).toBe(4);
+    for (const f of ["artifacts.html", "toc.html", "api.html", "artifact/Patient-x.html"]) {
+      const html = readFileSync(join(site, f), "utf-8");
+      expect(html).toContain(nav);
+      expect(html).toContain(label);
+      expect(html.indexOf(nav)).toBeLessThan(html.indexOf("</head>"));
+    }
+    expect(readFileSync(join(site, "docs", "other.html"), "utf-8")).toBe(other);
+    // Run twice, nothing doubles.
+    expect(stampIgTocNav(site).pages).toBe(0);
+  });
+  test("no page declares the TOC: nothing to copy, nothing stamped", () => {
+    const site = mkdtempSync(join(dir, "toc-none-"));
+    writeFileSync(join(site, "artifacts.html"), thin("ig-index-page"));
+    expect(stampIgTocNav(site).pages).toBe(0);
+  });
 });
