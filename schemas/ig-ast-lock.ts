@@ -11,6 +11,7 @@
  * (the tip), and the build log says so.
  *
  * @module fhir-harness/schemas/ig-ast-lock
+ * @graphNode schema
  */
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
