@@ -29,6 +29,8 @@
     "ingest:ig-menu": "bun run fhir-harness/scripts/ingest-ig-menu.ts",
     "ig-ast:schema": "bun run fhir-harness/scripts/ig-ast.ts schema",
     "ig-ast:schema:check": "bun run fhir-harness/scripts/ig-ast.ts schema --check",
+    "instantiate:fhir-harness": "bun run fhir-harness/scripts/ig-instantiate.ts",
+    "prepare:fhir-harness": "bash fhir-harness/scripts/ig-ast-build.sh --ig-root .",
     "ig-site:ast": "bun run fhir-harness/scripts/ig-repo-site.ts ast",
     "ig-site:compose": "bun run fhir-harness/scripts/ig-repo-site.ts compose",
     "ig-site:publisher-pages": "bun run fhir-harness/scripts/ig-repo-site.ts publisher-pages",
