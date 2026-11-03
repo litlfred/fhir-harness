@@ -4,7 +4,7 @@
 
 # fhir-ig-tools
 
-The two `Library` strippers, moved down from the WHO build's "DAK Postprocessing" phase because neither is DAK-shaped -- any IG depending on `hl7.fhir.uv.cql` produces oversized `Library` resources. Declared here rather than only described in a skill: a layer boundary that exists in prose is one no consumer can act on, and these were described as belonging here for a whole round while being declared nowhere.
+The Tool nodes of the FHIR IG pipeline, one directory per Tool, each naming the script it invokes: the FSH dependency cone and the FHIR package cache and mirror; the IG AST (export, list, validity, plan, incremental build, diff, render, refresh, JSON-LD, pages); the IG sites and their data, pages, menu, releases and terminology index; the JSON Schema and JSON-LD surfaces; Questionnaire checks; the binary audit; and the two `Library` strippers. None is DAK-shaped: the strippers, for example, serve any IG depending on `hl7.fhir.uv.cql`, which produces oversized `Library` resources.
 
 Part of [FHIR IG Harness](../README.md) 0.1.0, declared as `fhir-ig-tools`, holding `tools`.
 
