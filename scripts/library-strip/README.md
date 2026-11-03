@@ -7,7 +7,7 @@ here because nothing in either is DAK-shaped: any IG that depends on
 twice, once inline and once as standalone files. That makes them a property of
 the FHIR IG pipeline, which is this layer
 ([`ig-build-pipeline`](../../skills/fhir-ig-base/ig-build-pipeline.md)
-§"Five steps that came DOWN from the WHO build"; bean `wm63`).
+§"Generic post-processing scripts").
 
 ## Provenance
 
