@@ -1,0 +1,9 @@
+{
+  "$schema": "qa-reports-index/v1",
+  "pr": {
+    "282": {
+      "sha": "9f3a701888ef3b4dbf579fe25f46df8e7463849e",
+      "written_at": "2026-11-03T05:38:52.123Z"
+    }
+  }
+}
