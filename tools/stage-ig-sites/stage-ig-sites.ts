@@ -25,7 +25,13 @@ export default toolFactory((t) =>
         { name: "sites", schema: t("Count"), description: "IGs staged, one stdout line each; an instance with no recorded source is skipped and reported, never silently." },
       ],
     },
-    satisfies: ["ig-build-pipeline"],
+    // `docs-generation` is the generic skill a host's publish process names
+    // where each instance composes its own site into the host source
+    // (cat-harness `docs-site-publish`, `Call_InstanceSites`); the step
+    // descends into this Tool's own subprocess, which draws every IG step and
+    // the Tool that runs it.
+    satisfies: ["ig-build-pipeline", "docs-generation"],
+    subprocesses: ["ig-docs-site-compose"],
     selection: {
       when: "Building the docs site or a staging preview: every IG with a recorded source gets its own site.",
       limits: "Needs network to clone each IG at its pinned commit, and to ask its default branch for edit links (absent, pages carry none and the run says so).",

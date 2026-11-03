@@ -15,6 +15,7 @@ export default toolFactory((t) =>
         { name: "out", schema: t("RepoPath"), required: true, description: "The Jekyll source directory to write." },
         { name: "baseurl", schema: t("RepoPath"), required: false, description: "Where the built site is served." },
         { name: "plantuml-jar", schema: t("RepoPath"), required: false, description: "Render `input/images-source/*.plantuml` as the Publisher does; without it a visible `not rendered` marker stands in." },
+        { name: "dedupe-ids", schema: t("RepoPath"), required: false, description: "The post-build pass, run INSTEAD of staging: over one IG's BUILT pages (`<site>/<instance>`, after the host's Jekyll build), keep the first copy of each anchor the IG's source repeats, where every link already lands, rename the rest, and report each one. A host composing IGs runs it once per line of `stage-ig-sites`' build list (process `ig-docs-site-compose`)." },
       ],
       outputs: [
         { name: "pages", schema: t("Count"), description: "Pages staged." },
