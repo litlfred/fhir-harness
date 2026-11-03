@@ -14,22 +14,22 @@ mid-fidelity wireframe at web and mobile width, and a live form — have it
 reviewed as a design, check that it says what the wireframe it was derived
 from says, and take change requests on either side back through authoring.
 
-> **Sourcing.** What a Questionnaire means is the FHIR specification's and the
-> Structured Data Capture IG's answer, not this file's. The live form is drawn
-> by NLM's LHC-Forms; what it supports is NLM's to say. This skill states how
-> the two are wired **in this harness**.
+> **Sourcing.** What a Questionnaire means is defined by the FHIR
+> specification and the Structured Data Capture IG; what the live form
+> supports is defined by NLM's LHC-Forms. This skill states how the two are
+> wired **in this harness**.
 
-## Owner decisions (2026-10-14)
+## Rules
 
 - The renderer is **NLM LHC-Forms**, **vendored** into the site: never a CDN
   at runtime. Its BSD-style notice travels with the vendored files.
-- The field ↔ item check, `check-wireframe-questionnaire`, lives **here**
-  ([`scripts/check-wireframe-questionnaire.ts`](../../../scripts/check-wireframe-questionnaire.ts),
-  Tool `check-wireframe-questionnaire`). It knows nothing about any one IG; a
+- The field ↔ item check is
+  [`scripts/check-wireframe-questionnaire.ts`](../../../scripts/check-wireframe-questionnaire.ts)
+  (Tool `check-wireframe-questionnaire`). It knows nothing about any one IG; a
   layer above uses it by name.
 - **Either side may be edited.** A change request says whether the
   Questionnaire or the wireframe was changed, and the agent brings the other
-  back in line. Neither is silently regenerated from the other.
+  back in line. Neither is regenerated from the other.
 
 ## Inputs and outputs
 
@@ -89,8 +89,8 @@ with three kinds of its own: `questionnaire-wireframe`,
    place the order differs. Exit 0 faithful, 1 a finding, 2 cannot tell —
    and 2 is never a pass. The findings go in `fidelity[]`, per layout. This is
    fidelity, not design: a faithful form can still be a poor one.
-   **4b. SDC build checks**, with CSIRO's libraries (Apache-2.0; owner,
-   2026-10-14: checks, not UI), Tool `sdc-checks`:
+   **4b. SDC build checks**, with CSIRO's libraries (Apache-2.0; used for
+   checks, not UI), Tool `sdc-checks`:
 
    ```sh
    bun run fhir-harness/scripts/sdc-checks.ts --ast output-ast --fixtures input/tests/questionnaires [--out <dir>]
@@ -170,14 +170,14 @@ and a stub issue opens, as the ✍ runtime does.
   beside the mode's own `builder`, `sw`, `fhirVersion`, `source` and `slug`.
   The form host carries `data-suggest-mode="questionnaire"` and
   `data-block="questionnaire:<id>"`;
-- a plain **open in CSIRO Smart Forms** link-out, as a rendering cross-check
-  (owner, 2026-10-14). Nothing of it is embedded.
+- a plain **open in CSIRO Smart Forms** link-out, as a rendering
+  cross-check. Nothing of it is embedded.
 
 The ✍ Questionnaire mode is
 [`scripts/questionnaire-mode.js`](../../../scripts/questionnaire-mode.js), a
 plain ES module with no build step. It exports the three roles the ✍ suggest
-runtime's mode registry calls (cat-harness-tools `EDIT_LINKS_RUNTIME`, #218),
-by these names:
+runtime's mode registry calls (cat-harness-tools `EDIT_LINKS_RUNTIME`), by
+these names:
 
 | export | does |
 |---|---|
@@ -200,7 +200,7 @@ fetches the built text as `ctx.text`, reads the source as `ctx.sourceText`,
 and its dialog offers a Form | FSH switch: the Form pane is this mode, the
 FSH pane edits the source as text and files a source diff with the reader's
 Why. Without such a runtime, the form page's loader
-(`templates/ig-pages/questionnaire-form.js`) opens the mode itself, with the
+(`scripts/templates/ig-pages/questionnaire-form.js`) opens the mode itself, with the
 same `ctx` (built text fetched from `data-suggest-text`, `sourcePath`, a live
 `why`; no `sourceText`), its own Why field, `withWhy` to append the Why as
 the runtime does, and `issueUrl` for the link. Where the runtime has put its
@@ -208,9 +208,8 @@ the runtime does, and `issueUrl` for the link. Where the runtime has put its
 
 ### The self-hosted Form Builder, and no cross-site call
 
-Owner, 2026-10-14: the editor is the **NLM Form Builder (formbuilder-lhcforms
-12.9.0), self-hosted**, and *"cache + ucum. this is gh-pages so no XSS"*: the
-site makes no cross-site call at all.
+The editor is the **NLM Form Builder (formbuilder-lhcforms 12.9.0),
+self-hosted**. The site makes no cross-site call.
 
 - The builder is vendored unmodified (`scripts/assets/vendor/formbuilder-lhcforms/`).
   The site serves a rewritten copy of its `index.html`, also as
@@ -252,12 +251,12 @@ reviewer's edit, in the editor-checker shape `{ errors, warnings }`:
   duplicate `linkId`, an `enableWhen` naming no item, and the fidelity
   findings of step 4 when a wireframe is given.
 
-It is ready to be declared as an editor-checker profile (`contentType:
+It is not declared as an editor-checker profile (`contentType:
 questionnaire`; a `folio-editor-checker/v1` node naming `open`, `check` and
-`issue` with `extensions: [".json"]`) once that graph typology is reachable
-from this layer. Today `editor-checkers` is declared only by
-folio-assistant-sci, which this layer does not need, so the page config names
-the profile directly (`QUESTIONNAIRE_PROFILE` in `questionnaire-form.ts`).
+`issue` with `extensions: [".json"]`): the `editor-checkers` typology is
+declared by folio-assistant-sci, which this layer does not need. The page
+config names the profile directly (`QUESTIONNAIRE_PROFILE` in
+`questionnaire-form.ts`).
 
 ## What this skill does not do
 
