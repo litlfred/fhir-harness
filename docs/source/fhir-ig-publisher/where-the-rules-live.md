@@ -1,12 +1,6 @@
-This page describes the tool. The rules for working with it are skills, and
-where the two disagree the skill wins and this page is wrong:
+The rules are skills; where a skill and this page disagree, the skill wins.
 
-- **`ig-publication`** — the run itself, the split between *authorising* a
-  release and *managing* one, and why an agent never records the
-  authorisation.
-- **`ig-build-pipeline`** — the bare pipeline this platform runs, and the list
-  of things that layer refuses to know about.
-- **`ig-publisher-reduction`** — the phased transition to a Publisher invoked
-  for an AST and a QA record only, with an exit criterion per phase.
-- **`ig-publisher-fork`** — the brief for an experimental fork, and what an
-  AST must carry.
+- **`ig-publication`**: the run, and who authorises versus manages a release.
+- **`ig-build-pipeline`**: the bare pipeline and what it refuses to know.
+- **`ig-publisher-reduction`**: the phased move to a Publisher run only for an AST and QA record.
+- **`ig-publisher-fork`**: the experimental fork, and what an AST must carry.
