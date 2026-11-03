@@ -11,7 +11,7 @@
     <bpmn:participant id="Participant_Process_QuestionnaireWireframeReview" name="Is the Questionnaire the form its users and its wireframe need?" processRef="Process_QuestionnaireWireframeReview"/>
   </bpmn:collaboration>
   <bpmn:process id="Process_QuestionnaireWireframeReview" name="Questionnaire wireframe review" isExecutable="false">
-    <bpmn:documentation>A built FHIR Questionnaire shown the way a person will meet it — a mid-fidelity wireframe at web and mobile width, and a live LHC-Forms form view — checked field for field against the L2 wireframe it was derived from, reviewed as a design, staged with deep links, and changed through requests that say which side was edited. Operating skill: fhir-questionnaire-wireframe. Owner decisions, 2026-10-14: LHC-Forms, vendored; the checker lives in this layer; either the Questionnaire or the wireframe may be the source of a change, and the request says which.
+    <bpmn:documentation>A built FHIR Questionnaire shown the way a person will meet it — a mid-fidelity wireframe at web and mobile width, and a live LHC-Forms form view — checked field for field against the L2 wireframe it was derived from, reviewed as a design, staged with deep links, and changed through requests that say which side was edited. Operating skill: fhir-questionnaire-wireframe.
 
 WHERE IT SITS. After SUSHI has compiled the Questionnaire to JSON (l3-fhir-pipeline, Task_Sushi), and wherever a layer above reviews a Questionnaire's fidelity to its wireframe. It reads JSON only, so it can run on any IG that produces a Questionnaire.
 
@@ -31,7 +31,7 @@ WHAT IT DOES NOT CLAIM. A faithful Questionnaire is not therefore a good form, a
         <bpmn:flowNodeRef>Task_Apply</bpmn:flowNodeRef>
       </bpmn:lane>
       <bpmn:lane id="Lane_Build" name="Build pipeline — rendering, screenshots, fidelity">
-        <bpmn:documentation>The mechanical steps, none of which decides anything a person has to own: screenshots at both viewports (wireframe-check), the field-for-field fidelity check against the L2 wireframe when there is one, and the staging build. A fidelity finding does not stop the run here; it travels into the review as evidence, because whether a mismatch is the wireframe's fault or the Questionnaire's is the change request's call, not the checker's.</bpmn:documentation>
+        <bpmn:documentation>The mechanical steps: screenshots at both viewports (wireframe-check), the field-for-field fidelity check against the L2 wireframe when there is one, and the staging build. A fidelity finding does not stop the run here; it travels into the review as evidence, because whether a mismatch is the wireframe's fault or the Questionnaire's is the change request's call, not the checker's.</bpmn:documentation>
         <bpmn:extensionElements><bootstrap.processes:role ref="build-pipeline"/></bpmn:extensionElements>
         <bpmn:flowNodeRef>Task_Screens</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>GW_L2</bpmn:flowNodeRef>
@@ -39,7 +39,7 @@ WHAT IT DOES NOT CLAIM. A faithful Questionnaire is not therefore a good form, a
         <bpmn:flowNodeRef>Task_Stage</bpmn:flowNodeRef>
       </bpmn:lane>
       <bpmn:lane id="Lane_BA" name="Business analyst — design review">
-        <bpmn:documentation>Reviews the rendered form as a design against the workflow it serves, through wireframe-design-review: blind, per criterion, at web and mobile width, adjudicated where reviewers disagree. Here because the question is whether the form lets its user do the task, which is the business analyst's to answer rather than the modeller's, who drew it.</bpmn:documentation>
+        <bpmn:documentation>Reviews the rendered form as a design against the workflow it serves, through wireframe-design-review: blind, per criterion, at web and mobile width, adjudicated where reviewers disagree. Whether the form lets its user do the task is the business analyst's question, not the modeller's, who drew it.</bpmn:documentation>
         <bpmn:extensionElements><bootstrap.processes:role ref="business-analyst"/></bpmn:extensionElements>
         <bpmn:flowNodeRef>Call_Review</bpmn:flowNodeRef>
       </bpmn:lane>
@@ -65,7 +65,7 @@ WHAT IT DOES NOT CLAIM. A faithful Questionnaire is not therefore a good form, a
       <bpmn:outgoing>Flow_2</bpmn:outgoing>
     </bpmn:task>
     <bpmn:task id="Task_Render" name="Render the wireframe&#10;and the LHC-Forms view">
-      <bpmn:documentation>A mid-fidelity wireframe with one field per answerable item, each carrying data-element and sitting in a data-layout web or mobile subtree; and the form view, the same JSON in the vendored &lt;lhc-forms&gt; web component on the IG site's form page. Never a CDN at runtime (owner, 2026-10-14).</bpmn:documentation>
+      <bpmn:documentation>A mid-fidelity wireframe with one field per answerable item, each carrying data-element and sitting in a data-layout web or mobile subtree; and the form view, the same JSON in the vendored &lt;lhc-forms&gt; web component on the IG site's form page. Never loaded from a CDN at runtime.</bpmn:documentation>
       <bpmn:extensionElements>
         <bootstrap.processes:skill ref="fhir-questionnaire-wireframe"/>
       </bpmn:extensionElements>
@@ -146,7 +146,7 @@ WHAT IT DOES NOT CLAIM. A faithful Questionnaire is not therefore a good form, a
       <bpmn:outgoing>Flow_14</bpmn:outgoing>
     </bpmn:task>
     <bpmn:userTask id="Task_Apply" name="Apply it to the other side">
-      <bpmn:documentation>The side the request edited is the source of the change (owner, 2026-10-14). An edited Questionnaire is applied as an FSH edit and the wireframe is redrawn to match; an edited wireframe is kept and the Questionnaire re-derived from it. Then back to Task_Read.</bpmn:documentation>
+      <bpmn:documentation>The side the request edited is the source of the change. An edited Questionnaire is applied as an FSH edit and the wireframe is redrawn to match; an edited wireframe is kept and the Questionnaire re-derived from it. Then back to Task_Read.</bpmn:documentation>
       <bpmn:extensionElements>
         <bootstrap.processes:skill ref="l3-fhir-authoring"/>
       </bpmn:extensionElements>

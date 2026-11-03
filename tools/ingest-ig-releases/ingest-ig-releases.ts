@@ -6,7 +6,7 @@ export default toolFactory((t) =>
     id: "ingest-ig-releases",
     title: "Record an IG's GitHub releases as pointers to their binary assets",
     description:
-      "Read an IG repository's GitHub releases and write `fhir-artifact-index/releases.json` (`ig-releases/v1`): each asset's name, size, SHA-256 digest and download URL, never its bytes. The IG site's generated `releases` page lists them (bean `b8ip`).",
+      "Read an IG repository's GitHub releases and write `fhir-artifact-index/releases.json` (`ig-releases/v1`): each asset's name, size, SHA-256 digest and download URL, never its bytes. The IG site's generated `releases` page lists them.",
     install: { none: true },
     invoke: { shell: "bun run fhir-harness/scripts/ingest-ig-releases.ts --instance <dir> [--repo owner/repo] [--from releases.json]" },
     io: {

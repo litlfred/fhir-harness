@@ -6,7 +6,7 @@ export default toolFactory((t) =>
     id: "ig-ast-jsonld",
     title: "Export an IG AST as JSON-LD",
     description:
-      "Write an AST as linked data against `fhir-harness/schemas/ig-ast.context.jsonld`: each resource a node identified by its canonical URL (`urn:fhir:<Type>/<id>` when it has none) and typed by its FHIR resource type, each dependency edge a link to its target, and the manifest's `authority: cache` and `provisional` list carried on the graph. The AST is validated against the Zod declaration the JSON Schemas are generated from before it is exported (bean `l0lq`).",
+      "Write an AST as linked data against `fhir-harness/schemas/ig-ast.context.jsonld`: each resource a node identified by its canonical URL (`urn:fhir:<Type>/<id>` when it has none) and typed by its FHIR resource type, each dependency edge a link to its target, and the manifest's `authority: cache` and `provisional` list carried on the graph. The AST is validated against the Zod declaration the JSON Schemas are generated from before it is exported.",
     install: { none: true },
     invoke: { shell: "bun run fhir-harness/scripts/ig-ast.ts jsonld <ast> > ast.jsonld" },
     io: {

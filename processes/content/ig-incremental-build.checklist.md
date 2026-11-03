@@ -4,7 +4,7 @@
 
 > **Generated, and not the authority.** This is `fhir-harness/processes/content/ig-incremental-build.bpmn` (process `Process_IgIncremental`) walked as a state machine. The diagram and the workflow engine decide; this list only reads them. Follow the `next:` line of each step rather than the order on the page, and record each step with the call it names, so the engine's committed state — not this list — says which edge was taken.
 
-A proposed incremental build for a WHO SMART Implementation Guide: compile, validate and re-render only the dependency cone of a change, then gate on QA and deploy.
+An incremental build for a FHIR Implementation Guide: compile, validate and re-render only the dependency cone of a change, then gate on QA and deploy.
 
 ## Begin — Source changed (`StartEvent_SourceChanged`)
 
@@ -16,7 +16,7 @@ A proposed incremental build for a WHO SMART Implementation Guide: compile, vali
 
 - Who: the `Incremental build (system)` lane (role `build-pipeline`).
 - Skill: `ig-publication`.
-- What: ig-cache restore: per-artefact records, the terminology cache, the package cache and temp/, keyed by the toolchain slug.
+- What: `ig-cache restore`: the IG's AST and the Publisher's terminology cache (`input-cache/txcache/`).
 - Record it: `workflow_complete` with `node: "Task_Restore"`.
 - next: → `Gateway_Restore` (Cache usable?)
 
@@ -32,7 +32,7 @@ A proposed incremental build for a WHO SMART Implementation Guide: compile, vali
 
 - Who: the `Incremental build (system)` lane (role `build-pipeline`).
 - Skill: `ig-publication`, `ig-publication`, `ig-publication`.
-- What: content/pipeline/fsh-cone.ts over the changed files: the forward cone is what to rebuild, the backward cone is what to check out.
+- What: `fsh-cone --changed` (scripts/fsh-cone.ts) over the changed files: the forward cone is what to rebuild, the backward cone is what to check out.
 - Record it: `workflow_complete` with `node: "Task_Cone"`.
 - next: → `Task_ConeReport` (Post the cone report on the PR)
 
@@ -40,7 +40,7 @@ A proposed incremental build for a WHO SMART Implementation Guide: compile, vali
 
 - Who: the `Publisher + validator services (JVM)` lane (role `ig-publisher-service`).
 - Skill: `ig-publication`.
-- What: Exit 1 or 3 from restore: the whole IG is built as today.
+- What: Exit 1 or 3 from restore: the whole IG is built.
 - Record it: `workflow_complete` with `node: "Task_FullBuild"`.
 - next: → `Task_Qa` (Run QC gates on the aggregate QA)
 

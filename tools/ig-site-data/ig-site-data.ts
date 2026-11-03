@@ -6,7 +6,7 @@ export default toolFactory((t) =>
     id: "ig-site-data",
     title: "Populate site.data.fhir for a just-the-docs IG render",
     description:
-      "Write the IG Publisher's Jekyll variables (`site.data.fhir.ig.*`, `packageId`, `canonical`) for ONE implementation guide, from `sushi-config.yaml` or a published IG's `fhir-artifact-index`, so pages written for the Publisher render on just-the-docs unchanged. fhir-harness declares `site.data` as a pass-through Liquid prefix; this is what Jekyll then reads (bean `bamf`).",
+      "Write the IG Publisher's Jekyll variables (`site.data.fhir.ig.*`, `packageId`, `canonical`) for ONE implementation guide, from `sushi-config.yaml` or a published IG's `fhir-artifact-index`, so pages written for the Publisher render on just-the-docs unchanged. fhir-harness declares `site.data` as a pass-through Liquid prefix; this is what Jekyll then reads.",
     install: { none: true },
     invoke: { shell: "bun run fhir-harness/scripts/ig-site-data.ts" },
     io: {
@@ -24,7 +24,7 @@ export default toolFactory((t) =>
     selection: {
       when: "Rendering an IG's pages through just-the-docs instead of, or beside, the IG Publisher (`ig-publisher-reduction` P0).",
       limits:
-        "Only the ImplementationGuide resource's fields plus `packageId` and `canonical`: there is no Publisher-written `_data/fhir.json` here to copy a fuller schema from, and a field written from memory would be a guess. A source describing a different package is refused, not merged.",
+        "Only the ImplementationGuide resource's fields plus `packageId` and `canonical`; no fuller Publisher schema is available to copy. A source describing a different package is refused, not merged.",
       cost: "Milliseconds; reads two files.",
     },
     requires: { runtime: ["bun"], network: false },

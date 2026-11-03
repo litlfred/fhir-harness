@@ -20,8 +20,8 @@ export default toolFactory((t) =>
     selection: {
       when: "An IG is to expose its terminology as JSON Schema.",
       limits:
-        "The root `ValueSets.schema.json` it writes is a SCHEMA describing an enumeration response, carrying an `example` that holds the list. It is not an index instance, and reading it as one is the trap `qsf5` recorded — no FHIR IG publishes an artefact-index instance.",
-      cost: "Seconds. Output size scales with the IG — measured at 19 against 198 across two published IGs — so re-derive rather than assume.",
+        "The root `ValueSets.schema.json` it writes is a SCHEMA describing an enumeration response, carrying an `example` that holds the list. It is not an index instance: no FHIR IG publishes an artefact-index instance.",
+      cost: "Seconds; output size scales with the IG's ValueSets.",
     },
     requires: { runtime: ["bun"], network: false },
   }),

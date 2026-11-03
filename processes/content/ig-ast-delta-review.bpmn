@@ -12,23 +12,22 @@
     <bpmn:participant id="Participant_Process_IgAstDeltaReview" name="Is the incremental IG AST what a full build would have produced?" processRef="Process_IgAstDeltaReview"/>
   </bpmn:collaboration>
   <bpmn:process id="Process_IgAstDeltaReview" name="Is the incremental IG AST what a full build would have produced?" isExecutable="false">
-    <bpmn:documentation>The review step of an incremental FHIR IG build, as its own subprocess: list and inspect the differences between the incremental IG AST and what a full build would have produced, then accept them or raise a finding. THE REVIEW STEP OF AN INCREMENTAL IG BUILD, drawn as its own subprocess (bean `a9tx`, owner 2026-09-30: "list and view differentials/deltas against AST ... as part of (sub-?)process/skills/tools, including pipeline rendering").
+    <bpmn:documentation>The review step of an incremental FHIR IG build, as its own subprocess: list and inspect the differences between the incremental IG AST and what a full build would have produced, then accept them or raise a finding.
 
-WHERE IT SITS. In `ig-incremental-build.bpmn` it belongs between Task_Merge and Task_Qa: after the restored and rebuilt records are merged, before the QC gates read the aggregate. That diagram predates the AST work and is not edited here; `ig-ast-delta` §"Where this sits in a process" states the placement until it is.
+WHERE IT SITS. In `ig-incremental-build.bpmn` it belongs between Task_Merge and Task_Qa: after the restored and rebuilt records are merged, before the QC gates read the aggregate. That diagram does not call it yet; `ig-ast-delta` §"Where this sits in a process" states the placement.
 
-WHAT IT GUARDS. An incremental build rebuilds only the cone of a change, computed on the BASE edges. If the cone rules miss a coupling, a resource that should have changed does not, and nothing downstream can tell: the merged AST looks exactly like a correct one. So a person reads the delta, and a difference nobody can explain is treated as a missed coupling rather than as a curiosity.
+WHAT IT GUARDS. An incremental build rebuilds only the cone of a change, computed on the BASE edges. If the cone rules miss a coupling, a resource that should have changed does not, and nothing downstream can tell: the merged AST looks exactly like a correct one. So a person reads the delta, and a difference nobody can explain is treated as a missed coupling.
 
 WHAT IT DOES NOT CLAIM. A clean review says the delta is explained, not that the IG is correct. The AST stays a cache: every rendered page carries the provisional mark, and a release is still cut from a full build (`ig-publisher-reduction` P4).</bpmn:documentation>
     <bpmn:extensionElements>
       <!-- ADVISORY, as ig-incremental-build is: this is the review step of an
-           experimental path (the AST work has not run on a real IG as of
-           2026-09-30). Strict would bind every incremental build to a tool
-           chain nobody has measured yet. Revisit when W8 has data. -->
+           experimental path whose tool chain has not been measured on a real
+           IG. -->
       <cat-harness.processes:policy enforcement="advisory"/>
     </bpmn:extensionElements>
     <bpmn:laneSet id="LaneSet_Process_IgAstDeltaReview">
       <bpmn:lane id="Lane_Build" name="Incremental build (system)">
-        <bpmn:documentation>Checks that the base AST still matches the IG's inputs, then diffs base against head and renders the delta pages. Both steps are mechanical and read files only; neither decides anything a person has to own. A stale or undeterminable base ends here, before any delta is shown, because a delta against the wrong base explains nothing.</bpmn:documentation>
+        <bpmn:documentation>Checks that the base AST still matches the IG's inputs, then diffs base against head and renders the delta pages. Both steps are mechanical and read files only. A stale or undeterminable base ends here, before any delta is shown, because a delta against the wrong base explains nothing.</bpmn:documentation>
         <bpmn:extensionElements><bootstrap.processes:role ref="build-pipeline"/></bpmn:extensionElements>
         <bpmn:flowNodeRef>Start_Ready</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>Task_Validity</bpmn:flowNodeRef>
@@ -37,7 +36,7 @@ WHAT IT DOES NOT CLAIM. A clean review says the delta is explained, not that the
         <bpmn:flowNodeRef>Task_Diff</bpmn:flowNodeRef>
       </bpmn:lane>
       <bpmn:lane id="Lane_Review" name="QC reviewer">
-        <bpmn:documentation>Reads the rendered delta and answers one question: is every difference explained by the change? This is the only judgement in the subprocess, and it is a person's (or a reviewing agent acting in this role) because "explained" depends on what the change was meant to do, which no tool knows.</bpmn:documentation>
+        <bpmn:documentation>Reads the rendered delta and answers one question: is every difference explained by the change? This is the only judgement in the subprocess, and it is a person's (or a reviewing agent acting in this role): "explained" depends on what the change was meant to do.</bpmn:documentation>
         <bpmn:extensionElements><bootstrap.processes:role ref="qc-reviewer"/></bpmn:extensionElements>
         <bpmn:flowNodeRef>Task_Review</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>GW_Explained</bpmn:flowNodeRef>
@@ -47,7 +46,7 @@ WHAT IT DOES NOT CLAIM. A clean review says the delta is explained, not that the
       </bpmn:lane>
     </bpmn:laneSet>
     <bpmn:startEvent id="Start_Ready" name="Base AST and merged&#10;head AST exist">
-      <bpmn:documentation>Reached after an incremental build (IncrementalBuildCli) has merged the rebuilt cone into the base, or after a full build when comparing the two for W8.</bpmn:documentation>
+      <bpmn:documentation>Reached after an incremental build (IncrementalBuildCli) has merged the rebuilt cone into the base, or after a full build when comparing an incremental AST with a full one.</bpmn:documentation>
       <bpmn:outgoing>Flow_1</bpmn:outgoing>
     </bpmn:startEvent>
     <bpmn:serviceTask id="Task_Validity" name="Check the base AST against the inputs">
@@ -94,8 +93,8 @@ WHAT IT DOES NOT CLAIM. A clean review says the delta is explained, not that the
       <bpmn:documentation>Hands back to ig-incremental-build at Task_Qa. The merged AST is still a cache; its pages keep the provisional mark.</bpmn:documentation>
       <bpmn:incoming>Flow_7</bpmn:incoming>
     </bpmn:endEvent>
-    <bpmn:task id="Task_FileCoupling" name="Note the missed coupling&#10;on the bean">
-      <bpmn:documentation>Append to bean `a9tx` (W8): the resource key, the differential path, and why it is unexplained. Check before creating: beans create is not idempotent. A note, not a new bean, unless the owner asks for one.</bpmn:documentation>
+    <bpmn:task id="Task_FileCoupling" name="Note the missed coupling&#10;on the work plan">
+      <bpmn:documentation>Append to the IG AST work-plan item: the resource key, the differential path, and why it is unexplained. A note on the existing item, not a new one unless the owner asks; creating an item is not idempotent, so check before creating.</bpmn:documentation>
       <bpmn:extensionElements>
         <bootstrap.processes:skill ref="todo-manager"/>
         <cat-harness.processes:bean op="note"/>
@@ -107,7 +106,7 @@ WHAT IT DOES NOT CLAIM. A clean review says the delta is explained, not that the
       </bpmn:dataOutputAssociation>
     </bpmn:task>
     <bpmn:endEvent id="End_FullBuild" name="Coupling filed —&#10;run a full build">
-      <bpmn:documentation>The incremental result is not used. A full build produces the next base, and the filed coupling is what W8 fixes in the cone rules.</bpmn:documentation>
+      <bpmn:documentation>The incremental result is not used. A full build produces the next base, and the filed coupling is what the cone rules are fixed against.</bpmn:documentation>
       <bpmn:incoming>Flow_9</bpmn:incoming>
     </bpmn:endEvent>
     <bpmn:sequenceFlow id="Flow_1" sourceRef="Start_Ready" targetRef="Task_Validity"/>

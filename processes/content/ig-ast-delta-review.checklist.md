@@ -8,7 +8,7 @@ The review step of an incremental FHIR IG build, as its own subprocess: list and
 
 ## Begin — Base AST and merged head AST exist (`Start_Ready`)
 
-- Begin here: Reached after an incremental build (IncrementalBuildCli) has merged the rebuilt cone into the base, or after a full build when comparing the two for W8.
+- Begin here: Reached after an incremental build (IncrementalBuildCli) has merged the rebuilt cone into the base, or after a full build when comparing an incremental AST with a full one.
 - Call `workflow_start` with `process: "Process_IgAstDeltaReview"` and the subject this run is about; keep the instance id it returns.
 - next: → `Task_Validity` (Check the base AST against the inputs)
 
@@ -63,7 +63,7 @@ cannot tell» → `End_Stale` (Base stale — run a full build)
 
 - Who: the `QC reviewer` lane (role `qc-reviewer`).
 - Skill: `todo-manager`.
-- What: Append to bean `a9tx` (W8): the resource key, the differential path, and why it is unexplained.
+- What: Append to the IG AST work-plan item: the resource key, the differential path, and why it is unexplained.
 - Record it: `workflow_complete` with `node: "Task_FileCoupling"`.
 - next: → `End_FullBuild` (Coupling filed — run a full build)
 

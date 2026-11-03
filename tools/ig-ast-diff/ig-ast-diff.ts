@@ -23,7 +23,7 @@ export default toolFactory((t) =>
     },
     satisfies: ["ig-ast-delta"],
     selection: {
-      when: "Reviewing an incremental build, or comparing an incremental AST with a full one (W8).",
+      when: "Reviewing an incremental build, or comparing an incremental AST with a full one.",
       limits:
         "Structural, not FHIR-semantic: a reordered repeating element shows a change at every index. At most 200 differential rows per resource; the rest is counted, never dropped silently.",
       cost: "Reads both ASTs once.",
