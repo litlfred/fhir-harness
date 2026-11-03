@@ -10,32 +10,19 @@ description: >
 # ig-publisher-reduction
 
 > Skill id: `ig-publisher-reduction` · Package: `fhir-ig-base` · Instance:
-> `fhir-harness` · Bean `kn0t`
+> `fhir-harness`
 
 Get to the point where the IG Publisher is needed **only** to produce an AST
-and a QA record, with rendering owned by the just-the-docs pipeline.
+and a QA record, with rendering owned by the just-the-docs pipeline. During
+iteration and staging, an IG is rendered from its cached AST; its generated
+`/html` is not mounted.
 
-## What the owner asked for, verbatim
-
-> i want to slowly get rid of IG publisher in the publication/iteration pahse.
-> you or sibling should be working on AST dump as cache of published IG. we can
-> use this for iterative delta's (if we dont care about indexing/versioning so
-> much in STAGING, we need full IG AST rereun)
-
-and, on the second ingested IG:
-
-> i dont want the. /html generated... just the calculated versions, dependcies
-> and such the AST end
-
-Two things are being asked for at once and they are separable: **stop mounting
-generated HTML** (a rendering change) and **cache an AST** (a build change).
-The phases below do the first three before the second, because the first is
-verifiable without a fork and the second is not.
+Two changes are separable: **stop mounting generated HTML** (a rendering
+change) and **cache an AST** (a build change). The phases do the first before
+the second, because the first is verifiable without a fork and the second is
+not.
 
 ## What the Publisher does that a cache cannot fake
-
-State this before any phase, because it is what stops the transition becoming
-"remove the Publisher":
 
 - **Profile validation** against the declared FHIR version.
 - **Dependency-closure resolution** with version pinning —
@@ -50,72 +37,43 @@ invoked *for these*, not the Publisher gone.
 
 | | does | exit criterion — MEASURED |
 |---|---|---|
-| **P0** | re-point the metadata→variables bridge; render one IG's `input/pages/` through just-the-docs | the **WHO SMART Trust IG**'s pages render with Publisher metadata populating the Jekyll variables, and every page the Publisher renders for that IG is accounted for as **exactly one** of: **matched** (this site renders it), **refused under P2** (an XML/Turtle view, in P2's refusal record), or **on the fork's ask** (rendered from data the Publisher does not export, listed with the data it needs). A page in none is a **gap**; P0 passes with zero gaps |
-| **P1** | derive navigation from `sushi-config.yaml`'s `pages:` and `menu:` | the derived navigation is diffed against the Publisher's, **one diff per IG**, and each difference is **empty or explained entry by entry**; the per-IG diffs are also reported **together**, answering "what are the differences in IG1, IG2, … IGN?" |
-| **P2** | JSON-only representations; XML/TTL dropped from the render path, and not linked (owner, 2026-10-23: *"excise XML and ttl everywhere for now"*) | every dropped representation is **recorded as a refusal**, per IG with the same combined view as P1, so "publishes no Turtle" and "we ignored its Turtle" stay distinguishable |
+| **P0** | re-point the metadata→variables bridge; render one IG's `input/pages/` through just-the-docs | the **WHO SMART Trust IG**'s pages render with Publisher metadata populating the Jekyll variables, and every page the Publisher renders for that IG is accounted for as **exactly one** of: **matched** (this site renders it), **refused under P2** (an XML/Turtle view, in P2's refusal record), or **on the fork's ask** (rendered from data the Publisher does not export, listed with the data it needs). A page in none is a **gap**; P0 passes with zero gaps, and nothing is silently excepted |
+| **P1** | derive navigation from `sushi-config.yaml`'s `pages:` and `menu:` | the derived navigation is diffed against the Publisher's, **one diff per IG**, and each difference is **empty or explained entry by entry**; the per-IG diffs are also reported **together**, answering "what are the differences in IG1, IG2, … IGN?" (`scripts/ig-nav-diff.ts`) |
+| **P2** | JSON-only representations; XML/TTL dropped from the render path, and not linked | every dropped representation is **recorded as a refusal**, per IG with the same combined view as P1, so "publishes no Turtle" and "we ignored its Turtle" stay distinguishable (`scripts/p2-refusals.ts`, `p2:refusals:check`) |
 | **P3** | AST dump behind a flag on the fork; staging renders from cached AST | a staging page built from cache carries a **visible** stale-until-full-run mark, and a reader can tell which facts are provisional — the AST comes **from the fork**, which is a prerequisite |
 | **P4** | Publisher invoked for AST + QA only | a release is still cut from a full build, and the artefact **says which** it came from |
 
-### Approved by the owner, 2026-09-30
+P4 in practice: the refresh rebuilds a stale cache incrementally; a release
+step refuses an incremental AST (`ig-ast.ts build-kind --require-full`), and
+the site's `folio-build.json` records which kind of build it came from
+(`ast.kind`). See [`ig-build-pipeline`](ig-build-pipeline.md), "The AST cache
+lifecycle".
 
-All five phases were put to the owner one at a time, with the criteria above
-(bean `kn0t`). Three answers changed the wording, and the table carries them:
-
-- **P0** — approved with the WHO SMART Trust IG as the named IG, and the page-set match
-  kept **strict**. The looser option (list data-limited page kinds as
-  exceptions) was offered and not taken.
-- **P1** — approved with a change in the owner's words: *"each IG should have
-  its own set of diffs. can be grouped together to see 'what are diffs in IG1,
-  IG2, ... IGN?'"*. P2 takes the same per-IG + combined shape.
-- **P3** — approved with the **fork required**. `fsh-cone`'s source edges
-  (458 of 458, below) are real and stay useful for rebuild cones, but they were
-  offered as a replacement for the fork and **not** accepted as one: the AST is
-  the Publisher's.
-- **P2** and **P4** — approved as written.
-- **P4, scoped 2026-10-24** (bean `h3tx`, option C). The refresh rebuilds a
-  stale cache incrementally. A release step refuses an incremental AST
-  (`ig-ast.ts build-kind --require-full`), and the site's `folio-build.json`
-  says which kind of build it came from (`ast.kind`). Skill
-  [`ig-build-pipeline`](ig-build-pipeline.md), "The AST cache lifecycle".
-- **P0, restated 2026-10-01** (bean `jut3`, owner's answer *"1y"*). The strict
-  wording counted P2's refusals and the fork's data as P0 gaps, so P0 could not
-  pass before the phases after it — the phase order inverted. P0 now accounts
-  for every page as matched, refused under P2, or on the fork's ask, and passes
-  only with zero pages in none of the three. Still strict: nothing is silently
-  excepted; each page is in exactly one named list.
-
-Still open, and not decided by these approvals: `transform_dmn.py`'s HTML, the
-"parity-ish" checklist, and whether staging keeps a `tx` dependency (below).
+`fsh-cone`'s source edges (below) are useful for rebuild cones, but they do
+not replace the fork for P3: the AST is the Publisher's.
 
 ### P0 is a re-point, not a build
 
-**The metadata half now exists (bean `bamf`, 2026-09-30):** the `ig-site-data`
-tool writes `site.data.fhir` (`ig.*` from the ImplementationGuide resource,
-`packageId`, `canonical`) for one IG — **from the FHIR AST first** (the
-ImplementationGuide resource in `output-ast/`; owner, 2026-10-09, bean
-`jut3`), then `sushi-config.yaml` or a published IG's `fhir-artifact-index`
-for what the AST lacks, reporting a field the AST and sushi-config state
-differently — lists every field it cannot source instead of
+The metadata half: the `ig-site-data` tool writes `site.data.fhir` (`ig.*`
+from the ImplementationGuide resource, `packageId`, `canonical`) for one IG
+— **from the FHIR AST first** (the ImplementationGuide resource in
+`output-ast/`), then `sushi-config.yaml` or a published IG's
+`fhir-artifact-index` for what the AST lacks. It reports a field the AST and
+sushi-config state differently, lists every field it cannot source instead of
 writing an empty string, and refuses a source describing another package.
 fhir-harness declares `site.data` as a **pass-through Liquid prefix**, so the
 platform's value resolver leaves `{{ site.data.fhir.… }}` for Jekyll and the
-Publisher alike. The `smart__`-style per-artefact variables below are still P0's
-open half.
+Publisher alike.
 
+The per-artefact half: `build-ig-site.ts` (`artifactVariables`) writes
+`site.data.fhir.artifacts.<Type>__<id>` with the families and keys of
+`generate_smart_liquid.py`'s variables — `url` (`canonical`, `page`, `json`),
+`text.display`, `link.html` and `elements.<key>` — lifted, not redesigned.
+They carry no `smart__` prefix (that prefix is WHO's) and are computed in the
+same Jekyll run that consumes them, so the surface converges in one build.
+There is no `url.xml` or `url.ttl` (P2).
 
-`generate_smart_liquid.py` already computes `IG metadata → Liquid variables`
-from `output/`, emitting `smart__<ResourceType>__<id>__<category>__<key>` across
-`url__canonical`, `url__page`, `url__json`, `text__display`, `link__html` and
-`elements__<key>`. It is aimed at the Publisher's own Jekyll.
-
-**Lift it; do not redesign it.** And fix the defect on the way: it writes
-`input/pagecontent/smart.liquid.md` *"processed by IG Publisher on the NEXT
-build"*, so the surface takes two builds to converge — which is fatal to an
-incremental loop and disappears when variables are computed and consumed in one
-pass. Drop the `smart__` prefix: it is WHO's, and this layer does not know
-about WHO.
-
-### P1's exit criterion is a diff, deliberately
+### P1's exit criterion is a diff
 
 "Navigation looks right" is not a criterion. `sushi-config.yaml`'s `pages:` is
 an **ordered map** and `menu:` carries the grouping, so the derived navigation
@@ -124,118 +82,76 @@ is either a bug or a deliberate improvement, and saying which is the work.
 
 ### P3 is where the honesty lives
 
-A staging build from cached AST is **provisional**, and the owner named exactly
-which facts go stale: *"the indices, dependecies may not be valid until full IG
-publisher is run"*.
-
-So the contract is:
+A staging build from cached AST is **provisional**: its indices and
+dependencies may not be valid until a full IG Publisher run. The contract:
 
 > **An AST is a CACHE, never an authority.** Anything rendered from one
 > declares, in the artefact a reader sees, that its indices, dependency edges
 > and versions are unverified until a full run.
 
-A stale mark that exists only in a log is not this. `ci-health`'s rule is the
-same shape — *could not check is never green* — and the failure here would be
-worse, because a page that silently serves stale dependencies looks exactly
-like one that does not.
+A stale mark that exists only in a log does not satisfy it: a page that
+silently serves stale dependencies looks exactly like one that does not.
 
 ### P3 is BLOCKED on more than a fork
 
-Measured, from `nsbb`, re-derived 2026-09-23 and it **holds exactly**: nothing in
-the Publisher's current exports carries dependencies among Libraries,
-PlanDefinitions or Measures — **458 artefacts, 61 % of the WHO SMART Immunizations IG**
-(Library 279 + PlanDefinition 138 + Measure 41 of 748), the CQL and
-decision-logic core, with no dependency edges at all. The index's field set is
-`canonical, category, dak, description, id, key, materialization, name,
-published, resourceType, title, version` — there is **no edge field**, so this
-is not "edges are missing" but "this export has nowhere to put one", and the
-exit criterion is **unsatisfiable** against it rather than merely hard (`kn0t`).
-An AST that stops at terminology cannot support iterative deltas over the part
-of an IG that actually changes. Re-derive that 61 % before quoting it.
+Nothing in the Publisher's current exports carries dependencies among
+Libraries, PlanDefinitions or Measures — **458 artefacts, 61 % of the WHO
+SMART Immunizations IG** (Library 279 + PlanDefinition 138 + Measure 41 of
+748), the CQL and decision-logic core. The index's field set is `canonical,
+category, dak, description, id, key, materialization, name, published,
+resourceType, title, version` — there is **no edge field**, so the exit
+criterion is **unsatisfiable** against this export, not merely hard. An AST
+that stops at terminology cannot support iterative deltas over the part of an
+IG that actually changes. Re-derive that 61 % before quoting it.
 
-#### There is a second route to the edges, and it needs no fork
+#### A second route to the edges, with no fork
 
-`scripts/fsh-cone.ts` (merged, from `267x`) builds the same IG's graph
-from **source** — `.fsh` + `.cql` — where the export side is the Publisher's
-output. Both are true at once: 2,478 source edges, 0 export edges. Measured on
-the WHO SMART Immunizations IG 2026-09-23 (`f4gj`, reproduce with
-`scripts/measure-logic-layer-edges.ts`):
+`scripts/fsh-cone.ts` builds the same IG's graph from **source** — `.fsh` +
+`.cql` — where the index is the Publisher's output.
+`scripts/measure-logic-layer-edges.ts` compares the two on the WHO SMART
+Immunizations IG:
 
 - The 458 map onto FSH source **1:1, zero unmatched ids**.
-- **The edges are there.** After FSH `RuleSet` parameter substitution — what
-  SUSHI does before the Publisher sees a resource — **458 of 458** logic
-  artefacts carry an edge to another logic artefact, reaching 458 distinct
-  targets.
+- After FSH `RuleSet` parameter substitution — what SUSHI does before the
+  Publisher sees a resource — **458 of 458** logic artefacts carry an edge to
+  another logic artefact, verified per resource type.
 
-**So the blocker is real but this section's inference was too strong.** P3 does
-not depend on a fork for the *existence* of logic-layer edges; those are in the
-IG source at full per-artefact resolution. What the fork uniquely delivers is
-**resolved, version-pinned, cross-package** edges.
+So P3 does not depend on a fork for the *existence* of logic-layer edges;
+those are in the IG source at full per-artefact resolution. What the fork
+uniquely delivers is **resolved, version-pinned, cross-package** edges.
 
-#### ...and it was not a route, for two separable reasons — both now fixed
+Two things in `fsh-cone` make that true:
 
-As first measured, `fsh-cone` extracted **none** of them: all 458 artefacts
-reached **8 distinct targets, every one a shared `RuleSet`** — **0 logic→logic
-edges**. Aggregate "coverage" read 99.8 %, which was boilerplate: every
-Library's mean out-degree was exactly **1.00** and all 279 pointed at the same
-node, so the graph could not tell one Library from another. Both staleness
-directions were wrong — a change to a Library's own CQL marked **nothing**
-stale; a change to `LogicLibrary.fsh` marked **all 279**. **Break any such
-number down by resource type**; the aggregate hid this.
+- **The Library→CQL edge** matches on `node.id ?? node.name`: Library
+  instances usually omit `Id:` and rely on SUSHI's name→id default.
+- **A library canonical inside a parameterised RuleSet** (`* library =
+  Canonical({library}Logic)` in `PlanDefMain(library, version)`, or a string
+  URL in `MeasureProportionBasic` reached through a second level) is found by
+  `buildFshGraph` substituting the RuleSet's positional arguments into its
+  body before scanning. Such edges are tagged `insert (parameter expanded)`.
 
-**(a) The Library→CQL edge.** The `Library ↔ cql (by name)` edge was guarded on
-`node.id`, and all 279 Library instances omit `Id:` and rely on SUSHI's name→id
-default, so it fired 0 times and was absent from the edge-kind table entirely.
-The fix is `node.id ?? node.name`.
+Current figures on the WHO SMART Immunizations IG: 3,329 internal edges, 469
+distinct targets across the 458, 354 nodes with no dependent, backward-cone
+median 11, largest forward cone 856.
 
-**(b) The library canonical inside a parameterised RuleSet.** PlanDefinition and
-Measure write it as `* library = Canonical({library}Logic)` in
-`PlanDefMain(library, version)`, and as a string URL in
-`MeasureProportionBasic` reached through a second level. Read literally the
-token is `{library}Logic`, which resolves to nothing, so the edge was
-attributed to the RuleSet. `buildFshGraph` now substitutes a RuleSet's
-positional arguments into its body before scanning, tagging what it finds
-`insert (parameter expanded)` so the two claims stay distinguishable.
+**Break any coverage number down by resource type.** An aggregate can read
+99.8 % while every artefact points at the same shared `RuleSet`, so the graph
+cannot tell one Library from another.
 
-Re-measured on the WHO SMART Immunizations IG at each step:
+#### Rebuild fraction
 
-| | as merged | after (a) | after (b) |
-|---|---|---|---|
-| logic→logic edges, of 458 | **0** | 279 | **458** |
-| distinct targets, all 458 | 8 | 287 | **469** |
-| internal edges | 2,478 | 2,757 | **3,329** |
-| nodes with no dependent | 715 | 536 | **354** |
-| backward-cone median | 3 | 8 | **11** |
-| largest forward cone | 278 | 551 | **856** |
+Replaying 257 commits on the corrected graph, the mean rebuild per commit is
+**23.5 %**; each graph with missing edges gave a lower figure (8.2–16.0 %).
+**Do not quote a rebuild fraction without saying which graph produced it** —
+an incremental build sized from an under-connected graph under-rebuilds,
+which is the failure `fsh-cone`'s header calls dangerous. Whether ~24 % of an
+IG per commit pays for the machinery is an **open question**, separate from
+whether the edges exist.
 
-Source extraction now reaches every logic target an independent
-RuleSet-substituting read of the source names — 458 of 458, verified per
-resource type.
+#### What a source edge cannot carry
 
-#### A correct graph made the incremental case WEAKER at every step
-
-Replaying the same 257 commits after each correction:
-
-| graph | mean rebuild per commit |
-|---|---|
-| `267x`, quoted | 8.2 % |
-| as merged, re-derived | 9.4 % |
-| after (a) | 16.0 % |
-| **after (b)** | **23.5 %** |
-
-Every correction made the number worse, and the total is nearly **three times**
-the figure the original proposal's case rested on. The optimistic figures were
-optimistic *because edges were missing*. **Do not quote a rebuild fraction
-without saying which graph produced it** — an incremental build sized from any
-of the first three would under-rebuild, which is the one failure `fsh-cone`'s
-own header calls dangerous. Whether ~24 % of an IG per commit still pays for
-the machinery is an **open question this measurement does not answer**, and it
-is a different question from whether the edges exist.
-
-#### What a source edge still cannot carry
-
-Even with (a) and (b), the second route answers *which artefact* is stale, not
-*what a reader must be told*. It cannot carry:
+The source graph answers *which artefact* is stale, not *what a reader must be
+told*. It cannot carry:
 
 - **Version pinning.** `resolveRef` strips `|version`, and `PlanDefMain` takes
   `library` and `version` as separate parameters that are never associated. The
@@ -244,24 +160,17 @@ Even with (a) and (b), the second route answers *which artefact* is stale, not
   edges across the whole IG, because 179 of the 458 are `InstanceOf:` a
   cpg/cqfmeasures profile URL that resolves into a dependency package.
 - **Rendering-time coupling.** Invisible to it; a cone is a **lower bound**.
+- **Compiled truth.** RuleSet substitution is a partial reimplementation of
+  SUSHI: it handles positional `{param}` substitution, nested inserts and
+  multi-line argument lists, but not soft indexing, a RuleSet's defaults, or
+  SUSHI's context-sensitive rules. An edge it derives is a claim about the
+  **source**, not the compiled resource; the `insert (parameter expanded)`
+  tag says which claims rest on that substitution.
 
-And the fix for (b) is itself the fourth limit, which is why it is stated here
-rather than only in the code. **Substituting RuleSet parameters is a partial
-reimplementation of SUSHI.** It handles positional `{param}` substitution,
-nested inserts and multi-line argument lists; it does **not** evaluate soft
-indexing, apply a RuleSet's defaults, or know which of SUSHI's
-context-sensitive rules would have applied. An edge it derives is a claim about
-the **source**, not about the compiled resource. That is the same standing the
-rest of this graph has — but the derived edges are tagged
-`insert (parameter expanded)` precisely so a reader can tell which claims rest
-on a substitution this codebase performed rather than on a token the source
-wrote literally.
-
-So: the second route can supply the **dependency-edge** third of P3's visible
+So the source route supplies the **dependency-edge** third of P3's visible
 mark and the rebuild set behind it, the **index** third only as a lower bound,
 and the **version** third not at all. [`ig-publisher-fork`](ig-publisher-fork.md)
-is still what closes P3 — for versions and package closure, not for the
-existence of logic-layer edges.
+closes P3 for versions and package closure.
 
 ## What is NOT settled, and must not be decided by drift
 
@@ -280,5 +189,6 @@ existence of logic-layer edges.
   or a diff; if you cannot run it, the phase is not done.
 - Collapse P2 into P0. Dropping representations while the renderer is also
   changing makes a missing page and a refused representation indistinguishable.
-- Treat a green gate set as a rendered page. `preview:site` exists because a
-  generator's output looked right while kramdown gave 22 headings one anchor.
+- Treat a green gate set as a rendered page. Look at the rendered site
+  (`preview:site`): generator output can look right while kramdown gives many
+  headings one anchor.

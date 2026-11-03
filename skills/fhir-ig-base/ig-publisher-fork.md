@@ -10,7 +10,7 @@ description: >
 # ig-publisher-fork
 
 > Skill id: `ig-publisher-fork` · Package: `fhir-ig-base` · Instance:
-> `fhir-harness` · Bean `a9tx`
+> `fhir-harness`
 
 The brief for an agent taking a **local, experimental** fork of the FHIR IG
 Publisher, so that an AST can be emitted and cached.
@@ -22,9 +22,7 @@ Publisher, so that an AST can be emitted and cached.
 | `HL7/fhir-ig-publisher` | orchestration, the loaded resources, **`DependencyAnalyser`**, `CqlSubSystem`, the metadata exports | the dump, the toolchain record, **the logic-layer dependency edges** |
 | `hapifhir/org.hl7.fhir.core` | the renderer, the validator, dependency loading | **page-fragment provenance** only |
 
-**Corrected 2026-09-30, by reading the code.** This skill said a
-publisher-only fork could not satisfy the central requirement because the
-logic-layer edges are produced in core. They are not.
+The logic-layer edges are a publisher-side gap, not a core one:
 
 - `DependencyAnalyser` is in the **publisher**
   (`org.hl7.fhir.publisher.core/.../igtools/publisher/`). Its `analysePD` and
@@ -35,17 +33,15 @@ logic-layer edges are produced in core. They are not.
   exports them.
 
 Only page-fragment provenance needs core. Read upstream before re-quoting
-either claim: this one was wrong for a week and was served to every agent that
-read the declaration.
+either claim.
 
 ## The shape taken: a library ON TOP, not a fork IN it
 
-Owner, 2026-09-30: *"a library building on top... DO NOT change existing code,
-unless absolutely have to. remarshal/reuse/sub-class"*. So the work is
-`ast-export/`, a separate Maven project on branch `claude/ast-export` of
-`litlfred/fhir-ig-publisher`. It depends on the **released**
-`org.hl7.fhir.publisher.core` from Maven Central, is not a module of the root
-pom, and changes no Publisher file.
+Do not change existing Publisher code unless there is no other way:
+remarshal, reuse, subclass. The work is `ast-export/`, a separate Maven
+project on branch `claude/ast-export` of `litlfred/fhir-ig-publisher`. It
+depends on the **released** `org.hl7.fhir.publisher.core` from Maven Central,
+is not a module of the root pom, and changes no Publisher file.
 
 - `AstPublisher extends Publisher` and overrides nothing. It reads
   `getFileList()` after `execute()`.
@@ -71,50 +67,50 @@ In the fork, under `ast-export/`:
 | `AstExportCli`, `AstPlanCli`, `IncrementalBuildCli` | export, plan a delta, rebuild the cone | export and rebuild: yes; plan: no |
 
 Here, [`ig-ast-delta`](ig-ast-delta.md) lists, checks, diffs and renders what
-those produce. Owner, 2026-09-30: **no GitHub Actions for now**, and any CI
-added later **calls these same scripts**. That changed on 2026-10-14 ("try
-Q3"): `.github/workflows/ig-ast-refresh.yml` runs `AstExportCli` on a runner,
-at the pinned commit, to refresh an IG's AST cache. It calls the same
-exporter and `ig-cache.sh`; it is the one CI path, and
-[`ig-build-pipeline`](ig-build-pipeline.md) §"The AST cache lifecycle" owns it.
+those produce. The one CI path is `.github/workflows/ig-ast-refresh.yml`: it
+runs `AstExportCli` on a runner, at the pinned commit, to refresh an IG's AST
+cache, calling the same exporter and `ig-cache.sh`.
+[`ig-build-pipeline`](ig-build-pipeline.md) §"The AST cache lifecycle" owns
+it. Any other CI calls these same scripts.
 
 ## Without packages.fhir.org: seeding the cache from trusted sources
 
 Some environments reach GitHub and `registry.npmjs.org` but not
-`packages.fhir.org` (this one, 2026-09-30). `ast-export/scripts/seed-fhir-cache-from-npm.py`
-(Tool `fhir-cache-seed-npm`) fills the FHIR package cache from sources that
+`packages.fhir.org`. The seeder fills the FHIR package cache from sources that
 are each a **trust anchor**: named by the owner, or the package's own
-publisher. Nothing else is consulted.
+publisher. Nothing else is consulted. There are two copies:
+`ast-export/scripts/seed-fhir-cache-from-npm.py` in the fork, which
+`ig-ast-refresh.yml` runs, and `scripts/fhir-cache-seed-npm.ts` here, which
+the Tool `fhir-cache-seed-npm` invokes.
 
 | source | trust | what it holds |
 |---|---|---|
 | npm, account `grahamegrieve` | **owner: trusted**. Grahame Grieve founded HL7 FHIR | mostly the latest version of each HL7 package; core packages under `@hl7/` |
-| a publisher's own published-site repository on GitHub (the seeder's list) | the publisher's own published site | every released version that publisher hosts there |
+| a publisher's own published-site repository on GitHub | the publisher's own published site | every released version that publisher hosts there |
 | a template's own repo at HEAD | `FHIR/ig-registry/templates.json` names it; **owner: `fhir.base.template` is trusted** | templates, `#current` included |
 | `--mirror` | whoever ran `mirror-fhir-packages.sh` (Tool `fhir-package-mirror`) | what the others lack |
 
 Rules:
 
-- **Exact versions only.** A pin is never satisfied by another version. The
-  owner chose exact-only over an "approximate" build with substituted versions.
-  The one exception is the Publisher's own rule: a patch wildcard (`1.1.x`)
-  resolves to the highest `1.1.N` a source lists, and the resolution is
-  recorded.
+- **Exact versions only.** A pin is never satisfied by another version; there
+  is no "approximate" build with substituted versions. The one exception is
+  the Publisher's own rule: a patch wildcard (`1.1.x`) resolves to the
+  highest `1.1.N` a source lists, and the resolution is recorded.
 - **Verified.** npm tarballs against npm's sha512. Every other source must
   carry a `package/package.json` naming exactly the requested package and
   version. npm's `0.0.1-security` malicious-package placeholder is refused.
-- **Nothing computed once and kept.** Owner, 2026-10-01: *"dynamically load
-  from repos... dont calc once and assume fixed. avoid drift"*. The template
-  registry, the IHE folder listing and any mirror clone are fetched fresh every
-  run into a scratch directory deleted at exit. There is no table of package
-  locations in the script that could go stale behind the registry.
+- **Nothing computed once and kept.** Load from the repositories every run;
+  do not compute once and assume it fixed. The template registry, the IHE
+  folder listing and any mirror clone are fetched fresh every run into a
+  scratch directory deleted at exit. There is no table of package locations
+  that could go stale behind the registry.
 - **Provenance** in `ast-export-npm-provenance.json`: the source, URL or
   commit, and hash of every package.
 
-**Where it stands, measured 2026-10-01** over the two IGs bean `a9tx` measures: 20
-packages install, including both templates. Missing are the pinned HL7
-versions (IPS, terminology, extensions, CQL, CRMI, SDC, IPA), `fhir.cqf.common`
-and `us.nlm.vsac`.
+**Where it stands**, measured over the WHO SMART Trust and Immunizations IGs:
+20 packages install, including both templates. Missing are the pinned HL7
+versions (IPS, terminology, extensions, CQL, CRMI, SDC, IPA),
+`fhir.cqf.common` and `us.nlm.vsac`.
 
 To close the gap:
 1. Run the seeder with `--missing-out missing.txt`.
@@ -123,8 +119,7 @@ To close the gap:
 3. Run the seeder again with `--mirror <repo>`.
 
 **What the declared dependencies miss.** Seeding from `sushi-config.yaml`
-alone leaves the build short. Found in the Publisher 3.0.0 / core 7.0.1
-sources, and confirmed by real builds on 2026-10-23:
+alone leaves the build short (Publisher 3.0.0 / core 7.0.1):
 
 - **The template.** It is named in `ig.ini`, not in `sushi-config.yaml`, so
   pass it to the seeder as a positional `name#version`.
@@ -134,7 +129,7 @@ sources, and confirmed by real builds on 2026-10-23:
   `NpmPackage.fromFolder`, which files a top-level file under `package/$root`
   and unpacks it into `template/`. A file under `package/` lands in
   `template/package/`, and the build fails with `template/config.json not
-  found`. The seeder does this since fork `1b23e27`.
+  found`.
 - **Packages the Publisher loads by itself:**
   - `hl7.fhir.pubpack` at `CommonPackages.VER_PUBPACK`;
   - `hl7.fhir.xver-extensions` at `CommonPackages.VER_XVER`;
@@ -157,26 +152,26 @@ that cannot reach `fhir.github.io` meets it. It is upstream's bug
 (`org.hl7.fhir.core`), and it is not patched here, because the library does
 not change Publisher code.
 
-**Build with a terminology server** (owner, 2026-10-23). A `-tx n/a` build,
-which is `run-real-igs.sh --no-tx`, is only for finding faults before the real
-run. Its numbers are never recorded as measurements.
+**Build with a terminology server.** A `-tx n/a` build, which is
+`run-real-igs.sh --no-tx`, is only for finding faults before the real run. Its
+numbers are never recorded as measurements.
 
 **A template the registry does not list** is named by the caller with
-`--template-repo <name>=<owner/repo>`, on the command line, never stored. The
-case met so far, and the upstream ask that would remove it, are in bean `a9tx`.
+`--template-repo <name>=<owner/repo>`, on the command line, never stored.
 
-**The one fixed table** is the seeder's list of publishers' site
-repositories, which maps a package-name prefix to the publisher's own GitHub
-repo. It is fixed knowledge, so it can drift. That is tolerated only because
-every package fetched through it must name itself exactly in its own
-`package.json`, so a stale entry fails as "missing", never as a wrong
-package. It lives in the fork, not in this layer: which publishers exist is
-not something fhir-harness may know.
+**Publishers' site repositories.** The fork's seeder keeps one fixed table
+mapping a package-name prefix to the publisher's own GitHub repo. It can
+drift, which is tolerated only because every package fetched through it must
+name itself exactly in its own `package.json`, so a stale entry fails as
+"missing", never as a wrong package. The copy here holds no such table: the
+caller maps each prefix with `--site-repo <prefix>=<owner/repo>[@branch]`,
+none by default, because which publishers exist is not something fhir-harness
+may know.
 
 ## The measurement that justifies the work
 
-From bean `nsbb`, using the Publisher's current metadata exports as an AST
-proxy across two real IGs:
+Using the Publisher's current metadata exports as an AST proxy across two real
+IGs:
 
 | export | the WHO SMART Trust IG | the WHO SMART Immunizations IG |
 |---|---|---|
@@ -188,12 +183,11 @@ Two findings:
 
 1. **`uses` is declared and never populated** — in *both* IGs.
 2. **Nothing exports Library / PlanDefinition / Measure dependencies** — 458
-   artefacts, **61 % of the WHO SMART Immunizations IG**, the decision-logic core, with
-   zero edges.
+   artefacts, **61 % of the WHO SMART Immunizations IG**, the decision-logic
+   core, with zero edges.
 
-Re-derive both before quoting them. They are the reason for the fork; if a
-later Publisher release closes either, the fork's scope shrinks accordingly and
-that is a good outcome, not a wasted brief.
+Re-derive both before quoting them. If a later Publisher release closes
+either, the fork's scope shrinks accordingly.
 
 ## Acceptance criteria
 
@@ -202,8 +196,8 @@ The AST must carry:
 - [ ] **one structured record per resource**, keyed by canonical URL *and*
       version — an id alone collides across versions
 - [ ] **dependency edges among Library, PlanDefinition and Measure** — the gap
-      above. Built as `LogicEdges`; **not yet measured** on the WHO SMART Immunizations IG.
-      **Measured as** (owner, 2026-10-23): every logic resource has at least one
+      above. Built as `LogicEdges`; **not yet measured** on the WHO SMART
+      Immunizations IG. **Measured as**: every logic resource has at least one
       logic-to-logic edge in *either* direction. In graph terms, no vertex is
       isolated. Outgoing edges alone cannot be the test, because a finite
       acyclic dependency graph always has a sink: a library that others depend
@@ -226,9 +220,8 @@ And the fork itself must satisfy:
 
 - [ ] **emitted behind a flag**, with default behaviour byte-identical when the
       flag is absent
-- [ ] **upstreamable shape** — a flag and an additional writer, not a rewrite.
-      A fork that cannot be offered back is a maintenance burden with no exit,
-      and this one is explicitly *experimental*
+- [ ] **upstreamable shape** — a flag and an additional writer, not a rewrite;
+      a fork that cannot be offered back has no exit
 - [ ] **no change to validation or rendering semantics.** If a fork build's
       `qa.json` differs from an upstream build's on the same input, that is a
       defect in the fork, and it is the first thing to check
@@ -240,21 +233,18 @@ And the fork itself must satisfy:
   written to consume it says so — see
   [`ig-publisher-reduction`](ig-publisher-reduction.md) §P3.
 - **Do not vendor either repository into this one.** The fork lives at its own
-  remote. The general cutover rule: after a move, exactly one repository
-  runs a thing.
+  remote; exactly one repository runs a thing.
 - **Do not add WHO, DAK or SMART concepts to the fork.** The AST is a property
   of a FHIR IG. A DAK-shaped field in it makes the fork unofferable upstream
-  and re-imports the layering violation `fhir-harness` exists to prevent.
+  and breaks the layering `fhir-harness` exists to keep.
 - **Do not fix `uses` by inferring it.** If the information is not there,
   report that it is not there. An inferred edge in a dependency graph is
   indistinguishable from a real one downstream, and every ordering metric
-  computed from it becomes unfalsifiable — the same argument `uses[]` carries
-  on the editorial side.
+  computed from it becomes unfalsifiable.
 
 ## Reporting
 
 A fork round reports: which repositories at which commits, which criteria are
 met, which are not, and **what was measured rather than what was implemented**.
-A criterion is met when an AST from a real IG is shown to carry the thing —
-the WHO SMART Immunizations IG is the right subject, because it is the IG whose 61 % gap
-motivated the work.
+A criterion is met when an AST from a real IG is shown to carry the thing. The
+WHO SMART Immunizations IG is the right subject: it carries the 61 % gap.
