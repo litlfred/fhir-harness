@@ -20,13 +20,12 @@ description: >
 | Library | `@topologyhealth/smarterfhir` **0.4.3** (`package.json`) |
 | Source | <https://github.com/TopologyHealth/SMARTerFHIR> |
 | Pinned commit | `506463af4bd82848f414649dac608d578c8aae44` (2025-12-02) |
-| License | **Apache-2.0** — `LICENSE` is the Apache License 2.0 text, `package.json` says `"license": "Apache-2.0"`, and the README agrees |
+| License | **Apache-2.0** — `LICENSE`, `package.json` and the README agree |
 | Built on | `fhirclient` `^2.5.2` (a peer dependency) — SMARTerFHIR wraps its `FHIR.oauth2.authorize` and `FHIR.oauth2.ready` |
 
 Every name below is from `src/` at that commit; each section cites its file.
-Upstream ships no skill files, which is why this skill is authored here
-(issue #556, bean `wlqd`). **If the pinned commit moves, re-read the source
-before trusting any signature here.** Where the source leaves a behaviour to
+Upstream ships no skill files, so this skill is authored here. **If the
+pinned commit moves, re-read the source before trusting any signature here.** Where the source leaves a behaviour to
 `fhirclient`, this skill says so rather than describing `fhirclient` from
 memory.
 
@@ -153,9 +152,8 @@ authorisation.
 
 ## Pitfalls
 
-- **Standalone still needs `?iss=`.** The same `executeWebLaunch` runs for
-  both types, so a standalone launch page without an `iss` query parameter
-  throws. Put the FHIR base URL in the link that opens the page.
+- **Standalone still needs `?iss=`** (step 2). Put the FHIR base URL in the
+  link that opens the page.
 - **Vendor inference is a substring match** (`ClientUtils.getEMRType`): the
   `EMR` values are tried longest-first against the whole `iss` string. A
   sandbox or proxy URL that does not contain `epic`, `cerner`, `smart`, … is

@@ -12,12 +12,12 @@ tested-by:
 # IG publisher + validator — the role's contract
 
 `ig-publisher-service` in `scenarios/roles.json` is played by a
-**mechanical** actor (`actorKinds: ["system"]`; today
+**mechanical** actor (`actorKinds: ["system"]`;
 `scenarios/actors/ig-publisher-service.json`, which runs in the
 `folio-assistant-smart-guidelines` image). A role played by a machine is
 still a role, and its skills are its **contract**: the responsibilities it
-must perform, which a test can hold it to (owner, 2026-10-16). Each line below
-is read off what the repository already says.
+must perform, which a test can hold it to. Each line below cites the
+declaration it comes from.
 
 ## What it must do
 
