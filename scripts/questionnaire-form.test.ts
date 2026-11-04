@@ -121,6 +121,10 @@ describe("the page", () => {
     expect(html).toContain("Client &lt;intake&gt;: the form");
     expect(html.match(/<script[^>]+src="([^"]+)"/g)!.every((s) => !/src="(https?:)?\/\//.test(s))).toBe(true);
   });
+  test("links the Questionnaire's own page under artifact/, where every artefact page is", () => {
+    // The form page sits at the site root and the artefact page at artifact/<Type>-<id>.html.
+    expect(html).toContain('<a href="artifact/Questionnaire-intake.html">Questionnaire/intake</a>');
+  });
   test("the suggest config names the Questionnaire mode", () => {
     const cfg = JSON.parse(/<script type="application\/json" id="fa-edit-cfg">(.*?)<\/script>/.exec(html)![1]!);
     expect(cfg).toEqual({
