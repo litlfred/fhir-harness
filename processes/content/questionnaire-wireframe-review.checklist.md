@@ -106,6 +106,6 @@ A built FHIR Questionnaire shown the way a person will meet it — a mid-fidelit
 
 - Who: the `FHIR modeller` lane (role `fhir-modeller`).
 - Skill: `l3-fhir-authoring`.
-- What: The side the request edited is the source of the change (owner, 2026-10-14).
+- What: The side the request edited is the source of the change.
 - Record it: `workflow_complete` with `node: "Task_Apply"`.
 - next: → `Task_Read` (Read the built Questionnaire JSON)

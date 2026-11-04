@@ -22,7 +22,7 @@ export default toolFactory((t) =>
     id: "pin-ig-terminology",
     title: "Snapshot a published IG's terminology at its pinned version",
     description:
-      "Read every CodeSystem concept out of a FHIR IG clone checked out at its pinned tag and write a `folio-pinned-terminology/v1` snapshot: the offline, version-fixed answer `check:term-mapping` resolves its `fhir` target against. Which IG, which pin record and which snapshot path are the caller's (`--pin`, `--out`, `--source`); this layer names none (#1767, stage B′).",
+      "Read every CodeSystem concept out of a FHIR IG clone checked out at its pinned tag and write a `folio-pinned-terminology/v1` snapshot: the offline, version-fixed answer `check:term-mapping` resolves its `fhir` target against. Which IG, which pin record and which snapshot path are the caller's (`--pin`, `--out`, `--source`); this layer names none.",
     install: { none: true },
     invoke: { shell: "bun run fhir-harness/scripts/pin-ig-terminology.ts --from <clone> --pin <pin record> --out <snapshot> --source <repository URL>" },
     // `network: false` is the claim that matters and it is exact: the
@@ -53,7 +53,7 @@ export default toolFactory((t) =>
     satisfies: ["vocabulary-authority"],
     selection: {
       when:
-        "The authority a term is checked against must be a fixed artefact a reader can name and re-fetch — a published IG at a version. Also the only option where the vocabulary's host is unreachable, which is the case in this container.",
+        "The authority a term is checked against must be a fixed artefact a reader can name and re-fetch — a published IG at a version. Also the only option where the vocabulary's host is unreachable.",
       limits:
         "The version comes from the `--pin` record and NEVER from this script, so refreshing means moving the pin first and re-running; re-running against a newer clone is refused rather than silently accepted. It answers only for what the IG publishes at that version — a code added after it, or curated in a collection rather than published, is absent, and `check:term-mapping` reports that as `unmapped` (a checked miss) and not as `undetermined`. Nothing here dereferences a code system IRI.",
       cost:

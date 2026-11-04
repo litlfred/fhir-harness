@@ -20,7 +20,7 @@ export default toolFactory((t) =>
     satisfies: ["ig-build-pipeline"],
     selection: {
       when:
-        "The IG depends on `hl7.fhir.uv.cql` or otherwise embeds compiled artefacts in `Library.content`. Not a WHO condition — it is a property of the dependency.",
+        "The IG depends on `hl7.fhir.uv.cql` or otherwise embeds compiled artefacts in `Library.content`: a property of the dependency, not of any one IG.",
       limits:
         "It edits PUBLISHED output, so what it removes is gone from the deployed artefact but still present in whatever the Publisher validated. The two are no longer byte-identical, which matters to any fixity check pointed at the deployed copy.",
       cost: "Seconds. Deferring it costs the >100MB purge later in the same pipeline, which deletes whole files rather than payloads.",

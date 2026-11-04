@@ -120,8 +120,8 @@ present and is **not** hydrated.
   only write is `create` (POST). Anything else means dropping to
   `client.fhirClientDefault`, i.e. `fhirclient` directly, outside this library's
   hydration and headers.
-- **No read by id** helper beyond `requestResource("<Type>/<id>")`.
-- **No search helper, paging or `_include` handling.**
+- **No read-by-id or search helper, paging or `_include` handling** — use
+  `requestResource`.
 - **No validation or profile conformance** — `Transformer.toFhirClientType`
   and `toR4FhirType` (`src/Resource/transformer.ts`) copy keys verbatim; they
   do not transform content.

@@ -12,12 +12,12 @@ description: >
 # ig-site-theme
 
 > Skill id: `ig-site-theme` · Package: `fhir-ig-base` · Instance:
-> `fhir-harness` · Beans `k6tw`, `u3cd`, `bamf`, `7h3u`
+> `fhir-harness`
 
-An IG staged as its own just-the-docs site (`/<instance>/ig/`, bean `bamf`)
-wears the palette of the **one `webpage` theme its instance declares**. Nothing
-new is authored for the IG: the theme already exists as data, and this is how
-it reaches the site.
+An IG staged as its own just-the-docs site (`/<instance>/ig/`) wears the
+palette of the **one `webpage` theme its instance declares**, or inherits
+along its `needs`. Nothing new is authored for the IG: the theme already
+exists as data, and this is how it reaches the site.
 
 ## The path, end to end
 
@@ -28,7 +28,9 @@ it reaches the site.
    subject, not this skill's.
 2. **Resolved** — `stage-ig-sites.ts` `webpagePalette(repoRoot, instance)`
    reads it through `instanceThemes` (`cat-harness/schemas/theme-by-ref.ts`),
-   keyed on the instance's **declared name**.
+   keyed on the instance's **declared name**. An instance that declares no
+   `webpage` theme inherits the nearest one along its `needs` chain,
+   breadth-first, and the stage log says which instance it came from.
 3. **Rendered** — `build-ig-site.ts` `colourScheme(palette)` writes
    `_sass/color_schemes/ig.scss` and sets `color_scheme: ig`. just-the-docs'
    own colour-scheme mechanism does the rest, so the IG keeps the theme's
@@ -40,18 +42,17 @@ it reaches the site.
 
 | case | outcome |
 |---|---|
-| no theme declared | built on just-the-docs' default light scheme, and the stage log **says** `colour scheme: NONE` |
-| themes declared, none `webpage` | same, with the reason (`declares themes, none of kind webpage`) |
-| **two or more** `webpage` themes | **refused** — nothing says which one dresses the IG |
+| no `webpage` theme, own or along `needs` | built on just-the-docs' default light scheme, and the stage log **says** `colour scheme: NONE`, with each instance's reason (`declares themes, none of kind webpage`) |
+| **two or more** `webpage` themes in one instance, or at the same distance along `needs` | **refused** — nothing says which one dresses the IG |
 | a palette pairing below AA | built, and reported under `CONTRAST:` |
 
 ## Three theme paths — do not conflate them
 
 | path | surface | data | code |
 |---|---|---|---|
-| **IG site palette** (this skill, `u3cd`) | the standalone IG site, `/<instance>/ig/` | the `webpage` theme's palette | `stage-ig-sites.ts` → `build-ig-site.ts` `colourScheme` |
-| **docs-page theme** (`7h3u`) | the instance's composed docs pages, `/<instance>/…` | the same theme, as CSS variables | `gen-themes-css.ts` → `_data/instance-themes.json` → `head_custom.html` |
-| **IG chrome** (`ajx9`) | "fixture" pages that mirror the Publisher's template | the template chain's tokens and rules (`chrome.json`) | `ig-chrome.ts`, `ingest-ig-chrome.ts` |
+| **IG site palette** (this skill) | the standalone IG site, `/<instance>/ig/` | the `webpage` theme's palette | `stage-ig-sites.ts` → `build-ig-site.ts` `colourScheme` |
+| **docs-page theme** | the instance's composed docs pages, `/<instance>/…` | the same theme, as CSS variables | `gen-themes-css.ts` → `_data/instance-themes.json` → `head_custom.html` |
+| **IG chrome** | "fixture" pages that mirror the Publisher's template | the template chain's tokens and rules (`chrome.json`) | `schemas/ig-chrome.ts`, `ingest-ig-chrome.ts` |
 
 The first two read **one** declaration, so an IG's site and its docs pages
 cannot disagree on colour. The chrome is a different model — the Publisher
@@ -59,23 +60,18 @@ template's own CSS, ingested with its conflicts — and is not a palette.
 
 ## Verify on the built CSS, not on a log line
 
-A staged site's theme is checked by finding the palette's hex values in the
-built stylesheet, e.g. for the WHO SMART Trust IG's `who-smart-ig` (`accent #00477d`):
+A staged site's theme is checked by finding the palette's hex values (here
+an `accent` of `<hex>`) in the built stylesheet:
 
 ```sh
 git show <gh-pages>:STAGING/<slug>/<ig>/ig/assets/css/just-the-docs-default.css \
-  | grep -c '#00477d'
+  | grep -c '<hex>'
 ```
 
-**Measured 2026-10-01:** 15 occurrences of `#00477d` and 8 of `#f6f7f9` on
-the WHO SMART Trust IG's staged IG site.
-
-**The trap this section exists for.** Calling `stageIgSite` directly with no
-`palette` option prints `colour scheme: NONE` — truthfully, for that call. Read
-as a fact about the instance, it says the theme is missing when it is not. An
-agent did exactly that on 2026-10-01 and opened `k6tw` on the false premise.
-Stage through `stage-ig-sites.ts` (or pass `webpagePalette(...).palette`), and
-judge the result by the built CSS.
+**Calling `stageIgSite` directly with no `palette` option prints `colour
+scheme: NONE`** — true for that call, not for the instance. Do not read it as
+a missing theme. Stage through `stage-ig-sites.ts` (or pass
+`webpagePalette(...).palette`), and judge the result by the built CSS.
 
 ## Do not
 
@@ -83,5 +79,4 @@ judge the result by the built CSS.
   above; a copy would be a second answer free to drift.
 - Touch the theme's machinery. just-the-docs' layout, nav and components stay
   as they are; only the colour scheme is the instance's.
-- Put the WHO logo on it. Colour carries identity; the wordmark is set in type
-  (owner, 2026-10-01: "no branding" means no logos — bean `jut3`).
+- Put a logo on it. Colour carries identity; the wordmark is set in type.

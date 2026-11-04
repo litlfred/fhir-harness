@@ -7,7 +7,7 @@ output: schemas/skills/l3-fhir-authoring/output.schema.json
 
 > Skill id: `l3-fhir-authoring` · Package: `fhir-ig-authoring` ·
 > Named by `l3-fhir-pipeline.bpmn` (**Author FSH profiles**,
-> **SUSHI compile → FHIR JSON**) and `ig-incremental-build.bpmn`
+> **Compile FSH to FHIR JSON**) and `ig-incremental-build.bpmn`
 > (**SUSHI on the restricted tank**).
 
 Derive the **L3** layer — machine-readable FHIR artefacts — from an authored L2
@@ -17,7 +17,6 @@ DAK, using FHIR Shorthand and SUSHI.
 > is WHO's. This skill states how they are wired **in this harness** — which
 > lane, which inputs, which binaries the package installs — and defers to the
 > FHIR and FSH specifications for what a conformant artefact must look like.
-> Do not treat anything here as a substitute for the spec.
 
 ## Inputs and outputs
 
@@ -25,33 +24,33 @@ DAK, using FHIR Shorthand and SUSHI.
 
 - **in** — `artifactType` (required), `sourceModel` (required), `fshOutputDir`,
   `igRoot`
-- **out** — `fshFiles`, `sushiResult`, `generatedResources`
+- **out** — `fshFiles` (required), `sushiResult` (required),
+  `generatedResources`
 
-`sourceModel` being required is the design: **L3 is derived, not authored from
-scratch.** An L3 artefact with no source behind it is a profile nobody can
-review against what it was meant to encode. Which source is the layer above's
-to say, in its own process: that process maps its model and then CALLS
-`l3-fhir-pipeline.bpmn` (`Process_L3Fhir`), which starts at "Source model
-ready". Neither this skill nor that pipeline names the model, because
-`fhir-harness` may not (`fhir-harness/AGENTS.md`). The mapping step lived in
-`l3-fhir-pipeline.bpmn` itself until 2026-10-09 (bean `veiu`). Until stage D of the smart-* separation (#1767)
-the input was `l2Source` and the skill depended on an overlay's authoring skill.
+**L3 is derived, not authored from scratch**, so `sourceModel` is required: an
+L3 artefact with no source behind it is a profile nobody can review against
+what it was meant to encode. The layer above chooses the source in its own
+process: that process maps its model and then CALLS `l3-fhir-pipeline.bpmn`
+(`Process_L3Fhir`), which starts at "Source model ready". Neither this skill
+nor that pipeline names the model, because this layer may not
+([`AGENTS.md`](../../../AGENTS.md)).
 
-CQL — clinical decision logic — is part of this skill, not a separate one; the
-input schema already carries `cql` among its artefact types.
+CQL — clinical decision logic — is part of this skill, not a separate one;
+`cql-library` is one of the input schema's `artifactType` values.
 
-## The toolchain this package installs
+## The toolchain
 
-From `package-manifest.json`, so these are present rather than assumed:
+`sushi-compiler` and `ig-publisher` are capabilities this package declares
+(`providesCapabilities` in `package-manifest.json`, defined in
+`scenarios/capabilities/`):
 
 ```sh
-sushi --version                     # fsh-sushi, npm
-java -jar "$IG_PUBLISHER_JAR" -v    # /opt/ig-publisher/publisher.jar
+sushi --version                            # sushi-compiler, requires node-runtime
+java -jar "$IG_PUBLISHER_JAR" --version    # ig-publisher, requires java-runtime
 ```
 
-`sushi-compiler` and `ig-publisher` are the declared capabilities; both require
-`java-runtime`. If a capability probe fails, the correct outcome is that the
-step **was not run** — never that it passed.
+If a capability probe fails, the step **was not run** — never that it
+passed.
 
 ## Deriving rather than retyping
 
@@ -65,9 +64,9 @@ silently.
 
 ## Validate before you publish
 
-`fhir-validation` is the separate skill and the separate lane, and the
-separation matters: SUSHI compiling is not conformance. A profile can compile
-and still fail validation against the packages it claims to constrain.
+Validation is the separate skill `fhir-validation`, in its own lane: SUSHI
+compiling is not conformance. A profile can compile and still fail validation
+against the packages it claims to constrain.
 
 ## Incremental builds
 

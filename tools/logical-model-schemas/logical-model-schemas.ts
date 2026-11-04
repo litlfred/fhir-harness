@@ -13,7 +13,7 @@ export default toolFactory((t) =>
   defineTool({
     id: "logical-model-schemas",
     title: "Logical models → JSON Schema",
-    description: "A JSON Schema per logical model, from the published FHIR resources.",
+    description: "A JSON Schema per logical model, from the logical models in the IG's AST.",
     install: { none: true },
     invoke: { shell: "bun run fhir-harness/scripts/ig-api-gen.ts --ast output-ast --out <sidecars> --site <site>" },
     io: {
@@ -23,8 +23,8 @@ export default toolFactory((t) =>
     satisfies: ["ig-build-pipeline"],
     selection: {
       when: "An IG is to expose its logical models as an addressable JSON Schema surface.",
-      limits: "It describes what the Publisher emitted. A model the Publisher did not publish is not reported as missing.",
-      cost: "Seconds, inside the publisher container.",
+      limits: "It describes what the AST holds. A model the AST does not hold is not reported as missing.",
+      cost: "Seconds; reads the AST.",
     },
     requires: { runtime: ["bun"], network: false },
   }),

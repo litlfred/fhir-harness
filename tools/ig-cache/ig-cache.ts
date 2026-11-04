@@ -11,10 +11,10 @@ export default toolFactory((t) =>
     invoke: { shell: "fhir-harness/scripts/ig-cache.sh" },
     io: {
       inputs: [
-        { name: "action", schema: t("IgCacheAction"), required: true, arg: { positional: 0 }, description: "The verb. `doctor` exists because a restore that silently missed used to look exactly like one that worked." },
+        { name: "action", schema: t("IgCacheAction"), required: true, arg: { positional: 0 }, description: "The verb. `doctor` diagnoses a restore that missed." },
         { name: "igRoot", schema: t("RepoPath"), required: false, arg: { flag: "--ig-root" }, description: "The IG whose AST is acted on." },
         { name: "package", schema: t("PackageName"), required: false, arg: { flag: "--package" } },
-        { name: "remote", schema: t("PackageName"), required: false, arg: { flag: "--remote" }, description: "Git remote to fetch from / push to. Default 'origin'. Use when the IG's origin is upstream (WHO) and the cache lives on a fork." },
+        { name: "remote", schema: t("PackageName"), required: false, arg: { flag: "--remote" }, description: "Git remote to fetch from / push to. Default 'origin'. Use when the IG's origin is upstream and the cache lives on a fork." },
       ],
       outputs: [{ name: "result", schema: t("Text"), description: "A real hit, a miss, or a diagnosis — never a miss that reads as a hit." }],
     },

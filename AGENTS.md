@@ -11,21 +11,19 @@ model, not `smart.who.int` canonicals, not the DAK API's names or the
 post-processing that produces it, not the pre/post-processing steps, and
 nothing from the `authoring-who-smart-guidelines` package. **Rendering** the
 sidecars an IG publishes is generic and is here, as the IG API
-(`ig-api-views.ts`; owner, 2026-10-03, bean `d313`); a WHO instance passes the
-"DAK API" names in as configuration.
+(`ig-api-views.ts`); a WHO instance passes the "DAK API" names in as
+configuration.
 
 The import direction is the enforceable half: the WHO package may reference
-this layer, this layer may not reference it. A violation **fails nothing** —
-the build stays green and the layer simply stops being usable for the non-WHO
-IG it exists for. That is why the refusal is written as a checkable list in
-[`skills/fhir-ig-base/ig-build-pipeline.md`](skills/fhir-ig-base/ig-build-pipeline.md)
-rather than left as an intention.
+this layer, this layer may not reference it. A violation does not break the
+build; it makes the layer unusable for a non-WHO IG. The refusal is written as
+a checkable list in
+[`skills/fhir-ig-base/ig-build-pipeline.md`](skills/fhir-ig-base/ig-build-pipeline.md).
 
-**It is a gate since 2026-10-03: `bun run cat check:fhir-harness-exclusions`.** It
-is a ratchet over a baseline of the hits that were already here. A new one
-fails CI. The fix is to move the WHO part up into the overlay, never to widen
-the baseline. The skill above says what counts as a mention rather than a
-dependency.
+**The gate is `bun run cat check:fhir-harness-exclusions`.** It is a ratchet
+over a baseline of existing hits, and a new hit fails CI. The fix is to move
+the WHO part up into the overlay, never to widen the baseline. The skill above
+says what counts as a mention rather than a dependency.
 
 ## Where the layer sits
 
@@ -33,28 +31,35 @@ dependency.
 folio-assistant-core → fhir-harness → the WHO SMART Base IG (L1 and DAK document kinds) → smart-ig
 ```
 
-The owner's ruling, 2026-09-22. An IG that wants the DAK surface does not
-change this pipeline — the DAK document kind in the WHO SMART Base IG supplies the
-pre/post steps as an **overlay**. (Owner's stack ruling 2026-09-22, revised
-2026-10-01: `smart-l1` and `smart-dak` became document kinds, #1767.) This
-layer must not gain a `do_dak` flag: that would be this layer knowing about
-DAKs.
+An IG that wants the DAK surface does not change this pipeline: the DAK
+document kind (`smart-dak`) of the WHO SMART Base IG supplies the pre/post
+steps as an **overlay**, as `smart-l1` supplies the L1 kind. This layer must
+not gain a `do_dak` flag: that would be this layer knowing about DAKs.
 
 Placement:
 [`smart-stack-layering`](https://github.com/litlfred/smart-base/blob/main/smart-base/skills/content/authoring-who-smart-guidelines/smart-stack-layering.md).
 
 ## What is here
 
-`skills/fhir-ig-base/`: `ig-build-pipeline`, `ig-render-jekyll`,
-`ig-publisher-reduction` (the five phases), `ig-publisher-fork` (the AST
-work, built as a library on top of the Publisher) and `ig-ast-delta` (list,
-check, diff and render IG ASTs; `scripts/ig-ast.ts`). The package manifest is
-the list, not this sentence.
-`skills/fhir-client/` — `smart-launch` and `fhir-client-operations`, which use
-the SMARTerFHIR library. `docs/`: this layer's pages on the platform's site
-(the IG Publisher and FHIR content, authored under `docs/source/` and
-rendered by the platform's docs-page run), plus the `ig-ast` wireframe. Nothing else, and the declaration says so: a declared-but-absent directory is the
-`dh4f` defect, where a consumer scans nothing and reports a clean run over it.
+The directories this layer declares are listed in `fhir-harness.json`:
+
+- `skills/`: the skills listed below. Each package's `package-manifest.json`
+  is the list of its skills.
+- `scripts/`: the pipeline code (site build, IG indexes, IG ASTs through
+  `scripts/ig-ast.ts`, the IG API), and `tools/`: a Tool node for each script
+  the graph invokes.
+- `processes/`: the BPMN of the FHIR IG pipeline; `scenarios/`: its roles,
+  actors, stories and capabilities.
+- `typologies/` and `validators/`: the kinds this layer owns and their
+  validators; their schemas are in `schemas/`.
+- `pipeline/` and `pipeline-plugins/`: the `site-publisher-ig` slot.
+- `docs/`: this layer's pages on the platform's site (authored under
+  `docs/source/`), plus the `ig-ast` wireframe.
+- `library/`, `libraries/`, `translations/`, `glossary/`: source documents,
+  outside libraries, gettext templates and the generated glossary.
+
+A directory is declared only when it exists: a declared-but-absent directory
+makes a consumer scan nothing and report a clean run over it.
 
 ## An IG repository declares nothing of this layer's
 
@@ -64,16 +69,16 @@ an overlay above it, and this layer supplies the rest from the AST on the
 repository's own branch family: the site and the artefact index
 ([`ig-build-pipeline`](skills/fhir-ig-base/ig-build-pipeline.md), "The IG
 repository's site route"; `ig-repo-site.ts`, `ast-to-artifact-index.ts`), and
-its entry in the `ig-ast` viewer (`gen-ig-ast-pages.ts`, inherited through
-`needs`). Its `fhir-artifact-index/` (index, menu, releases) is written at
-publish by `ig-index:build` (`build-ig-indexes.ts`) from the same AST and the
-IG's own `sushi-config.yaml`, so an IG instance commits none (#124). **Read that skill and the IG's own AGENTS.md before proposing a
-folder, page or declaration for an IG.** An IG instance that does declare such
-directories does so only because an index still mounts files it commits,
-which #124 retires. That is an exception, not a pattern to copy. The one directory an IG repository does declare for this layer is an
-`ig-annex` directory of annexes its pages load on demand, data no AST holds
-(the skill above, "Annexes an IG's pages load on demand"). Owner, 2026-10-23: the AST listing "should
-be inherited", because the IG depends on this layer.
+its entry in the `ig-ast` viewer (`gen-ig-ast-pages.ts`), which it inherits
+through `needs`. Its `fhir-artifact-index/` (index, menu, releases) is written
+at publish by `ig-index:build` (`build-ig-indexes.ts`) from the same AST and
+the IG's own `sushi-config.yaml`, so an IG instance commits none. **Read that
+skill and the IG's own AGENTS.md before proposing a folder, page or
+declaration for an IG.** An IG instance that still declares such directories
+does so only because an index still mounts files it commits: an exception, not
+a pattern to copy. The one directory an IG repository does declare for this
+layer is an `ig-annex` directory of annexes its pages load on demand, data no
+AST holds (the skill above, "Annexes an IG's pages load on demand").
 
 ## The skills this layer publishes
 
@@ -117,12 +122,9 @@ _17 skills in 3 directories, generated from each skill's front matter. `bun run 
 
 `schemas/ig-content-type.ts` registers the `ig` content type. A repository
 declares itself an IG source with `contentTypes.ig` in its root
-`index.config.json` (owner, 2026-10-30), not by carrying `sushi-config.yaml`.
-The section's `include` lists the repository paths this layer reads, and a
-path not on that list is not read. The owner's principle, 2026-10-30: "a
-harness can point to a repo, but doesnt want to automatically slurpo up all
-content in a repo. harness desclares what it it pays attention to in the
-repo."
+`index.config.json`, not by carrying `sushi-config.yaml`. The section's
+`include` lists the repository paths this layer reads, and a path not on that
+list is not read: a harness reads only what it declares.
 
 Every IG reader here asks `scripts/ig-read-scope.ts` before it touches a
 path: `build-ig-indexes`, `ig-repo-site`, `build-ig-site`, `fsh-cone`,
@@ -130,14 +132,14 @@ path: `build-ig-indexes`, `ig-repo-site`, `build-ig-site`, `fsh-cone`,
 `ig-review-data` and `measure-logic-layer-edges`. A repository that declares
 the section is read only within `include`; `ig-repo-site compose` and
 `stageIgSite` stage from a copy of the declared paths. A repository that
-declares none is a legacy IG: it is read as before, and one warning per run
+declares none is a legacy IG: every path is readable, and one warning per run
 names the missing section. A section with no usable `include` is refused.
 To make a reader see a path it skips, add that path to `include` (a directory
 ends in `/`) in the IG's own `index.config.json`, in the pull request that
 needs it. The full rules, the warning's text and how to add a path are in
 [`ig-build-pipeline`](skills/fhir-ig-base/ig-build-pipeline.md) §"What this
 layer reads".
-The input digest in `ig-ast.ts` is not gated: it must match the Java
-exporter, and it names what SUSHI and the Publisher read. The `ig` type is
+The input digest in `ig-ast.ts` does not use the read scope: it must match
+the Java exporter, and it names what SUSHI and the Publisher read. The `ig` type is
 registered at load time by `pipeline/plugin-slots.ts`, the module the
 contributions loader requires for every repository that depends on this layer.

@@ -8,7 +8,7 @@ The review step of an incremental FHIR IG build, as its own subprocess: list and
 
 ## Begin — Base AST and merged head AST exist (`Start_Ready`)
 
-- Begin here: Reached after an incremental build (IncrementalBuildCli) has merged the rebuilt cone into the base, or after a full build when comparing the two for W8.
+- Begin here: Reached after an incremental build (IncrementalBuildCli) has merged the rebuilt cone into the base, or after a full build when comparing an incremental AST with a full one.
 - Call `workflow_start` with `process: "Process_IgAstDeltaReview"` and the subject this run is about; keep the instance id it returns.
 - next: → `Task_Validity` (Check the base AST against the inputs)
 
@@ -53,17 +53,17 @@ cannot tell» → `End_Stale` (Base stale — run a full build)
 - Answered by the reviewer in Task_Review.
 - Call `workflow_complete` with `node: "GW_Explained"` and `outcome` set to the label that holds:
   - «yes» → `End_Accepted` (Delta accepted — on to the QC gates)
-  - «no» → `Task_FileCoupling` (Note the missed coupling on the bean)
+  - «no» → `Task_FileCoupling` (Note the missed coupling on the work plan)
 
 ## Done — Delta accepted — on to the QC gates (`End_Accepted`)
 
 - The instance completes here: Hands back to ig-incremental-build at Task_Qa. `workflow_next` then reports nothing enabled — that, not this line, is the record of completion.
 
-### 4. Note the missed coupling on the bean (`Task_FileCoupling`)
+### 4. Note the missed coupling on the work plan (`Task_FileCoupling`)
 
 - Who: the `QC reviewer` lane (role `qc-reviewer`).
 - Skill: `todo-manager`.
-- What: Append to bean `a9tx` (W8): the resource key, the differential path, and why it is unexplained.
+- What: Append to the IG AST work-plan item: the resource key, the differential path, and why it is unexplained.
 - Record it: `workflow_complete` with `node: "Task_FileCoupling"`.
 - next: → `End_FullBuild` (Coupling filed — run a full build)
 

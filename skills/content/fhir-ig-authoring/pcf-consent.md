@@ -18,36 +18,34 @@ description: >
 > [`schemas/pcf-consent.ts`](../../../schemas/pcf-consent.ts) (`consentToOdrl`,
 > `decide`, `evaluatePcfPolicy`, `PCF_IMPLICIT_POLICY_SETS`),
 > [`schemas/iti-108-consent-client.ts`](../../../schemas/iti-108-consent-client.ts)
-> (`findAccessConsents`, `Iti108ConsentClient`) · Beans: `folio-assistant-y0o0`
-> (PCF9), `folio-assistant-jx7m` (PCF5), `folio-assistant-a7c1` (PCF6),
-> `folio-assistant-r9vk` (PCF7), `folio-assistant-2egb` (PCF8).
+> (`findAccessConsents`, `Iti108ConsentClient`),
+> [`schemas/odrl-to-fhir-r5-permission.ts`](../../../schemas/odrl-to-fhir-r5-permission.ts).
 
 Model patient privacy consent directives in FHIR Implementation Guides,
 translate them into W3C ODRL 2.2 policies, and evaluate three-valued
 access-control decisions (`permit` | `deny` | `unknown`).
 
-> **Standards approval & scope (owner decision, 2026-10-30, issue #2702):**
-> - **Approved specifications:** **IHE IT Infrastructure Technical Framework
+> **Standards and scope:**
+> - **Specifications:** **IHE IT Infrastructure Technical Framework
 >   Supplement — Privacy Consent on FHIR (PCF) 1.1.0** (*Trial Implementation*,
 >   2023-08-04) and **HL7 FHIR R4 `Consent`** (*Trial Use*, FMG maturity level 2).
-> - **Basic consent first:** implement IHE PCF **Basic** (`IHE.PCF.consentBasic`)
->   and **Additional `PurposeOfUse`** (`IHE.PCF.consentIntermediate` with
->   extended HL7 `PurposeOfUse` codes and nested `provision` exceptions) first;
->   `IHE.PCF.consentAdvanced` security-label sensitivity tags are supported by
->   the translator when declared.
+> - **Profiles:** IHE PCF **Basic** (`IHE.PCF.consentBasic`) and **Additional
+>   `PurposeOfUse`** (`IHE.PCF.consentIntermediate`: extended HL7
+>   `PurposeOfUse` codes and nested `provision` exceptions). The translator
+>   also handles `IHE.PCF.consentAdvanced` security-label sensitivity tags
+>   when declared.
 > - **Referenced by canonical URL only:** never copy or re-author IHE PCF
 >   `StructureDefinition`s or `ValueSet`s in an IG; pin the upstream packages in
 >   `sushi-config.yaml` and reference IHE profiles and value sets by their
 >   canonical URLs.
 > - **No IUA claim:** do not claim conformance to IHE Internet User
->   Authorization (IUA) or profile ITI-71 / ITI-103 OAuth token exchange unless
->   separately approved; HTTP `Authorization` headers on ITI-108 reads are
+>   Authorization (IUA), and do not profile ITI-71 / ITI-103 OAuth token
+>   exchange; HTTP `Authorization` headers on ITI-108 reads are
 >   passed through opaque to the transport.
 > - **Trust-anchor neutral:** any consent-bearing workflow or verifiable link
->   depends on an abstract trust anchor (for example a national PKI, a regional
->   federation, `did:web`, or the Global Digital Health Certification Network
->   (GDHCN) as one possible trust anchor among others — never hardcoded as the
->   only one).
+>   depends on an abstract trust anchor (a national PKI, a regional
+>   federation, `did:web`, the Global Digital Health Certification Network
+>   (GDHCN), …); none is hardcoded.
 
 ---
 
@@ -131,10 +129,10 @@ Every conformant IHE PCF 1.1.0 `Consent` resource carries:
 
 ---
 
-## 2. Translate — `consentToOdrl()` and the Four Implicit Policies (PCF5)
+## 2. Translate — `consentToOdrl()` and the Four Implicit Policies
 
 `consentToOdrl(consent, options)` in `fhir-harness/schemas/pcf-consent.ts`
-(bean `folio-assistant-jx7m`) translates a FHIR R4 `Consent` into a W3C ODRL 2.2
+translates a FHIR R4 `Consent` into a W3C ODRL 2.2
 `Set` policy (`PcfOdrlSet`).
 
 ### 2.1 Field-by-field mapping (`Consent` → ODRL `Set`)
@@ -199,11 +197,10 @@ evaluates a `PcfDecisionRequest` (`actor`, `actorRoles`, `actorGroups`,
      `"deny"`, and an absent or non-active `Consent` returns `"unknown"` —
      **never a silent `"permit"`**.
 
-### 3.2 Reading consents via IHE ITI-108 (`findAccessConsents`, PCF7)
+### 3.2 Reading consents via IHE ITI-108 (`findAccessConsents`)
 
 `findAccessConsents(query)` and `Iti108ConsentClient` in
-`fhir-harness/schemas/iti-108-consent-client.ts` (bean `folio-assistant-r9vk`)
-implement the **IHE ITI-108** (*Find Access Consent*, `[ITI-108]`) RESTful
+`fhir-harness/schemas/iti-108-consent-client.ts` implement the **IHE ITI-108** (*Find Access Consent*, `[ITI-108]`) RESTful
 search transaction (`GET <baseUrl>/Consent`) as a **Consent Consumer**:
 
 - **Search parameters (`buildIti108SearchUrl`):** `patient` /
@@ -225,16 +222,15 @@ search transaction (`GET <baseUrl>/Consent`) as a **Consent Consumer**:
   ITI-108 result into `decide()`, check `result.status === "unknown"` first and
   propagate `"unknown"`.
 
-### 3.3 Fulfilling `odrl:obtainConsent` duties on DSAs via injected `createPcfConsentEvaluator` (PCF6)
+### 3.3 Fulfilling `odrl:obtainConsent` duties on DSAs via injected `createPcfConsentEvaluator`
 
-In `cat-harness/schemas/content/odrl.ts` (beans `folio-assistant-s4v2`,
-`folio-assistant-a7c1`, and `folio-assistant-6jnx`), `cat-harness` stays free
-of FHIR resource types and `pcf:*` keys; a Data Sharing Agreement
-(`@type: "Agreement"`) carrying an `{ action: "odrl:obtainConsent" }` duty
-evaluates consent through an injected `consentEvaluator: createPcfConsentEvaluator(consents, options)`
-callback supplied from `fhir-harness/schemas/pcf-consent.ts` (returning
-`{ verdict, consent: { id, versionId, uid } }` to `permits()` / `permitsWithConsent()`
-/ `decideWithConsent()`):
+`cat-harness/schemas/content/odrl.ts` holds no FHIR resource types or `pcf:*`
+keys. A Data Sharing Agreement (`@type: "Agreement"`) carrying an
+`{ action: "odrl:obtainConsent" }` duty evaluates consent through an injected
+`consentEvaluator: createPcfConsentEvaluator(consents, options)` callback from
+`fhir-harness/schemas/pcf-consent.ts`, which returns
+`{ verdict, consent: { id, versionId, uid } }` to `permits()` /
+`permitsWithConsent()` / `decideWithConsent()`:
 
 - **DSA + no `Consent` (or unreachable ITI-108 registry) → `"unknown"`:** when
   `odrl:obtainConsent` is due and no active matching PCF `Consent` (or
@@ -247,21 +243,46 @@ callback supplied from `fhir-harness/schemas/pcf-consent.ts` (returning
   target (and any other DSA constraints and duties hold), `permits()` returns
   `"permit"`.
 
-### 3.3a Owner consent rules (2026-10-30 19:27Z)
+### 3.3a Consent rules for agreements
 
-The owner set four rules for consent-based agreements. Two are enforced here; the other two are authored in the agreement itself (the `dsa` document kind and its lifecycle process in folio-assistant-core).
+Four rules govern consent-based agreements. Rules 2 and 4 are enforced here;
+rules 1 and 3 are authored in the agreement itself (the `dsa` document kind
+and its lifecycle process in folio-assistant-core).
 
-1. **Legal basis.** An agreement carries `odrl:obtainConsent` only when consent is its legal basis. Treatment, public-health law and research waivers do not rest on consent, so their agreements have no such duty and this evaluator is never asked.
-2. **Version pinning (enforced here).** A Consent names the agreement's fixed-version URL in R4 `Consent.policy.uri`. `createPcfConsentEvaluator` counts a Consent only when that URI equals the agreement's version (the agreement policy's `uid`, or `agreementPolicyUri`); `consentsCitingAgreement()` is the filter. An amendment that widens use is a new version URL, so the old Consent no longer counts and new consent is needed. An amendment that narrows use does not need new consent: pass the agreement's DCAT 3 version chain as `agreementVersions` (each version's ODRL policy and its `dcat:previousVersion`), and an older Consent still counts while every step back to its version is a narrowing amendment. `isNarrowingAmendment()` decides that from the ODRL rules alone, with no extra field: every newer permission must sit inside an older one (same or narrower action, same target and assignee, each older constraint matched by one at least as tight, each older duty kept), and every older prohibition and obligation must remain. A widening step, a missing version or anything it cannot compare (such as `inheritFrom`) stops the walk, so new consent is needed (owner card 2026-10-30 19:55Z).
-3. **Plain language.** Every agreement that needs consent publishes a plain-language summary, hashed with the agreement. That summary is what the person consents to.
-4. **Scale (enforced here).** The jurisdiction picks one of PCF's implicit default policies (opt-in or opt-out) and passes it as `implicitPolicy`. Registry reads may be cached: `new Iti108ConsentClient(base, defaults, { ttlMs })`. An entry ends at its TTL, at the earliest `provision.period.end` of its Consents, or at once when `consentWithdrawn(id)` is called for one of its Consents.
+1. **Legal basis.** An agreement carries `odrl:obtainConsent` only when
+   consent is its legal basis. Agreements resting on treatment, public-health
+   law or a research waiver carry no such duty, and this evaluator is never
+   asked.
+2. **Version pinning.** A Consent names the agreement's fixed-version URL in
+   R4 `Consent.policy.uri`. `createPcfConsentEvaluator` counts a Consent only
+   when that URI equals the agreement's version (the agreement policy's
+   `uid`, or `agreementPolicyUri`); `consentsCitingAgreement()` is the filter.
+   An amendment that widens use is a new version URL, so the old Consent no
+   longer counts. An amendment that narrows use needs no new consent: pass
+   the agreement's DCAT 3 version chain as `agreementVersions` (each
+   version's ODRL policy and its `dcat:previousVersion`), and an older Consent
+   still counts while every step back to its version is a narrowing
+   amendment. `isNarrowingAmendment()` decides that from the ODRL rules
+   alone: every newer permission sits inside an older one (same or narrower
+   action, same target and assignee, each older constraint matched by one at
+   least as tight, each older duty kept), and every older prohibition and
+   obligation remains. A widening step, a missing version or anything it
+   cannot compare (such as `inheritFrom`) stops the walk, and new consent is
+   needed.
+3. **Plain language.** Every agreement that needs consent publishes a
+   plain-language summary, hashed with the agreement. That summary is what
+   the person consents to.
+4. **Scale.** The jurisdiction picks one of PCF's implicit default policies
+   (opt-in or opt-out) and passes it as `implicitPolicy`. Registry reads may
+   be cached: `new Iti108ConsentClient(base, defaults, { ttlMs })`. An entry
+   ends at its TTL, at the earliest `provision.period.end` of its Consents, or
+   when `consentWithdrawn(id)` is called for one of its Consents.
 
-### 3.4 Citing `Consent.id` + `Consent.meta.versionId` in PROV-O decision records (PCF8)
+### 3.4 Citing `Consent.id` + `Consent.meta.versionId` in PROV-O decision records
 
 Every consent-based access decision recorded in the hash-chained W3C PROV-O
 decision log (`cat-harness/schemas/content/prov.ts`,
-`cat-harness-tools/src/workflow/prov-record.ts`; beans `folio-assistant-3z44`
-and `folio-assistant-2egb`) must cite the exact `Consent` resource version used:
+`cat-harness-tools/src/workflow/prov-record.ts`) must cite the exact `Consent` resource version used:
 
 - Use `extractConsentCitation(consent)` / `consentPolicyUid(consent)` from
   `fhir-harness/schemas/pcf-consent.ts` to obtain `{ id, versionId, uid, status, patient, performer, policyUris }`.
@@ -273,11 +294,10 @@ and `folio-assistant-2egb`) must cite the exact `Consent` resource version used:
   force when the decision hash (`cat-harness:recordHash` chained via
   `cat-harness:previousHash`) was computed.
 
-### 3.5 One-way renderer: ODRL 2.2 Agreement to FHIR R5 `Permission` (output only, bean `jfbm`)
+### 3.5 One-way renderer: ODRL 2.2 Agreement to FHIR R5 `Permission` (output only)
 
-Per owner card 2026-10-30 19:23Z ("A: Yes, later bean"), HL7 FHIR R5 `Permission`
-(Trial Use) is approved **for output only**: W3C ODRL 2.2 stays the source of
-truth and nothing reads `Permission` back.
+HL7 FHIR R5 `Permission` (Trial Use) is **output only**: W3C ODRL 2.2 is the
+source of truth and nothing reads `Permission` back.
 [`schemas/odrl-to-fhir-r5-permission.ts`](../../../schemas/odrl-to-fhir-r5-permission.ts)
 provides `odrlAgreementToFhirR5Permission(agreement, options)` and
 `fhirR5PermissionToFsh(permission, options)`:

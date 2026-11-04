@@ -6,7 +6,7 @@ export default toolFactory((t) =>
     id: "terminology-index",
     title: "Write an IG site's static terminology index from the IG's own cache",
     description:
-      "Read the IG Publisher's `expansions.json` and `txcache/`, as `ig-cache.sh restore` leaves them, and write `index.json` (gzipped as `index.json.gz` over 1 MB): every code with its system and display, and each value set's codes. The IG site's service worker answers the self-hosted Form Builder's LOINC search from it, and its UCUM search from the vendored full UCUM list, so the site makes no cross-site call (owner, 2026-10-14: \"cache + ucum. this is gh-pages so no XSS\"). `build-ig-site` runs it for every IG with a Questionnaire.",
+      "Read the IG Publisher's `expansions.json` and `txcache/`, as `ig-cache.sh restore` leaves them, and write `index.json` (gzipped as `index.json.gz` over 1 MB): every code with its system and display, and each value set's codes. The IG site's service worker answers the self-hosted Form Builder's LOINC search from it, and its UCUM search from the vendored full UCUM list, so the site makes no cross-site call. `build-ig-site` runs it for every IG with a Questionnaire.",
     install: { none: true },
     invoke: { shell: "bun run fhir-harness/scripts/terminology-index.ts --expansions <expansions> --txcache <txcache> --out <out>" },
     io: {
