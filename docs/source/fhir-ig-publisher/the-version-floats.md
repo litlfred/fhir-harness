@@ -1,5 +1,4 @@
-A common build downloads `publisher.jar` from the **latest** release on
-every run:
+A common build fetches the **latest** `publisher.jar` on every run:
 
 ```yaml
 - name: Update the image to the latest publisher
@@ -8,12 +7,7 @@ every run:
     args: curl -L https://github.com/HL7/fhir-ig-publisher/releases/latest/download/publisher.jar …
 ```
 
-Two builds of an unchanged commit can therefore differ, and nothing in the
-output says which version produced it.
-
-This is not a nit. It makes **"the build changed"** and **"the content
-changed"** indistinguishable, which is the same class of defect as an
-unrecorded workflow outcome: the artefact looks healthy and the question
-cannot be asked. It is also why a cached AST must carry a toolchain record —
-publisher version, core version, SUSHI version — as a required part of its
-shape rather than as an optional annotation.
+Two builds of the same commit can differ, and the output does not say which
+version made it, so "the build changed" cannot be told from "the content
+changed". A cached AST must therefore record its toolchain (Publisher, core and
+SUSHI versions) as a required field.

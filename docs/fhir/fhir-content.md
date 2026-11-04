@@ -28,8 +28,7 @@ _This page is generated from [`docs/source/fhir-fhir-content/`](https://github.c
 
 A **FHIR Implementation Guide** is a published, versioned package of profiles,
 terminology, examples and prose that says how FHIR is to be used for one
-purpose. In this knowledge graph it is content of a particular shape, and the
-shape is what this page is about.
+purpose. This page describes how IG content is shaped in the graph.
 
 Two things distinguish it from the other content kinds here. It is
 **compiled** — an author writes FHIR Shorthand and a tool produces the
@@ -37,8 +36,6 @@ resources, so the thing an author edits and the thing a reader fetches are
 different artefacts. And it is **published at canonical URLs** that other IGs
 resolve against, so its identity is a URL and a version rather than a path in
 a repository.
-
-Both have consequences that catch people out, and each is a section below.
 
 ## Representations, and why only one is taken
 {: #representations data-fa-label="sec:fhir-content-representations" }
@@ -48,34 +45,25 @@ Both have consequences that catch people out, and each is a section below.
 The IG Publisher emits **three serialisations of every resource** — JSON, XML
 and Turtle — plus HTML per resource page.
 
-This platform's render path takes the **JSON**, wrapped in JSON-LD and JSON
-Schema. That is a decision rather than an omission: three serialisations of
-one resource are three chances to disagree about what the resource says, and
-the JSON-LD wrapper carries the semantics the other two were being kept for.
-An instance that genuinely needs RDF gets it by projecting the JSON-LD, not by
-shipping the Publisher's Turtle.
+Only the JSON is taken, wrapped in JSON-LD and JSON Schema; RDF, where needed,
+is projected from the JSON-LD. The site neither renders nor links a resource's
+XML or Turtle copy.
 
 **A representation that arrives and is not taken is recorded as a refusal.**
-Otherwise "this IG publishes no Turtle" and "we ignored its Turtle" become the
-same observation, and only one of them is a fact about the IG.
 
-The `.html` case is different and worth separating. The Publisher's HTML is
-not a serialisation of a resource — it is a *rendering*, with the Publisher's
-own navigation, theme and cross-links baked in. Mounting it is what this
-platform is moving away from, because finished HTML carries no front matter:
-the navbar, the language bar, the QA badges and the translation surface all
-stop at its edge.
+The Publisher's per-page HTML is a rendering, not a serialisation, and is not
+used: it has no front matter, so the navbar, language bar, QA badges and
+translation surface cannot reach it. IG pages are rendered as folio pages
+instead (see
+[`ig-render-jekyll`]({{ '/reference/skill-instructions/ig-render-jekyll.html' | relative_url }})).
 
 ## The artefact index is reconstructed
 {: #the-artefact-index data-fa-label="sec:fhir-content-the-artefact-index" }
 
 [✎ Edit](https://github.com/litlfred/fhir-harness/edit/main/docs/source/fhir-fhir-content/the-artefact-index.md){: .fa-node-edit title="Edit docs/source/fhir-fhir-content/the-artefact-index.md" data-fa-link="edit" data-src="docs/source/fhir-fhir-content/the-artefact-index.md" data-repo="litlfred/fhir-harness" } <span class="fa-qa-badges"><button type="button" class="fa-qa-badge fa-qa-pending fa-qa-fam-block" lang="en" dir="ltr" data-qa-family="block" data-qa-key="the-artefact-index.block" data-qa-label="Content QA" data-qa-noun="block" data-qa-src="{{ '/assets/qa/fhir-harness/fhir-fhir-content/the-artefact-index.block.json' | relative_url }}" data-qa-index="{{ '/assets/qa/fhir-harness/fhir-fhir-content/qa-index.json' | relative_url }}" aria-expanded="false" aria-busy="true" title="Content QA: loading the verdict…" aria-label="Content QA: loading the verdict…"><span class="fa-qa-tag">QA</span><span class="fa-qa-glyph" aria-hidden="true">…</span></button> <button type="button" class="fa-qa-badge fa-qa-pending fa-qa-fam-translation" lang="en" dir="ltr" data-qa-family="translation" data-qa-key="the-artefact-index.translation" data-qa-label="Translation QA" data-qa-noun="block" data-qa-src="{{ '/assets/qa/fhir-harness/fhir-fhir-content/the-artefact-index.translation.json' | relative_url }}" data-qa-index="{{ '/assets/qa/fhir-harness/fhir-fhir-content/qa-index.json' | relative_url }}" aria-expanded="false" aria-busy="true" title="Translation QA: loading the verdict…" aria-label="Translation QA: loading the verdict…"><span class="fa-qa-tag">TR</span><span class="fa-qa-glyph" aria-hidden="true">…</span></button></span>
 
-**No FHIR IG publishes an index of its own artefacts.** This is the fact that
-shapes every attempt to read one back as a graph, and it surprises people
-because a published IG plainly *knows* what it contains.
-
-What exists instead is four partial views, and none is sufficient alone:
+**No FHIR IG publishes an index of its own artefacts.** Four files each carry
+part of one:
 
 | view | carries |
 |---|---|
@@ -84,22 +72,18 @@ What exists instead is four partial views, and none is sufficient alone:
 | `artifacts.html` | the only source of an artefact's **category** |
 | `package.manifest.json` | package-level metadata |
 
-So an index is **reconstructed**, and each field records which published file
-it came from. The provenance is not bookkeeping: coverage differs per IG, and
-badly. `canonicals.json` covers about a tenth of one published IG's artefacts
-and all of another's. A pipeline that picked a winner on the first IG it met would
-be silently wrong on the second, reporting a clean run over the artefacts that
-view does not reach.
+The index is **reconstructed**, and each field records its source file,
+because coverage varies: `canonicals.json` covers about a tenth of one
+published IG's artefacts and all of another's.
 
-Two traps are documented because both have been hit:
+Two files look like indexes and are not:
 
 - **`ValueSets.schema.json` at the published root is a schema, not an index.**
   It describes an enumeration endpoint's response and carries an `example`
-  that holds the list — and the hub page links it to a `schemas/` directory it
-  is not in.
+  that holds the list.
 - **`openapi/openapi.json` is not the IG's API sidecar set.** In at least one
-  published IG it is an unrelated domain API, so an ingest that globs for OpenAI-shaped files
-  mis-files it.
+  published IG it is an unrelated domain API, so an ingest that globs for
+  OpenAPI-shaped files mis-files it.
 
 ## Where the rules live
 {: #where-the-rules-live data-fa-label="sec:fhir-content-where-the-rules-live" }
@@ -109,14 +93,14 @@ Two traps are documented because both have been hit:
 This page describes the content. The rules are skills, and where the two
 disagree the skill wins and this page is wrong:
 
-- **`l3-fhir-authoring`**: authoring FHIR content, and deriving it rather
-  than retyping it.
-- **`terminology-management`**: why terminology has its own lane, and the
-  rule against inventing a code.
-- **`fhir-validation`**: the two binaries, and why an absent capability did
-  not pass.
-- **`ig-render-jekyll`**: the three contracts for rendering IG content as
-  folio pages, including the JSON-only rule above.
+- **[`l3-fhir-authoring`]({{ '/reference/skill-instructions/l3-fhir-authoring.html' | relative_url }})**:
+  authoring FHIR content, and deriving it rather than retyping it.
+- **[`terminology-management`]({{ '/reference/skill-instructions/terminology-management.html' | relative_url }})**:
+  why terminology has its own lane, and the rule against inventing a code.
+- **[`fhir-validation`]({{ '/reference/skill-instructions/fhir-validation.html' | relative_url }})**:
+  the SUSHI compiler and the validator, and why a missing one is not a pass.
+- **[`ig-render-jekyll`]({{ '/reference/skill-instructions/ig-render-jekyll.html' | relative_url }})**:
+  rendering IG content as folio pages.
 
 For the tool that compiles and validates all of this, see
 [The FHIR IG Publisher](ig-publisher.html).

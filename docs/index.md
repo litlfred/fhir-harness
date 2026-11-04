@@ -19,8 +19,8 @@ sushi-config.yaml   ┘  →  IG Publisher (JVM, Docker)  →  output/  →  pag
 
 ## Pages
 
-- [The FHIR IG Publisher](fhir/ig-publisher.html): what one run emits, the
-  three things nothing else can do, and what it cannot be asked for.
+- [The FHIR IG Publisher](fhir/ig-publisher.html): what one run emits,
+  what only it can do, and what it cannot tell you.
 - [FHIR content](fhir/fhir-content.html): what an implementation guide is as
   content, which representation is taken, and why the artefact index is
   reconstructed.

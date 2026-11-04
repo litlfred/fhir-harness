@@ -1,8 +1,5 @@
-**No FHIR IG publishes an index of its own artefacts.** This is the fact that
-shapes every attempt to read one back as a graph, and it surprises people
-because a published IG plainly *knows* what it contains.
-
-What exists instead is four partial views, and none is sufficient alone:
+**No FHIR IG publishes an index of its own artefacts.** Four files each carry
+part of one:
 
 | view | carries |
 |---|---|
@@ -11,19 +8,15 @@ What exists instead is four partial views, and none is sufficient alone:
 | `artifacts.html` | the only source of an artefact's **category** |
 | `package.manifest.json` | package-level metadata |
 
-So an index is **reconstructed**, and each field records which published file
-it came from. The provenance is not bookkeeping: coverage differs per IG, and
-badly. `canonicals.json` covers about a tenth of one published IG's artefacts
-and all of another's. A pipeline that picked a winner on the first IG it met would
-be silently wrong on the second, reporting a clean run over the artefacts that
-view does not reach.
+The index is **reconstructed**, and each field records its source file,
+because coverage varies: `canonicals.json` covers about a tenth of one
+published IG's artefacts and all of another's.
 
-Two traps are documented because both have been hit:
+Two files look like indexes and are not:
 
 - **`ValueSets.schema.json` at the published root is a schema, not an index.**
   It describes an enumeration endpoint's response and carries an `example`
-  that holds the list — and the hub page links it to a `schemas/` directory it
-  is not in.
+  that holds the list.
 - **`openapi/openapi.json` is not the IG's API sidecar set.** In at least one
-  published IG it is an unrelated domain API, so an ingest that globs for OpenAI-shaped files
-  mis-files it.
+  published IG it is an unrelated domain API, so an ingest that globs for
+  OpenAPI-shaped files mis-files it.

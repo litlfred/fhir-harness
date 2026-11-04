@@ -32,7 +32,7 @@ stale, cannot tell, miss» → `Task_Dispatch` (Dispatch AST refresh)
 
 - Who: the `Site build (agent, stage-local)` lane (role `build-pipeline`).
 - Skill: `ig-render-jekyll`, `ig-build-pipeline`.
-- What: The site route's steps, provided by the mounted layers and run by `stage-local.ts` → `build-instance-site.ts`: the landing layer's IG API sidecars when it has the step (`ig-site:sidecars`), the artefact index from the AST and the thin pages with the IG composed at the root (`ig-site:compose`: `ast-t
+- What: Runs the site route's steps via `stage-local.ts` → `build-instance-site.ts`: `ig-site:sidecars` (IG API sidecars, if the landing layer has the step), `ig-site:compose` (artefact index and thin pages from the AST, the IG composed at the root), `ig-site:openapi` (if the IG holds OpenAPI pages), `ig-si
 - Record it: `workflow_complete` with `node: "Task_BuildSite"`.
 - next: → `End_Published` (Site published from the AST)
 
@@ -52,7 +52,7 @@ stale, cannot tell, miss» → `Task_Dispatch` (Dispatch AST refresh)
 
 - Who: the `AST refresh (GitHub runner: IG Publisher with the AST exporter)` lane (role `ig-publisher-service`).
 - Skill: `ig-publisher-fork`.
-- What: The runner mounts the layers the IG repository's `index.lock.json` pins, restores and judges the cache itself, and, when it is not valid, runs the caller's optional `pre-export` overlay command, then `AstExportCli` (Tool `ig-ast-export`, `litlfred/fhir-ig-publisher` at the pinned `claude/ast-export`
+- What: The runner mounts the layers the IG repository's `index.lock.json` pins, then restores and judges the cache itself.
 - Record it: `workflow_complete` with `node: "Task_Export"`.
 - next: → `GW_Seedable` (On the default branch, with its inputs?)
 
