@@ -44,6 +44,7 @@ import { cpSync, existsSync, mkdirSync, readFileSync, writeFileSync } from "node
 import { join } from "node:path";
 import { EDIT_LINKS_RUNTIME } from "../../cat-harness-tools/src/core/edit-links.js";
 import { readAst } from "./ig-ast.ts";
+import { ARTIFACT_DIR, artifactPageName } from "./ig-artifact-jsonld.ts";
 import { buildIndex, expansionsOf, preExpand, ucumRows, writeIndex } from "./terminology-index.ts";
 
 /**
@@ -160,7 +161,7 @@ export function formPageHtml(q: { id: string; title?: string; name?: string; url
     "---",
     `<div id="fa-qform" class="fa-qform" data-json="${esc(o.json)}" data-lhc="assets/lhc-forms/${LHC_FORMS_VERSION}/" data-fhir="${lformsFhirVersion(o.fhirVersion)}"${src}>`,
     `<h1>${esc(title)}: the form</h1>`,
-    `<p class="fa-qform-about">How <a href="Questionnaire-${esc(q.id)}.html">Questionnaire/${esc(q.id)}</a> looks to the person filling it in, drawn from its built JSON by NLM LHC-Forms ${LHC_FORMS_VERSION}, served from this site.</p>`,
+    `<p class="fa-qform-about">How <a href="${esc(`${ARTIFACT_DIR}/${artifactPageName({ resourceType: "Questionnaire", id: q.id })}.html`)}">Questionnaire/${esc(q.id)}</a> looks to the person filling it in, drawn from its built JSON by NLM LHC-Forms ${LHC_FORMS_VERSION}, served from this site.</p>`,
     '<p class="fa-qform-links">',
     ...(o.source && repo
       ? [
