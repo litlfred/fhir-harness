@@ -172,31 +172,40 @@ jobs:
           echo "rebuild=$rebuild" >> "$GITHUB_OUTPUT"
           echo "::notice::AST cache for $(git rev-parse --short HEAD): $verdict; rebuild: $rebuild"
 
-      - name: Cache FHIR packages and IG tooling (bean cis5)
+      - name: The IG toolchain's pins
+        id: toolchain
         if: steps.ast.outputs.rebuild == 'true'
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        run: grep -E '^[A-Z_]+=[^ ]+$' fhir-harness/scripts/ig-toolchain.env >> "$GITHUB_OUTPUT"
+
+      # Declared cache `fhir-ig-tooling` (fhir-harness/caches/). The key hashes
+      # the toolchain pins, so an entry built with another Java, Node or SUSHI
+      # is never restored; the one fallback keeps the toolchain and lets only
+      # the IG's packages differ. Saved from the default branch only.
+      - name: Restore FHIR packages and IG tooling (bean cis5)
+        id: tooling-cache
+        if: steps.ast.outputs.rebuild == 'true'
+        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
         with:
           path: |
             ~/.fhir/packages
             ~/.m2/repository
             ~/.npm-global
-          key: fhir-ig-tooling-v1-${{ inputs.ast-export-ref }}-${{ hashFiles('sushi-config.yaml', 'ig.ini') }}
+          key: fhir-ig-tooling-v2-${{ inputs.ast-export-ref }}-${{ hashFiles('fhir-harness/scripts/ig-toolchain.env') }}-${{ hashFiles('sushi-config.yaml', 'ig.ini') }}
           restore-keys: |
-            fhir-ig-tooling-v1-${{ inputs.ast-export-ref }}-
-            fhir-ig-tooling-v1-
+            fhir-ig-tooling-v2-${{ inputs.ast-export-ref }}-${{ hashFiles('fhir-harness/scripts/ig-toolchain.env') }}-
 
       - name: Java for the IG Publisher
         if: steps.ast.outputs.rebuild == 'true'
         uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4.9.1
         with:
           distribution: temurin
-          java-version: "17"
+          java-version: ${{ steps.toolchain.outputs.JAVA_VERSION }}
 
       - name: Node for SUSHI
         if: steps.ast.outputs.rebuild == 'true'
         uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with:
-          node-version: "20"
+          node-version: ${{ steps.toolchain.outputs.NODE_VERSION }}
 
       - name: Ruby for the Publisher's Jekyll
         if: steps.ast.outputs.rebuild == 'true'
@@ -214,10 +223,12 @@ jobs:
           TEMPLATE_REPOS: ${{ inputs.template-repos }}
           VERDICT: ${{ steps.ast.outputs.verdict }}
           FORCE: ${{ inputs.force }}
+          SUSHI_VERSION: ${{ steps.toolchain.outputs.SUSHI_VERSION }}
         run: |
           set -o pipefail
           export PATH="$HOME/.npm-global/bin:$PATH"
-          command -v sushi >/dev/null 2>&1 || npm install -g --prefix "$HOME/.npm-global" fsh-sushi
+          have=$(sushi --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -n 1 || true)
+          [ "$have" = "$SUSHI_VERSION" ] || npm install -g --prefix "$HOME/.npm-global" "fsh-sushi@$SUSHI_VERSION"
           gem install jekyll --no-document
           git clone -q --filter=blob:none https://github.com/litlfred/fhir-ig-publisher "$RUNNER_TEMP/igp"
           git -C "$RUNNER_TEMP/igp" checkout -q "$AST_EXPORT_REF"
@@ -328,6 +339,21 @@ jobs:
           # is not seeded: a cache that fails its own check is worse than none.
           bun run fhir-harness/scripts/ig-ast.ts validity output-ast --ig . \
             || { echo "::error::the AST just built is not valid for $(git rev-parse --short HEAD)"; exit 1; }
+
+      # `fhir-ig-tooling` is saved from the default branch only (trust class c):
+      # a branch reads main's toolchain and packages, and never writes its own.
+      - name: Save FHIR packages and IG tooling (default branch only)
+        if: >-
+          steps.ast.outputs.rebuild == 'true' && steps.build.outcome == 'success'
+          && steps.tooling-cache.outputs.cache-hit != 'true'
+          && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
+        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: |
+            ~/.fhir/packages
+            ~/.m2/repository
+            ~/.npm-global
+          key: ${{ steps.tooling-cache.outputs.cache-primary-key }}
 
       - name: Keep the AST build log
         if: always() && steps.ast.outputs.rebuild == 'true'

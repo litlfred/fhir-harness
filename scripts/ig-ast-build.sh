@@ -63,7 +63,10 @@ done
 git -C "$IG" rev-parse --verify -q HEAD > /dev/null || { echo "ig-ast-build: $IG is not a git checkout with a commit" >&2; exit 2; }
 
 export PATH="$HOME/.npm-global/bin:$(ruby -e 'print Gem.user_dir')/bin:$PATH"
-command -v sushi > /dev/null 2>&1 || npm install -g --prefix "$HOME/.npm-global" fsh-sushi
+# SUSHI at the pinned version (ig-toolchain.env), never whatever is on PATH.
+SUSHI_VERSION=$(sed -n 's/^SUSHI_VERSION=//p' "$HERE/ig-toolchain.env")
+have=$(sushi --version 2>/dev/null | grep -oE '[0-9]+\.[0-9]+\.[0-9]+' | head -n 1 || true)
+[ "$have" = "$SUSHI_VERSION" ] || npm install -g --prefix "$HOME/.npm-global" "fsh-sushi@$SUSHI_VERSION"
 command -v jekyll > /dev/null 2>&1 || gem install --user-install jekyll --no-document
 
 mkdir -p "$WORK"
