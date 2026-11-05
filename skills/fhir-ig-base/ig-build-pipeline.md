@@ -143,16 +143,29 @@ Terms:
    route" has the steps after it.
 2. **The publish refuses an AST that is not valid**: `stale-inputs`,
    `cannot-tell`, or no cache at all. It does not fall back to a Publisher
-   build or to the Publisher's HTML. `ig-site:ast` accepts a stale AST with
-   `SITE_ACCEPT_STALE_AST=1` for a preview only; on the root it still refuses.
+   build or to the Publisher's HTML. **A preview (a STAGING, non-release
+   build) accepts a stale or cannot-tell AST by default** (owner, 2026-11-05:
+   "preview/staging (non release) builds can be on stale cache"): publish it
+   at once, never wait on a cache refresh for it. `SITE_ACCEPT_STALE_AST=0`
+   makes a preview refuse one too. The root still refuses; `folio-build.json`
+   records the verdict the preview was built on.
 3. **A commit that changes no input does not make the AST stale.** If the
    recorded commit is an ancestor of HEAD and the input digest is unchanged,
    the AST is still valid (`sameSourceAs` in `ig-ast.ts`), so a README or
    workflow merge needs no rebuild. A checkout that cannot see the recorded
    commit (a shallow clone) reads as stale. It never reads as valid.
-4. **Only a Publisher run refreshes the cache, and it runs on a GitHub runner.**
-   It needs Java, a 10 GB heap and `tx.fhir.org`, which an agent's container
-   lacks. Whenever the IG's source changes, someone has to run it.
+4. **Only a Publisher run refreshes the cache.** Whenever the IG's source
+   changes, someone has to run it. The workflow below is the usual writer.
+   **When its run is queued and the root has to go out, build it where the
+   checkout is** (owner, 2026-11-05: "local/agentic build and push to
+   gh-pages"): `bash fhir-harness/scripts/ig-ast-build.sh --ig-root .` (the
+   workflow's build step as a script; it needs Java, Maven, Node, Ruby and the
+   Publisher's network; pass the same `--template-repo` the caller gives the
+   workflow as `template-repos`, e.g. `--template-repo
+   who.template.root=WorldHealthOrganization/smart-ig-template` for a WHO
+   IG, whose `#current` template the build server does not list), then `bash fhir-harness/scripts/ig-cache.sh seed
+   --ig-root . --push` on the default branch, then the publish. Do not wait on
+   a queued runner for a publish an agent can do.
 
 **Who writes the cache: one workflow, here.**
 [`.github/workflows/ig-ast-refresh.yml`](../../.github/workflows/ig-ast-refresh.yml)

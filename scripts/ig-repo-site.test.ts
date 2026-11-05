@@ -14,6 +14,7 @@ import { join } from "node:path";
 
 import {
   AST_DATA,
+  acceptStaleFromEnv,
   astGate,
   builtPage,
   IG_API_DESCRIPTOR,
@@ -100,11 +101,20 @@ describe("the AST gate (ig-build-pipeline rule 2)", () => {
       expect(g.said).toContain("does not fall back");
     }
   });
-  test("SITE_ACCEPT_STALE_AST=1 accepts a stale AST for a preview only, never for the root", () => {
+  test("a stale AST is accepted for a preview only, never for the root", () => {
     expect(astGate("stale-inputs", { acceptStale: true, preview: true }).ok).toBe(true);
     const root = astGate("stale-inputs", { acceptStale: true, preview: false });
     expect(root.ok).toBe(false);
     expect(root.said).toContain("for a preview only");
+    expect(root.said).toContain("ig-ast-build.sh");
+  });
+  test("a preview accepts a stale AST by default; SITE_ACCEPT_STALE_AST=0 refuses it", () => {
+    expect(acceptStaleFromEnv(undefined)).toBe(true);
+    expect(acceptStaleFromEnv("1")).toBe(true);
+    expect(acceptStaleFromEnv("0")).toBe(false);
+    const refused = astGate("stale-inputs", { acceptStale: acceptStaleFromEnv("0"), preview: true });
+    expect(refused.ok).toBe(false);
+    expect(refused.said).toContain("=0");
   });
   test("a preview is a base path under STAGING/", () => {
     expect(isPreviewBase("/smart-x/STAGING/claude-a")).toBe(true);
