@@ -167,7 +167,10 @@ import { THIN_INDEX_CONFIG_ID, THIN_PAGE_CONFIG_ID } from "./ig-thin-pages.ts";
 import { copyDeclared, igReadScope, type IgReadScope } from "./ig-read-scope.ts";
 import { siteBuild, type SiteBuild, STAMP_FILE } from "./site-build-stamp.ts";
 import { annexesFor, artifactsFor, copyDocsInto, footerFor, githubEditBase, instanceNeeds, webpagePalette } from "./stage-ig-sites.ts";
-import { PREVIEW_PREFIX_ALT } from "../../cat-harness-tools/scripts/lib/preview-prefix.ts";
+// The preview directories (cat-harness-tools `schemas/sdlc/preview-prefix.ts`):
+// `branches/` since 2026-11-05, and the legacy `STAGING/` still read. Named
+// here, not imported, so this layer does not wait on that module's release.
+const PREVIEW_PREFIX_ALT = "(?:branches|STAGING)";
 
 /**
  * The file, named by the site build in this variable, in which a step lists

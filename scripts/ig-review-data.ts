@@ -47,7 +47,10 @@ import { join, posix } from "node:path";
 import { reviewPageHtml } from "../../cat-harness-tools/scripts/gen-review-page.ts";
 import { igReadScope } from "./ig-read-scope.ts";
 import { run as injectStagingBanner, type StagingFacts } from "../../cat-harness-tools/scripts/staging-banner.ts";
-import { isPreviewPath } from "../../cat-harness-tools/scripts/lib/preview-prefix.ts";
+// The preview directories (cat-harness-tools `schemas/sdlc/preview-prefix.ts`):
+// `branches/` since 2026-11-05, and the legacy `STAGING/` still read. Named
+// here, not imported, so this layer does not wait on that module's release.
+const isPreviewPath = (rel: string): boolean => ["branches", "STAGING"].some((p) => rel === p || rel.startsWith(`${p}/`));
 
 export const CHANGESET_SCHEMA = "folio-changeset/v1";
 export const CHANGESET_TEXT_SCHEMA = "folio-changeset-text/v1";

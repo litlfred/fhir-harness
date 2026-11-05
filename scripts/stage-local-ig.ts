@@ -73,7 +73,6 @@ import { siteFileFor } from "@litlfred/cat-harness-tools/schemas/kg/cat-harness.
 import { resolveLandingInstance } from "@litlfred/cat-harness-tools/schemas/kg/harness-config.ts";
 import { findDeclarationFile } from "@litlfred/cat-harness-tools/schemas/kg/instance-roots.ts";
 import { scriptTable } from "@litlfred/cat-harness-tools/schemas/sdlc/script-table.ts";
-import { PREVIEW_PREFIXES } from "../../cat-harness-tools/scripts/lib/preview-prefix.ts";
 import { buildInstanceSite, keepPinned, lockedMountPaths, recipeRead, siteFields, stagingDir } from "../../cat-harness-tools/scripts/build-instance-site.ts";
 import { igOpenapiGraph } from "../../cat-harness-tools/openapi/scripts/ig-site-openapi.ts";
 import { igPreviewData, openPrFor, proseRenderer } from "./ig-review-data.ts";
@@ -81,6 +80,11 @@ import { NAVBAR_ROW_ID } from "../../cat-harness-tools/scripts/lib/harness-rail.
 import { callerInputs, type UsesRef } from "../../cat-harness-tools/scripts/site-publisher.ts";
 import { type DroppedByRuling, parityShortfall, siteFeatures } from "../../cat-harness-tools/scripts/site-parity.ts";
 import type { Composed, PublisherHost, PublisherRun, SitePublisher, StagePlan, StageResult } from "../../cat-harness-tools/scripts/stage-local.ts";
+
+// The preview directories (cat-harness-tools `schemas/sdlc/preview-prefix.ts`):
+// `branches/` since 2026-11-05, and the legacy `STAGING/` still read. Named
+// here, not imported, so this layer does not wait on that module's release.
+const PREVIEW_PREFIXES: readonly string[] = ["branches", "STAGING"];
 
 /** The reusable workflows an IG calls: this layer's, which upstream IG repositories call. */
 export const IG_WORKFLOWS = ["fhirbuild.yml", "ghbuild.yml"] as const;
