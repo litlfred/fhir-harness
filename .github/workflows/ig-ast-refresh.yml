@@ -155,6 +155,8 @@ jobs:
 
       - name: The cache's verdict for this commit
         id: ast
+        env:
+          FORCE: ${{ inputs.force }}
         run: |
           set +e
           verdict=missing
@@ -165,7 +167,7 @@ jobs:
           fi
           rebuild=false
           [ "$verdict" != valid ] && rebuild=true
-          [ "${{ inputs.force }}" = "true" ] && rebuild=true
+          [ "$FORCE" = "true" ] && rebuild=true
           echo "verdict=$verdict" >> "$GITHUB_OUTPUT"
           echo "rebuild=$rebuild" >> "$GITHUB_OUTPUT"
           echo "::notice::AST cache for $(git rev-parse --short HEAD): $verdict; rebuild: $rebuild"
