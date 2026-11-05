@@ -8,7 +8,7 @@
  *
  * ## Why (folio-assistant#215 walk, 2026-10-24)
  *
- * A review committee compares a change before and after on STAGING. A folio's
+ * A review committee compares a change before and after on branches/. A folio's
  * preview carries a ChangeSet, `staging.json`, the banner and a review page;
  * an IG's preview carried none of them, so the committee had nothing that said
  * what changed (smart-immunizations-uganda#12, break 6). This writes them for
@@ -47,6 +47,10 @@ import { join, posix } from "node:path";
 import { reviewPageHtml } from "../../cat-harness-tools/scripts/gen-review-page.ts";
 import { igReadScope } from "./ig-read-scope.ts";
 import { run as injectStagingBanner, type StagingFacts } from "../../cat-harness-tools/scripts/staging-banner.ts";
+// The preview directories (cat-harness-tools `schemas/sdlc/preview-prefix.ts`):
+// `branches/` since 2026-11-05, and the legacy `STAGING/` still read. Named
+// here, not imported, so this layer does not wait on that module's release.
+const isPreviewPath = (rel: string): boolean => ["branches", "STAGING"].some((p) => rel === p || rel.startsWith(`${p}/`));
 
 export const CHANGESET_SCHEMA = "folio-changeset/v1";
 export const CHANGESET_TEXT_SCHEMA = "folio-changeset-text/v1";
@@ -456,7 +460,7 @@ export function igPreviewData(
   let newPages: string[] = [];
   let mainPagesKnown = false;
   if (git(f.ig, ["fetch", "-q", "--depth", "1", "origin", "gh-pages"]).ok) {
-    const listed = new Set(git(f.ig, ["ls-tree", "-r", "--name-only", "FETCH_HEAD"]).out.split("\n").filter((p) => p.endsWith(".html") && !p.startsWith("STAGING/")));
+    const listed = new Set(git(f.ig, ["ls-tree", "-r", "--name-only", "FETCH_HEAD"]).out.split("\n").filter((p) => p.endsWith(".html") && !isPreviewPath(p)));
     if (listed.size) {
       mainPagesKnown = true;
       const here: string[] = [];

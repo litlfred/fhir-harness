@@ -63,7 +63,7 @@ A built FHIR Questionnaire shown the way a person will meet it — a mid-fidelit
 
 - Who: the `Build pipeline — rendering, screenshots, fidelity` lane (role `build-pipeline`).
 - Skill: `feature-staging`.
-- What: The branch's wireframes and form pages published under STAGING/<slug>/ by feature-staging.
+- What: The branch's wireframes and form pages published under branches/<slug>/ by feature-staging.
 - Record it: `workflow_complete` with `node: "Task_Stage"`.
 - next: → `Task_AskReview` (Ask for review with deep links)
 

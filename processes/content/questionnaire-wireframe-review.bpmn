@@ -104,7 +104,7 @@ WHAT IT DOES NOT CLAIM. A faithful Questionnaire is not therefore a good form, a
       <bpmn:outgoing>Flow_8</bpmn:outgoing>
     </bpmn:callActivity>
     <bpmn:serviceTask id="Task_Stage" name="Stage the renderings">
-      <bpmn:documentation>The branch's wireframes and form pages published under STAGING/&lt;slug&gt;/ by feature-staging.</bpmn:documentation>
+      <bpmn:documentation>The branch's wireframes and form pages published under branches/&lt;slug&gt;/ by feature-staging.</bpmn:documentation>
       <bpmn:extensionElements>
         <bootstrap.processes:skill ref="feature-staging"/>
       </bpmn:extensionElements>

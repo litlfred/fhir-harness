@@ -64,7 +64,7 @@ A staged site's theme is checked by finding the palette's hex values (here
 an `accent` of `<hex>`) in the built stylesheet:
 
 ```sh
-git show <gh-pages>:STAGING/<slug>/<ig>/ig/assets/css/just-the-docs-default.css \
+git show <gh-pages>:branches/<slug>/<ig>/ig/assets/css/just-the-docs-default.css \
   | grep -c '<hex>'
 ```
 
