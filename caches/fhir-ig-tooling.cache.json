@@ -1,0 +1,41 @@
+{
+  "$schema": "cache/1.0.0",
+  "id": "fhir-ig-tooling",
+  "title": "FHIR IG tooling: FHIR packages, Maven repository and SUSHI for the AST refresh",
+  "instance": "fhir-harness",
+  "kind": "actions-cache",
+  "trustClass": "unclassified",
+  "location": "fhir-ig-tooling-v1-<ast-export-ref>-<hash>, in the calling IG repository's Actions cache",
+  "keyRecipe": {
+    "source": "hashFiles",
+    "files": [
+      "sushi-config.yaml",
+      "ig.ini"
+    ],
+    "expression": "fhir-ig-tooling-v1-${{ inputs.ast-export-ref }}-${{ hashFiles('sushi-config.yaml', 'ig.ini') }}"
+  },
+  "derivedInputs": "the IG's sushi-config.yaml (its FHIR package dependencies) and ig.ini, and the AST exporter ref; NOT the Java (17), Node (20) or SUSHI versions, see notes",
+  "holds": "~/.fhir/packages, ~/.m2/repository, ~/.npm-global (SUSHI)",
+  "producer": "ig-ast-refresh.yml, only on a run that rebuilds the AST",
+  "consumers": [
+    "the same workflow's rebuild: SUSHI and the IG Publisher with the AST exporter"
+  ],
+  "materializes": [
+    "~/.fhir/packages/",
+    "~/.m2/repository/",
+    "~/.npm-global/"
+  ],
+  "needs": [],
+  "refresh": {
+    "mode": "whole",
+    "how": "a missed key saves a new entry from what that run downloaded; restore-keys fall back to the newest entry with the same exporter ref, then any"
+  },
+  "savePolicy": "any run that rebuilds and misses the key",
+  "verify": "none: what is restored is used as found. FHIR packages are versioned by name, so a wrong one is a new download, but the SUSHI in ~/.npm-global is never re-checked (see notes)",
+  "owner": "fhir-harness (skill ig-build-pipeline)",
+  "uses": [
+    ".github/workflows/ig-ast-refresh.yml:177-188 the cache step",
+    ".github/workflows/ig-ast-refresh.yml:222 SUSHI install, skipped when a cached SUSHI is on PATH"
+  ],
+  "notes": "Recorded gap (CI speed 14's inventory): the key leaves out the toolchain. Java 17 and Node 20 are fixed in the workflow (setup-java, setup-node), so they move only with a workflow edit, which does not change the key. SUSHI is installed unpinned (`npm install -g fsh-sushi`) and only when none is on PATH, so a restored entry freezes whichever SUSHI version first filled it, and the restore-keys fallback carries it across key changes. Fix: pin SUSHI's version in the workflow (or the lock) and put Java, Node and SUSHI versions in the key; until then this cache's trust class stays unclassified."
+}

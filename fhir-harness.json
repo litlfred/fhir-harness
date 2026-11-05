@@ -100,7 +100,7 @@
       "id": "fhir-harness-caches",
       "path": "caches/",
       "title": "CI caches",
-      "description": "The caches this layer declares (cache-first CI, rule 6): one `cache/1.0.0` node per cache this layer's workflows and scripts hold. `fhir-ast.cache.json` is the IG AST branch store, whose component process is `processes/content/ig-ast-cache.bpmn`. Staleness is computed by cat-harness-tools' `caches:viz`, never stated here.",
+      "description": "The caches this layer declares (cache-first CI, rule 6): one `cache/1.0.0` node per cache this layer's workflows and scripts hold. `fhir-ast.cache.json` is the IG AST branch store, whose component process is `processes/content/ig-ast-cache.bpmn`; `fhir-ig-tooling`, `fhir-cat-mount` and `ig-site-mount-template` are the Actions caches of the AST refresh and the IG site template. Staleness is computed by cat-harness-tools' `caches:viz`, never stated here.",
       "graphTypologies": [
         "cache"
       ]

@@ -4,12 +4,15 @@
 
 # CI caches
 
-The caches this layer declares (cache-first CI, rule 6): one `cache/1.0.0` node per cache this layer's workflows and scripts hold. `fhir-ast.cache.json` is the IG AST branch store, whose component process is `processes/content/ig-ast-cache.bpmn`. Staleness is computed by cat-harness-tools' `caches:viz`, never stated here.
+The caches this layer declares (cache-first CI, rule 6): one `cache/1.0.0` node per cache this layer's workflows and scripts hold. `fhir-ast.cache.json` is the IG AST branch store, whose component process is `processes/content/ig-ast-cache.bpmn`; `fhir-ig-tooling`, `fhir-cat-mount` and `ig-site-mount-template` are the Actions caches of the AST refresh and the IG site template. Staleness is computed by cat-harness-tools' `caches:viz`, never stated here.
 
 Part of [FHIR IG Harness](../README.md) 0.1.0, declared as `fhir-harness-caches`, holding `cache`.
 
 | file | what it is | used by |
 |---|---|---|
 | [`fhir-ast.cache.json`](fhir-ast.cache.json) | FHIR IG AST: one branch per IG package, the input the IG site is built from |  |
+| [`fhir-cat-mount.cache.json`](fhir-cat-mount.cache.json) | Remote mounts for the AST refresh (superseded by layers-ref) |  |
+| [`fhir-ig-tooling.cache.json`](fhir-ig-tooling.cache.json) | FHIR IG tooling: FHIR packages, Maven repository and SUSHI for the AST refresh |  |
+| [`ig-site-mount-template.cache.json`](ig-site-mount-template.cache.json) | IG site publish template: remote mounts and FHIR packages |  |
 
 <!-- kg:subgraph:end -->
