@@ -9,9 +9,9 @@
   "keyRecipe": {
     "source": "script",
     "implementation": "fhir-harness/scripts/ig-ast.ts digest --ig <root>",
-    "expression": "inputs.inputDigest in output-ast/manifest.json, the sha256 `ig-ast.ts digest` computes over the IG's inputs (sushi-config.yaml, ig.ini, input/), as committed"
+    "expression": "the sha256 `ig-ast.ts digest` computes over the CONTENT of the IG's inputs (sushi-config.yaml, ig.ini, input/), recorded as inputs.inputDigest in output-ast/manifest.json; with the Publisher toolchain the manifest records"
   },
-  "derivedInputs": "the IG's input digest as `ig-ast.ts digest` computes it, plus the Publisher toolchain the manifest records; the branch name is keyed by the IG's package id, never by a hand list of files",
+  "derivedInputs": "the content of the IG's inputs as `ig-ast.ts digest` reads them (tree-scoped, never commit-scoped: a merge, rebase or README-only commit leaves the key alone), plus the Publisher toolchain the manifest records; the branch name is keyed by the IG's package id, never by a hand list of files",
   "holds": "the IG Publisher's AST export (output-ast/: manifest.json and one JSON file per resource) and the Publisher's terminology cache (input-cache/txcache/)",
   "producer": "fhir-harness ig-ast-refresh.yml, step 'Seed the AST cache' (`ig-cache.sh seed --ig-root . --push`) on the Java runner, after a full IG Publisher build with the AST exporter; that dispatch is this cache's own save path (process Process_IgAstCache, Task_Export then Task_Seed)",
   "consumers": [
@@ -19,19 +19,32 @@
     "ig-ast-refresh.yml's own restore, which skips the Publisher build when the restored AST is valid",
     "build-ig-indexes and stage-ast-sites, which list the branches but restore only for an IG they build"
   ],
+  "materializes": [
+    "output-ast/",
+    "input-cache/txcache/"
+  ],
+  "needs": [
+    "layers-ref"
+  ],
+  "refresh": {
+    "mode": "incremental",
+    "how": "over a STALE cache, ig-ast-refresh.yml runs IncrementalBuildCli (the AST delta, skill ig-ast-delta) on the Java runner and keeps its result only when `validity` passes; a failed or invalid delta, a release, or `force` builds in full"
+  },
   "savePolicy": "default branch only: seeded when the built commit is an ancestor of the default branch's tip and sushi-config.yaml, ig.ini and input/ are the same at both (Process_IgAstCache GW_Seedable); any other ref keeps its AST as a run artifact and leaves the cache alone",
   "verify": "`ig-cache.sh verify` runs `ig-ast.ts validity`: the digest of the IG's inputs now (or as committed at `--at <rev>`) against the manifest's inputs.inputDigest. Exit 0 valid, 1 stale-inputs (naming the input), 2 cannot-tell; anything but valid is a miss, so a bad entry costs a rebuild and is never built from",
   "owner": "fhir-harness (skill ig-build-pipeline, \"The AST cache lifecycle\")",
   "uses": [
     "scripts/ig-cache.sh:204 cmd_restore",
     "scripts/ig-cache.sh:314 cmd_seed",
-    "scripts/ig-cache.sh:413 cmd_verify",
-    "scripts/ig-ast.ts:360 astValidity",
+    "scripts/ig-cache.sh:413 cmd_verify (validity, then the cached-step line)",
+    "scripts/ig-ast.ts:345 cachedStepLine (hit/warm/miss)",
+    "scripts/ig-ast.ts:389 astValidity",
     "scripts/ig-repo-site.ts:363 the site build's restore",
-    ".github/workflows/ig-ast-refresh.yml:161 restore before the Publisher build",
-    ".github/workflows/ig-ast-refresh.yml:358 seed",
+    ".github/workflows/ig-ast-refresh.yml:161-166 restore, validity and the cached-step line",
+    ".github/workflows/ig-ast-refresh.yml:271 warm: the line after a valid incremental build",
+    ".github/workflows/ig-ast-refresh.yml:365 seed",
     "scripts/stage-ast-sites.ts:98 lists the branches",
     "processes/content/ig-ast-cache.bpmn"
   ],
-  "notes": "Restored only by steps that build or render an IG (owner, 2026-11-05: \"not all rendering/CI/merge processes need all caches. be optimal\"): never by a test shard, a gate or a merge job. Process_IgAstCache is this cache's component process: Task_Restore and GW_Valid are its verify, Task_Seed its save. The old `cat-fhir-ast/` and `fhir-ast/` branch names are retired (bean oycs), so they are not read."
+  "notes": "Restored only by steps that build or render an IG (owner, 2026-11-05: \"not all rendering/CI/merge processes need all caches. be optimal\"): never by a test shard, a gate or a merge job. Process_IgAstCache is this cache's component process; Process_Cache (cat-harness) draws it as a task in its own lane, since a lower layer cannot call into this one: Task_Restore and GW_Valid are its verify, Task_Seed its save. The old `cat-fhir-ast/` and `fhir-ast/` branch names are retired (bean oycs), so they are not read. Every restore and refresh prints one line in cached-step's format: `**cached-step `ig-ast`: hit|warm|miss** (exact) — <why>. Key `<input digest>`.`"
 }

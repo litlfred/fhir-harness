@@ -136,6 +136,15 @@ builds or renders an IG restores it** (owner, 2026-11-05: *"not all
 rendering/CI/merge processes need all caches. be optimal"*). A test shard,
 a gate or a merge job never does.
 
+The node's `materializes` (`output-ast/`, `input-cache/txcache/`) is how a
+plan decides that: a target needs this cache when what it reads touches those
+paths. Its `needs` is `layers-ref`, so the layers are restored first. Every
+restore, verify and refresh prints one line in cached-step's format,
+`**cached-step `ig-ast`: hit|warm|miss** (exact) — <why>. Key `<key>`.`
+(`ig-ast.ts cache-line`). `warm` means the refresh applied a delta over an
+older AST. The key is the input digest: it is derived from the content of
+the inputs, so a merge or rebase that leaves them alone keeps it.
+
 Terms:
 
 - **AST**: the per-resource dump the IG Publisher AST exporter writes
