@@ -167,6 +167,10 @@ import { THIN_INDEX_CONFIG_ID, THIN_PAGE_CONFIG_ID } from "./ig-thin-pages.ts";
 import { copyDeclared, igReadScope, type IgReadScope } from "./ig-read-scope.ts";
 import { siteBuild, type SiteBuild, STAMP_FILE } from "./site-build-stamp.ts";
 import { annexesFor, artifactsFor, copyDocsInto, footerFor, githubEditBase, instanceNeeds, webpagePalette } from "./stage-ig-sites.ts";
+// The preview directories (cat-harness-tools `schemas/sdlc/preview-prefix.ts`):
+// `branches/` since 2026-11-05, and the legacy `STAGING/` still read. Named
+// here, not imported, so this layer does not wait on that module's release.
+const PREVIEW_PREFIX_ALT = "(?:branches|STAGING)";
 
 /**
  * The file, named by the site build in this variable, in which a step lists
@@ -285,8 +289,17 @@ export const IG_API_DESCRIPTOR = "ig-api.json";
 export const IG_API_SITE = "site";
 /** Under the work directory: the artefact index `compose` derived, for `publisher-pages` to serve. */
 export const INDEX_WORK = "ig-site-index";
-/** Set to `1`, a stale AST is accepted for a preview (`ig-build-pipeline` rule 2); never for the root. */
+/**
+ * A preview accepts a stale AST by default (`ig-build-pipeline` rule 2; owner,
+ * 2026-11-05: "preview/staging (non release) builds can be on stale cache").
+ * Set to `0` to make a preview refuse one too. The root never accepts one.
+ */
 export const ACCEPT_STALE_ENV = "SITE_ACCEPT_STALE_AST";
+
+/** Whether a preview may use a stale AST: yes unless {@link ACCEPT_STALE_ENV} is `0`. Pure. */
+export function acceptStaleFromEnv(v: string | undefined): boolean {
+  return v !== "0";
+}
 /** The validity verdict `ast` writes under the work directory. */
 export const VALIDITY_FILE = "ig-ast-validity.json";
 
@@ -336,19 +349,19 @@ export function readIgApi(work: string | undefined): IgApi | undefined {
 /**
  * Whether the build may go on with an AST of this verdict (`ig-build-pipeline`
  * rule 2). Valid goes on. Anything else is refused, except that a stale or
- * cannot-tell AST is accepted for a PREVIEW when the caller says so; the root
- * never is. Pure.
+ * cannot-tell AST is accepted for a PREVIEW unless the caller refuses it; the
+ * root never is. Pure.
  */
 export function astGate(verdict: string, o: { acceptStale: boolean; preview: boolean }): { ok: boolean; said: string } {
   if (verdict === "valid") return { ok: true, said: "the AST is valid for this checkout" };
-  if (o.acceptStale && o.preview) return { ok: true, said: `the AST is ${verdict}; accepted for this preview (${ACCEPT_STALE_ENV}=1)` };
-  const why = o.acceptStale ? `${ACCEPT_STALE_ENV}=1 accepts a stale AST for a preview only, and this build is the root` : `run the IG's Site publish (its "ast" job refreshes the cache), or set ${ACCEPT_STALE_ENV}=1 for a preview`;
+  if (o.acceptStale && o.preview) return { ok: true, said: `the AST is ${verdict}; accepted for this preview (a preview may use a stale AST; ${ACCEPT_STALE_ENV}=0 refuses it)` };
+  const why = o.preview ? `${ACCEPT_STALE_ENV}=0 makes this preview refuse a stale AST` : `a stale AST is accepted for a preview only, and this build is the root: refresh the cache (the IG's Site publish, or fhir-harness/scripts/ig-ast-build.sh then ig-cache.sh seed --push)`;
   return { ok: false, said: `the AST is ${verdict}: the site is not built from it (${why}). It does not fall back to a Publisher run or the Publisher's HTML` };
 }
 
-/** Whether the site build is building a preview: its base path is `/<repo>/STAGING/<branch>`. */
+/** Whether the site build is building a preview: its base path is `/<repo>/branches/<branch>` (or the old `/<repo>/branches/<branch>`). */
 export function isPreviewBase(baseurl: string | undefined): boolean {
-  return baseurl !== undefined && /\/STAGING\//.test(`${baseurl}/`);
+  return baseurl !== undefined && new RegExp(`/${PREVIEW_PREFIX_ALT}/`).test(`${baseurl}/`);
 }
 
 /**
@@ -928,7 +941,7 @@ if (import.meta.main) {
   const work = opt("work") ?? process.env.SITE_WORK;
   try {
     if (cmd === "ast") {
-      restoreAst({ ig, ...(work ? { work } : {}), acceptStale: process.env[ACCEPT_STALE_ENV] === "1", preview: isPreviewBase(process.env.SITE_BASEURL ?? process.env.FOLIO_SITE_BASEURL) });
+      restoreAst({ ig, ...(work ? { work } : {}), acceptStale: acceptStaleFromEnv(process.env[ACCEPT_STALE_ENV]), preview: isPreviewBase(process.env.SITE_BASEURL ?? process.env.FOLIO_SITE_BASEURL) });
     } else if (cmd === "compose" && target) {
       const baseurl = opt("baseurl") ?? process.env.FOLIO_SITE_BASEURL;
       if (baseurl === undefined) throw new Error("compose needs --baseurl, or FOLIO_SITE_BASEURL from the site build");
