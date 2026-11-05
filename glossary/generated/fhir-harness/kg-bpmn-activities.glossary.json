@@ -353,7 +353,7 @@
     {
       "id": "process_questionnairewireframereview.task_stage",
       "prefLabel": "Stage the renderings",
-      "definition": "The branch's wireframes and form pages published under STAGING/<slug>/ by feature-staging.",
+      "definition": "The branch's wireframes and form pages published under branches/<slug>/ by feature-staging.",
       "notation": "Task_Stage",
       "source": "fhir-harness/processes/content/questionnaire-wireframe-review.bpmn#Task_Stage",
       "status": "candidate"

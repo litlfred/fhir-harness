@@ -38,9 +38,9 @@
 #      the AST's data served (`ig-site:publisher-pages`), and the link check
 #      (a dead link in the chrome refuses the publish; one in the IG's own
 #      content is reported);
-#   4. on the default branch publishes the gh-pages ROOT, keeping STAGING/,
+#   4. on the default branch publishes the gh-pages ROOT, keeping branches/,
 #      _render-log/ and branches/; on any other branch the preview at
-#      STAGING/<branch>/.
+#      branches/<branch>/.
 # `plan` prints what would run and publishes nothing. An agent runs the same
 # command from its checkout, with --plan or --dry-run to look first.
 #
@@ -81,7 +81,7 @@ jobs:
       # artifact (never in the shared cache), and `publish` builds the preview
       # from it. Pinned to the default branch, every branch that changed the
       # IG was refused as stale, so a committee could never see a content
-      # change on STAGING (folio-assistant#215 walk, 2026-10-24).
+      # change on branches/ (folio-assistant#215 walk, 2026-10-24).
       ref: ${{ github.ref_name }}
 
   publish:

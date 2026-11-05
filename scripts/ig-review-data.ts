@@ -8,7 +8,7 @@
  *
  * ## Why (folio-assistant#215 walk, 2026-10-24)
  *
- * A review committee compares a change before and after on STAGING. A folio's
+ * A review committee compares a change before and after on branches/. A folio's
  * preview carries a ChangeSet, `staging.json`, the banner and a review page;
  * an IG's preview carried none of them, so the committee had nothing that said
  * what changed (smart-immunizations-uganda#12, break 6). This writes them for

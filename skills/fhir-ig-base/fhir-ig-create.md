@@ -273,9 +273,9 @@ On yes:
    - it builds the site from the IG's cached AST with the steps the mounted
      layers provide ([`ig-build-pipeline`](ig-build-pipeline.md) §"The IG
      repository's site route"), and runs no Publisher;
-   - it publishes `main` at the root (keeping `STAGING/`, `_render-log/` and
+   - it publishes `main` at the root (keeping `branches/`, `_render-log/` and
      `branches/`) and any other branch as a preview under
-     `STAGING/<branch>/`;
+     `branches/<branch>/`;
    - `--plan` prints what it would do and `--dry-run` builds without
      publishing; do not use `--bare-ig`;
    - an IG that needs steps beyond the layers' declares `site.build` inline

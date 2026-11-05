@@ -1088,10 +1088,10 @@ interface IgBuilt {
  * API sidecars, the chrome of the landing instance, the IG and its thin
  * artefact pages composed at the root, Jekyll, the OpenAPI pages, the AST's
  * data served, the link check. No IG Publisher runs (owner, 2026-10-14: "Yes,
- * fix in platform"; ig-build-pipeline rule 1), so no Docker is needed. The root keeps `STAGING/`,
+ * fix in platform"; ig-build-pipeline rule 1), so no Docker is needed. The root keeps `branches/`,
  * `_render-log/`, the IG workflow's `branches/` and every entry the landing
  * instance's `site.build.keep` declares; a preview goes to
- * `STAGING/<branch>/`, as every folio's does. The workflow's own deploy steps
+ * `branches/<branch>/`, as every folio's does. The workflow's own deploy steps
  * are not mirrored: the folio site replaces them.
  */
 async function stageIgFolio(a: PublisherRun, b: IgBuilt, site: IgFolioSite, h: PublisherHost): Promise<StageResult> {

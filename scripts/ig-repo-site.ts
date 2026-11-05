@@ -347,7 +347,7 @@ export function astGate(verdict: string, o: { acceptStale: boolean; preview: boo
   return { ok: false, said: `the AST is ${verdict}: the site is not built from it (${why}). It does not fall back to a Publisher run or the Publisher's HTML` };
 }
 
-/** Whether the site build is building a preview: its base path is `/<repo>/branches/<branch>` (or the old `/<repo>/STAGING/<branch>`). */
+/** Whether the site build is building a preview: its base path is `/<repo>/branches/<branch>` (or the old `/<repo>/branches/<branch>`). */
 export function isPreviewBase(baseurl: string | undefined): boolean {
   return baseurl !== undefined && new RegExp(`/${PREVIEW_PREFIX_ALT}/`).test(`${baseurl}/`);
 }

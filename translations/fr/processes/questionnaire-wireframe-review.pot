@@ -191,7 +191,7 @@ msgstr ""
 
 #: ../fhir-harness/processes/content/questionnaire-wireframe-review.bpmn:107
 #. Diagram element documentation
-msgid "The branch's wireframes and form pages published under STAGING/<slug>/ by feature-staging."
+msgid "The branch's wireframes and form pages published under branches/<slug>/ by feature-staging."
 msgstr ""
 
 #: ../fhir-harness/processes/content/questionnaire-wireframe-review.bpmn:34
