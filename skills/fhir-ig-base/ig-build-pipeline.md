@@ -122,6 +122,20 @@ each page holds, and the QA over the nodes, is
 
 Process: [`ig-ast-cache.bpmn`](../../processes/content/ig-ast-cache.bpmn).
 
+**The declared cache.** The cache branch is the `cache/1.0.0` node
+[`caches/fhir-ast.cache.json`](../../caches/fhir-ast.cache.json) (cache-first
+CI, rule 6), and `ig-ast-cache.bpmn` is its component of the harness's one
+optional cache process: `Task_Restore` and `GW_Valid` are the component's
+verify, and `Task_Seed` is its save. The dispatched AST refresh
+(`Task_Dispatch`, `Task_Export`, on the Java runner) stays this cache's own
+save path. The node carries the key recipe (`ig-ast.ts digest`), the
+producer, the consumers, the save policy and the uses. The stored key against
+the key today's inputs imply, and so whether the cache is stale, is computed
+by cat-harness-tools' `caches:viz`, never written here. **Only a step that
+builds or renders an IG restores it** (owner, 2026-11-05: *"not all
+rendering/CI/merge processes need all caches. be optimal"*). A test shard,
+a gate or a merge job never does.
+
 Terms:
 
 - **AST**: the per-resource dump the IG Publisher AST exporter writes
