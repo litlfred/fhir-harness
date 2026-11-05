@@ -1121,7 +1121,7 @@ async function stageIgFolio(a: PublisherRun, b: IgBuilt, site: IgFolioSite, h: P
     preserved: staging ? [`everything outside ${staging}/`] : ["STAGING", "_render-log", ...keep],
     build: [
       `the folio site "${site.title}" from the IG's cached AST, never a Publisher run (ig-build-pipeline rule 1): build-instance-site.ts with the chrome of ${site.scope} (index.config.json site.landing)`,
-      `  pre    ${site.pre.join(", ")} — restore and judge the AST (a stale one is refused; SITE_ACCEPT_STALE_AST=1 for a preview only)${site.pre.length > 1 ? ", then the landing layer's IG API sidecars" : ""}`,
+      `  pre    ${site.pre.join(", ")} — restore and judge the AST (a stale one is refused for the root and accepted for a preview; SITE_ACCEPT_STALE_AST=0 refuses it for a preview too)${site.pre.length > 1 ? ", then the landing layer's IG API sidecars" : ""}`,
       `  source ${site.sourceSteps.join(", ")} — the artefact index and thin pages from the AST, the IG's pages at the site root`,
       `  site   ${site.siteSteps.join(", ")} — ${site.siteSteps.length > 1 ? "the OpenAPI pages, then " : ""}the AST's data served, and ${IG_SITE_STAMP} at the root (required: a folio root marker)`,
       ...(site.finalSteps.length ? [`  final  ${site.finalSteps.join(", ")} — the IG's bar on the pages the platform writes after the site steps`] : []),
