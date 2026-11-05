@@ -160,7 +160,10 @@ Terms:
    checkout is** (owner, 2026-11-05: "local/agentic build and push to
    gh-pages"): `bash fhir-harness/scripts/ig-ast-build.sh --ig-root .` (the
    workflow's build step as a script; it needs Java, Maven, Node, Ruby and the
-   Publisher's network), then `bash fhir-harness/scripts/ig-cache.sh seed
+   Publisher's network; pass the same `--template-repo` the caller gives the
+   workflow as `template-repos`, e.g. `--template-repo
+   who.template.root=WorldHealthOrganization/smart-ig-template` for a WHO
+   IG, whose `#current` template the build server does not list), then `bash fhir-harness/scripts/ig-cache.sh seed
    --ig-root . --push` on the default branch, then the publish. Do not wait on
    a queued runner for a publish an agent can do.
 
