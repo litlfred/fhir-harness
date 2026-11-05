@@ -4,19 +4,20 @@
   "title": "FHIR IG tooling: FHIR packages, Maven repository and SUSHI for the AST refresh",
   "instance": "fhir-harness",
   "kind": "actions-cache",
-  "trustClass": "unclassified",
-  "location": "fhir-ig-tooling-v1-<ast-export-ref>-<hash>, in the calling IG repository's Actions cache",
+  "trustClass": "c",
+  "location": "fhir-ig-tooling-v2-<ast-export-ref>-<pins hash>-<IG hash>, in the calling IG repository's Actions cache",
   "keyRecipe": {
     "source": "hashFiles",
     "files": [
+      "fhir-harness/scripts/ig-toolchain.env",
       "sushi-config.yaml",
       "ig.ini"
     ],
-    "expression": "fhir-ig-tooling-v1-${{ inputs.ast-export-ref }}-${{ hashFiles('sushi-config.yaml', 'ig.ini') }}"
+    "expression": "fhir-ig-tooling-v2-${{ inputs.ast-export-ref }}-${{ hashFiles('fhir-harness/scripts/ig-toolchain.env') }}-${{ hashFiles('sushi-config.yaml', 'ig.ini') }}"
   },
-  "derivedInputs": "the IG's sushi-config.yaml (its FHIR package dependencies) and ig.ini, and the AST exporter ref; NOT the Java (17), Node (20) or SUSHI versions, see notes",
+  "derivedInputs": "the toolchain pins (scripts/ig-toolchain.env: Java, Node and SUSHI versions), the IG's sushi-config.yaml (its FHIR package dependencies) and ig.ini, and the AST exporter ref",
   "holds": "~/.fhir/packages, ~/.m2/repository, ~/.npm-global (SUSHI)",
-  "producer": "ig-ast-refresh.yml, only on a run that rebuilds the AST",
+  "producer": "ig-ast-refresh.yml on the default branch only: a successful rebuild that missed the key saves it (actions/cache/save)",
   "consumers": [
     "the same workflow's rebuild: SUSHI and the IG Publisher with the AST exporter"
   ],
@@ -28,14 +29,18 @@
   "needs": [],
   "refresh": {
     "mode": "whole",
-    "how": "a missed key saves a new entry from what that run downloaded; restore-keys fall back to the newest entry with the same exporter ref, then any"
+    "how": "a missed key on the default branch saves a new entry; the one restore-key keeps the pins hash, so a fallback entry has the same toolchain and only the IG's packages may differ"
   },
-  "savePolicy": "any run that rebuilds and misses the key",
-  "verify": "none: what is restored is used as found. FHIR packages are versioned by name, so a wrong one is a new download, but the SUSHI in ~/.npm-global is never re-checked (see notes)",
+  "savePolicy": "default branch only, after a successful build that missed the key",
+  "verify": "the toolchain is part of the key, so an entry built with another Java, Node or SUSHI is never restored; SUSHI is also checked by version before use (`sushi --version` against the pin, reinstalled on mismatch). FHIR packages are versioned by name",
   "owner": "fhir-harness (skill ig-build-pipeline)",
   "uses": [
-    ".github/workflows/ig-ast-refresh.yml:177-188 the cache step",
-    ".github/workflows/ig-ast-refresh.yml:222 SUSHI install, skipped when a cached SUSHI is on PATH"
+    ".github/workflows/ig-ast-refresh.yml:179 the toolchain pins",
+    ".github/workflows/ig-ast-refresh.yml:188-199 restore",
+    ".github/workflows/ig-ast-refresh.yml:235 SUSHI at the pinned version",
+    ".github/workflows/ig-ast-refresh.yml:352-363 save, default branch only",
+    "scripts/ig-toolchain.env",
+    "scripts/ig-ast-build.sh:69 SUSHI at the pinned version"
   ],
-  "notes": "Recorded gap (CI speed 14's inventory): the key leaves out the toolchain. Java 17 and Node 20 are fixed in the workflow (setup-java, setup-node), so they move only with a workflow edit, which does not change the key. SUSHI is installed unpinned (`npm install -g fsh-sushi`) and only when none is on PATH, so a restored entry freezes whichever SUSHI version first filled it, and the restore-keys fallback carries it across key changes. Fix: pin SUSHI's version in the workflow (or the lock) and put Java, Node and SUSHI versions in the key; until then this cache's trust class stays unclassified."
+  "notes": "fhir-harness#292 closed the gap CI speed 14's inventory found: the key used to leave out Java, Node and SUSHI, and SUSHI was installed unpinned and only when none was on PATH, so a restored entry froze whichever SUSHI first filled it and a bare-prefix restore-key carried it across key changes. The pins now live in scripts/ig-toolchain.env, are hashed into the key, and saves come from the default branch only (trust class c)."
 }

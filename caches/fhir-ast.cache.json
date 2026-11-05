@@ -40,9 +40,9 @@
     "scripts/ig-ast.ts:345 cachedStepLine (hit/warm/miss)",
     "scripts/ig-ast.ts:389 astValidity",
     "scripts/ig-repo-site.ts:363 the site build's restore",
-    ".github/workflows/ig-ast-refresh.yml:161-166 restore, validity and the cached-step line",
-    ".github/workflows/ig-ast-refresh.yml:271 warm: the line after a valid incremental build",
-    ".github/workflows/ig-ast-refresh.yml:365 seed",
+    ".github/workflows/ig-ast-refresh.yml:163-168 restore, validity and the cached-step line",
+    ".github/workflows/ig-ast-refresh.yml:284 warm: the line after a valid incremental build",
+    ".github/workflows/ig-ast-refresh.yml:393 seed",
     "scripts/stage-ast-sites.ts:98 lists the branches",
     "processes/content/ig-ast-cache.bpmn"
   ],
