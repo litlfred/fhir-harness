@@ -47,6 +47,7 @@ import { join, posix } from "node:path";
 import { reviewPageHtml } from "../../cat-harness-tools/scripts/gen-review-page.ts";
 import { igReadScope } from "./ig-read-scope.ts";
 import { run as injectStagingBanner, type StagingFacts } from "../../cat-harness-tools/scripts/staging-banner.ts";
+import { isPreviewPath } from "../../cat-harness-tools/scripts/lib/preview-prefix.ts";
 
 export const CHANGESET_SCHEMA = "folio-changeset/v1";
 export const CHANGESET_TEXT_SCHEMA = "folio-changeset-text/v1";
@@ -456,7 +457,7 @@ export function igPreviewData(
   let newPages: string[] = [];
   let mainPagesKnown = false;
   if (git(f.ig, ["fetch", "-q", "--depth", "1", "origin", "gh-pages"]).ok) {
-    const listed = new Set(git(f.ig, ["ls-tree", "-r", "--name-only", "FETCH_HEAD"]).out.split("\n").filter((p) => p.endsWith(".html") && !p.startsWith("STAGING/")));
+    const listed = new Set(git(f.ig, ["ls-tree", "-r", "--name-only", "FETCH_HEAD"]).out.split("\n").filter((p) => p.endsWith(".html") && !isPreviewPath(p)));
     if (listed.size) {
       mainPagesKnown = true;
       const here: string[] = [];

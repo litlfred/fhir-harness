@@ -73,6 +73,7 @@ import { siteFileFor } from "@litlfred/cat-harness-tools/schemas/kg/cat-harness.
 import { resolveLandingInstance } from "@litlfred/cat-harness-tools/schemas/kg/harness-config.ts";
 import { findDeclarationFile } from "@litlfred/cat-harness-tools/schemas/kg/instance-roots.ts";
 import { scriptTable } from "@litlfred/cat-harness-tools/schemas/sdlc/script-table.ts";
+import { PREVIEW_PREFIXES } from "../../cat-harness-tools/scripts/lib/preview-prefix.ts";
 import { buildInstanceSite, keepPinned, lockedMountPaths, recipeRead, siteFields, stagingDir } from "../../cat-harness-tools/scripts/build-instance-site.ts";
 import { igOpenapiGraph } from "../../cat-harness-tools/openapi/scripts/ig-site-openapi.ts";
 import { igPreviewData, openPrFor, proseRenderer } from "./ig-review-data.ts";
@@ -1097,7 +1098,9 @@ async function stageIgFolio(a: PublisherRun, b: IgBuilt, site: IgFolioSite, h: P
   const { o, log, repo, branch, sha, ownerRepo, pagesRoot, target } = a;
   const u = a.detected.uses;
   const name = ownerRepo.split("/")[1]!;
-  const staging = target === "preview" ? stagingDir(branch) : undefined;
+  // The folio's preview SHARES the IG Publisher's branch directory, `branches/<last path
+  // component>/` (owner, 2026-11-05): whichever deploy is later is what that folder shows.
+  const staging = target === "preview" ? stagingDir(branchDirOf(branch)) : undefined;
   const url = `${pagesRoot}/${staging ? `${staging}/` : ""}`;
   const out = join(repo, "..", `${name}-site`);
   const message = `Publish ${name} ${sha.slice(0, 7)}${staging ? ` preview of ${branch}` : ""} (folio site, built locally)`;
@@ -1118,7 +1121,7 @@ async function stageIgFolio(a: PublisherRun, b: IgBuilt, site: IgFolioSite, h: P
     target, branch, ...(a.defaultBranch ? { defaultBranch: a.defaultBranch } : {}), sha,
     publishBranch: "gh-pages", dest: staging ? `${staging}/` : "/", url,
     replaces: staging ? `${staging}/, wholesale` : "the root, as a folio's root publish replaces it",
-    preserved: staging ? [`everything outside ${staging}/`] : ["STAGING", "_render-log", ...keep],
+    preserved: staging ? [`everything outside ${staging}/`] : [...PREVIEW_PREFIXES, "_render-log", ...keep],
     build: [
       `the folio site "${site.title}" from the IG's cached AST, never a Publisher run (ig-build-pipeline rule 1): build-instance-site.ts with the chrome of ${site.scope} (index.config.json site.landing)`,
       `  pre    ${site.pre.join(", ")} — restore and judge the AST (a stale one is refused; SITE_ACCEPT_STALE_AST=1 for a preview only)${site.pre.length > 1 ? ", then the landing layer's IG API sidecars" : ""}`,
@@ -1159,7 +1162,7 @@ async function stageIgFolio(a: PublisherRun, b: IgBuilt, site: IgFolioSite, h: P
     sourceSteps: site.sourceSteps,
     siteSteps: site.siteSteps,
     ...(site.finalSteps.length ? { finalSteps: site.finalSteps } : {}),
-    ...(target === "preview" ? { staging: branch } : {}),
+    ...(target === "preview" ? { staging: branch, ...(staging ? { stagingDir: staging } : {}) } : {}),
     mount: true,
     fresh: false,
     publish,
