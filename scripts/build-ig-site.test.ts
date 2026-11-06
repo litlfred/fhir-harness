@@ -697,7 +697,8 @@ describe("the Publisher's page footer on the IG site's own pages (#1901)", () =>
     expect(fm("toc.md")).not.toContain("ig_prev");
     // The layout draws it last, only where the page asks.
     const layout = readFileSync(join(out, "_layouts", "default.html"), "utf-8");
-    expect(layout).toContain("{% if page.ig_footer %}{% include fa-ig-footer.html %}{% endif %}\n</main>");
+    // After the column, a child of the body: the body's column puts it at the window's bottom on a short page.
+    expect(layout).toContain("</main>\n{% if page.ig_footer %}{% include fa-ig-footer.html %}{% endif %}");
     expect(existsSync(join(out, "_includes", "fa-ig-footer.html"))).toBe(true);
     rmSync(d, { recursive: true, force: true });
   });
@@ -705,6 +706,16 @@ describe("the Publisher's page footer on the IG site's own pages (#1901)", () =>
   test("without a menu there is no generated layout, so the footer goes into the page", () => {
     const { d, out } = stage({});
     expect(readFileSync(join(out, "concepts.md"), "utf-8")).toMatch(/\{% include fa-ig-footer\.html %\}\n$/);
+    rmSync(d, { recursive: true, force: true });
+  });
+
+  test("composed thin, the IG's own layout draws the footer after <main>, not the page", () => {
+    const { d, out } = stage({ menu });
+    const host = join(d, "host");
+    mkdirSync(host, { recursive: true });
+    expect(composeIgSite(out, host, "x").collisions).toEqual([]);
+    expect(readFileSync(join(host, "x", "concepts.md"), "utf-8")).not.toContain("fa-ig-footer.html");
+    expect(readFileSync(join(host, "_layouts", "ig-thin-x.html"), "utf-8")).toContain("</main>\n{% if page.ig_footer %}{% include ig/x/fa-ig-footer.html %}{% endif %}\n</body>");
     rmSync(d, { recursive: true, force: true });
   });
 

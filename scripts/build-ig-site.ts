@@ -561,12 +561,15 @@ export function harnessLayout(topBar: string, tocNav: string, sectionLabel?: str
     IG_FIGURE_IMAGES_STAMP,
     "{{ content }}",
     ...igEditLines(),
+    "</main>",
     // Last on the page, as on the Publisher's. Only on pages that flag it
     // (`ig_footer`): the pages this build wrote, and the artefact pages
     // copied in, whose front matter (`ig_footer`, `ig_root`, `ig_prev`,
     // `ig_next`) asks for this same include rather than drawing their own.
+    // A child of the body after `<main>`, as on the artefact pages, so the
+    // body's column puts it at the window's bottom on a short page too
+    // (`ig-artifact.css`, "THE FOOTER STAYS IN VIEW").
     `{% if page.ig_footer %}{% include ${IG_FOOTER_INCLUDE} %}{% endif %}`,
-    "</main>",
     "</body>",
     "</html>",
     "",
@@ -754,7 +757,7 @@ export const IG_FOLIO_MOUNT: readonly string[] = [
  * The IG's TOC declaration and section label, when the staged layout carries
  * them, keep the IG's menu in the rail as the full layout does.
  */
-export function thinIgLayout(assetsAt: string, tocNav = "", sectionLabel?: string, topBar = ""): string {
+export function thinIgLayout(assetsAt: string, tocNav = "", sectionLabel?: string, topBar = "", footerInclude?: string): string {
   const asset = (f: string) => `{{ '${assetsAt}${f}' | relative_url }}`;
   return [
     "<!doctype html>",
@@ -780,6 +783,8 @@ export function thinIgLayout(assetsAt: string, tocNav = "", sectionLabel?: strin
     `<main class="ig-main main-content ${PAGE_MAIN_CLASS}" id="main-content">`,
     "{{ content }}",
     "</main>",
+    // The IG's footer after the column, as `harnessLayout` places it.
+    ...(footerInclude ? [`{% if page.ig_footer %}{% include ${footerInclude} %}{% endif %}`] : []),
     "</body>",
     "</html>",
     "",
@@ -920,7 +925,7 @@ export function composeIgSite(
   if (thin) {
     const tocNav = /<script type="application\/json" data-fa-visualiser-nav>[\s\S]*?<\/script>/.exec(stagedLayout)?.[0];
     const label = /<meta name="fa-visualiser-label" content="([^"]*)">/.exec(stagedLayout)?.[1];
-    put(join(docsRoot, "_layouts", `${layoutName}.html`), thinIgLayout(assetsAt, tocNav, label?.replace(/&quot;/g, '"').replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&"), topBar));
+    put(join(docsRoot, "_layouts", `${layoutName}.html`), thinIgLayout(assetsAt, tocNav, label?.replace(/&quot;/g, '"').replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&"), topBar, incNames.has(IG_FOOTER_INCLUDE) ? `ig/${instance}/${IG_FOOTER_INCLUDE}` : undefined));
     // The shared page layout's two files, unless the staged site brings them
     // (the artefact pages' generator writes them beside `ig-artifact.css`).
     // The thin layout links `ig-artifact.css` too; an IG whose instance has no
@@ -968,7 +973,8 @@ export function composeIgSite(
       fm = fm.replace(/\n+$/, "");
       // The IG's footer last, after the shared bottom, on the pages the IG
       // build wrote (`ig_footer`), as `harnessLayout` places it.
-      const footer = incNames.has(IG_FOOTER_INCLUDE) ? `{% if page.ig_footer %}{% include ig/${instance}/${IG_FOOTER_INCLUDE} %}{% endif %}\n` : "";
+      // A thin page's layout draws it after `<main>`; the host's layout has no place for it, so it goes into the page.
+      const footer = !thin && incNames.has(IG_FOOTER_INCLUDE) ? `{% if page.ig_footer %}{% include ig/${instance}/${IG_FOOTER_INCLUDE} %}{% endif %}\n` : "";
       put(join(dest, r), `---\n${fm}\n---\n{% include ig/${instance}/_top.html %}\n\n${body.replace(/\s*$/, "")}\n\n{% include ${bottomInclude} %}\n${footer}`);
       pages++;
     }

@@ -180,10 +180,13 @@ for both): publisher and copyright year, `package#version`, FHIR version, the
 build day, and Links: Table of Contents | QA Report | Version History |
 License, each value read from the IG's package, `sushi-config.yaml` or AST
 and left out when none holds it. Unlike the Publisher's, it stays at the
-bottom of the window (owner, 2026-11-06): `position: sticky` at the end of the
-content column (`ig-artifact.css`), so it spans the column beside the rail,
-the page scrolls under it, nothing is left behind it at the end of the page,
-and in print it is static, once, at the end. "QA Report" is `qa.html`, the
+bottom of the window (owner, 2026-11-06): it is the body's last box, after
+`<main>` on every IG page, `position: sticky` (`ig-artifact.css`), so it spans
+the width beside the rail, the page scrolls under it and nothing is left
+behind it at the end of the page. The body is a column at least the window's
+height with `<main>` taking the free space, so on a page shorter than the
+window the footer lands at the window's bottom too. In print both are off:
+the footer is static, once, at the end. "QA Report" is `qa.html`, the
 harness's QA report (`ig-qa-page.ts`): the FHIR QA the build holds (the
 Publisher's `qa.json` carried with the AST, the AST's record and validity) and
 the knowledge graph's (cat-harness-tools `kg-qa-report.ts`).
