@@ -107,7 +107,7 @@ import { parse as parseYaml } from "yaml";
 import { tmpdir } from "node:os";
 import { basename, join, resolve } from "node:path";
 
-import { checkoutRootFor, instanceRootsIn } from "@litlfred/cat-harness-tools/schemas/kg/cat-harness.js";
+import { checkoutRootFor, declarationPathIn, instanceRootsIn } from "@litlfred/cat-harness-tools/schemas/kg/cat-harness.js";
 import { scriptTable } from "@litlfred/cat-harness-tools/schemas/sdlc/script-table.ts";
 import { IG_API_DESCRIPTOR, IG_API_WORK } from "./ig-repo-site.ts";
 import { igApiHubPageOf } from "./ig-api-hub.ts";
@@ -144,10 +144,17 @@ export interface Skipped {
   why: string;
 }
 
+/**
+ * The instance declaration at `root`: the file that names itself, found as
+ * every reader finds one (`declarationPathIn`), never `<directory>.json`. A
+ * checkout's directory is not its instance's name: CI checks an IG repository
+ * out at `fa/`, where `fa/fa.json` is absent, so the IG read as an instance
+ * named `fa` that needs nothing, and no index was built for it.
+ */
 function declarationOf(root: string): Record<string, unknown> | undefined {
-  const p = join(root, `${basename(root)}.json`);
+  const p = declarationPathIn(root);
   try {
-    return existsSync(p) ? (JSON.parse(readFileSync(p, "utf-8")) as Record<string, unknown>) : undefined;
+    return p !== undefined && existsSync(p) ? (JSON.parse(readFileSync(p, "utf-8")) as Record<string, unknown>) : undefined;
   } catch {
     return undefined;
   }
