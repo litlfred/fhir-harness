@@ -379,6 +379,11 @@ PY
   if [ -f "$root/output/expansions.json" ] && [ ! -f "$tmp/expansions.json" ]; then
     cp "$root/output/expansions.json" "$tmp/expansions.json"
   fi
+  # The Publisher's QA summary, for the site's QA report (ig-qa-page.ts): the
+  # site never reads the Publisher's output/, so the AST carries it.
+  if [ -f "$root/output/qa.json" ] && [ ! -f "$tmp/qa.json" ]; then
+    cp "$root/output/qa.json" "$tmp/qa.json"
+  fi
   # txcache goes alongside AST on the branch
   if [ -d "$root/input-cache/txcache" ]; then
     cp -R "$root/input-cache/txcache" "$tmp/"

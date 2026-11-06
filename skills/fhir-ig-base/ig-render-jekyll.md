@@ -172,6 +172,22 @@ graph, unless a build passes `--full-pages`. The shell is cat-harness-tools'
 - The thin page has no host search box or QA badges; it has its own search
   box and language picker block (below).
 
+### The footer stays in view
+
+Every IG page ends with the Publisher's footer (`ig-footer.liquid` on the
+Jekyll pages, `ig-artifact.js` on the thin pages, one `igSiteFooter` object
+for both): publisher and copyright year, `package#version`, FHIR version, the
+build day, and Links: Table of Contents | QA Report | Version History |
+License, each value read from the IG's package, `sushi-config.yaml` or AST
+and left out when none holds it. Unlike the Publisher's, it stays at the
+bottom of the window (owner, 2026-11-06): `position: sticky` at the end of the
+content column (`ig-artifact.css`), so it spans the column beside the rail,
+the page scrolls under it, nothing is left behind it at the end of the page,
+and in print it is static, once, at the end. "QA Report" is `qa.html`, the
+harness's QA report (`ig-qa-page.ts`): the FHIR QA the build holds (the
+Publisher's `qa.json` carried with the AST, the AST's record and validity) and
+the knowledge graph's (cat-harness-tools `kg-qa-report.ts`).
+
 ### Search and the language picker
 
 The folio rail replaces the theme's side menu (`#site-nav` is dropped;

@@ -100,6 +100,9 @@ echo "ig-ast-build: one full IG Publisher build through AstExportCli (minutes to
 java -Xmx10g -cp "$CP" org.hl7.fhir.igtools.ast.AstExportCli -ig "$IG" -ast-out "$IG/output-ast" -tx "$TX" > "$WORK/ast-build.log" 2>&1 \
   || { tail -n 80 "$WORK/ast-build.log" >&2; exit 1; }
 [ -f output/expansions.json ] && cp output/expansions.json output-ast/expansions.json
+# The Publisher's QA summary goes with the AST too: the site is built from the AST, never the Publisher's
+# output, so this is the FHIR QA its QA report can show (ig-qa-page.ts).
+[ -f output/qa.json ] && cp output/qa.json output-ast/qa.json
 restore_inputs
 bun run "$HERE/ig-ast.ts" validity output-ast --ig . > /dev/null \
   || { echo "ig-ast-build: the AST just built is not valid for $(git rev-parse --short HEAD)" >&2; exit 1; }

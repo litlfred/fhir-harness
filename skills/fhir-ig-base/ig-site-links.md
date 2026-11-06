@@ -28,6 +28,7 @@ therefore resolves somewhere specific, or is said to resolve nowhere.**
 | an artefact page (`StructureDefinition-X.html`) | `artifact/…` on our site | `relinkArtifacts` |
 | …differing only in CASE (`-hcert` for `-HCert`) | the one page it can mean; two candidates leave it alone | `relinkArtifacts` |
 | a Publisher download (`package.tgz`, `*.zip`) | the IG's published site (sushi `canonical`) | `relinkPublisherOutputs` |
+| `qa.html`, on a site that holds the harness's QA report | that page on our site (the FHIR QA and the knowledge graph's, `ig-qa-page.ts`) | `stageIgSite` `qaPage` |
 | a Publisher-only page (`qa.html`, `toc.html`, …) | the published site | `relinkOffSite`, `PUBLISHER_PAGES` |
 | a FILE of the IG's repository (`.github/…`, `bpmn/x.bpmn` from `input/bpmn/`) | that file on GitHub, at the edit branch | `relinkOffSite` |
 | `openapi/index.html` (Swagger's deep links too) | the OpenAPI graph's own index, which forwards `#/<tag>/<operationId>` — on an IG repository's own site too, where `publish-served` puts the graph at `openapi/` | `gen-openapi-pages`, `publish-served` |

@@ -648,6 +648,41 @@ describe("the Publisher's page footer on the IG site's own pages (#1901)", () =>
     rmSync(d, { recursive: true, force: true });
   });
 
+  test("the QA report: written as qa.md, linked as the Publisher's qa.html, and the AST's build day stands in for the package's", () => {
+    const d = mkdtempSync(join(tmpdir(), "ig-footer-qa-"));
+    const src = join(d, "src");
+    mkdirSync(join(src, "input", "pagecontent"), { recursive: true });
+    mkdirSync(join(src, "output-ast"), { recursive: true });
+    writeFileSync(join(src, "sushi-config.yaml"), `${sushi}canonical: http://example.org/ig\n`);
+    writeFileSync(join(src, "output-ast", "manifest.json"), JSON.stringify({ generatedAt: "2026-11-05T17:28:37Z" }));
+    writeFileSync(join(src, "input", "pagecontent", "index.md"), "# index\n\nSee the [QA report](qa.html).\n");
+    const r = stageIgSite(src, join(d, "out"), { menu, qaPage: "---\ntitle: QA Report\n---\nbody\n" });
+    const out = join(d, "out");
+    expect(r.qa).toBe("written");
+    expect(r.generated).toContain("qa.md");
+    expect(readFileSync(join(out, "qa.md"), "utf-8")).toStartWith("---\ntitle: QA Report\nig_footer: true\n");
+    // The IG's own link to qa.html is this site's page now, not the published IG's.
+    expect(readFileSync(join(out, "index.md"), "utf-8")).toContain("](qa.html)");
+    expect(readFileSync(join(out, "index.md"), "utf-8")).not.toContain("example.org/ig/qa.html");
+    const f = JSON.parse(readFileSync(join(out, "_data", "fhir.json"), "utf-8")).footer;
+    expect(f.links.map((l: { label: string }) => l.label)).toEqual(["Table of Contents", "QA Report", "License"]);
+    expect(f.generated).toBe("2026-11-05");
+    expect(r.footer.links).toEqual(f.links);
+    rmSync(d, { recursive: true, force: true });
+  });
+
+  test("the IG's own qa page wins over the QA report", () => {
+    const d = mkdtempSync(join(tmpdir(), "ig-footer-qa-"));
+    const src = join(d, "src");
+    mkdirSync(join(src, "input", "pagecontent"), { recursive: true });
+    writeFileSync(join(src, "sushi-config.yaml"), sushi);
+    writeFileSync(join(src, "input", "pagecontent", "qa.md"), "# mine\n");
+    const r = stageIgSite(src, join(d, "out"), { menu, qaPage: "---\ntitle: QA Report\n---\nbody\n" });
+    expect(r.qa).toBe("the IG's source holds its own qa page");
+    expect(readFileSync(join(d, "out", "qa.md"), "utf-8")).toContain("# mine");
+    rmSync(d, { recursive: true, force: true });
+  });
+
   test("prev and next follow the IG's table-of-contents order, skipping what is not built", () => {
     const { d, out } = stage({ menu });
     const fm = (p: string) => readFileSync(join(out, p), "utf-8").split("\n---")[0]!;
