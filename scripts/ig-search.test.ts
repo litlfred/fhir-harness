@@ -319,6 +319,14 @@ describe("publisher-pages gives every built page the IG's one bar and the shared
     expect(withIgBar("<p>fragment</p>", o)).toBe("<p>fragment</p>");
   });
 
+  test("a page that declines the harness frame (folio-navbar: none) is left as it is; one that links the rail is barred", () => {
+    const declining = PAGE.replace("<title>Hub</title>", '<title>Hub</title><meta name="folio-navbar" content="none">');
+    expect(withIgBar(declining, o)).toBe(declining);
+    expect(withIgBar(declining, { ...o, bar: BAR })).toBe(declining);
+    const linked = PAGE.replace("<title>Hub</title>", '<title>Hub</title><meta name="folio-navbar" content="linked">');
+    expect(withIgBar(linked, o)).toContain('<header class="ig-search-top fa-page-bar">');
+  });
+
   test("stampIgBar: the slim bar, never the menu; paths relative to each page, nothing under assets/, nothing without an index", () => {
     const site = tmp("ig-search-stamp-");
     put(site, "index.html", PAGE.replace("<body>", `<body>\n${BAR}\n`));

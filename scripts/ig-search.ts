@@ -49,6 +49,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { escHtml } from "../../cat-harness-tools/scripts/thin-page.ts";
 import { PAGE_BAR_CLASS, PAGE_LAYOUT_MARK, pageLayoutTags } from "../../cat-harness-tools/scripts/page-layout.ts";
+import { declinesNavbar } from "../../cat-harness-tools/scripts/lib/harness-rail.ts";
 import type { FhirArtifact } from "../schemas/fhir-artifact-index.js";
 import { ARTIFACT_DIR, artifactPageName } from "./ig-artifact-jsonld.ts";
 
@@ -171,6 +172,10 @@ const IG_BAR = /<div class="ig-topbar[ "]/;
  *   the bar at the top of its body.
  * - A page with a search box in some other bar, or with no `<head>` and
  *   `<body>`, is returned as it was.
+ * - A page that declines the harness frame (`<meta name="folio-navbar"
+ *   content="none">`, cat-harness-tools `declinesNavbar`) is returned as it
+ *   was: it asked for no site chrome, and the IG's bar is site chrome (the
+ *   journeys viewer's workshop pages, told in a room; owner, 2026-11-06).
  *
  * `bar` is the IG's bar, site-absolute; undefined, {@link igFallbackBar}.
  * Its scripts are dropped and the search client is linked once, at the end
@@ -188,6 +193,7 @@ const IG_BAR = /<div class="ig-topbar[ "]/;
  * finished site, keyed on what the page holds, never on its name.
  */
 export function withIgBar(html: string, o: { bar?: string; ref: IgSearchRef; label: string; home: string; up: string }): string {
+  if (declinesNavbar(html)) return html;
   const head = html.search(/<\/head>/i);
   if (head < 0) return html;
   const open = /<body\b[^>]*>/i.exec(html.slice(head));
