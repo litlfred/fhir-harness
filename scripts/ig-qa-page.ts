@@ -113,7 +113,7 @@ export function fhirQaMarkdown(q: FhirQa, o: { up?: string } = {}): string[] {
   if (m) {
     const tc = (m.toolchain ?? {}) as Json;
     const prov = Array.isArray(m.provisional) ? (m.provisional as unknown[]).map(String) : [];
-    lines.push("| | |", "|---|---|");
+    lines.push("| field | value |", "|---|---|");
     if (m.generatedAt) lines.push(`| generated | ${code(m.generatedAt)} |`);
     if (m.authority) lines.push(`| authority | ${code(m.authority)} |`);
     for (const k of ["publisher", "core", "sushi", "java"]) if (tc[k]) lines.push(`| ${k} | ${code(tc[k])} |`);
