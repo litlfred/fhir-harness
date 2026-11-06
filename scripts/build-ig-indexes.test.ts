@@ -13,9 +13,9 @@ import { afterAll, describe, expect, it } from "bun:test";
 import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { dirname, join } from "node:path";
 
-import { astAgainstPin, cloneAt, lockedMounts, pinnedAt, referenceAbsent, contextsFrom, fhirVersionsOf, hubFrom, igTargets, isSafeInstanceName, lockedRepositories, packFromAst, publishedBase, rebaseOnMount } from "./build-ig-indexes.ts";
+import { astAgainstPin, cloneAt, instancesIn, lockedMounts, pinnedAt, referenceAbsent, contextsFrom, fhirVersionsOf, hubFrom, igTargets, isSafeInstanceName, lockedRepositories, packFromAst, publishedBase, rebaseOnMount } from "./build-ig-indexes.ts";
 import type { BranchLister } from "./gen-ig-ast-pages.ts";
 
 const instances = [
@@ -93,6 +93,25 @@ describe("rebaseOnMount", () => {
     expect(rebaseOnMount("https://alpha.github.io/other/", "alpha/ig", "beta/ig")).toBe("https://alpha.github.io/other/");
     expect(rebaseOnMount("https://alpha.github.io/ig/", undefined, "beta/ig")).toBe("https://alpha.github.io/ig/");
     expect(rebaseOnMount("https://alpha.github.io/ig/", "alpha/ig", undefined)).toBe("https://alpha.github.io/ig/");
+  });
+});
+
+describe("instancesIn", () => {
+  it("reads an instance's declaration by the name it gives itself, not by the directory it is checked out in", () => {
+    // CI checks an IG repository out at `fa/`: `fa/fa.json` is absent, and the
+    // IG's declaration is `ig-x.json`. Read as `<directory>.json`, the IG was an
+    // instance named `fa` needing nothing, so no index was built for it.
+    const dir = join(mkdtempSync(join(tmpdir(), "ig-index-root-")), "fa");
+    mkdirSync(dir, { recursive: true });
+    try {
+      writeFileSync(join(dir, "ig-x.json"), JSON.stringify({ name: "ig-x", repository: "alpha/ig-x", needs: ["fhir-harness"] }));
+      const ig = instancesIn(dir).find((i) => i.root === dir);
+      expect(ig?.name).toBe("ig-x");
+      expect(ig?.needs).toEqual(["fhir-harness"]);
+      expect(ig?.repository).toBe("alpha/ig-x");
+    } finally {
+      rmSync(dirname(dir), { recursive: true, force: true });
+    }
   });
 });
 
