@@ -645,10 +645,18 @@ export const IG_SITE_STEPS = { ast: "ig-site:ast", source: "ig-site:compose", si
  *   `ig-pages` visualisers read them: without this step the coverage gate
  *   refuses the site (smart-base-clinical, 2026-10-30; smart-ra#101 for a
  *   declared recipe);
+ * - `drawings`, a pre step after `index`: run when a mounted layer provides
+ *   it. The site's drawing of every diagram (`docs/assets/img/workflows/`) is
+ *   no longer committed but built at publish (cat-harness#1047, its
+ *   `builtAtPublish`), and the process pages the visualiser writers add
+ *   embed it: without this step a publish had 116 unresolved process-page
+ *   images and the link check refused it unless `render:bpmn` was run by
+ *   hand (smart-trust-demo#35, 2026-11-06). A folio's site runs the same
+ *   writer before its process pages (folio-assistant `docs-site.yml`);
  * - `openapi`, a site step before `site`: run when the checkout holds an
  *   OpenAPI graph (`openapi/cat-openapi.config.json`).
  */
-export const IG_SITE_OPTIONAL = { sidecars: "ig-site:sidecars", index: "ig-index:build", openapi: "ig-site:openapi", bar: "ig-site:bar" } as const;
+export const IG_SITE_OPTIONAL = { sidecars: "ig-site:sidecars", index: "ig-index:build", drawings: "render:bpmn", openapi: "ig-site:openapi", bar: "ig-site:bar" } as const;
 
 /**
  * What an IG repository's root used to serve and no longer does, by the
@@ -813,6 +821,10 @@ export function igFolioSite(o: {
     pre.push(IG_SITE_OPTIONAL.index);
     notes.push(`${IG_SITE_OPTIONAL.index}: run, the mounted layers' artefact indexes are built at publish`);
   } else notes.push(`${IG_SITE_OPTIONAL.index}: no mounted layer provides it — no artefact index is built`);
+  if (o.scripts.has(IG_SITE_OPTIONAL.drawings)) {
+    pre.push(IG_SITE_OPTIONAL.drawings);
+    notes.push(`${IG_SITE_OPTIONAL.drawings}: run, the site's process drawings are built at publish, before the process pages that embed them`);
+  } else notes.push(`${IG_SITE_OPTIONAL.drawings}: no mounted layer provides it — no process drawings are built`);
   const siteSteps: string[] = [];
   if (!o.hasOpenapi) notes.push(`${IG_SITE_OPTIONAL.openapi}: the checkout holds no openapi/cat-openapi.config.json — no OpenAPI pages`);
   else if (!o.scripts.has(IG_SITE_OPTIONAL.openapi)) notes.push(`${IG_SITE_OPTIONAL.openapi}: the checkout holds an OpenAPI graph, and no mounted layer provides the step — its pages are NOT built`);
