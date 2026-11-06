@@ -395,6 +395,17 @@ describe("an IG repository's folio site (owner, 2026-10-14)", () => {
     expect(igFolioSite({ hasIndexConfig: true, scripts, landing, identity }).site!.notes.join("\n")).toMatch(/no artefact index is built/);
   });
 
+  test("the process drawings are built at publish, after the artefact indexes, when a mounted layer provides render:bpmn", () => {
+    const all = new Map([...scripts, [IG_SITE_OPTIONAL.index, { manifest: "fhir-harness/package.json" }], [IG_SITE_OPTIONAL.drawings, { manifest: "cat-harness-tools/package.json" }]]);
+    expect(IG_SITE_OPTIONAL.drawings).toBe("render:bpmn");
+    const run = igFolioSite({ hasIndexConfig: true, scripts: all, landing, identity }).site!;
+    expect(run.pre).toEqual([IG_SITE_STEPS.ast, IG_SITE_OPTIONAL.index, IG_SITE_OPTIONAL.drawings]);
+    expect(run.notes.join("\n")).toMatch(/render:bpmn: run/);
+    const without = igFolioSite({ hasIndexConfig: true, scripts, landing, identity }).site!;
+    expect(without.pre).not.toContain(IG_SITE_OPTIONAL.drawings);
+    expect(without.notes.join("\n")).toMatch(/no process drawings are built/);
+  });
+
   test("the OpenAPI pages run when the checkout holds an OpenAPI graph, before the AST's data is served", () => {
     const withOa = new Map([...scripts, [IG_SITE_OPTIONAL.openapi, { manifest: "tools/package.json" }]]);
     expect(igFolioSite({ hasIndexConfig: true, scripts: withOa, landing, hasOpenapi: true, identity }).site!.siteSteps).toEqual([IG_SITE_OPTIONAL.openapi, IG_SITE_STEPS.site]);
