@@ -265,7 +265,23 @@ const IG_SITE =
  * the instance's own route in the main site, or the IG site's root, whose
  * `baseurl` already ends in `/<instance>`.
  */
-const SITE_PREFIX = IG_SITE ? "" : `/${INSTANCE_NAME}`;
+const SITE_PREFIX = IG_SITE ? "" : sitePrefixArg() ?? `/${INSTANCE_NAME}`;
+/**
+ * `--site-prefix <path>`: where the caller publishes this docs root, when it
+ * is not `/<instance>/`. The staging workflow copies an IG's AST-built pages
+ * to `/<instance>/ast/`, so their links to the shared `assets/` must say so,
+ * or every page links a stylesheet and footer loader that are not there.
+ * Site-absolute, one leading slash, no trailing one.
+ */
+function sitePrefixArg(): string | undefined {
+  const v = arg("--site-prefix");
+  if (v === undefined) return undefined;
+  if (!/^\/[A-Za-z0-9._~/-]*[A-Za-z0-9._~-]$/.test(v) || v.includes("//") || v.split("/").includes("..")) {
+    console.error(`gen-ig-pages: --site-prefix ${JSON.stringify(v)}: expected a site-absolute path like /<instance>/ast`);
+    process.exit(2);
+  }
+  return v;
+}
 /**
  * Where an artefact page's "all artefacts" link goes: the IG site's own
  * Artifact Index (`artifacts.html`, written by `build-ig-site`) when the pages
