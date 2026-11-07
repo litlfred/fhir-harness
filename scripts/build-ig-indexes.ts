@@ -8,6 +8,9 @@
  *
  * ```sh
  * bun run fhir-harness/scripts/build-ig-indexes.ts [--root <checkout>] [--only <instance>] [--work <dir>] [--plan]
+ *
+ * Without `--work`, the work directory is a new one under `os.tmpdir()`,
+ * removed when the run ends, fails or is cancelled (`withWorkDir`).
  * ```
  *
  * ## Which instances
@@ -104,7 +107,7 @@ import { parse as parseYaml } from "yaml";
 import { tmpdir } from "node:os";
 import { basename, join, resolve } from "node:path";
 
-import { checkoutRootFor, instanceRootsIn } from "@litlfred/cat-harness-tools/schemas/kg/cat-harness.js";
+import { checkoutRootFor, declarationPathIn, instanceRootsIn } from "@litlfred/cat-harness-tools/schemas/kg/cat-harness.js";
 import { scriptTable } from "@litlfred/cat-harness-tools/schemas/sdlc/script-table.ts";
 import { IG_API_DESCRIPTOR, IG_API_WORK } from "./ig-repo-site.ts";
 import { igApiHubPageOf } from "./ig-api-hub.ts";
@@ -141,10 +144,17 @@ export interface Skipped {
   why: string;
 }
 
+/**
+ * The instance declaration at `root`: the file that names itself, found as
+ * every reader finds one (`declarationPathIn`), never `<directory>.json`. A
+ * checkout's directory is not its instance's name: CI checks an IG repository
+ * out at `fa/`, where `fa/fa.json` is absent, so the IG read as an instance
+ * named `fa` that needs nothing, and no index was built for it.
+ */
 function declarationOf(root: string): Record<string, unknown> | undefined {
-  const p = join(root, `${basename(root)}.json`);
+  const p = declarationPathIn(root);
   try {
-    return existsSync(p) ? (JSON.parse(readFileSync(p, "utf-8")) as Record<string, unknown>) : undefined;
+    return p !== undefined && existsSync(p) ? (JSON.parse(readFileSync(p, "utf-8")) as Record<string, unknown>) : undefined;
   } catch {
     return undefined;
   }
@@ -609,6 +619,32 @@ export function buildOne(t: IgTarget, work: string, log: (s: string) => void, ch
   return problems;
 }
 
+/**
+ * Run `fn` in the work directory: the one `--work` names, kept, or else a new
+ * `ig-index-*` under `os.tmpdir()`, removed when `fn` returns or throws, or
+ * the run is cancelled (SIGINT, SIGTERM). Every output is copied out of it
+ * into the instance, so nothing is lost; a directory left behind holds a clone
+ * per IG, and those filled a session's disk (measured 2026-11-05: 447 MB each).
+ */
+export function withWorkDir<T>(given: string | undefined, fn: (work: string) => T): T {
+  if (given !== undefined) return fn(given);
+  const work = mkdtempSync(join(tmpdir(), "ig-index-"));
+  const remove = () => rmSync(work, { recursive: true, force: true });
+  const onSignal = (sig: NodeJS.Signals) => {
+    remove();
+    process.exit(128 + (sig === "SIGINT" ? 2 : 15));
+  };
+  process.on("SIGINT", onSignal);
+  process.on("SIGTERM", onSignal);
+  try {
+    return fn(work);
+  } finally {
+    process.off("SIGINT", onSignal);
+    process.off("SIGTERM", onSignal);
+    remove();
+  }
+}
+
 function main(): number {
   const argv = process.argv.slice(2);
   const val = (f: string): string | undefined => {
@@ -628,14 +664,15 @@ function main(): number {
     for (const t of targets) console.log(`${t.name}\t${t.repository}\t${t.branches.join(",")}`);
     return 0;
   }
-  const work = val("--work") ?? mkdtempSync(join(tmpdir(), "ig-index-"));
   let failed = 0;
-  for (const t of targets) {
-    console.log(`${t.name} (${t.repository})`);
-    const problems = buildOne(t, work, (s) => console.log(s), root);
-    for (const p of problems) console.error(`✗ ${t.name}: ${p}`);
-    if (problems.length) failed++;
-  }
+  withWorkDir(val("--work"), (work) => {
+    for (const t of targets) {
+      console.log(`${t.name} (${t.repository})`);
+      const problems = buildOne(t, work, (s) => console.log(s), root);
+      for (const p of problems) console.error(`✗ ${t.name}: ${p}`);
+      if (problems.length) failed++;
+    }
+  });
   console.log(`${targets.length - failed} of ${targets.length} IG index(es) built${skipped.length ? `, ${skipped.length} skipped` : ""}`);
   return failed ? 1 : 0;
 }

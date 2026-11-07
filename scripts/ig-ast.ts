@@ -219,11 +219,13 @@ export function inputDigest(igRoot: string): string {
  */
 export function inputDigestAt(igRoot: string, rev: string): string | null {
   const tops = ["sushi-config.yaml", "ig.ini", "input"];
+  // input-site: head #3a999592 — `rev` of the IG checkout, resolved to a commit: git history, which the cone replays
   const commit = spawnSync("git", ["rev-parse", "--verify", "--quiet", `${rev}^{commit}`], { cwd: igRoot, encoding: "utf-8" });
   if (commit.status !== 0) return null;
   const sha = commit.stdout.trim();
   // Paths relative to igRoot (ls-tree's default, like ls-files), and the
   // same paths in full for cat-file.
+  // input-site: head #a8b49309 — the tree of that commit under the IG inputs: git history, which the cone replays
   const ls = spawnSync("git", ["ls-tree", "-r", "-z", sha, "--", ...tops], { cwd: igRoot, encoding: "utf-8", maxBuffer: 2 ** 30 });
   if (ls.status !== 0) return null;
   const entries: { rel: string; blob: string }[] = [];
@@ -251,6 +253,7 @@ export function inputDigestAt(igRoot: string, rev: string): string | null {
 /** The bytes of each blob, in order, through one `git cat-file --batch`; null on failure. */
 function catBlobs(cwd: string, blobs: string[]): Buffer[] | null {
   if (blobs.length === 0) return [];
+  // input-site: inert #029f2e20 — blobs by the ids ls-tree gave: an object's bytes are a function of its id
   const r = spawnSync("git", ["cat-file", "--batch"], { cwd, input: blobs.join("\n") + "\n", maxBuffer: 2 ** 31 });
   if (r.status !== 0 || !r.stdout) return null;
   const out = r.stdout as Buffer;
@@ -281,8 +284,10 @@ function walkTops(igRoot: string, tops: string[]): string[] {
 
 /** The files under `tops` git counts as the work tree, or null outside one. */
 function gitTreeFiles(igRoot: string, tops: string[]): string[] | null {
+  // input-site: tree #988805bc — whether the IG root is in a git work tree
   const inside = spawnSync("git", ["rev-parse", "--is-inside-work-tree"], { cwd: igRoot, encoding: "utf-8" });
   if (inside.status !== 0 || inside.stdout.trim() !== "true") return null;
+  // input-site: tree #2c5e35ef — the files git counts as the IG's work tree under its inputs
   const ls = spawnSync("git", ["ls-files", "-z", "--cached", "--others", "--exclude-standard", "--", ...tops], {
     cwd: igRoot,
     encoding: "utf-8",
@@ -375,6 +380,7 @@ export function sameSourceAs(
 ): string | undefined {
   if (!head || !recordedRev || head === recordedRev) return head;
   if (!recordedDigest || recordedDigest !== digest) return head;
+  // input-site: head #daa3a1a7 — whether the recorded revision is an ancestor of HEAD: git history, which the cone replays
   const anc = spawnSync("git", ["merge-base", "--is-ancestor", recordedRev, head], { cwd: igRoot, encoding: "utf-8" });
   return anc.status === 0 ? recordedRev : head;
 }
@@ -388,6 +394,7 @@ export function sameSourceAs(
  */
 export function astValidity(ast: Ast, igRoot: string, toolchain?: string, opts: { at?: string } = {}): AstValidity {
   const recorded = ast.manifest.inputs;
+  // input-site: head #c47b496e — HEAD, or the `at` revision, of the IG checkout: git history, which the cone replays
   const rev = spawnSync("git", ["rev-parse", opts.at ? `${opts.at}^{commit}` : "HEAD"], { cwd: igRoot, encoding: "utf-8" });
   const head = rev.status === 0 ? rev.stdout.trim() : undefined;
   // `at`: the inputs as committed at that revision, not the work tree — what a

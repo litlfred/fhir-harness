@@ -325,6 +325,7 @@ names, never naming a layer:
 |---|---|---|---|
 | `ig-site:ast` | pre, required | this layer | restore the AST from the cache branch and judge it (rule 1 and 2) |
 | `ig-site:sidecars` | pre, optional | the landing layer | the IG API sidecars from the AST, into `$SITE_WORK/ig-api/` |
+| `render:bpmn` | pre, optional | cat-harness-tools | the site's drawing of every diagram, at `docs/assets/img/workflows/` of the harness's docs, which the process pages embed; built at publish, never committed |
 | `ig-site:compose` | source, required | this layer | the artefact index from the AST, the thin pages, the IG composed at the root |
 | `ig-site:openapi` | site, when the IG holds `openapi/cat-openapi.config.json` | cat-harness-tools | a page and an IRI for each OpenAPI operation, at `openapi/` |
 | `ig-site:publisher-pages` | site, required | this layer | the AST's data served, the Publisher-chrome guard, the build stamp |
