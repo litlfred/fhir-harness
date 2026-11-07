@@ -1,5 +1,5 @@
 import { describe, expect, it } from "bun:test";
-import { dayOf, fhirSpecUrl, igFooterData, igSiteFooter, licenseUrl, sushiFooterData } from "./ig-footer.ts";
+import { astFooterData, dayOf, fhirSpecUrl, igFooterData, igSiteFooter, licenseUrl, sushiFooterData } from "./ig-footer.ts";
 
 describe("igFooterData", () => {
   const pkg = {
@@ -85,5 +85,13 @@ describe("igSiteFooter: the Links row names only what the site holds", () => {
     const f = igSiteFooter({ licenseUrl: "https://l" }, (h) => h === "toc.html" || h === "history.html");
     expect(f.links.map((l) => l.label)).toEqual(["Table of Contents", "Version History", "License"]);
     expect(igSiteFooter({}, () => false).links).toEqual([]);
+  });
+});
+
+describe("astFooterData: the AST's own build day", () => {
+  it("is the day its Publisher run generated it, and absent when the manifest says nothing", () => {
+    expect(astFooterData({ generatedAt: "2026-11-05T17:28:37.464314193Z" })).toEqual({ generated: "2026-11-05" });
+    expect(astFooterData({})).toEqual({});
+    expect(astFooterData(undefined)).toEqual({});
   });
 });

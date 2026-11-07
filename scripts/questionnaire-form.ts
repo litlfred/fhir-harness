@@ -158,6 +158,8 @@ export function formPageHtml(q: { id: string; title?: string; name?: string; url
     `title: ${yamlStr(`${title} — form`)}`,
     "nav_exclude: true",
     "search_exclude: true",
+    // The IG's footer, as on every other page of the IG site (#1901; owner, 2026-11-06).
+    "ig_footer: true",
     "---",
     `<div id="fa-qform" class="fa-qform" data-json="${esc(o.json)}" data-lhc="assets/lhc-forms/${LHC_FORMS_VERSION}/" data-fhir="${lformsFhirVersion(o.fhirVersion)}"${src}>`,
     `<h1>${esc(title)}: the form</h1>`,

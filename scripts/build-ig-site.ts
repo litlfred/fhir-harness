@@ -54,7 +54,7 @@ import { GLOBALS_FRAGMENT, globalsFromImplementationGuide, globalsFromSushiConfi
 import { artifactPageName } from "../schemas/fhir-artifact-index.js";
 import { wrapRaw } from "../../cat-harness-tools/scripts/lib/liquid-raw.ts";
 import type { IgReleases } from "../schemas/ig-releases.ts";
-import { igSiteFooter, sushiFooterData, type IgFooterData } from "./ig-footer.ts";
+import { astFooterData, IG_QA_PAGE, igSiteFooter, sushiFooterData, type IgFooterData, type IgSiteFooter } from "./ig-footer.ts";
 import { thinIndexPage } from "./ig-thin-pages.ts";
 import { IG_SEARCH_CSS, IG_SEARCH_INDEX_FILE, IG_SEARCH_SCRIPT_FILE, igSearchBox, igSearchScript, type IgSearchRef } from "./ig-search.ts";
 import { withRenderedBy } from "../../cat-harness-tools/scripts/viewer-declarations.js";
@@ -201,6 +201,10 @@ export interface StageResult {
   unplaced?: string[];
   /** Links a page makes to a `.html` page no source or build serves: the IG's own dead links, REPORTED (#2235). */
   deadLinks: string[];
+  /** The footer every page draws (`site.data.fhir.footer`), for the pages a later step writes from JSON (`assets/ig-footer.json`). */
+  footer: IgSiteFooter;
+  /** The QA report page (`qa.md`, {@link StageOptions.qaPage}): written, or why not. */
+  qa?: "written" | "the IG's source holds its own qa page";
   /** The colour scheme written from the instance's palette; undefined when none was declared. */
   scheme: ColourScheme | undefined;
   siteData: IgSiteDataResult;
@@ -557,12 +561,15 @@ export function harnessLayout(topBar: string, tocNav: string, sectionLabel?: str
     IG_FIGURE_IMAGES_STAMP,
     "{{ content }}",
     ...igEditLines(),
+    "</main>",
     // Last on the page, as on the Publisher's. Only on pages that flag it
     // (`ig_footer`): the pages this build wrote, and the artefact pages
     // copied in, whose front matter (`ig_footer`, `ig_root`, `ig_prev`,
     // `ig_next`) asks for this same include rather than drawing their own.
+    // A child of the body after `<main>`, as on the artefact pages, so the
+    // body's column puts it at the window's bottom on a short page too
+    // (`ig-artifact.css`, "THE FOOTER STAYS IN VIEW").
     `{% if page.ig_footer %}{% include ${IG_FOOTER_INCLUDE} %}{% endif %}`,
-    "</main>",
     "</body>",
     "</html>",
     "",
@@ -750,7 +757,7 @@ export const IG_FOLIO_MOUNT: readonly string[] = [
  * The IG's TOC declaration and section label, when the staged layout carries
  * them, keep the IG's menu in the rail as the full layout does.
  */
-export function thinIgLayout(assetsAt: string, tocNav = "", sectionLabel?: string, topBar = ""): string {
+export function thinIgLayout(assetsAt: string, tocNav = "", sectionLabel?: string, topBar = "", footerInclude?: string): string {
   const asset = (f: string) => `{{ '${assetsAt}${f}' | relative_url }}`;
   return [
     "<!doctype html>",
@@ -776,6 +783,8 @@ export function thinIgLayout(assetsAt: string, tocNav = "", sectionLabel?: strin
     `<main class="ig-main main-content ${PAGE_MAIN_CLASS}" id="main-content">`,
     "{{ content }}",
     "</main>",
+    // The IG's footer after the column, as `harnessLayout` places it.
+    ...(footerInclude ? [`{% if page.ig_footer %}{% include ${footerInclude} %}{% endif %}`] : []),
     "</body>",
     "</html>",
     "",
@@ -916,7 +925,7 @@ export function composeIgSite(
   if (thin) {
     const tocNav = /<script type="application\/json" data-fa-visualiser-nav>[\s\S]*?<\/script>/.exec(stagedLayout)?.[0];
     const label = /<meta name="fa-visualiser-label" content="([^"]*)">/.exec(stagedLayout)?.[1];
-    put(join(docsRoot, "_layouts", `${layoutName}.html`), thinIgLayout(assetsAt, tocNav, label?.replace(/&quot;/g, '"').replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&"), topBar));
+    put(join(docsRoot, "_layouts", `${layoutName}.html`), thinIgLayout(assetsAt, tocNav, label?.replace(/&quot;/g, '"').replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&"), topBar, incNames.has(IG_FOOTER_INCLUDE) ? `ig/${instance}/${IG_FOOTER_INCLUDE}` : undefined));
     // The shared page layout's two files, unless the staged site brings them
     // (the artefact pages' generator writes them beside `ig-artifact.css`).
     // The thin layout links `ig-artifact.css` too; an IG whose instance has no
@@ -964,7 +973,8 @@ export function composeIgSite(
       fm = fm.replace(/\n+$/, "");
       // The IG's footer last, after the shared bottom, on the pages the IG
       // build wrote (`ig_footer`), as `harnessLayout` places it.
-      const footer = incNames.has(IG_FOOTER_INCLUDE) ? `{% if page.ig_footer %}{% include ig/${instance}/${IG_FOOTER_INCLUDE} %}{% endif %}\n` : "";
+      // A thin page's layout draws it after `<main>`; the host's layout has no place for it, so it goes into the page.
+      const footer = !thin && incNames.has(IG_FOOTER_INCLUDE) ? `{% if page.ig_footer %}{% include ig/${instance}/${IG_FOOTER_INCLUDE} %}{% endif %}\n` : "";
       put(join(dest, r), `---\n${fm}\n---\n{% include ig/${instance}/_top.html %}\n\n${body.replace(/\s*$/, "")}\n\n{% include ${bottomInclude} %}\n${footer}`);
       pages++;
     }
@@ -1293,6 +1303,14 @@ export interface StageOptions {
    * absent, it is unstyled rather than given a hand-typed palette.
    */
   footer?: { facts?: IgFooterData; scope?: string; stylesheets?: string[] };
+  /**
+   * The site's QA report, a Markdown page with its front matter, written as
+   * `qa.md` beside the IG's pages: the page the Publisher calls `qa.html`,
+   * which the footer's "QA Report" links and the IG's own links to `qa.html`
+   * then reach here rather than at the published IG. The IG's own `qa` page,
+   * if its source holds one, wins and this is not written.
+   */
+  qaPage?: string;
   /** The IG's FHIR AST; default `<src>/output-ast`. Its resources become `site.data` (see {@link astResourceData}). */
   ast?: string;
   /** The FHIR package cache the dependency table reads; default `FHIR_PACKAGE_CACHE` or `~/.fhir/packages`. */
@@ -1850,7 +1868,8 @@ function stageDeclaredSource(igSrc: string, out: string, opts: StageOptions): St
   const pageHtml = new Set(files(pagecontent).filter((f) => f.endsWith(".md")).map((f) => `${basename(f, ".md")}.html`));
   const rootImages = new Set(filesDeep(join(src, "input", "images")));
   const isServed = (t: string): boolean =>
-    pageHtml.has(t) || rootImages.has(t) || (opts.artifacts !== undefined && (t === "artifacts.html" || t.startsWith(opts.artifacts.pagesHref)));
+    pageHtml.has(t) ||
+    (opts.qaPage !== undefined && t === IG_QA_PAGE) || rootImages.has(t) || (opts.artifacts !== undefined && (t === "artifacts.html" || t.startsWith(opts.artifacts.pagesHref)));
   const dead = new Set<string>();
   const relink = (text: string): string => {
     let t = text;
@@ -1955,6 +1974,15 @@ function stageDeclaredSource(igSrc: string, out: string, opts: StageOptions): St
     writeFileSync(join(out, "releases.md"), frontMatter(nav.get("releases") ?? { title: "Releases", navOrder: 998 }) + readFileSync(RELEASES_TEMPLATE_PATH, "utf-8"));
     writeFileSync(join(out, "_data", "ig_releases.json"), JSON.stringify(releaseVariables(opts.releases), null, 2) + "\n");
     generated.push("releases.md");
+  }
+  let qa: StageResult["qa"];
+  if (opts.qaPage !== undefined) {
+    if (pages.includes("qa.md")) qa = "the IG's source holds its own qa page";
+    else {
+      writeFileSync(join(out, "qa.md"), opts.qaPage);
+      generated.push("qa.md");
+      qa = "written";
+    }
   }
   if (thinIndex && !pages.includes("toc.md")) generated.push("toc.html");
   else if (!pages.includes("toc.md")) {
@@ -2146,8 +2174,16 @@ function stageDeclaredSource(igSrc: string, out: string, opts: StageOptions): St
     writeFileSync(join(out, f), end >= 0 ? `${text.slice(0, end)}\n${fm}${text.slice(end)}${tail}` : `---\n${fm}\n---\n${text}${tail}`);
   }
   writeFileSync(join(out, "_includes", IG_FOOTER_INCLUDE), readFileSync(FOOTER_TEMPLATE_PATH, "utf-8"));
+  // The AST's own build day stands in for the package's build stamp when no package is held.
+  const manifestFile = join(opts.ast ?? join(src, "output-ast"), "manifest.json");
+  let manifest: Record<string, unknown> | undefined;
+  try {
+    manifest = existsSync(manifestFile) ? (JSON.parse(readFileSync(manifestFile, "utf-8")) as Record<string, unknown>) : undefined;
+  } catch {
+    manifest = undefined;
+  }
   const footer = igSiteFooter(
-    { ...sushiFooterData(sushi), ...(opts.footer?.facts ?? {}) },
+    { ...sushiFooterData(sushi), ...astFooterData(manifest), ...(opts.footer?.facts ?? {}) },
     (href) => heldStems.has(basename(href, ".html")),
     { scope: opts.footer?.scope, stylesheets: opts.footer?.stylesheets },
   );
@@ -2238,7 +2274,7 @@ function stageDeclaredSource(igSrc: string, out: string, opts: StageOptions): St
     ].join("\n"),
   );
   const fillsResult = opts.fills?.length ? { filled, unused: opts.fills.map((x) => x.marker).filter((m) => !usedMarkers.has(m)) } : undefined;
-  return { annexed, unplaced, templateIncludes: templateIncludesResult, pages: pages.sort(), generated, fills: fillsResult, variables: lifted ? { artifacts: Object.keys(lifted.vars.artifacts).length, notSourced: lifted.notSourced } : undefined, unlisted: unlisted.sort(), menuMissing, includes, images, rendered, listed, notRendered, refusedIncludes, unparseable, reserved, relinked, deadLinks: [...dead].sort(), scheme, siteData, data, astData, ...(forms ? { forms } : {}), dependencyTables, dependencies, globals };
+  return { annexed, unplaced, templateIncludes: templateIncludesResult, pages: pages.sort(), generated, fills: fillsResult, variables: lifted ? { artifacts: Object.keys(lifted.vars.artifacts).length, notSourced: lifted.notSourced } : undefined, unlisted: unlisted.sort(), menuMissing, includes, images, rendered, listed, notRendered, refusedIncludes, unparseable, reserved, relinked, deadLinks: [...dead].sort(), footer, ...(qa ? { qa } : {}), scheme, siteData, data, astData, ...(forms ? { forms } : {}), dependencyTables, dependencies, globals };
 }
 
 /**
@@ -2294,6 +2330,7 @@ export function describeStage(r: StageResult): string {
     ...(r.annexed?.length ? [`annexes loaded by their pages: ${r.annexed.join(", ")}`] : []),
     ...(r.unplaced?.length ? [`annex whose page this IG does not have (NOT placed): ${r.unplaced.join(", ")}`] : []),
     ...(r.relinked ? [`links pointed where they resolve (artefact pages, the published IG, the source repository): ${r.relinked}`] : []),
+    ...(r.qa ? [`QA report (qa.md): ${r.qa}`] : []),
     ...(r.deadLinks.length ? [`DEAD in the IG's own source — no page anywhere serves: ${r.deadLinks.join(", ")}`] : []),
     ...(r.listed.length ? [`artefact lists written from the artefact index (the Publisher generates these): ${r.listed.join(", ")}`] : []),
     ...(r.notRendered.length ? [`NOT RENDERED (a visible marker stands in): ${r.notRendered.join(", ")}`] : []),

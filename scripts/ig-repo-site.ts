@@ -166,6 +166,7 @@ import { buildMenu } from "./ingest-ig-menu.ts";
 import { THIN_INDEX_CONFIG_ID, THIN_PAGE_CONFIG_ID } from "./ig-thin-pages.ts";
 import { copyDeclared, igReadScope, type IgReadScope } from "./ig-read-scope.ts";
 import { siteBuild, type SiteBuild, STAMP_FILE } from "./site-build-stamp.ts";
+import { buildQaPage, publishQaAssets } from "./ig-qa-page.ts";
 import { annexesFor, artifactsFor, copyDocsInto, footerFor, githubEditBase, instanceNeeds, webpagePalette } from "./stage-ig-sites.ts";
 // The preview directories (cat-harness-tools `schemas/sdlc/preview-prefix.ts`):
 // `branches/` since 2026-11-05, and the legacy `STAGING/` still read. Named
@@ -549,6 +550,9 @@ export function compose(o: { docs: string; ig: string; baseurl: string; ast?: st
     }
     const plantumlJar = plantumlJarFor(o.plantumlJar, process.env, homedir()) ?? (hasPlantuml(ig) ? fetchPlantuml(homedir(), log) : undefined);
     const annexes = annexesFor(ig, log);
+    // The QA report the footer's "QA Report" links: the FHIR QA the build
+    // holds and the knowledge graph's, on one page (`ig-qa-page.ts`).
+    const qa = buildQaPage({ root: ig, ast, ...(o.work ? { validity: join(o.work, VALIDITY_FILE) } : {}) });
     const r = stageIgSite(src, site, {
       baseurl,
       menu,
@@ -568,8 +572,20 @@ export function compose(o: { docs: string; ig: string; baseurl: string; ast?: st
       // is not published over them.
       ...(igOpenapiGraph(ig) ? { reservedPaths: [{ prefix: `${OPENAPI_DIR}/`, by: "ig-site:openapi" }] } : {}),
       search: true,
+      qaPage: qa.page,
     });
     log(`${name}:\n${describeStage(r)}`);
+    if (r.qa === "written") {
+      const n = publishQaAssets(qa, site);
+      log(`${name}: QA report — FHIR QA ${qa.fhir.publisher ? "with" : "without"} the Publisher's summary; KG QA over ${qa.kg.instances.length} instance(s), ${n} record(s)`);
+    }
+    // The artefact pages draw the footer from JSON after load: the same
+    // footer as every other page, links decided once (`igSiteFooter`).
+    const footerData = join(inst, "docs", "assets", "ig-footer.json");
+    if (existsSync(footerData)) {
+      const { stylesheets: _s, scope: _c, ...data } = r.footer;
+      writeFileSync(footerData, `${JSON.stringify(data, null, 2)}\n`);
+    }
     if (r.siteData.refused.length) throw new Error(`${name}: the IG's site data was refused (${r.siteData.refused.join(", ")})`);
     const d = copyDocsInto(join(inst, "docs"), site);
     log(`${name}: ${d.copied} artefact page and node file(s) built into the site${d.merged.length ? `; front matter laid onto ${d.merged.join(", ")}` : ""}`);
