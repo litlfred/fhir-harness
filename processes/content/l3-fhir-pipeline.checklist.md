@@ -56,7 +56,7 @@ How an L3 FHIR Implementation Guide is authored in FSH, built with SUSHI, the va
 - Answered by the QC gates.
 - Call `workflow_complete` with `node: "Gateway_QcPass"` and `outcome` set to the label that holds:
   - «no» → `Task_QcBeans` (File QC findings as beans)
-  - «yes» → `Task_IgPublisher` (IG Publisher build)
+  - «yes» → `Call_PublishStatements` (Publish extracted statements)
 
 ### 5. File QC findings as beans (`Task_QcBeans`)
 
@@ -66,7 +66,15 @@ How an L3 FHIR Implementation Guide is authored in FSH, built with SUSHI, the va
 - Record it: `workflow_complete` with `node: "Task_QcBeans"`.
 - next: → `Task_AuthorFsh` (Author FSH profiles)
 
-### 6. IG Publisher build (`Task_IgPublisher`)
+### 6. Publish extracted statements (`Call_PublishStatements`)
+
+- Who: the `Build pipeline — SUSHI · validator · IG Publisher` lane (role `build-pipeline`).
+- Skill: `publish-extracted-statements`.
+- What: The IG draws on library sources; every statement extracted from them is published as pages of the IG and in the shared extraction viewer, each linked to its library entry and section, before the IG Publisher builds the site.
+- A subprocess (`Process_PublishExtractedStatements`): `workflow_next` reports its own steps; complete those — this call activity itself is not completable.
+- next: → `Task_IgPublisher` (IG Publisher build)
+
+### 7. IG Publisher build (`Task_IgPublisher`)
 
 - Who: the `Build pipeline — SUSHI · validator · IG Publisher` lane (role `build-pipeline`).
 - Skill: `ig-publication`.
@@ -74,7 +82,7 @@ How an L3 FHIR Implementation Guide is authored in FSH, built with SUSHI, the va
 - Record it: `workflow_complete` with `node: "Task_IgPublisher"`.
 - next: → `Task_PublishIg` (Publish the IG site)
 
-### 7. Publish the IG site (`Task_PublishIg`)
+### 8. Publish the IG site (`Task_PublishIg`)
 
 - Who: the `Publication manager` lane (role `publication-manager`).
 - Skill: `content-publish`, `ig-publication`.
