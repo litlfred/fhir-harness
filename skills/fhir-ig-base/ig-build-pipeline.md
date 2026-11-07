@@ -262,8 +262,8 @@ the marker: a repository is an IG source because it declares the section.
 **Every IG reader here honours it.** Each one asks `scripts/ig-read-scope.ts`
 (`igReadScope(root)`) before it touches a path: `build-ig-indexes`,
 `ig-repo-site`, `build-ig-site`, `fsh-cone`, `ingest-ig-menu`,
-`ingest-ig-chrome`, `ig-api-hub`, `ig-site-data`, `ig-review-data` and
-`measure-logic-layer-edges`. An undeclared optional directory (`input/images/`,
+`ingest-ig-chrome`, `ig-api-hub`, `ig-site-data`, `ig-review-data`,
+`measure-logic-layer-edges` and `check-translation-supplements`. An undeclared optional directory (`input/images/`,
 say) reads as absent; an undeclared file a reader cannot work without
 (`sushi-config.yaml`) is refused with the path named. `ig-repo-site compose`
 and `stageIgSite` stage from a copy of the declared paths only. Not gated:
@@ -408,6 +408,39 @@ reason. A new hit fails, and so does a cleared one the baseline still allows,
 until `--shrink` lowers it. Never widen the baseline to admit a hit: move the
 WHO-specific part up, or have the WHO layer pass it in as a parameter (the IG
 page generator's `--sidecar-label` is that shape already).
+
+## Translation supplements: compiled on every pull request
+
+An IG's translated FHIR terms are CodeSystem supplements, one FSH file per
+locale in `input/fsh/translations/<locale>.fsh`. The IG build compiles them,
+but it is often not run on a pull request, so an IG repository copies
+`templates/ig-repo-site/translation-supplements.yml` into
+`.github/workflows/` unchanged. Its one job is
+
+```yaml
+uses: litlfred/fhir-harness/.github/workflows/translation-supplements.yml@main
+```
+
+which runs `scripts/check-translation-supplements.ts` (Tool
+`check-translation-supplements`). It compiles the IG's `CodeSystem`, `Alias`
+and `RuleSet` entities with every translation file in a throw-away FSHOnly
+SUSHI project, requires 0 SUSHI errors, and checks that each supplement
+supplements a CodeSystem of this IG, designates only that CodeSystem's codes,
+has the file's locale as its `language` (and no designation in another), and
+that no CodeSystem id is used twice. An IG with no `input/fsh/translations/`
+passes as not applicable. It reads only `sushi-config.yaml` and `input/fsh/`
+within the IG's `include`.
+
+Nothing is resolved at run time. SUSHI is the version `scripts/ig-toolchain.env`
+pins (`SUSHI_VERSION`; no IG's `sushi-config.yaml` names one), installed from
+`scripts/sushi/package-lock.json` with `npm ci --ignore-scripts`; the check
+refuses a lockfile or binary of another version, and a test fails when the
+lockfile and `ig-toolchain.env` disagree, so a SUSHI bump changes both in one
+pull request. The FHIR core package for the IG's `fhirVersion` is pinned by
+sha512 in `scripts/sushi/fhir-packages.lock.json` and fetched from the npm
+mirror; a `fhirVersion` it does not list is refused. SUSHI runs with a package
+cache made for the run and no network, and the run fails if anything but the
+pinned core package appears in that cache.
 
 ## Generic post-processing scripts
 
