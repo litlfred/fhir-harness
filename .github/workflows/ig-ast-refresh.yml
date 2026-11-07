@@ -258,6 +258,63 @@ jobs:
               || echo "::warning::could not seed the template $tpl from its repository: the Publisher tries the CI build server"
             echo "::endgroup::"
           fi
+          # The Publisher's terminology cache (input-cache/txcache/), restored
+          # with the AST, holds only for the FHIR version it was built with. Its
+          # system-map.json keeps the registry's routing, code system to server
+          # endpoint, and the endpoint names a FHIR version (tx.fhir.org/r5).
+          # The Publisher reuses a persisted route without asking the registry
+          # again, and appends its own version to a tx.fhir.org endpoint that
+          # does not end in it, so an IG moved from R5 to R4 asked for
+          # https://tx.fhir.org/r5/r4 and failed (core 7.0.1,
+          # TerminologyClientFactory.checkEndsWith). A cache whose core package
+          # is another FHIR version than sushi-config.yaml's fhirVersion is
+          # dropped, and the Publisher builds its own. Either version unknown:
+          # the cache is kept, as before.
+          if [ -d input-cache/txcache ] && [ -f output-ast/manifest.json ] && [ -f sushi-config.yaml ]; then
+            if ! python3 -I - output-ast/manifest.json sushi-config.yaml <<'PY'
+          import json, re, sys
+          def minor(v):
+              return tuple(re.findall(r"\d+", str(v or ""))[:2])
+          try:
+              m = json.load(open(sys.argv[1], encoding="utf-8"))
+              lines = open(sys.argv[2], encoding="utf-8").read().splitlines()
+          except Exception:
+              sys.exit(0)
+          built = None
+          for p in m.get("packages") or []:
+              if isinstance(p, dict) and re.fullmatch(r"hl7\.fhir\.r\d+b?\.core", str(p.get("id", ""))):
+                  built = p.get("version")
+                  break
+          if not built and isinstance(m.get("ig"), dict):
+              built = m["ig"].get("version")
+          wanted = []
+          for i, line in enumerate(lines):
+              f = re.match(r"fhirVersion:(.*)$", line)
+              if not f:
+                  continue
+              v = f.group(1).split("#")[0].strip()
+              if v.startswith("["):
+                  wanted = [x.strip(" '\"") for x in v.strip("[]").split(",")]
+              elif v:
+                  wanted = [v.strip("'\"")]
+              else:
+                  for n in lines[i + 1:]:
+                      item = re.match(r"\s+-\s*([^\s#]+)", n)
+                      if item:
+                          wanted.append(item.group(1).strip("'\""))
+                      elif n.strip() and not n.lstrip().startswith("#"):
+                          break
+              break
+          wanted = [w for w in wanted if w]
+          if not built or not wanted or minor(built) in {minor(w) for w in wanted}:
+              sys.exit(0)
+          print(f"::notice::the restored terminology cache was built for FHIR {built}, the IG is FHIR {', '.join(wanted)}: it is dropped")
+          sys.exit(1)
+          PY
+            then
+              rm -rf input-cache/txcache
+            fi
+          fi
           # Incremental only over a STALE cache, from a clean tree (the build
           # refuses any other), never for a release (force). Anything it cannot
           # account for ends in its own full build; a failure here falls back
