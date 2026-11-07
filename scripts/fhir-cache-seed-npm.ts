@@ -7,9 +7,14 @@
  *                                                      [--mirror DIR|GIT-URL] [--mirror-commit SHA]
  *                                                      [--missing-out FILE] [--template-repo NAME=OWNER/REPO]
  *                                                      [--site-repo PREFIX=OWNER/REPO[@BRANCH]]
- *                                                      [--dry-run] [name#version ...]
+ *                                                      [--lock FILE] [--dry-run] [name#version ...]
  *
- * Sources, tried in order for each package:
+ * A package `--lock` pins (an IG's `fhir-packages.lock.json`: name, version, tarball
+ * URL, and `integrity` sha512-/sha256- and/or hex `sha256`) is installed from that URL
+ * only, after every pinned hash matches; a mismatch refuses it. Its own dependencies are
+ * not followed: the lock lists the IG's packages in full.
+ *
+ * Sources, tried in order for each package the lock does not pin:
  *   1. the cache itself (already present and verified);
  *   2. npm, account `grahamegrieve` (owner, 2026-09-30: trusted);
  *   3. a publisher's published-site repository on GitHub, for package-name prefixes
@@ -444,6 +449,106 @@ export async function fromSite(
   }
 }
 
+/**
+ * The file an IG repository commits to pin its FHIR packages, at its root by default:
+ * `{ "packages": [{ "name", "version", "tarball", "integrity" | "sha256" }] }`, the
+ * format of this layer's own `scripts/sushi/fhir-packages.lock.json`. `integrity` is
+ * an npm-style SRI string (`sha512-<base64>` or `sha256-<base64>`); `sha256` is a hex
+ * digest. At least one is required, and every one given must match.
+ */
+export const PACKAGE_LOCK_FILE = "fhir-packages.lock.json";
+
+/** One package a lock pins: where its tarball is, and what its bytes must hash to. */
+export interface LockedPackage {
+  name: string;
+  version: string;
+  tarball: string;
+  integrity?: string;
+  sha256?: string;
+}
+
+const SRI = /^(sha256|sha512)-([A-Za-z0-9+/]+={0,2})$/;
+
+/** Parse and check a package lock. Throws on anything it would not install as pinned. */
+export function parsePackageLock(text: string, where = PACKAGE_LOCK_FILE): LockedPackage[] {
+  let doc: unknown;
+  try {
+    doc = JSON.parse(text);
+  } catch (e) {
+    throw new Error(`${where}: not JSON (${e instanceof Error ? e.message : String(e)})`);
+  }
+  const pkgs = (doc as { packages?: unknown } | null)?.packages;
+  if (!Array.isArray(pkgs)) throw new Error(`${where}: no "packages" array`);
+  const out: LockedPackage[] = [];
+  const seen = new Set<string>();
+  pkgs.forEach((p, i) => {
+    const at = `${where} packages[${i}]`;
+    const e = (p ?? {}) as Record<string, unknown>;
+    const { name, version, tarball, integrity, sha256 } = e;
+    if (!validPart(name) || !validPart(version) || !exact(version) || version === "current") {
+      throw new Error(`${at}: needs an exact "name" and "version" (no wildcard, no "current")`);
+    }
+    if (typeof tarball !== "string" || !/^https:\/\/[^\s]+$/.test(tarball)) {
+      throw new Error(`${at}: "tarball" must be an https URL`);
+    }
+    if (integrity !== undefined && (typeof integrity !== "string" || !SRI.test(integrity))) {
+      throw new Error(`${at}: "integrity" must be sha512-<base64> or sha256-<base64>`);
+    }
+    if (sha256 !== undefined && (typeof sha256 !== "string" || !/^[0-9a-f]{64}$/i.test(sha256))) {
+      throw new Error(`${at}: "sha256" must be 64 hex digits`);
+    }
+    if (integrity === undefined && sha256 === undefined) {
+      throw new Error(`${at}: pins no hash: give "integrity" or "sha256"`);
+    }
+    const spec = `${name}#${version}`;
+    if (seen.has(spec)) throw new Error(`${at}: ${spec} is pinned twice`);
+    seen.add(spec);
+    out.push({
+      name: name as string,
+      version: version as string,
+      tarball,
+      ...(integrity !== undefined ? { integrity: integrity as string } : {}),
+      ...(sha256 !== undefined ? { sha256: (sha256 as string).toLowerCase() } : {}),
+    });
+  });
+  return out;
+}
+
+/** Why `data` is not the tarball `pkg` pins, or null when every pinned hash matches. */
+export function lockMismatch(pkg: LockedPackage, data: Buffer): string | null {
+  if (pkg.integrity) {
+    const algo = pkg.integrity.slice(0, pkg.integrity.indexOf("-"));
+    const got = `${algo}-${createHash(algo).update(data).digest("base64")}`;
+    if (got !== pkg.integrity) return `integrity mismatch (pinned ${pkg.integrity}, got ${got})`;
+  }
+  if (pkg.sha256) {
+    const got = createHash("sha256").update(data).digest("hex");
+    if (got !== pkg.sha256) return `sha256 mismatch (pinned ${pkg.sha256}, got ${got})`;
+  }
+  const pj = readPackageJsonFromTgz(data);
+  if (!pj || pj.name !== pkg.name || pj.version !== pkg.version) {
+    return `the tarball says ${pj?.name}#${pj?.version}, not ${pkg.name}#${pkg.version}`;
+  }
+  return null;
+}
+
+/** Fetch a locked package's tarball and verify it against the lock. */
+export async function fromLock(
+  pkg: LockedPackage,
+  fetchFn: (url: string) => Promise<Response> = (u) => fetch(u),
+): Promise<{ data: Buffer } | { error: string }> {
+  let data: Buffer;
+  try {
+    const resp = await fetchFn(pkg.tarball);
+    if (!resp.ok) return { error: `${pkg.tarball}: HTTP ${resp.status}` };
+    data = Buffer.from(await resp.arrayBuffer());
+  } catch (e) {
+    return { error: `${pkg.tarball}: ${e instanceof Error ? e.message : String(e)}` };
+  }
+  const bad = lockMismatch(pkg, data);
+  return bad ? { error: `${pkg.tarball}: ${bad}` } : { data };
+}
+
 export function fromTemplateRepo(
   repo: string,
   name: string,
@@ -573,6 +678,10 @@ export interface SeedOptions {
   templateRepos?: Record<string, string>;
   /** Package-name prefix → `OWNER/REPO[@BRANCH]` of the publisher's site repository. */
   siteRepos?: Record<string, string>;
+  /** A package lock (`fhir-packages.lock.json` format): each package it pins is installed from it, verified. */
+  lock?: string;
+  /** For tests: what fetches a locked tarball. */
+  fetchFn?: (url: string) => Promise<Response>;
   wanted?: string[];
   logger?: {
     log: (msg: string) => void;
@@ -606,7 +715,20 @@ export async function seedFhirCache(options: SeedOptions): Promise<SeedResult> {
   const templateOverrides = options.templateRepos || {};
   const siteRepos = options.siteRepos || {};
 
-  const wanted: string[] = [];
+  // The lock's packages come first, and each is installed from the lock only.
+  const locked = new Map<string, LockedPackage>();
+  if (options.lock) {
+    try {
+      for (const p of parsePackageLock(readFileSync(options.lock, "utf-8"), options.lock)) {
+        locked.set(`${p.name}#${p.version}`, p);
+      }
+    } catch (e) {
+      logger.error(e instanceof Error ? e.message : String(e));
+      return { installed: [], missing: [], cacheDir, exitCode: 2 };
+    }
+  }
+
+  const wanted: string[] = [...locked.keys()];
   if (sushiConfig) {
     wanted.push(...parseSushiConfigDeps(sushiConfig));
   }
@@ -711,6 +833,49 @@ export async function seedFhirCache(options: SeedOptions): Promise<SeedResult> {
     const dest = join(cacheDir, spec);
     let pj: Record<string, unknown> | null = null;
     const reasons: string[] = [];
+
+    // 0. The lock: the only source for a package it pins. A cache entry is kept only when
+    // this seeder installed it from the same pinned hashes; any other is replaced. The
+    // lock lists the IG's packages in full, so a locked package's own dependencies are
+    // not followed (a package built from an AST may declare none).
+    const pin = locked.get(spec);
+    if (pin) {
+      const had = prov.packages[spec] as Record<string, unknown> | undefined;
+      if (
+        existsSync(dest) &&
+        had?.source === "lock" &&
+        had.integrity === (pin.integrity ?? null) &&
+        had.sha256 === (pin.sha256 ?? null) &&
+        checkCached(dest, name, version) === null
+      ) {
+        installed.push({ spec, how: "already in cache, installed from the lock" });
+        continue;
+      }
+      const got = await fromLock(pin, options.fetchFn);
+      if ("error" in got) {
+        missing.push({ spec, why: `refused: lock: ${got.error}` });
+        continue;
+      }
+      if (dry) {
+        installed.push({ spec, how: "would install from the lock" });
+        continue;
+      }
+      try {
+        unpackTgz(got.data, dest);
+      } catch (e) {
+        missing.push({ spec, why: `refused: lock: ${e instanceof Error ? e.message : String(e)}` });
+        continue;
+      }
+      prov.packages[spec] = {
+        source: "lock",
+        lock: options.lock,
+        tarball: pin.tarball,
+        integrity: pin.integrity ?? null,
+        sha256: pin.sha256 ?? null,
+      };
+      installed.push({ spec, how: "lock, hash verified" });
+      continue;
+    }
 
     // 1. Cache
     if (existsSync(dest)) {
@@ -875,6 +1040,7 @@ export function parseCliArgs(argv: string[]): SeedOptions & { help?: boolean } {
   let missingOut: string | undefined;
   const templateRepos: Record<string, string> = {};
   const siteRepos: Record<string, string> = {};
+  let lock: string | undefined;
   const wanted: string[] = [];
 
   const it = argv[Symbol.iterator]();
@@ -912,6 +1078,9 @@ export function parseCliArgs(argv: string[]): SeedOptions & { help?: boolean } {
         const [k, v] = next.value.split("=");
         if (k && v) siteRepos[k] = v;
       }
+    } else if (a === "--lock") {
+      next = it.next();
+      if (!next.done) lock = next.value;
     } else if (a.includes("#")) {
       wanted.push(a);
     }
@@ -927,6 +1096,7 @@ export function parseCliArgs(argv: string[]): SeedOptions & { help?: boolean } {
     missingOut,
     templateRepos,
     siteRepos,
+    lock,
     wanted,
   };
 }
@@ -941,7 +1111,7 @@ Usage:
                                                      [--mirror DIR|GIT-URL] [--mirror-commit SHA]
                                                      [--missing-out FILE] [--template-repo NAME=OWNER/REPO]
                                                      [--site-repo PREFIX=OWNER/REPO[@BRANCH]]
-                                                     [--dry-run] [name#version ...]`);
+                                                     [--lock FILE] [--dry-run] [name#version ...]`);
     process.exit(0);
   }
   const res = await seedFhirCache(parsed);

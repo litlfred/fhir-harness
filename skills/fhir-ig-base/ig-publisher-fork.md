@@ -168,6 +168,20 @@ caller maps each prefix with `--site-repo <prefix>=<owner/repo>[@branch]`,
 none by default, because which publishers exist is not something fhir-harness
 may know.
 
+**An IG's package lock.** An IG that pins its FHIR packages commits a
+`fhir-packages.lock.json` at its root, in the format of this layer's
+`scripts/sushi/fhir-packages.lock.json`: `{"packages": [{"name", "version",
+"tarball", "integrity"}]}`, where `tarball` is an exact https URL (a
+commit-pinned one for a package a site repository publishes) and `integrity` is
+`sha512-<base64>` or `sha256-<base64>`; a hex `sha256` may be given instead or
+as well, and every hash given must match. `--lock <file>` installs each pinned
+package from its URL only, refuses one whose bytes or `package.json` do not
+match, and does not follow its dependencies, so the lock lists the IG's
+packages in full. `ig-ast-refresh.yml` (input `package-lock`, default
+`fhir-packages.lock.json`) and `ig-ast-build.sh` (`--package-lock`) run it before
+SUSHI and the Publisher, so neither fetches a package the lock pins. A package's
+URL is named in the lock, never derived from its name.
+
 ## The measurement that justifies the work
 
 Using the Publisher's current metadata exports as an AST proxy across two real
