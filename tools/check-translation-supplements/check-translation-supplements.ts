@@ -12,6 +12,12 @@ import { defineTool } from "@litlfred/cat-harness-tools/schemas/tools/tool.js";
 // and an IG with no `input/fsh/translations/` exits 0, not applicable. The
 // SUSHI runs are exercised by `check-translation-supplements.test.ts` over the
 // fixture IG in `test/support/translation-supplements/`.
+//
+// `--sushi <bin>` and `--tarballs <dir>` are left out of the ports on purpose:
+// both take a path that may lie outside the repository (the workflow keeps the
+// tarballs in `$RUNNER_TEMP`), a `FilesystemPath`, which is not admissible as a
+// command-line word. They are command-line conveniences for a person or a
+// workflow, never values the graph passes.
 export default toolFactory((t) =>
   defineTool({
     id: "check-translation-supplements",
@@ -23,8 +29,6 @@ export default toolFactory((t) =>
     io: {
       inputs: [
         { name: "igRoot", schema: t("RepoPath"), required: false, arg: { positional: 0 }, description: "The IG root; default the working directory. Only paths its `contentTypes.ig.include` declares are read." },
-        { name: "sushi", schema: t("FilesystemPath"), required: false, arg: { flag: "--sushi" }, description: "The SUSHI binary; default the one `scripts/sushi/` installs. Any other version than the pin is refused." },
-        { name: "tarballs", schema: t("FilesystemPath"), required: false, arg: { flag: "--tarballs" }, description: "Keep the verified FHIR core tarball here between runs; a kept one is verified again before use." },
         { name: "json", schema: t("Flag"), required: false, arg: { flag: "--json" }, description: "Print the result as JSON." },
       ],
       outputs: [
