@@ -85,6 +85,7 @@ const repo = scratchRepo({
   ips: { index: artifactIndex(IPS, "ips"), identity: IPS_IDENTITY },
   ipa: { index: artifactIndex(IPA, "ipa") },
   plain: { index: artifactIndex(IPS, "plain"), identity: IPS_IDENTITY },
+  prefixed: { index: artifactIndex(IPS, "prefixed"), identity: IPS_IDENTITY },
   compiled: { index: compiledIndex("compiled") },
   uncompiled: { index: compiledIndex("uncompiled") },
   built1: { index: builtIndex("built1", "1".repeat(40), "9".repeat(40)) },
@@ -105,6 +106,8 @@ generate("ipa", "--label", "International Patient Access", "--chrome-owner", "ch
   "--publish-note", "This page mirrors a published HL7 Implementation Guide.", "--sidecar-label", "HL7 sidecars", "--summary");
 // `plain`: no --publish-note, no --sidecar-label — the layer's own defaults.
 generate("plain", "--label", "Plain", "--chrome-owner", "chrome-owner");
+// `prefixed`: published somewhere other than /<instance>/, as staging's AST sites are.
+generate("prefixed", "--label", "Prefixed", "--chrome-owner", "chrome-owner", "--site-prefix", "/prefixed/ast");
 
 const page = (instance: string): string => readFileSync(join(repo, instance, "docs", "index.md"), "utf8");
 
@@ -304,6 +307,25 @@ describe("gen-ig-pages --site: only the declared route pages, under the site", (
       expect(existsSync(join(out, "en", "bare", "artifact-index", "bare", "index.html"))).toBe(true);
     } finally {
       [bare, out].forEach((x) => rmSync(x, { recursive: true, force: true }));
+    }
+  });
+});
+
+describe("gen-ig-pages --site-prefix: the shared assets are linked where the pages are published", () => {
+  it("by default, under /<instance>/", () => {
+    expect(page("plain")).toContain("{{ '/plain/assets/ig-pages.css' | relative_url }}");
+  });
+
+  it("under the prefix the caller names, e.g. an AST site copied to /<instance>/ast/", () => {
+    const p = page("prefixed");
+    expect(p).toContain("{{ '/prefixed/ast/assets/ig-pages.css' | relative_url }}");
+    expect(p).not.toContain("'/prefixed/assets/");
+  });
+
+  it("refuses a prefix that is not one site-absolute path", () => {
+    for (const bad of ["prefixed/ast", "/prefixed/ast/", "/a/../b", "/a//b"]) {
+      const r = Bun.spawnSync(["bun", "run", SCRIPT, "--instance", join(repo, "plain"), "--full-pages", "--site-prefix", bad], { cwd: ROOT });
+      expect(r.exitCode).toBe(2);
     }
   });
 });
