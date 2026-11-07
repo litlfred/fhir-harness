@@ -14,6 +14,8 @@
 # WHAT IT DOES, as the workflow does it
 #   - installs SUSHI and Jekyll when they are not on PATH;
 #   - builds AstExportCli from litlfred/fhir-ig-publisher at --ast-export-ref;
+#   - installs the FHIR packages the IG's lock pins (--package-lock), each
+#     hash verified, so neither SUSHI nor the Publisher fetches them;
 #   - seeds the template an ig.ini names as `<id>#current` from its
 #     repository (--template-repo, or IG_TEMPLATE_REPOS) before the Publisher
 #     asks the CI build server for it;
@@ -31,6 +33,10 @@
 # USAGE
 #   bash fhir-harness/scripts/ig-ast-build.sh [--ig-root DIR] [--tx URL]
 #        [--ast-export-ref SHA] [--work DIR] [--template-repo ID=OWNER/REPO]…
+#        [--package-lock FILE]
+#   --package-lock: the IG's FHIR package lock, relative to the IG root (default
+#   fhir-packages.lock.json, used when present). Each package it pins is installed
+#   from its URL, hash verified, before the Publisher runs; a mismatch stops the build.
 #   IG_TEMPLATE_REPOS="ID=OWNER/REPO …" is read as more --template-repo values.
 #
 # NEEDS java, mvn, git, node, npm, ruby, gem, bun; the network the Publisher
@@ -43,6 +49,7 @@ TX=http://tx.fhir.org
 REF=a7a58da244f2515f00bea5c9175b598c49974b69
 WORK="${TMPDIR:-/tmp}/ig-ast-build"
 TEMPLATE_ARGS=()
+PACKAGE_LOCK=fhir-packages.lock.json
 for m in ${IG_TEMPLATE_REPOS:-}; do TEMPLATE_ARGS+=(--template-repo "$m"); done
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -51,6 +58,7 @@ while [ $# -gt 0 ]; do
     --ast-export-ref) REF=$2; shift 2 ;;
     --work) WORK=$2; shift 2 ;;
     --template-repo) TEMPLATE_ARGS+=(--template-repo "$2"); shift 2 ;;
+    --package-lock) PACKAGE_LOCK=$2; shift 2 ;;
     -h|--help) grep '^#' "$0" | cut -c 3-; exit 0 ;;
     *) echo "ig-ast-build: unknown argument: $1" >&2; exit 2 ;;
   esac
@@ -88,6 +96,13 @@ restore_inputs() {
     | grep -v '^output-ast/' | while IFS= read -r f; do rm -f -- "$f"; done
 }
 trap restore_inputs EXIT
+
+if [ -n "$PACKAGE_LOCK" ] && [ -f "$PACKAGE_LOCK" ]; then
+  bun run "$HERE/fhir-cache-seed-npm.ts" --cache "$HOME/.fhir/packages" --lock "$PACKAGE_LOCK" \
+    || { echo "ig-ast-build: a FHIR package $PACKAGE_LOCK pins was not installed as pinned" >&2; exit 1; }
+elif [ "$PACKAGE_LOCK" != fhir-packages.lock.json ]; then
+  echo "ig-ast-build: no package lock at $IG/$PACKAGE_LOCK" >&2; exit 2
+fi
 
 tpl=$(sed -n 's/^[[:space:]]*template[[:space:]]*=[[:space:]]*\([A-Za-z0-9._-]*#current\)[[:space:]]*$/\1/p' ig.ini 2> /dev/null | head -n 1)
 if [ -n "$tpl" ] && [ ! -d "$HOME/.fhir/packages/$tpl" ]; then

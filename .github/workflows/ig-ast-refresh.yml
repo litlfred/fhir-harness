@@ -72,6 +72,10 @@ on:
         description: "Optional command run with bash at the IG root before the AST export: the caller's overlay. Its changes to the IG's inputs are not part of the source the AST is recorded against"
         type: string
         default: ""
+      package-lock:
+        description: "The caller's FHIR package lock, relative to its root (fhir-packages.lock.json format: name, version, tarball, integrity sha512-/sha256- and/or hex sha256). Every package it pins is installed from its URL into the FHIR package cache, hash verified, before the Publisher runs; a mismatch fails the run. Skipped when the default file is absent; empty disables it"
+        type: string
+        default: fhir-packages.lock.json
       template-repos:
         description: "Space-separated name=owner/repo for a `#current` template FHIR/ig-registry's templates.json does not list, e.g. who.template.root=WorldHealthOrganization/smart-ig-template. Named by the caller, never stored here"
         type: string
@@ -221,6 +225,7 @@ jobs:
           TX_SERVER: ${{ inputs.tx }}
           PRE_EXPORT: ${{ inputs.pre-export }}
           TEMPLATE_REPOS: ${{ inputs.template-repos }}
+          PACKAGE_LOCK: ${{ inputs.package-lock }}
           VERDICT: ${{ steps.ast.outputs.verdict }}
           FORCE: ${{ inputs.force }}
           SUSHI_VERSION: ${{ steps.toolchain.outputs.SUSHI_VERSION }}
@@ -234,6 +239,22 @@ jobs:
           git -C "$RUNNER_TEMP/igp" checkout -q "$AST_EXPORT_REF"
           (cd "$RUNNER_TEMP/igp/ast-export" && mvn -q -B -DskipTests compile dependency:build-classpath -Dmdep.outputFile=cp.txt)
           CP="$RUNNER_TEMP/igp/ast-export/target/classes:$(cat "$RUNNER_TEMP/igp/ast-export/cp.txt")"
+          # The packages the caller's lock pins are installed from the lock, each
+          # verified against its pinned hash, before SUSHI or the Publisher runs:
+          # with them in the cache neither fetches them, so nothing it pins is
+          # resolved at run time (Tool fhir-cache-seed-npm, `--lock`). A package
+          # that does not match its pin fails the run; the Publisher is not run.
+          if [ -n "$PACKAGE_LOCK" ]; then
+            case "$PACKAGE_LOCK" in /*|*..*) echo "::error::package-lock must be a path inside the repository: $PACKAGE_LOCK"; exit 2 ;; esac
+            if [ -f "$PACKAGE_LOCK" ]; then
+              echo "::group::install the FHIR packages $PACKAGE_LOCK pins"
+              bun run fhir-harness/scripts/fhir-cache-seed-npm.ts --cache "$HOME/.fhir/packages" --lock "$PACKAGE_LOCK" \
+                || { echo "::error::a FHIR package $PACKAGE_LOCK pins was not installed as pinned"; exit 1; }
+              echo "::endgroup::"
+            elif [ "$PACKAGE_LOCK" != fhir-packages.lock.json ]; then
+              echo "::error::package-lock names $PACKAGE_LOCK, which this commit does not have"; exit 2
+            fi
+          fi
           # The ig.ini template, when it is a `#current` package the cache lacks,
           # is seeded from the template's own repository at HEAD (the fork's
           # seeder, Tool fhir-cache-seed-npm; skill ig-publisher-fork). The

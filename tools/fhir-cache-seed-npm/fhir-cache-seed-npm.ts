@@ -8,10 +8,11 @@ export default toolFactory((t) =>
     description:
       "Fill `~/.fhir/packages` (or `--cache`) for an environment that cannot reach packages.fhir.org, from trust anchors only: npm account `grahamegrieve`, publishers' own published-site repositories (the seeder's list, each fetch verified against the tarball's own package.json), template repos found through FHIR/ig-registry's templates.json read live each run, and a `--mirror`. Exact versions only (a patch wildcard resolves as the Publisher resolves it, recorded); every tarball verified; nothing computed once and kept; provenance recorded; missing versions listed, never substituted.",
     install: { none: true },
-    invoke: { shell: "bun run fhir-harness/scripts/fhir-cache-seed-npm.ts [--cache <dir>] [--sushi-config <file>] [--mirror <dir|git-url>] [--template-repo <name=owner/repo>] [--site-repo <prefix=owner/repo[@branch]>] [--missing-out <file>] [--dry-run] [name#version ...]" },
+    invoke: { shell: "bun run fhir-harness/scripts/fhir-cache-seed-npm.ts [--cache <dir>] [--sushi-config <file>] [--mirror <dir|git-url>] [--template-repo <name=owner/repo>] [--site-repo <prefix=owner/repo[@branch]>] [--lock <file>] [--missing-out <file>] [--dry-run] [name#version ...]" },
     io: {
       inputs: [
         { name: "sushi-config", schema: t("FilesystemPath"), required: false, description: "Seed what this IG pins: its `dependencies:` and the core package for its `fhirVersion`." },
+        { name: "lock", schema: t("FilesystemPath"), required: false, description: "An IG's `fhir-packages.lock.json` (`packages`: name, version, `tarball` https URL, `integrity` sha512-/sha256- and/or hex `sha256`). Each package it pins is installed from that URL only, after every pinned hash matches; a mismatch is refused. Its dependencies are not followed: the lock lists them." },
         { name: "cache", schema: t("FilesystemPath"), required: false, description: "Default `~/.fhir/packages`, which SUSHI and the IG Publisher read." },
         { name: "dry-run", schema: t("Flag"), required: false, description: "Resolve and report; download nothing." },
         { name: "mirror", schema: t("FilesystemPath"), required: false, description: "A directory or git repository of `<name>#<version>.tgz` filled by `fhir-package-mirror`." },
