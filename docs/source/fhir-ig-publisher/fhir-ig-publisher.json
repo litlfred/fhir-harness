@@ -12,6 +12,11 @@
         "block": "overview"
       },
       {
+        "id": "how-the-harness-runs-it",
+        "title": "How the harness runs it",
+        "block": "how-the-harness-runs-it"
+      },
+      {
         "id": "what-it-emits",
         "title": "What one run emits",
         "block": "what-it-emits"
