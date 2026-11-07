@@ -648,6 +648,41 @@ describe("the Publisher's page footer on the IG site's own pages (#1901)", () =>
     rmSync(d, { recursive: true, force: true });
   });
 
+  test("qaReportWrittenAsQaMd", () => {
+    const d = mkdtempSync(join(tmpdir(), "ig-footer-qa-"));
+    const src = join(d, "src");
+    mkdirSync(join(src, "input", "pagecontent"), { recursive: true });
+    mkdirSync(join(src, "output-ast"), { recursive: true });
+    writeFileSync(join(src, "sushi-config.yaml"), `${sushi}canonical: http://example.org/ig\n`);
+    writeFileSync(join(src, "output-ast", "manifest.json"), JSON.stringify({ generatedAt: "2026-11-05T17:28:37Z" }));
+    writeFileSync(join(src, "input", "pagecontent", "index.md"), "# index\n\nSee the [QA report](qa.html).\n");
+    const r = stageIgSite(src, join(d, "out"), { menu, qaPage: "---\ntitle: QA Report\n---\nbody\n" });
+    const out = join(d, "out");
+    expect(r.qa).toBe("written");
+    expect(r.generated).toContain("qa.md");
+    expect(readFileSync(join(out, "qa.md"), "utf-8")).toStartWith("---\ntitle: QA Report\nig_footer: true\n");
+    // The IG's own link to qa.html is this site's page now, not the published IG's.
+    expect(readFileSync(join(out, "index.md"), "utf-8")).toContain("](qa.html)");
+    expect(readFileSync(join(out, "index.md"), "utf-8")).not.toContain("example.org/ig/qa.html");
+    const f = JSON.parse(readFileSync(join(out, "_data", "fhir.json"), "utf-8")).footer;
+    expect(f.links.map((l: { label: string }) => l.label)).toEqual(["Table of Contents", "QA Report", "License"]);
+    expect(f.generated).toBe("2026-11-05");
+    expect(r.footer.links).toEqual(f.links);
+    rmSync(d, { recursive: true, force: true });
+  });
+
+  test("igOwnQaPageWins", () => {
+    const d = mkdtempSync(join(tmpdir(), "ig-footer-qa-"));
+    const src = join(d, "src");
+    mkdirSync(join(src, "input", "pagecontent"), { recursive: true });
+    writeFileSync(join(src, "sushi-config.yaml"), sushi);
+    writeFileSync(join(src, "input", "pagecontent", "qa.md"), "# mine\n");
+    const r = stageIgSite(src, join(d, "out"), { menu, qaPage: "---\ntitle: QA Report\n---\nbody\n" });
+    expect(r.qa).toBe("the IG's source holds its own qa page");
+    expect(readFileSync(join(d, "out", "qa.md"), "utf-8")).toContain("# mine");
+    rmSync(d, { recursive: true, force: true });
+  });
+
   test("prevNextFollowTocOrder", () => {
     const { d, out } = stage({ menu });
     const fm = (p: string) => readFileSync(join(out, p), "utf-8").split("\n---")[0]!;
@@ -662,7 +697,8 @@ describe("the Publisher's page footer on the IG site's own pages (#1901)", () =>
     expect(fm("toc.md")).not.toContain("ig_prev");
     // The layout draws it last, only where the page asks.
     const layout = readFileSync(join(out, "_layouts", "default.html"), "utf-8");
-    expect(layout).toContain("{% if page.ig_footer %}{% include fa-ig-footer.html %}{% endif %}\n</main>");
+    // After the column, a child of the body: the body's column puts it at the window's bottom on a short page.
+    expect(layout).toContain("</main>\n{% if page.ig_footer %}{% include fa-ig-footer.html %}{% endif %}");
     expect(existsSync(join(out, "_includes", "fa-ig-footer.html"))).toBe(true);
     rmSync(d, { recursive: true, force: true });
   });
@@ -670,6 +706,16 @@ describe("the Publisher's page footer on the IG site's own pages (#1901)", () =>
   test("noMenuFooterInPage", () => {
     const { d, out } = stage({});
     expect(readFileSync(join(out, "concepts.md"), "utf-8")).toMatch(/\{% include fa-ig-footer\.html %\}\n$/);
+    rmSync(d, { recursive: true, force: true });
+  });
+
+  test("thinLayoutDrawsFooterAfterMain", () => {
+    const { d, out } = stage({ menu });
+    const host = join(d, "host");
+    mkdirSync(host, { recursive: true });
+    expect(composeIgSite(out, host, "x").collisions).toEqual([]);
+    expect(readFileSync(join(host, "x", "concepts.md"), "utf-8")).not.toContain("fa-ig-footer.html");
+    expect(readFileSync(join(host, "_layouts", "ig-thin-x.html"), "utf-8")).toContain("</main>\n{% if page.ig_footer %}{% include ig/x/fa-ig-footer.html %}{% endif %}\n</body>");
     rmSync(d, { recursive: true, force: true });
   });
 

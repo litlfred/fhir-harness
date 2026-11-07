@@ -106,3 +106,19 @@ Feature: Generating an IG's artefact index pages
     Given an IG instance that declares no directories but an artefact index visualiser
     When the pages are generated for a site
     Then the run exits 0 and the instance's route page is written
+
+  @test:scripts/gen-ig-pages.test.ts::gen-ig-pages_--site-prefix:_the_shared_assets_are_linked_where_the_pages_are_published::assetsUnderInstanceByDefault
+  Scenario: by default, under /<instance>/
+    Given pages generated for the instance "plain" with no site prefix
+    Then a page links the shared stylesheet at /plain/assets/ig-pages.css
+
+  @test:scripts/gen-ig-pages.test.ts::gen-ig-pages_--site-prefix:_the_shared_assets_are_linked_where_the_pages_are_published::assetsUnderNamedPrefix
+  Scenario: under the prefix the caller names, e.g. an AST site copied to /<instance>/ast/
+    Given pages generated for the instance "prefixed" with the site prefix /prefixed/ast
+    Then a page links the shared stylesheet at /prefixed/ast/assets/ig-pages.css
+    And never at /prefixed/assets/
+
+  @test:scripts/gen-ig-pages.test.ts::gen-ig-pages_--site-prefix:_the_shared_assets_are_linked_where_the_pages_are_published::refusesBadSitePrefix
+  Scenario: refuses a prefix that is not one site-absolute path
+    When gen-ig-pages runs with each of the prefixes "prefixed/ast", "/prefixed/ast/", "/a/../b" and "/a//b"
+    Then it exits 2 for every one

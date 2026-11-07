@@ -138,3 +138,24 @@ Feature: Building an IG instance's artifact index at publish
     Then against the pin it reports that revision and no match
     And against that revision it reports a match
     And with no pin it reports only the revision
+
+  @test:scripts/build-ig-indexes.test.ts::withWorkDir::removesWorkDirOnFailure
+  Scenario: removes the directory it made when the build fails partway, leaving os.tmpdir() clean
+    Given the temporary directory points at an empty test directory
+    When a build given no work directory writes a half file and then fails with "clone failed"
+    Then the failure is raised
+    And the temporary directory is empty again
+
+  @test:scripts/build-ig-indexes.test.ts::withWorkDir::removesWorkDirOnSuccess
+  Scenario: removes it after a build that succeeds too
+    Given the temporary directory points at an empty test directory
+    When a build given no work directory writes a file and returns 7
+    Then 7 is returned
+    And the temporary directory is empty again
+
+  @test:scripts/build-ig-indexes.test.ts::withWorkDir::keepsNamedWorkDir
+  Scenario: keeps a directory --work names
+    Given a work directory the caller names
+    When a build in it fails
+    Then the failure is raised
+    And the named directory still exists

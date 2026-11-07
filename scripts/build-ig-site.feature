@@ -642,3 +642,25 @@ Feature: Staging an IG as one just-the-docs site
     When the IG is staged
     Then 2 links are relinked
     And the template assets point at the canonical and the page's own stylesheet is unchanged
+
+  @test:scripts/build-ig-site.test.ts::the_Publisher's_page_footer_on_the_IG_site's_own_pages_(#1901)::qaReportWrittenAsQaMd
+  Scenario: the QA report: written as qa.md, linked as the Publisher's qa.html, and the AST's build day stands in for the package's
+    Given an IG whose AST manifest was generated on 2026-11-05 and whose index page links the QA report as qa.html
+    When the IG is staged with a QA page
+    Then qa.md is written with the IG footer turned on
+    And the index page's qa.html link stays a link to this site's page, not the published IG's
+    And the footer lists Table of Contents, QA Report and License, dated 2026-11-05 from the AST
+
+  @test:scripts/build-ig-site.test.ts::the_Publisher's_page_footer_on_the_IG_site's_own_pages_(#1901)::igOwnQaPageWins
+  Scenario: the IG's own qa page wins over the QA report
+    Given an IG whose own source holds a qa.md page
+    When the IG is staged with a QA page
+    Then the QA report is not written, because the IG's source holds its own qa page
+    And the staged qa.md is the IG's own
+
+  @test:scripts/build-ig-site.test.ts::the_Publisher's_page_footer_on_the_IG_site's_own_pages_(#1901)::thinLayoutDrawsFooterAfterMain
+  Scenario: composed thin, the IG's own layout draws the footer after <main>, not the page
+    Given a staged IG
+    When it is composed into a host site under "x" with no collisions
+    Then its pages do not include the footer themselves
+    And the IG's own thin layout includes the footer after </main>, only on pages that ask for it

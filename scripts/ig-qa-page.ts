@@ -1,129 +1,182 @@
 #!/usr/bin/env bun
 /**
- * ig-qa-page.ts — an IG site's QA page: every `qa-results/v1` record the
- * instance declares, published verbatim and summarised on one page.
+ * ig-qa-page.ts — an IG site's QA report, `qa.html`: the FHIR QA and the
+ * knowledge graph's QA on one page, the page the footer's "QA Report" links.
  *
- * Owner, 2026-10-12, on the four personas no swimlane names: *"should be in QA
- * report. where are qa reports visible?"* On the main site a QA record is
- * published under `/assets/qa/` and badged on its page; an IG repository's own
- * site (`templates/ig-repo-site/folio-site.yml`, since replaced by `site-publish.yml`) published none of them. A
- * finding a check wrote and nobody can read is the same as no finding.
+ * Owner, 2026-11-06: *"QA report should link to harness QA reports = FHIR QA
+ * reports + KG QA"*. Earlier (2026-10-12): *"where are qa reports
+ * visible?"* — a finding a check wrote and nobody can read is the same as no
+ * finding.
  *
- * The records are found through the declaration, never a path: every
- * directory of the instance whose graph typologies include `qa`. Each
- * `*.qa-results.json` there that says `"$schema": "qa-results/v1"` is copied
- * to `<docs>/assets/ig-qa/` and gets a section on `<docs>/qa.md`: its
- * producer, its subject, and per family the summary, the count and the
- * entries. A file that does not parse, or is not `qa-results/v1`, is listed as
- * unreadable rather than dropped — a page that silently omits a record would
- * read as one with nothing to report.
+ * ## The FHIR QA, from what the build holds
  *
- * Generic: nothing here knows what any record is about.
+ * The site is built from the IG's cached AST, never a Publisher run
+ * (`ig-build-pipeline` rule 1), so the Publisher's `qa.html` is not
+ * published. What the build holds is said, and what it does not hold is said
+ * too:
  *
- *   bun run fhir-harness/scripts/ig-qa-page.ts --instance-root <dir> --docs <jekyll source>
+ * - the **Publisher's QA summary**, `qa.json`, which the AST build carries
+ *   beside the AST (`ig-ast-build.sh`, `ig-cache.sh seed`): its errors,
+ *   warnings and hints, and the run they came from. An AST cached before it
+ *   carried one has none, and the page says so rather than showing zeros;
+ * - the **AST's own record**: when its Publisher run generated it, with which
+ *   toolchain, and which of its parts are provisional until a full run;
+ * - the **AST's validity** for this checkout (`ig-repo-site ast` writes it
+ *   under the work directory): valid, stale, or cannot tell, with why.
+ *
+ * ## The KG QA, from the harness
+ *
+ * cat-harness-tools `kg-qa-report.ts`: each instance's `qa-results/v1`
+ * records and the harness's own view of the `qa` graph on this site. This
+ * page lays it out and knows nothing of what any record is about.
+ *
+ *   bun run fhir-harness/scripts/ig-qa-page.ts --instance-root <dir> --docs <jekyll source> [--ast <dir>] [--work <dir>]
  *
  * @module fhir-harness/scripts/ig-qa-page
  * @covers none — it publishes QA records other checks wrote, and judges nothing
  */
-import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
-import { basename, join, resolve } from "node:path";
-import { instanceDirectoriesForGraph } from "@litlfred/cat-harness-tools/schemas/kg/cat-harness.ts";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { join, resolve } from "node:path";
+import { copyKgQaRecords, kgQaMarkdown, kgQaReport, type KgQaReport } from "../../cat-harness-tools/scripts/kg-qa-report.ts";
+import { readDeclaration } from "../../cat-harness-tools/schemas/kg/cat-harness.ts";
 
-export const QA_ASSETS = "assets/ig-qa";
+/** Where the KG records are published under the site root. */
+export const KG_QA_ASSETS = "assets/kg-qa";
+/** Where the Publisher's QA summary is published under the site root. */
+export const FHIR_QA_ASSETS = "assets/fhir-qa";
+/** The Publisher's QA summary, as its run writes it to `output/` and the AST build carries it. */
+export const PUBLISHER_QA_FILE = "qa.json";
 
-interface Family {
-  summary?: string;
-  count?: number;
-  entries?: unknown[];
+type Json = Record<string, unknown>;
+
+/** The FHIR half: everything optional, because each is something the build may not hold. */
+export interface FhirQa {
+  /** The Publisher's `qa.json`, as the AST carries it. */
+  publisher?: Json;
+  /** The AST's `manifest.json`. */
+  manifest?: Json;
+  /** `ig-ast-validity.json`, as `ig-repo-site ast` wrote it. */
+  validity?: { verdict?: string; detail?: Json; recorded?: Json; current?: Json };
 }
 
-export interface QaRecord {
-  file: string;
-  record?: {
-    $schema?: string;
-    producer?: { script?: string; script_hash?: string };
-    subject?: { kind?: string; id?: string };
-    families?: Record<string, Family>;
-    total?: number;
-  };
-  unreadable?: string;
-}
-
-/** Every `*.qa-results.json` in `dirs`, parsed, in a stable order. */
-export function readQaRecords(dirs: string[]): QaRecord[] {
-  const out: QaRecord[] = [];
-  for (const dir of dirs) {
-    if (!existsSync(dir)) continue;
-    for (const f of readdirSync(dir).filter((x) => x.endsWith(".qa-results.json")).sort()) {
-      const file = join(dir, f);
-      try {
-        const record = JSON.parse(readFileSync(file, "utf-8"));
-        if (record?.$schema !== "qa-results/v1") out.push({ file, unreadable: `not qa-results/v1 (${JSON.stringify(record?.$schema)})` });
-        else out.push({ file, record });
-      } catch (e) {
-        out.push({ file, unreadable: `does not parse: ${(e as Error).message}` });
-      }
-    }
+function readJson(file: string | undefined): Json | undefined {
+  if (!file || !existsSync(file)) return undefined;
+  try {
+    const v = JSON.parse(readFileSync(file, "utf-8"));
+    return v && typeof v === "object" && !Array.isArray(v) ? (v as Json) : undefined;
+  } catch {
+    return undefined;
   }
-  return out;
 }
 
-const cell = (v: unknown): string => {
-  const s = typeof v === "string" ? v : v === undefined || v === null ? "" : JSON.stringify(v);
-  return s.replace(/\|/g, "\\|").replace(/\r?\n/g, " ");
-};
+/** The FHIR QA the build holds: the AST directory, and the work directory the `ast` step wrote its verdict to. */
+export function readFhirQa(ast: string | undefined, validityFile?: string): FhirQa {
+  const publisher = ast ? readJson(join(ast, PUBLISHER_QA_FILE)) : undefined;
+  const manifest = ast ? readJson(join(ast, "manifest.json")) : undefined;
+  const validity = readJson(validityFile) as FhirQa["validity"];
+  return { ...(publisher ? { publisher } : {}), ...(manifest ? { manifest } : {}), ...(validity ? { validity } : {}) };
+}
 
-/** The page's Markdown body (inside `{% raw %}`: entries are data, not Liquid). */
-export function renderQaPage(records: QaRecord[], title: string): string {
-  const lines: string[] = [
+const code = (v: unknown): string => `\`${String(v).replace(/`/g, "'")}\``;
+const num = (v: unknown): number | undefined => (typeof v === "number" && Number.isFinite(v) ? v : undefined);
+
+/** The FHIR half as Markdown lines. */
+export function fhirQaMarkdown(q: FhirQa, o: { up?: string } = {}): string[] {
+  const up = o.up ?? "";
+  const lines: string[] = [];
+  lines.push("### IG Publisher", "");
+  const p = q.publisher;
+  if (p) {
+    const rows: [string, number | undefined][] = [
+      ["errors", num(p.errs)],
+      ["warnings", num(p.warnings)],
+      ["hints", num(p.hints)],
+      ["suppressed warnings", num(p["suppressed-warnings"])],
+      ["suppressed hints", num(p["suppressed-hints"])],
+    ];
+    const run = [p.tool ? `IG Publisher ${String(p.tool)}` : undefined, p.version ? `FHIR ${String(p.version)}` : undefined, p.date ?? p.dateISO8601 ? `on ${String(p.date ?? p.dateISO8601)}` : undefined].filter(Boolean);
+    lines.push(`The Publisher's own QA summary for the run this AST came from${run.length ? ` (${run.join(", ")})` : ""}. [Summary (JSON)](${up}${FHIR_QA_ASSETS}/${PUBLISHER_QA_FILE})`, "");
+    const held = rows.filter(([, n]) => n !== undefined);
+    if (held.length) {
+      lines.push("| messages | count |", "|---|---|");
+      for (const [k, n] of held) lines.push(`| ${k} | ${n} |`);
+      lines.push("");
+    }
+  } else {
+    lines.push(
+      "This build holds no Publisher QA summary (`qa.json`): the AST it was built from was cached without one. The Publisher's message list is not published here; an AST cached from a newer build carries its summary.",
+      "",
+    );
+  }
+  lines.push("### The IG's AST", "");
+  const m = q.manifest;
+  if (m) {
+    const tc = (m.toolchain ?? {}) as Json;
+    const prov = Array.isArray(m.provisional) ? (m.provisional as unknown[]).map(String) : [];
+    lines.push("| field | value |", "|---|---|");
+    if (m.generatedAt) lines.push(`| generated | ${code(m.generatedAt)} |`);
+    if (m.authority) lines.push(`| authority | ${code(m.authority)} |`);
+    for (const k of ["publisher", "core", "sushi", "java"]) if (tc[k]) lines.push(`| ${k} | ${code(tc[k])} |`);
+    if (Array.isArray(m.resources)) lines.push(`| resources | ${m.resources.length} |`);
+    if (prov.length) lines.push(`| provisional | ${prov.map(code).join(", ")}${m.provisionalUntil ? `, until ${String(m.provisionalUntil)}` : ""} |`);
+    lines.push("");
+  } else lines.push("This build holds no AST manifest.", "");
+  const v = q.validity;
+  if (v?.verdict) {
+    const why = typeof v.detail?.why === "string" ? ` ${v.detail.why}` : "";
+    lines.push(`**Validity for this checkout:** ${code(v.verdict)}.${why}`, "");
+    const rec = (v.recorded ?? {}) as Json;
+    const cur = (v.current ?? {}) as Json;
+    const keys = ["toolchain", "sourceRevision", "inputDigest"].filter((k) => rec[k] !== undefined || cur[k] !== undefined);
+    if (keys.length) {
+      lines.push("| | recorded in the AST | this checkout |", "|---|---|---|");
+      for (const k of keys) lines.push(`| ${k} | ${rec[k] !== undefined ? code(rec[k]) : "—"} | ${cur[k] !== undefined ? code(cur[k]) : "—"} |`);
+      lines.push("");
+    }
+  } else lines.push("This build recorded no validity verdict for the AST.", "");
+  return lines;
+}
+
+/** The whole page: front matter, then both halves inside `{% raw %}` (entries are data, not Liquid). */
+export function renderQaPage(o: { title: string; fhir: FhirQa; kg: KgQaReport; up?: string }): string {
+  return [
     "---",
-    `title: ${JSON.stringify(title)}`,
+    `title: ${JSON.stringify(o.title)}`,
+    "nav_exclude: true",
     "rendered-by: ig-qa-page",
     "---",
     "",
     "{% raw %}",
-    `# ${title}`,
+    `# ${o.title}`,
     "",
-    "The quality checks recorded for this IG. Each is a check's own record, published unchanged; a finding is a gap the check reports, not a failure of the build.",
+    "Two halves: the FHIR QA of this implementation guide, and the knowledge graph's QA, the harness's checks over the instances this site is built from. A finding is a gap a check reports, not a failure of the build.",
     "",
-  ];
-  if (!records.length) {
-    lines.push("This IG declares a QA directory, but no check has written a record to it.", "");
+    "## FHIR QA",
+    "",
+    ...fhirQaMarkdown(o.fhir, { up: o.up }),
+    "## Knowledge-graph QA",
+    "",
+    ...kgQaMarkdown(o.kg, { assets: KG_QA_ASSETS, up: o.up, level: 3 }),
+    "{% endraw %}",
+    "",
+  ].join("\n");
+}
+
+/** The page for the checkout at `root`: its text, and what it links that must be published beside it ({@link publishQaAssets}). */
+export function buildQaPage(o: { root: string; ast?: string; validity?: string; title?: string }): { page: string; fhir: FhirQa; kg: KgQaReport } {
+  const root = resolve(o.root);
+  const fhir = readFhirQa(o.ast, o.validity);
+  const kg = kgQaReport(root, readDeclaration(root)?.name);
+  return { page: renderQaPage({ title: o.title ?? "QA Report", fhir, kg }), fhir, kg };
+}
+
+/** Publish what the page links under `site`: the Publisher's summary and the KG records. Returns how many KG records were copied. */
+export function publishQaAssets(r: { fhir: FhirQa; kg: KgQaReport }, site: string): number {
+  if (r.fhir.publisher) {
+    mkdirSync(join(site, FHIR_QA_ASSETS), { recursive: true });
+    writeFileSync(join(site, FHIR_QA_ASSETS, PUBLISHER_QA_FILE), `${JSON.stringify(r.fhir.publisher, null, 2)}\n`);
   }
-  for (const r of records) {
-    const name = basename(r.file).replace(/\.qa-results\.json$/, "");
-    lines.push(`## ${name}`, "");
-    if (r.unreadable) {
-      lines.push(`**Unreadable:** \`${basename(r.file)}\` ${r.unreadable}.`, "");
-      continue;
-    }
-    const rec = r.record!;
-    const fams = Object.entries(rec.families ?? {});
-    const total = rec.total ?? fams.reduce((n, [, f]) => n + (f.count ?? 0), 0);
-    lines.push(
-      `${total === 0 ? "No findings." : `**${total} finding(s).**`} Written by \`${rec.producer?.script ?? "?"}\`` +
-        `${rec.subject?.id ? ` about \`${rec.subject.id}\`` : ""}. [Record (JSON)](${QA_ASSETS}/${basename(r.file)})`,
-      "",
-    );
-    if (fams.length) {
-      lines.push("| check | what it reports | findings |", "|---|---|---|");
-      for (const [id, f] of fams) lines.push(`| \`${id}\` | ${cell(f.summary)} | ${f.count ?? f.entries?.length ?? 0} |`);
-      lines.push("");
-    }
-    for (const [id, f] of fams) {
-      const entries = (f.entries ?? []).filter((e) => e !== undefined);
-      if (!entries.length) continue;
-      const cols = [...new Set(entries.flatMap((e) => (e && typeof e === "object" && !Array.isArray(e) ? Object.keys(e) : ["value"])))];
-      lines.push(`### \`${id}\``, "", `| ${cols.join(" | ")} |`, `|${cols.map(() => "---").join("|")}|`);
-      for (const e of entries) {
-        const o = e && typeof e === "object" && !Array.isArray(e) ? (e as Record<string, unknown>) : { value: e };
-        lines.push(`| ${cols.map((c) => cell(o[c])).join(" | ")} |`);
-      }
-      lines.push("");
-    }
-  }
-  lines.push("{% endraw %}", "");
-  return lines.join("\n");
+  return copyKgQaRecords(r.kg, site, KG_QA_ASSETS);
 }
 
 function main(): number {
@@ -134,21 +187,14 @@ function main(): number {
   const root = arg("instance-root");
   const docs = arg("docs");
   if (!root || !docs) {
-    console.error("usage: ig-qa-page.ts --instance-root <dir> --docs <jekyll source> [--title <title>]");
+    console.error("usage: ig-qa-page.ts --instance-root <dir> --docs <jekyll source> [--ast <dir>] [--work <dir>] [--title <title>]");
     return 2;
   }
-  const dirs = instanceDirectoriesForGraph(resolve(root), "qa");
-  if (!dirs.length) {
-    console.log(`${root} declares no qa directory: no QA page`);
-    return 0;
-  }
-  const records = readQaRecords(dirs);
-  const assets = join(resolve(docs), QA_ASSETS);
-  mkdirSync(assets, { recursive: true });
-  for (const r of records) if (!r.unreadable) copyFileSync(r.file, join(assets, basename(r.file)));
-  writeFileSync(join(resolve(docs), "qa.md"), renderQaPage(records, arg("title") ?? "Quality checks"));
-  const bad = records.filter((r) => r.unreadable);
-  console.log(`qa.md: ${records.length - bad.length} record(s) from ${dirs.join(", ")}${bad.length ? `, ${bad.length} UNREADABLE` : ""}`);
+  const work = arg("work");
+  const r = buildQaPage({ root, ast: arg("ast") ?? join(root, "output-ast"), ...(work ? { validity: join(work, "ig-ast-validity.json") } : {}), ...(arg("title") ? { title: arg("title")! } : {}) });
+  writeFileSync(join(resolve(docs), "qa.md"), r.page);
+  const records = publishQaAssets(r, resolve(docs));
+  console.log(`qa.md: FHIR QA ${r.fhir.publisher ? "with" : "without"} the Publisher's summary; KG QA over ${r.kg.instances.length} instance(s), ${records} record(s)`);
   return 0;
 }
 

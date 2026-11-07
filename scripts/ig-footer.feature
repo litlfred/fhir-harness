@@ -42,3 +42,9 @@ Feature: The facts of an IG's page footer
     Given a site holding the TOC and the version history, and a licence url
     Then the links are Table of Contents, Version History and License, in that order
     And with nothing held and no licence there are no links
+
+  @test:scripts/ig-footer.test.ts::astFooterData:_the_AST's_own_build_day::astBuildDayFromManifest
+  Scenario: is the day its Publisher run generated it, and absent when the manifest says nothing
+    Given an AST manifest generated at 2026-11-05T17:28:37Z
+    Then the footer's build day is 2026-11-05
+    And a manifest with no generatedAt, or no manifest at all, gives no build day
