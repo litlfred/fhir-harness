@@ -33,40 +33,40 @@ Feature: A live form page for each Questionnaire in an IG
   Scenario: the worker guard runs first
     Then the service worker guard comes before the first script and names the terminology worker
 
-  @test:scripts/questionnaire-form.test.ts::the_Form_Builder's_index.html,_as_this_site_serves_it::the_page::pageLinksAndLocalScripts
+  @test:scripts/questionnaire-form.test.ts::the_page::pageLinksAndLocalScripts
   Scenario: ✎, 📣 and ✍, the Smart Forms link-out, and nothing loaded from another origin
     Given a Questionnaire's form page
     Then it has edit, feedback and suggest links and a Smart Forms link-out
     And it is set to FHIR R5 and titles the form with the escaped Questionnaire title
     And every script it loads is from this site
 
-  @test:scripts/questionnaire-form.test.ts::the_Form_Builder's_index.html,_as_this_site_serves_it::the_page::linksArtefactPage
+  @test:scripts/questionnaire-form.test.ts::the_page::linksArtefactPage
   Scenario: links the Questionnaire's own page under artifact/, where every artefact page is
     Then it links the Questionnaire's own page under artifact/
 
-  @test:scripts/questionnaire-form.test.ts::the_Form_Builder's_index.html,_as_this_site_serves_it::the_page::suggestConfigNamesMode
+  @test:scripts/questionnaire-form.test.ts::the_page::suggestConfigNamesMode
   Scenario: the suggest config names the Questionnaire mode
     Then its suggest config names the repository, branch, the Questionnaire profile module, FHIR R5, the source and the slug
     And it names no mode and no checker
 
-  @test:scripts/questionnaire-form.test.ts::the_Form_Builder's_index.html,_as_this_site_serves_it::the_page::formHostNamesModeAndBlock
+  @test:scripts/questionnaire-form.test.ts::the_page::formHostNamesModeAndBlock
   Scenario: the form host names the mode and the block, for the runtime to match
     Then the form host names the source, the suggest text and the block
 
-  @test:scripts/questionnaire-form.test.ts::the_Form_Builder's_index.html,_as_this_site_serves_it::the_page::modeEditsUnexpandedJson
+  @test:scripts/questionnaire-form.test.ts::the_page::modeEditsUnexpandedJson
   Scenario: the mode edits the unexpanded built JSON; the FSH stays the named source
     Then the form host's suggest text is the unexpanded source JSON, not the rendered copy
 
-  @test:scripts/questionnaire-form.test.ts::the_Form_Builder's_index.html,_as_this_site_serves_it::the_page::noRepoNoLinks
+  @test:scripts/questionnaire-form.test.ts::the_page::noRepoNoLinks
   Scenario: without a repository there is no edit, feedback or suggest link
     Given a form page written with no repository
     Then it has no edit, feedback or suggest link
 
-  @test:scripts/questionnaire-form.test.ts::the_Form_Builder's_index.html,_as_this_site_serves_it::the_page::lformsFhirVersionNames
+  @test:scripts/questionnaire-form.test.ts::lformsFhirVersionNames
   Scenario: FHIR versions as LHC-Forms names them
     Then FHIR 3.0.2, 4.0.1, 4.3.0 and 5.0.0 are STU3, R4, R4B and R5, and none is R4
 
-  @test:scripts/questionnaire-form.test.ts::the_Form_Builder's_index.html,_as_this_site_serves_it::the_page::checkerBrowserModule
+  @test:scripts/questionnaire-form.test.ts::checkerBrowserModule
   Scenario: the checker ships as a browser module: types stripped, no Node import at load
     Given the checker module
     Then it has no type annotation and no Node import

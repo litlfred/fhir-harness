@@ -65,37 +65,37 @@ Feature: Thin artefact pages and their JSON-LD nodes
     Given an empty site
     Then the check says that is not a pass
 
-  @test:scripts/ig-thin-pages.test.ts::ig-artifact-jsonld_check:_the_kind's_QA,_beyond_shape::thinArtifactPage:_identity_and_a_pointer,_nothing_of_the_artefact's_content::pageNamesSelfAndNode
+  @test:scripts/ig-thin-pages.test.ts::thinArtifactPage:_identity_and_a_pointer,_nothing_of_the_artefact's_content::pageNamesSelfAndNode
   Scenario: names itself by its file, and the node as its alternate
     Given the thin page of a profile
     Then it names its own file as canonical and its node as alternate
 
-  @test:scripts/ig-thin-pages.test.ts::ig-artifact-jsonld_check:_the_kind's_QA,_beyond_shape::thinArtifactPage:_identity_and_a_pointer,_nothing_of_the_artefact's_content::pageLinksRail
+  @test:scripts/ig-thin-pages.test.ts::thinArtifactPage:_identity_and_a_pointer,_nothing_of_the_artefact's_content::pageLinksRail
   Scenario: links the rail rather than inlining it
     Then it links the navbar rail and does not inline it
 
-  @test:scripts/ig-thin-pages.test.ts::ig-artifact-jsonld_check:_the_kind's_QA,_beyond_shape::thinArtifactPage:_identity_and_a_pointer,_nothing_of_the_artefact's_content::pageConfigNodeLoadersOrder
+  @test:scripts/ig-thin-pages.test.ts::thinArtifactPage:_identity_and_a_pointer,_nothing_of_the_artefact's_content::pageConfigNodeLoadersOrder
   Scenario: its config names the node, the loaders and the reading order
     Then its config names the node, the AST loader, the previous and next pages and the published base
 
-  @test:scripts/ig-thin-pages.test.ts::ig-artifact-jsonld_check:_the_kind's_QA,_beyond_shape::thinArtifactPage:_identity_and_a_pointer,_nothing_of_the_artefact's_content::noscriptLinksNodeAndResource
+  @test:scripts/ig-thin-pages.test.ts::thinArtifactPage:_identity_and_a_pointer,_nothing_of_the_artefact's_content::noscriptLinksNodeAndResource
   Scenario: a reader without JavaScript is sent to the node and the resource
     Then a no-script block links the node and the compiled resource
 
-  @test:scripts/ig-thin-pages.test.ts::ig-artifact-jsonld_check:_the_kind's_QA,_beyond_shape::thinArtifactPage:_identity_and_a_pointer,_nothing_of_the_artefact's_content::pageHoldsNoContent
+  @test:scripts/ig-thin-pages.test.ts::thinArtifactPage:_identity_and_a_pointer,_nothing_of_the_artefact's_content::pageHoldsNoContent
   Scenario: holds no description, version or canonical: those are the node's
     Then it holds neither the description nor the canonical
 
-  @test:scripts/ig-thin-pages.test.ts::ig-artifact-jsonld_check:_the_kind's_QA,_beyond_shape::thinArtifactPage:_identity_and_a_pointer,_nothing_of_the_artefact's_content::pageIsSmall
+  @test:scripts/ig-thin-pages.test.ts::thinArtifactPage:_identity_and_a_pointer,_nothing_of_the_artefact's_content::pageIsSmall
   Scenario: is small
     Then it is under 3000 characters
 
-  @test:scripts/ig-thin-pages.test.ts::ig-artifact-jsonld_check:_the_kind's_QA,_beyond_shape::the_shared_renderer::rendererParses
+  @test:scripts/ig-thin-pages.test.ts::the_shared_renderer::rendererParses
   Scenario: parses as a script
     Given the shared renderer script
     Then it parses as a script and reads the page config block by its id
 
-  @test:scripts/ig-thin-pages.test.ts::ig-artifact-jsonld_check:_the_kind's_QA,_beyond_shape::gen-ig-pages:_thin_by_default,_end_to_end_(owner,_2026-10-12:_\"make_thin_default\")::thinByDefault
+  @test:scripts/ig-thin-pages.test.ts::gen-ig-pages:_thin_by_default,_end_to_end_(owner,_2026-10-12:_\"make_thin_default\")::thinByDefault
   Scenario: with no flag, writes each artefact page as a thin .html at the full page's address, its node beside it, and the index node
     Given pages generated with no flag
     Then the artifact directory holds each page as thin HTML, the profile's tab views, the nodes, their JSON twins and the index files
@@ -103,153 +103,153 @@ Feature: Thin artefact pages and their JSON-LD nodes
     And a page starts with a doctype, is under 3000 characters and its next page is the second artefact
     And the index node is titled "IPS"
 
-  @test:scripts/ig-thin-pages.test.ts::ig-artifact-jsonld_check:_the_kind's_QA,_beyond_shape::gen-ig-pages:_thin_by_default,_end_to_end_(owner,_2026-10-12:_\"make_thin_default\")::thinFlagSamePages
+  @test:scripts/ig-thin-pages.test.ts::gen-ig-pages:_thin_by_default,_end_to_end_(owner,_2026-10-12:_\"make_thin_default\")::thinFlagSamePages
   Scenario: --thin, the old opt-in, is still accepted and writes the same pages
     Then pages generated with --thin are the same as with no flag
 
-  @test:scripts/ig-thin-pages.test.ts::ig-artifact-jsonld_check:_the_kind's_QA,_beyond_shape::gen-ig-pages:_thin_by_default,_end_to_end_(owner,_2026-10-12:_\"make_thin_default\")::nodesPassCheckWhenServed
+  @test:scripts/ig-thin-pages.test.ts::gen-ig-pages:_thin_by_default,_end_to_end_(owner,_2026-10-12:_\"make_thin_default\")::nodesPassCheckWhenServed
   Scenario: its nodes pass the kind's QA once the resource is served
     Given the generated index and its compiled resource served on the site
     Then the check has no findings
 
-  @test:scripts/ig-thin-pages.test.ts::ig-artifact-jsonld_check:_the_kind's_QA,_beyond_shape::gen-ig-pages:_thin_by_default,_end_to_end_(owner,_2026-10-12:_\"make_thin_default\")::fullPagesOldPath
+  @test:scripts/ig-thin-pages.test.ts::gen-ig-pages:_thin_by_default,_end_to_end_(owner,_2026-10-12:_\"make_thin_default\")::fullPagesOldPath
   Scenario: --full-pages keeps the old path: full .md pages, no nodes, no renderer
     Given pages generated with --full-pages
     Then every artefact page is Markdown and no renderer is copied
 
-  @test:scripts/ig-thin-pages.test.ts::ig-artifact-jsonld_check:_the_kind's_QA,_beyond_shape::gen-ig-pages:_thin_by_default,_end_to_end_(owner,_2026-10-12:_\"make_thin_default\")::thinAndFullRefused
+  @test:scripts/ig-thin-pages.test.ts::gen-ig-pages:_thin_by_default,_end_to_end_(owner,_2026-10-12:_\"make_thin_default\")::thinAndFullRefused
   Scenario: --thin and --full-pages together are refused
     When the generator runs with --thin and --full-pages
     Then it exits 2 and says to pick one
 
-  @test:scripts/ig-thin-pages.test.ts::ig-artifact-jsonld_check:_the_kind's_QA,_beyond_shape::gen-ig-pages:_thin_by_default,_end_to_end_(owner,_2026-10-12:_\"make_thin_default\")::the_index_node:_every_artefact_once,_each_entry_naming_its_node::indexNodeListsAll
+  @test:scripts/ig-thin-pages.test.ts::the_index_node:_every_artefact_once,_each_entry_naming_its_node::indexNodeListsAll
   Scenario: lists every artefact in the Publisher's order, with what a row shows, and validates
     When the index node is written titled "IPS"
     Then it validates with its schema tag and id "index.jsonld"
     And it counts 2 items and lists both nodes in order, the second titled "Patient (IPS)"
     And it links no HTML rendering
 
-  @test:scripts/ig-thin-pages.test.ts::ig-artifact-jsonld_check:_the_kind's_QA,_beyond_shape::gen-ig-pages:_thin_by_default,_end_to_end_(owner,_2026-10-12:_\"make_thin_default\")::the_index_node:_every_artefact_once,_each_entry_naming_its_node::refusesWrongCount
+  @test:scripts/ig-thin-pages.test.ts::the_index_node:_every_artefact_once,_each_entry_naming_its_node::refusesWrongCount
   Scenario: the schema refuses a count that is not the list's
     Given an index node whose count is 3
     Then the schema refuses it
 
-  @test:scripts/ig-thin-pages.test.ts::ig-artifact-jsonld_check:_the_kind's_QA,_beyond_shape::gen-ig-pages:_thin_by_default,_end_to_end_(owner,_2026-10-12:_\"make_thin_default\")::ig-artifact-jsonld_check_over_the_index_node_(calibrated:_each_case_breaks_one_thing)::indexCheckPasses
+  @test:scripts/ig-thin-pages.test.ts::ig-artifact-jsonld_check_over_the_index_node_(calibrated:_each_case_breaks_one_thing)::indexCheckPasses
   Scenario: is not an orphan, and passes on what was written
     Then the check of the written site with its index node has no findings
 
-  @test:scripts/ig-thin-pages.test.ts::ig-artifact-jsonld_check:_the_kind's_QA,_beyond_shape::gen-ig-pages:_thin_by_default,_end_to_end_(owner,_2026-10-12:_\"make_thin_default\")::ig-artifact-jsonld_check_over_the_index_node_(calibrated:_each_case_breaks_one_thing)::indexCheckFailsMissing
+  @test:scripts/ig-thin-pages.test.ts::ig-artifact-jsonld_check_over_the_index_node_(calibrated:_each_case_breaks_one_thing)::indexCheckFailsMissing
   Scenario: fails when the index node is missing
     When the index node is deleted
     Then the check says "index.jsonld: missing"
 
-  @test:scripts/ig-thin-pages.test.ts::ig-artifact-jsonld_check:_the_kind's_QA,_beyond_shape::gen-ig-pages:_thin_by_default,_end_to_end_(owner,_2026-10-12:_\"make_thin_default\")::ig-artifact-jsonld_check_over_the_index_node_(calibrated:_each_case_breaks_one_thing)::indexCheckFailsOmitted
+  @test:scripts/ig-thin-pages.test.ts::ig-artifact-jsonld_check_over_the_index_node_(calibrated:_each_case_breaks_one_thing)::indexCheckFailsOmitted
   Scenario: fails when it omits an artefact
     When the index node drops an artefact and its count
     Then the check says it does not list that artefact
 
-  @test:scripts/ig-thin-pages.test.ts::ig-artifact-jsonld_check:_the_kind's_QA,_beyond_shape::gen-ig-pages:_thin_by_default,_end_to_end_(owner,_2026-10-12:_\"make_thin_default\")::ig-artifact-jsonld_check_over_the_index_node_(calibrated:_each_case_breaks_one_thing)::indexCheckFailsWrongNode
+  @test:scripts/ig-thin-pages.test.ts::ig-artifact-jsonld_check_over_the_index_node_(calibrated:_each_case_breaks_one_thing)::indexCheckFailsWrongNode
   Scenario: fails when an entry names another artefact's node
     When an index entry names another artefact's node
     Then the check says the entry names a node that is the other artefact
 
-  @test:scripts/ig-thin-pages.test.ts::ig-artifact-jsonld_check:_the_kind's_QA,_beyond_shape::gen-ig-pages:_thin_by_default,_end_to_end_(owner,_2026-10-12:_\"make_thin_default\")::ig-artifact-jsonld_check_over_the_index_node_(calibrated:_each_case_breaks_one_thing)::indexCheckFailsAbsentNode
+  @test:scripts/ig-thin-pages.test.ts::ig-artifact-jsonld_check_over_the_index_node_(calibrated:_each_case_breaks_one_thing)::indexCheckFailsAbsentNode
   Scenario: fails when an entry's node is not on the site
     When an index entry names a node that does not exist
     Then the check says it is not on the site
 
-  @test:scripts/ig-thin-pages.test.ts::ig-artifact-jsonld_check:_the_kind's_QA,_beyond_shape::gen-ig-pages:_thin_by_default,_end_to_end_(owner,_2026-10-12:_\"make_thin_default\")::ig-artifact-jsonld_check_over_the_index_node_(calibrated:_each_case_breaks_one_thing)::indexCheckFailsCount
+  @test:scripts/ig-thin-pages.test.ts::ig-artifact-jsonld_check_over_the_index_node_(calibrated:_each_case_breaks_one_thing)::indexCheckFailsCount
   Scenario: fails when its count disagrees with its list
     When the index count is set to 5
     Then the check says it says 5 and lists 2
 
-  @test:scripts/ig-thin-pages.test.ts::ig-artifact-jsonld_check:_the_kind's_QA,_beyond_shape::gen-ig-pages:_thin_by_default,_end_to_end_(owner,_2026-10-12:_\"make_thin_default\")::what_an_instance_states:_its_profiles_and_its_code,_in_the_node_and_the_index_(owner,_2026-10-12)::nodeProfilesAndSubject
+  @test:scripts/ig-thin-pages.test.ts::what_an_instance_states:_its_profiles_and_its_code,_in_the_node_and_the_index_(owner,_2026-10-12)::nodeProfilesAndSubject
   Scenario: the node names its profiles as dcterms:conformsTo and its code as schema:DefinedTerms, as written
     Given a Basic instance stating two profiles and a code with and without a display
     When its node is written
     Then it validates
     And its profiles are conformsTo and its codes are defined terms, named only where the resource gives a display
 
-  @test:scripts/ig-thin-pages.test.ts::ig-artifact-jsonld_check:_the_kind's_QA,_beyond_shape::gen-ig-pages:_thin_by_default,_end_to_end_(owner,_2026-10-12:_\"make_thin_default\")::what_an_instance_states:_its_profiles_and_its_code,_in_the_node_and_the_index_(owner,_2026-10-12)::neitherStatedNeither
+  @test:scripts/ig-thin-pages.test.ts::what_an_instance_states:_its_profiles_and_its_code,_in_the_node_and_the_index_(owner,_2026-10-12)::neitherStatedNeither
   Scenario: an artefact that states neither has neither
     Then a node for an artefact stating no profile or code has neither
 
-  @test:scripts/ig-thin-pages.test.ts::ig-artifact-jsonld_check:_the_kind's_QA,_beyond_shape::gen-ig-pages:_thin_by_default,_end_to_end_(owner,_2026-10-12:_\"make_thin_default\")::what_an_instance_states:_its_profiles_and_its_code,_in_the_node_and_the_index_(owner,_2026-10-12)::definitionNotByProfile
+  @test:scripts/ig-thin-pages.test.ts::what_an_instance_states:_its_profiles_and_its_code,_in_the_node_and_the_index_(owner,_2026-10-12)::definitionNotByProfile
   Scenario: a definition (it has a canonical) is described by its description: its profiles are not written
     Given the ImplementationGuide, which states a profile
     Then neither its node nor its index entry carries conformsTo
 
-  @test:scripts/ig-thin-pages.test.ts::ig-artifact-jsonld_check:_the_kind's_QA,_beyond_shape::gen-ig-pages:_thin_by_default,_end_to_end_(owner,_2026-10-12:_\"make_thin_default\")::what_an_instance_states:_its_profiles_and_its_code,_in_the_node_and_the_index_(owner,_2026-10-12)::indexEntryRepeatsStated
+  @test:scripts/ig-thin-pages.test.ts::what_an_instance_states:_its_profiles_and_its_code,_in_the_node_and_the_index_(owner,_2026-10-12)::indexEntryRepeatsStated
   Scenario: the index entry repeats them, and every canonical, so a row can link a profile of the same IG
     When the index node is written
     Then it validates
     And the Basic instance's entry repeats its node's conformsTo and subject
     And the profile's entry carries its canonical as sameAs
 
-  @test:scripts/ig-thin-pages.test.ts::ig-artifact-jsonld_check:_the_kind's_QA,_beyond_shape::gen-ig-pages:_thin_by_default,_end_to_end_(owner,_2026-10-12:_\"make_thin_default\")::what_an_instance_states:_its_profiles_and_its_code,_in_the_node_and_the_index_(owner,_2026-10-12)::refusesTermWithoutCodeOrName
+  @test:scripts/ig-thin-pages.test.ts::what_an_instance_states:_its_profiles_and_its_code,_in_the_node_and_the_index_(owner,_2026-10-12)::refusesTermWithoutCodeOrName
   Scenario: the schema refuses a term with neither a code nor a name
     Given a node with a defined term that has no code and no name
     Then the schema refuses it
 
-  @test:scripts/ig-thin-pages.test.ts::ig-artifact-jsonld_check:_the_kind's_QA,_beyond_shape::gen-ig-pages:_thin_by_default,_end_to_end_(owner,_2026-10-12:_\"make_thin_default\")::what_an_instance_states:_its_profiles_and_its_code,_in_the_node_and_the_index_(owner,_2026-10-12)::statedCheckPasses
+  @test:scripts/ig-thin-pages.test.ts::what_an_instance_states:_its_profiles_and_its_code,_in_the_node_and_the_index_(owner,_2026-10-12)::statedCheckPasses
   Scenario: check passes on what was written
     Then the check of the written site has no findings
 
-  @test:scripts/ig-thin-pages.test.ts::ig-artifact-jsonld_check:_the_kind's_QA,_beyond_shape::gen-ig-pages:_thin_by_default,_end_to_end_(owner,_2026-10-12:_\"make_thin_default\")::what_an_instance_states:_its_profiles_and_its_code,_in_the_node_and_the_index_(owner,_2026-10-12)::checkFailsEntrySubject
+  @test:scripts/ig-thin-pages.test.ts::what_an_instance_states:_its_profiles_and_its_code,_in_the_node_and_the_index_(owner,_2026-10-12)::checkFailsEntrySubject
   Scenario: check fails when an entry's code is not its node's (a summary, never a second home)
     When an index entry's code differs from its node's
     Then the check says the entry says dcterms:subject
 
-  @test:scripts/ig-thin-pages.test.ts::ig-artifact-jsonld_check:_the_kind's_QA,_beyond_shape::gen-ig-pages:_thin_by_default,_end_to_end_(owner,_2026-10-12:_\"make_thin_default\")::what_an_instance_states:_its_profiles_and_its_code,_in_the_node_and_the_index_(owner,_2026-10-12)::checkFailsEntryProfile
+  @test:scripts/ig-thin-pages.test.ts::what_an_instance_states:_its_profiles_and_its_code,_in_the_node_and_the_index_(owner,_2026-10-12)::checkFailsEntryProfile
   Scenario: check fails when an entry claims a profile its node does not
     When an index entry claims a profile its node does not
     Then the check says it says dcterms:conformsTo
 
-  @test:scripts/ig-thin-pages.test.ts::ig-artifact-jsonld_check:_the_kind's_QA,_beyond_shape::gen-ig-pages:_thin_by_default,_end_to_end_(owner,_2026-10-12:_\"make_thin_default\")::what_an_instance_states:_its_profiles_and_its_code,_in_the_node_and_the_index_(owner,_2026-10-12)::checkFailsEntryCanonical
+  @test:scripts/ig-thin-pages.test.ts::what_an_instance_states:_its_profiles_and_its_code,_in_the_node_and_the_index_(owner,_2026-10-12)::checkFailsEntryCanonical
   Scenario: check fails when an entry's canonical is not its node's
     When an index entry's canonical differs from its node's
     Then the check says it says schema:sameAs
 
-  @test:scripts/ig-thin-pages.test.ts::ig-artifact-jsonld_check:_the_kind's_QA,_beyond_shape::gen-ig-pages:_thin_by_default,_end_to_end_(owner,_2026-10-12:_\"make_thin_default\")::thinIndexPage:_the_IG's_artifacts_and_toc_pages_as_thin_shells::indexPagesThinShells
+  @test:scripts/ig-thin-pages.test.ts::thinIndexPage:_the_IG's_artifacts_and_toc_pages_as_thin_shells::indexPagesThinShells
   Scenario: names the index node as the asset, links the rail and the shared renderer
     Given the artifacts and TOC thin pages
     Then each names the index node as alternate, links the rail, the renderer and the stylesheet
     And each has no style or svg element and is under 3000 characters
 
-  @test:scripts/ig-thin-pages.test.ts::ig-artifact-jsonld_check:_the_kind's_QA,_beyond_shape::gen-ig-pages:_thin_by_default,_end_to_end_(owner,_2026-10-12:_\"make_thin_default\")::thinIndexPage:_the_IG's_artifacts_and_toc_pages_as_thin_shells::indexConfigNamesViewIndex
+  @test:scripts/ig-thin-pages.test.ts::thinIndexPage:_the_IG's_artifacts_and_toc_pages_as_thin_shells::indexConfigNamesViewIndex
   Scenario: its config names the view, the index, the pages and the footer
     Then the artifacts page's config names the view, index, pages, footer, next page and root
     And the TOC page's view is "toc"
 
-  @test:scripts/ig-thin-pages.test.ts::ig-artifact-jsonld_check:_the_kind's_QA,_beyond_shape::gen-ig-pages:_thin_by_default,_end_to_end_(owner,_2026-10-12:_\"make_thin_default\")::thinIndexPage:_the_IG's_artifacts_and_toc_pages_as_thin_shells::listsNoArtefactItself
+  @test:scripts/ig-thin-pages.test.ts::thinIndexPage:_the_IG's_artifacts_and_toc_pages_as_thin_shells::listsNoArtefactItself
   Scenario: lists no artefact itself: the list is the node's; the toc keeps the IG's own pages
     Then the artifacts page does not name an artefact
     And the TOC links the IG's home page
 
-  @test:scripts/ig-thin-pages.test.ts::ig-artifact-jsonld_check:_the_kind's_QA,_beyond_shape::gen-ig-pages:_thin_by_default,_end_to_end_(owner,_2026-10-12:_\"make_thin_default\")::the_shared_renderer_draws_both_page_families::rendererReadsEitherConfig
+  @test:scripts/ig-thin-pages.test.ts::the_shared_renderer_draws_both_page_families::rendererReadsEitherConfig
   Scenario: reads either config block
     Then the renderer reads the index config block by its id
 
-  @test:scripts/ig-thin-pages.test.ts::ig-artifact-jsonld_check:_the_kind's_QA,_beyond_shape::gen-ig-pages:_thin_by_default,_end_to_end_(owner,_2026-10-12:_\"make_thin_default\")::the_shared_renderer_draws_both_page_families::rendererGuideFirst
+  @test:scripts/ig-thin-pages.test.ts::the_shared_renderer_draws_both_page_families::rendererGuideFirst
   Scenario: draws the IG's own resource first, as This guide, never as Not categorised
     Then the renderer draws the IG's own resource as "This guide"
 
-  @test:scripts/ig-thin-pages.test.ts::ig-artifact-jsonld_check:_the_kind's_QA,_beyond_shape::gen-ig-pages:_thin_by_default,_end_to_end_(owner,_2026-10-12:_\"make_thin_default\")::the_shared_renderer_draws_both_page_families::rendererFilledColumnsOnly
+  @test:scripts/ig-thin-pages.test.ts::the_shared_renderer_draws_both_page_families::rendererFilledColumnsOnly
   Scenario: draws only the columns a table's rows fill, and sub-heads a category that mixes types
     Then the renderer chooses columns from the rows, draws description only when filled, and sub-heads a category by type
 
-  @test:scripts/ig-thin-pages.test.ts::ig-artifact-jsonld_check:_the_kind's_QA,_beyond_shape::gen-ig-pages:_thin_by_default,_end_to_end_(owner,_2026-10-12:_\"make_thin_default\")::the_shared_renderer_draws_both_page_families::rendererCategoriesOpen
+  @test:scripts/ig-thin-pages.test.ts::the_shared_renderer_draws_both_page_families::rendererCategoriesOpen
   Scenario: draws every category OPEN: no <details> (the owner could not find artefacts behind collapsed ones)
     Then the renderer creates no details element
 
-  @test:scripts/ig-thin-pages.test.ts::ig-artifact-jsonld_check:_the_kind's_QA,_beyond_shape::gen-ig-pages:_thin_by_default,_end_to_end_(owner,_2026-10-12:_\"make_thin_default\")::the_shared_renderer_draws_both_page_families::the_IG_site,_thin_by_default:_stageIgSite,_composeIgSite_and_artifactsFor::stageWritesThinIndexPages
+  @test:scripts/ig-thin-pages.test.ts::the_IG_site,_thin_by_default:_stageIgSite,_composeIgSite_and_artifactsFor::stageWritesThinIndexPages
   Scenario: writes artifacts.html and toc.html as thin pages, and neither as Liquid
     Given an IG staged as a site
     Then artifacts.html and toc.html are generated and no Markdown versions are written
     And the artifacts page is a thin page rendered by ig-pages with the artifacts view on the index node
     And the TOC page lists the IG's own pages in sushi-config's order and has the toc view
 
-  @test:scripts/ig-thin-pages.test.ts::ig-artifact-jsonld_check:_the_kind's_QA,_beyond_shape::gen-ig-pages:_thin_by_default,_end_to_end_(owner,_2026-10-12:_\"make_thin_default\")::the_shared_renderer_draws_both_page_families::the_IG_site,_thin_by_default:_stageIgSite,_composeIgSite_and_artifactsFor::composedPagesThinLayout
+  @test:scripts/ig-thin-pages.test.ts::the_IG_site,_thin_by_default:_stageIgSite,_composeIgSite_and_artifactsFor::composedPagesThinLayout
   Scenario: composed into a host, the IG's pages wear the thin layout: chrome linked, nothing of the host's inlined
     When the staged site is composed at the root of a host
     Then there are no collisions
@@ -260,12 +260,12 @@ Feature: Thin artefact pages and their JSON-LD nodes
     And the shared layout files and the source links script are copied, and no top bar stylesheet
     And the thin artifacts page is copied as it is
 
-  @test:scripts/ig-thin-pages.test.ts::ig-artifact-jsonld_check:_the_kind's_QA,_beyond_shape::gen-ig-pages:_thin_by_default,_end_to_end_(owner,_2026-10-12:_\"make_thin_default\")::the_shared_renderer_draws_both_page_families::the_IG_site,_thin_by_default:_stageIgSite,_composeIgSite_and_artifactsFor::fullPagesKeepHostLayout
+  @test:scripts/ig-thin-pages.test.ts::the_IG_site,_thin_by_default:_stageIgSite,_composeIgSite_and_artifactsFor::fullPagesKeepHostLayout
   Scenario: --full-pages keeps the host's layout
     When the staged site is composed with full pages
     Then there are no collisions, the page uses the default layout and no layouts are written
 
-  @test:scripts/ig-thin-pages.test.ts::ig-artifact-jsonld_check:_the_kind's_QA,_beyond_shape::gen-ig-pages:_thin_by_default,_end_to_end_(owner,_2026-10-12:_\"make_thin_default\")::the_shared_renderer_draws_both_page_families::the_IG_site,_thin_by_default:_stageIgSite,_composeIgSite_and_artifactsFor::artifactsForNamesIndexNode
+  @test:scripts/ig-thin-pages.test.ts::the_IG_site,_thin_by_default:_stageIgSite,_composeIgSite_and_artifactsFor::artifactsForNamesIndexNode
   Scenario: artifactsFor names the index node, and refuses when the artefact pages were built with --full-pages
     Given an instance with an artifact index and an artifact docs directory with no index node
     Then asking for the artefacts throws, naming --full-pages

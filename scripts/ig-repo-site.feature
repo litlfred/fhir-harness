@@ -119,51 +119,51 @@ Feature: Building an IG repository's own site from its AST
     Given a site holding an artifacts page wearing the Publisher's chrome
     Then publisher pages throw, naming the Publisher's chrome and the page
 
-  @test:scripts/ig-repo-site.test.ts::the_guard:_no_published_page_wears_the_IG_Publisher's_chrome_(owner,_2026-10-14)::builtPageByPermalink
+  @test:scripts/ig-repo-site.test.ts::builtPageByPermalink
   Scenario: builtPage: a source page by Jekyll's default permalink; never a file Jekyll does not publish
     Then Markdown pages build to .html and an HTML page keeps its name
     And an include and an image build to no page
 
-  @test:scripts/ig-repo-site.test.ts::the_guard:_no_published_page_wears_the_IG_Publisher's_chrome_(owner,_2026-10-14)::checkoutScriptsDeclared
+  @test:scripts/ig-repo-site.test.ts::checkoutScriptsDeclared
   Scenario: the checkout scripts the platform asks for are the ones package.json declares
     Then the checkout scripts for ast, compose and publisher-pages run ig-repo-site.ts with those commands
 
-  @test:scripts/ig-repo-site.test.ts::the_guard:_no_published_page_wears_the_IG_Publisher's_chrome_(owner,_2026-10-14)::the_site's_folio-build.json::platformIsPinnedToolset
+  @test:scripts/ig-repo-site.test.ts::the_site's_folio-build.json::platformIsPinnedToolset
   Scenario: the platform is the toolset index.lock.json pins, else its first pin
     Then with no lock there is no platform commit
     And a lock pinning the toolset gives its ref
     And a lock without the toolset gives its first pin
 
-  @test:scripts/ig-repo-site.test.ts::the_guard:_no_published_page_wears_the_IG_Publisher's_chrome_(owner,_2026-10-14)::the_site's_folio-build.json::stampNamesRepoAndCommit
+  @test:scripts/ig-repo-site.test.ts::the_site's_folio-build.json::stampNamesRepoAndCommit
   Scenario: names the repository and its commit from the checkout when the runner says nothing
     Given a checkout with a lock and no runner variables
     Then the stamp names the instance, the platform commit, the repository, branch and head commit, and the build time
 
-  @test:scripts/ig-repo-site.test.ts::the_guard:_no_published_page_wears_the_IG_Publisher's_chrome_(owner,_2026-10-14)::the_site's_folio-build.json::publisherPagesWritesStamp
+  @test:scripts/ig-repo-site.test.ts::the_site's_folio-build.json::publisherPagesWritesStamp
   Scenario: publisher-pages writes it at the root of the composed site, the marker of a folio root
     When publisher pages run for a site
     Then the stamp file is written at the site root and names the platform commit
 
-  @test:scripts/ig-repo-site.test.ts::the_guard:_no_published_page_wears_the_IG_Publisher's_chrome_(owner,_2026-10-14)::the_site's_folio-build.json::stampNamesAstSource
+  @test:scripts/ig-repo-site.test.ts::the_site's_folio-build.json::stampNamesAstSource
   Scenario: names the AST the artefact pages came from, so a stale preview's stamp does not claim the branch for them
     Given a work directory whose validity record says the AST is stale-inputs at revision "91b2b5a"
     When publisher pages run
     Then the stamp's AST is that commit with the verdict "stale-inputs" and the kind "full"
     And the log mentions the verdict and the revision
 
-  @test:scripts/ig-repo-site.test.ts::the_guard:_no_published_page_wears_the_IG_Publisher's_chrome_(owner,_2026-10-14)::siteTitledOnce
+  @test:scripts/ig-repo-site.test.ts::siteTitledOnce
   Scenario: a page titled as the site is titled once (the IG's home page at the root)
     Given the thin IG layout and the harness layout
     Then a page titled as the site renders the title once
     And another page renders its title followed by the site title
 
-  @test:scripts/ig-repo-site.test.ts::the_guard:_no_published_page_wears_the_IG_Publisher's_chrome_(owner,_2026-10-14)::composedPageCarriesFolio
+  @test:scripts/ig-repo-site.test.ts::composedPageCarriesFolio
   Scenario: an IG page composed into a host carries the reader's folio (bean 95sk, R24)
     Given the thin IG layout under a host
     Then it carries the folio mount
     And its head links the host's docs-ui script and stylesheet
 
-  @test:scripts/ig-repo-site.test.ts::the_guard:_no_published_page_wears_the_IG_Publisher's_chrome_(owner,_2026-10-14)::the_IG's_TOC_on_its_thin_pages_(owner,_2026-11-02:_artifacts.html_had_no_TOC_in_the_rail)::thinPagesGetTocNav
+  @test:scripts/ig-repo-site.test.ts::the_IG's_TOC_on_its_thin_pages_(owner,_2026-11-02:_artifacts.html_had_no_TOC_in_the_rail)::thinPagesGetTocNav
   Scenario: every thin page gets the declaration and its label; other pages keep theirs
     Given a site whose index declares the TOC, four thin pages and another page
     When the TOC is stamped
@@ -171,7 +171,7 @@ Feature: Building an IG repository's own site from its AST
     And the other page is unchanged
     And a second run stamps nothing
 
-  @test:scripts/ig-repo-site.test.ts::the_guard:_no_published_page_wears_the_IG_Publisher's_chrome_(owner,_2026-10-14)::the_IG's_TOC_on_its_thin_pages_(owner,_2026-11-02:_artifacts.html_had_no_TOC_in_the_rail)::noTocNothingStamped
+  @test:scripts/ig-repo-site.test.ts::the_IG's_TOC_on_its_thin_pages_(owner,_2026-11-02:_artifacts.html_had_no_TOC_in_the_rail)::noTocNothingStamped
   Scenario: no page declares the TOC: nothing to copy, nothing stamped
     Given a site where no page declares the TOC
     Then nothing is stamped
