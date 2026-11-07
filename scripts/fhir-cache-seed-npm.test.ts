@@ -81,7 +81,7 @@ describe("fhir-cache-seed-npm", () => {
   });
 
   describe("validPart", () => {
-    test("accepts safe names and versions", () => {
+    test("validPartAcceptsSafe", () => {
       expect(validPart("hl7.fhir.r4.core")).toBe(true);
       expect(validPart("org.example.base")).toBe(true);
       expect(validPart("1.0.0")).toBe(true);
@@ -89,7 +89,7 @@ describe("fhir-cache-seed-npm", () => {
       expect(validPart("current")).toBe(true);
     });
 
-    test("refuses dangerous strings that could cause traversal or command injection", () => {
+    test("validPartRefusesDangerous", () => {
       expect(validPart("")).toBe(false);
       expect(validPart("-rf")).toBe(false);
       expect(validPart("--registry=evil")).toBe(false);
@@ -103,7 +103,7 @@ describe("fhir-cache-seed-npm", () => {
   });
 
   describe("exact", () => {
-    test("recognizes concrete semantic versions and current", () => {
+    test("exactAcceptsConcrete", () => {
       expect(exact("1.0.0")).toBe(true);
       expect(exact("4.0.1")).toBe(true);
       expect(exact("2.0.0-ballot")).toBe(true);
@@ -111,7 +111,7 @@ describe("fhir-cache-seed-npm", () => {
       expect(exact("current")).toBe(true);
     });
 
-    test("refuses wildcards and ranges", () => {
+    test("exactRefusesRanges", () => {
       expect(exact("1.0.x")).toBe(false);
       expect(exact("^1.0.0")).toBe(false);
       expect(exact("~1.0.0")).toBe(false);
@@ -121,7 +121,7 @@ describe("fhir-cache-seed-npm", () => {
   });
 
   describe("parseSushiConfigDeps", () => {
-    test("extracts fhirVersion and dependencies from sushi-config.yaml", () => {
+    test("parsesSushiDeps", () => {
       const configPath = join(tmp, "sushi-config.yaml");
       writeFileSync(
         configPath,
@@ -149,7 +149,7 @@ dependencies:
       expect(deps).toContain("hl7.fhir.uv.sdc#4.0.0");
     });
 
-    test("ignores comments and comment blocks without breaking early", () => {
+    test("parseIgnoresComments", () => {
       const configPath = join(tmp, "sushi-config.yaml");
       writeFileSync(
         configPath,
@@ -177,7 +177,7 @@ dependencies:
   });
 
   describe("checkCached", () => {
-    test("accepts matching package entry", () => {
+    test("checkCachedAcceptsMatch", () => {
       const pkgDir = join(tmp, "a.b#1.0.0");
       mkdirSync(join(pkgDir, "package"), { recursive: true });
       writeFileSync(
@@ -188,7 +188,7 @@ dependencies:
       expect(checkCached(pkgDir, "a.b", "1.0.0")).toBeNull();
     });
 
-    test("accepts @hl7/ scoped name", () => {
+    test("checkCachedAcceptsScoped", () => {
       const pkgDir = join(tmp, "hl7.fhir.r4.core#4.0.1");
       mkdirSync(join(pkgDir, "package"), { recursive: true });
       writeFileSync(
@@ -199,7 +199,7 @@ dependencies:
       expect(checkCached(pkgDir, "hl7.fhir.r4.core", "4.0.1")).toBeNull();
     });
 
-    test("refuses mismatched version or name", () => {
+    test("checkCachedRefusesMismatch", () => {
       const pkgDir = join(tmp, "a.b#1.0.0");
       mkdirSync(join(pkgDir, "package"), { recursive: true });
       writeFileSync(
@@ -212,7 +212,7 @@ dependencies:
   });
 
   describe("tarball reading & unpacking", () => {
-    test("reads package.json in memory from tgz buffer", () => {
+    test("readsPackageJsonFromTgz", () => {
       const tgz = createMockTgz("my.pkg", "1.2.3", { "dep.a": "1.0.0" });
       const pj = readPackageJsonFromTgz(tgz);
       expect(pj).not.toBeNull();
@@ -221,7 +221,7 @@ dependencies:
       expect((pj?.dependencies as Record<string, string>)?.["dep.a"]).toBe("1.0.0");
     });
 
-    test("unpacks files into target directory safely", () => {
+    test("unpacksTgzSafely", () => {
       const tgz = createMockTgz("my.pkg", "1.2.3");
       const dest = join(tmp, "my.pkg#1.2.3");
       unpackTgz(tgz, dest);
@@ -232,7 +232,7 @@ dependencies:
   });
 
   describe("site repositories (--site-repo)", () => {
-    test("parses PREFIX=OWNER/REPO[@BRANCH], repeatable", () => {
+    test("parsesSiteRepoArgs", () => {
       const p = parseCliArgs([
         "--site-repo", "org.example.=example/site",
         "--site-repo", "org.other.=other/pages@gh-pages",
@@ -243,18 +243,18 @@ dependencies:
       });
     });
 
-    test("no site repository unless the caller maps the prefix", async () => {
+    test("noSiteRepoUnlessMapped", async () => {
       expect(await fromSite("org.example.base", "1.0.0")).toBeNull();
       expect(await fromSite("org.example.base", "1.0.0", { "org.other.": "o/r" })).toBeNull();
     });
 
-    test("refuses a malformed repository before any network call", async () => {
+    test("refusesMalformedSiteRepo", async () => {
       expect(await fromSite("org.example.base", "1.0.0", { "org.example.": "not a repo" })).toBeNull();
     });
   });
 
   describe("fromMirror", () => {
-    test("accepts file matching SHA512SUMS and internal package.json", () => {
+    test("mirrorAcceptsMatchingHash", () => {
       const mirrorDir = join(tmp, "mirror");
       mkdirSync(mirrorDir, { recursive: true });
       const tgz = createMockTgz("pkg.x", "1.0.0");
@@ -270,7 +270,7 @@ dependencies:
       }
     });
 
-    test("refuses file with mismatched hash or missing from SHA512SUMS", () => {
+    test("mirrorRefusesBadHash", () => {
       const mirrorDir = join(tmp, "mirror");
       mkdirSync(mirrorDir, { recursive: true });
       const tgz = createMockTgz("pkg.x", "1.0.0");
@@ -284,7 +284,7 @@ dependencies:
   });
 
   describe("recursive transitive dependency resolution", () => {
-    test("recursively follows dependencies across cache and mirror and outputs missing packages to --missing-out", async () => {
+    test("followsTransitiveDeps", async () => {
       const cacheDir = join(tmp, "cache");
       const mirrorDir = join(tmp, "mirror");
       const missingOut = join(tmp, "missing.txt");
@@ -358,7 +358,7 @@ dependencies:
       expect(missingText).toBe("pkg.d#2.0.0");
     });
 
-    test("refuses an abbreviated --mirror-commit by name instead of dropping the mirror", async () => {
+    test("refusesShortMirrorCommit", async () => {
       const logs: string[] = [];
       const res = await seedFhirCache({
         cacheDir: join(tmp, "cache"),
@@ -374,7 +374,7 @@ dependencies:
       expect(FULL_COMMIT.test("c344c47b".padEnd(40, "0"))).toBe(true);
     });
 
-    test("terminates without infinite loop on cyclic dependencies", async () => {
+    test("cyclicDepsTerminate", async () => {
       const cacheDir = join(tmp, "cache");
       mkdirSync(cacheDir, { recursive: true });
 
@@ -404,7 +404,7 @@ dependencies:
       expect(res.missing).toHaveLength(0);
     });
 
-    test("correctly lists the 4 HL7 packages an IG depends on when they are absent from mirror and npm", async () => {
+    test("listsAbsentHl7Packages", async () => {
       const cacheDir = join(tmp, "cache");
       const mirrorDir = join(tmp, "mirror");
       const missingOut = join(tmp, "missing.txt");

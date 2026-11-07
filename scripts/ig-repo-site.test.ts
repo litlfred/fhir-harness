@@ -47,17 +47,17 @@ beforeAll(() => {
 afterAll(() => rmSync(dir, { recursive: true, force: true }));
 
 describe("topMounts", () => {
-  test("the listed instances nothing else listed needs", () => {
+  test("topMountsNothingNeeds", () => {
     const needs: Record<string, string[]> = { base: ["fhir", "core"], fhir: ["core"], core: ["tools"], tools: [] };
     expect(topMounts(["base", "fhir", "core", "tools"], (n) => needs[n] ?? [])).toEqual(["base"]);
   });
-  test("two independent tops are both returned", () => {
+  test("independentTopsBoth", () => {
     expect(topMounts(["a", "b"], () => [])).toEqual(["a", "b"]);
   });
 });
 
 describe("listedInstances", () => {
-  test("the names index.config.json lists, in order; none without one", () => {
+  test("listedInstancesInOrder", () => {
     const r = join(dir, "listed");
     mkdirSync(r, { recursive: true });
     expect(listedInstances(r)).toEqual([]);
@@ -67,7 +67,7 @@ describe("listedInstances", () => {
 });
 
 describe("notSource", () => {
-  test("mounts the lock names and the Publisher's products are not the IG's source", () => {
+  test("notSourceMountsAndProducts", () => {
     const r = join(dir, "src");
     mkdirSync(r, { recursive: true });
     writeFileSync(join(r, "index.lock.json"), JSON.stringify({ instances: [{ path: "base" }, { path: "layer/sub" }, { path: "." }] }));
@@ -91,24 +91,24 @@ function fakeAst(root: string, resources: { resourceType: string; id: string }[]
 }
 
 describe("the AST gate (ig-build-pipeline rule 2)", () => {
-  test("a valid AST goes on", () => {
+  test("validAstGoesOn", () => {
     expect(astGate("valid", { acceptStale: false, preview: false }).ok).toBe(true);
   });
-  test("a stale, cannot-tell or other verdict is refused, and never falls back to the Publisher", () => {
+  test("staleRefusedNoFallback", () => {
     for (const v of ["stale-inputs", "cannot-tell", "stale-toolchain"]) {
       const g = astGate(v, { acceptStale: false, preview: true });
       expect(g.ok).toBe(false);
       expect(g.said).toContain("does not fall back");
     }
   });
-  test("a stale AST is accepted for a preview only, never for the root", () => {
+  test("staleAcceptedPreviewOnly", () => {
     expect(astGate("stale-inputs", { acceptStale: true, preview: true }).ok).toBe(true);
     const root = astGate("stale-inputs", { acceptStale: true, preview: false });
     expect(root.ok).toBe(false);
     expect(root.said).toContain("for a preview only");
     expect(root.said).toContain("ig-ast-build.sh");
   });
-  test("a preview accepts a stale AST by default; SITE_ACCEPT_STALE_AST=0 refuses it", () => {
+  test("previewAcceptsStaleByDefault", () => {
     expect(acceptStaleFromEnv(undefined)).toBe(true);
     expect(acceptStaleFromEnv("1")).toBe(true);
     expect(acceptStaleFromEnv("0")).toBe(false);
@@ -116,7 +116,7 @@ describe("the AST gate (ig-build-pipeline rule 2)", () => {
     expect(refused.ok).toBe(false);
     expect(refused.said).toContain("=0");
   });
-  test("a preview is a base path under STAGING/", () => {
+  test("previewIsStagingBase", () => {
     expect(isPreviewBase("/smart-x/STAGING/claude-a")).toBe(true);
     expect(isPreviewBase("/smart-x")).toBe(false);
     expect(isPreviewBase(undefined)).toBe(false);
@@ -124,14 +124,14 @@ describe("the AST gate (ig-build-pipeline rule 2)", () => {
 });
 
 describe("the IG API sidecars a layer above leaves in the work directory", () => {
-  test("none there, or an empty directory: nothing is bound", () => {
+  test("noSidecarsNothingBound", () => {
     const w = join(dir, "work-none");
     mkdirSync(join(w, IG_API_WORK, "sidecars"), { recursive: true });
     expect(readIgApi(undefined)).toBeUndefined();
     expect(readIgApi(join(dir, "absent"))).toBeUndefined();
     expect(readIgApi(w)).toBeUndefined();
   });
-  test("the files and the label the descriptor gives; no descriptor, no label", () => {
+  test("sidecarsAndLabelFromDescriptor", () => {
     const w = join(dir, "work-api");
     mkdirSync(join(w, IG_API_WORK, "sidecars"), { recursive: true });
     writeFileSync(join(w, IG_API_WORK, "sidecars", "ValueSet-x.schema.json"), "{}");
@@ -139,7 +139,7 @@ describe("the IG API sidecars a layer above leaves in the work directory", () =>
     writeFileSync(join(w, IG_API_WORK, IG_API_DESCRIPTOR), JSON.stringify({ label: " My API " }));
     expect(readIgApi(w)?.label).toBe("My API");
   });
-  test("a descriptor whose label is not a non-empty string is refused", () => {
+  test("refusesEmptyLabel", () => {
     const w = join(dir, "work-bad");
     mkdirSync(join(w, IG_API_WORK, "sidecars"), { recursive: true });
     writeFileSync(join(w, IG_API_WORK, "sidecars", "a.jsonld"), "{}");
@@ -149,7 +149,7 @@ describe("the IG API sidecars a layer above leaves in the work directory", () =>
 });
 
 describe("publisher pages: the AST's data, never the Publisher's HTML", () => {
-  test("serves each resource under ast-data/ and by the Publisher's name, the index and the sidecars; never replaces a site file", () => {
+  test("servesAstDataAndIndex", () => {
     const root = join(dir, "serve");
     const ast = fakeAst(root, [{ resourceType: "ValueSet", id: "x" }, { resourceType: "CodeSystem", id: "y" }]);
     const site = join(root, "_site");
@@ -168,12 +168,12 @@ describe("publisher pages: the AST's data, never the Publisher's HTML", () => {
     expect(existsSync(join(site, "fhir-artifact-index", "index.json"))).toBe(true);
     expect(existsSync(join(site, SIDECARS_SERVED, "ValueSet-x.schema.json"))).toBe(true);
   });
-  test("no AST: refused, naming the step that restores it", () => {
+  test("noAstRefusedNamingStep", () => {
     const site = join(dir, "site-noast");
     mkdirSync(site, { recursive: true });
     expect(() => publisherPages({ site, ast: join(dir, "absent"), log: () => {} })).toThrow(new RegExp(`no AST[\\s\\S]*${IG_SITE_SCRIPTS.ast}`));
   });
-  test("the step reads the index and sidecars compose and the layer above left in the work directory", () => {
+  test("readsWorkDirIndexAndSidecars", () => {
     const root = join(dir, "serve-work");
     const ast = fakeAst(root, [{ resourceType: "ValueSet", id: "x" }]);
     const work = join(root, "work");
@@ -189,7 +189,7 @@ describe("publisher pages: the AST's data, never the Publisher's HTML", () => {
   });
 });
 
-test("what the layer above wrote for the site root is served there, never over a path the site holds", () => {
+test("layerSiteFilesServedNotOver", () => {
   const root = join(dir, "serve-site");
   const ast = fakeAst(root, [{ resourceType: "ValueSet", id: "x" }]);
   const work = join(root, "work");
@@ -213,7 +213,7 @@ test("what the layer above wrote for the site root is served there, never over a
   expect(readFileSync(join(site, "index.html"), "utf-8")).toBe("<p>site</p>");
 });
 
-test("a page of the IG's own holding the layer's placeholder is replaced by the layer's page; no other is", () => {
+test("placeholderPageReplaced", () => {
   const root = join(dir, "serve-fill");
   const ast = fakeAst(root, [{ resourceType: "ValueSet", id: "x" }]);
   const work = join(root, "work");
@@ -235,7 +235,7 @@ test("a page of the IG's own holding the layer's placeholder is replaced by the 
   expect(readFileSync(join(site, "other.html"), "utf-8")).toBe("<p>the IG's own</p>");
 });
 
-test("a placeholder too short to be a marker is refused", () => {
+test("refusesShortPlaceholder", () => {
   const w = join(dir, "work-ph");
   mkdirSync(join(w, IG_API_WORK, "sidecars"), { recursive: true });
   writeFileSync(join(w, IG_API_WORK, "sidecars", "a.jsonld"), "{}");
@@ -244,7 +244,7 @@ test("a placeholder too short to be a marker is refused", () => {
 });
 
 describe("the PlantUML jar", () => {
-  test("the one given, else PLANTUML_JAR, else the cached pinned release; none that is not there", () => {
+  test("plantumlJarPrecedence", () => {
     const home = join(dir, "home");
     const given = join(dir, "given.jar");
     writeFileSync(given, "jar");
@@ -263,13 +263,13 @@ describe("the guard: no published page wears the IG Publisher's chrome (owner, 2
   const PUBLISHER_PAGE =
     '<html><head><link href="fhir.css" rel="stylesheet"/><link href="assets/css/bootstrap-fhir.css" rel="stylesheet"/></head>' +
     '<body><p>x</p><p>Generated <span title="Wed, Oct 14, 2026">2026-10-14</span></p></body></html>';
-  test("each marker alone is the Publisher's chrome; a site page is not", () => {
+  test("publisherChromeMarkers", () => {
     for (const html of ['<link href="fhir.css" rel="stylesheet"/>', '<link rel="stylesheet" href="../assets/css/fhir.css">', '<link href="assets/css/bootstrap-fhir.css" rel="stylesheet"/>', 'Generated <span title="Wed">2026</span>']) {
       expect(PUBLISHER_CHROME.some((re) => re.test(html))).toBe(true);
     }
     expect(PUBLISHER_CHROME.some((re) => re.test('<link rel="stylesheet" href="/x/assets/ig-artifact.css"><p>Generated by hand</p>'))).toBe(false);
   });
-  test("publisherChromePages names every built page that carries it", () => {
+  test("namesPagesWithChrome", () => {
     const site = join(dir, "guarded");
     mkdirSync(join(site, "deep"), { recursive: true });
     writeFileSync(join(site, "index.html"), "<p>site</p>");
@@ -277,7 +277,7 @@ describe("the guard: no published page wears the IG Publisher's chrome (owner, 2
     writeFileSync(join(site, "fhir.css"), "body{}");
     expect(publisherChromePages(site)).toEqual(["deep/StructureDefinition-x.html"]);
   });
-  test("the step refuses a site that carries one, whoever put it there", () => {
+  test("refusesSiteWithChrome", () => {
     const site = join(dir, "refused");
     mkdirSync(site, { recursive: true });
     writeFileSync(join(site, "artifacts.html"), PUBLISHER_PAGE);
@@ -286,7 +286,7 @@ describe("the guard: no published page wears the IG Publisher's chrome (owner, 2
   });
 });
 
-test("builtPage: a source page by Jekyll's default permalink; never a file Jekyll does not publish", () => {
+test("builtPageByPermalink", () => {
   expect(builtPage("index.md")).toBe("index.html");
   expect(builtPage("sub/x.markdown")).toBe("sub/x.html");
   expect(builtPage("y.html")).toBe("y.html");
@@ -294,7 +294,7 @@ test("builtPage: a source page by Jekyll's default permalink; never a file Jekyl
   expect(builtPage("assets/a.png")).toBeUndefined();
 });
 
-test("the checkout scripts the platform asks for are the ones package.json declares", () => {
+test("checkoutScriptsDeclared", () => {
   const pkg = JSON.parse(readFileSync(join(import.meta.dir, "..", "package.json"), "utf-8")) as { checkoutScripts: Record<string, string> };
   expect(pkg.checkoutScripts[IG_SITE_SCRIPTS.ast]).toBe("bun run fhir-harness/scripts/ig-repo-site.ts ast");
   expect(pkg.checkoutScripts[IG_SITE_SCRIPTS.compose]).toBe("bun run fhir-harness/scripts/ig-repo-site.ts compose");
@@ -313,7 +313,7 @@ describe("the site's folio-build.json", () => {
     return r;
   };
 
-  test("the platform is the toolset index.lock.json pins, else its first pin", () => {
+  test("platformIsPinnedToolset", () => {
     const r = ig();
     expect(platformCommit(r)).toBeUndefined();
     writeFileSync(join(r, "index.lock.json"), JSON.stringify({ mounts: [{ harness: "base", ref: "b1" }, { harness: "cat-harness-tools", ref: "t1" }] }));
@@ -322,7 +322,7 @@ describe("the site's folio-build.json", () => {
     expect(platformCommit(r)).toBe("b1");
   });
 
-  test("names the repository and its commit from the checkout when the runner says nothing", () => {
+  test("stampNamesRepoAndCommit", () => {
     const r = ig();
     writeFileSync(join(r, "index.lock.json"), JSON.stringify({ mounts: [{ harness: "cat-harness-tools", ref: "t1" }] }));
     const head = spawnSync("git", ["-C", r, "rev-parse", "HEAD"], { encoding: "utf-8" }).stdout.trim();
@@ -330,7 +330,7 @@ describe("the site's folio-build.json", () => {
     expect(s).toEqual({ $schema: "folio-site-build/v1", instance: "my-ig", platform: { commit: "t1" }, source: { repo: "example/my-ig", ref: "main", commit: head }, builtAt: "2026-10-14T00:00:00.000Z" });
   });
 
-  test("publisher-pages writes it at the root of the composed site, the marker of a folio root", () => {
+  test("publisherPagesWritesStamp", () => {
     const r = ig();
     writeFileSync(join(r, "index.lock.json"), JSON.stringify({ mounts: [{ harness: "cat-harness-tools", ref: "t1" }] }));
     const site = join(r, "_site");
@@ -342,7 +342,7 @@ describe("the site's folio-build.json", () => {
     expect(typeof b === "string" ? b : b.platform.commit).toBe("t1");
   });
 
-  test("names the AST the artefact pages came from, so a stale preview's stamp does not claim the branch for them", () => {
+  test("stampNamesAstSource", () => {
     const r = ig();
     writeFileSync(join(r, "index.lock.json"), JSON.stringify({ mounts: [{ harness: "cat-harness-tools", ref: "t1" }] }));
     const site = join(r, "_site");
@@ -359,7 +359,7 @@ describe("the site's folio-build.json", () => {
   });
 });
 
-test("a page titled as the site is titled once (the IG's home page at the root)", async () => {
+test("siteTitledOnce", async () => {
   const { thinIgLayout, harnessLayout } = await import("./build-ig-site");
   const { Liquid } = await import("liquidjs");
   const engine = new Liquid();
@@ -370,7 +370,7 @@ test("a page titled as the site is titled once (the IG's home page at the root)"
   }
 });
 
-test("an IG page composed into a host carries the reader's folio (bean 95sk, R24)", async () => {
+test("composedPageCarriesFolio", async () => {
   const { thinIgLayout } = await import("./build-ig-site");
   const { hasMount } = await import("../../cat-harness-tools/scripts/folio-mount.ts");
   const { Liquid } = await import("liquidjs");
@@ -389,7 +389,7 @@ describe("the IG's TOC on its thin pages (owner, 2026-11-02: artifacts.html had 
   const nav = `<script type="application/json" data-fa-visualiser-nav>[{"label":"Home","href":"/ig/index.html"}]</script>`;
   const label = `<meta name="fa-visualiser-label" content="My IG">`;
   const thin = (id: string): string => `<!doctype html><html><head><title>x</title></head><body><main></main><script type="application/json" id="${id}">{}</script></body></html>`;
-  test("every thin page gets the declaration and its label; other pages keep theirs", () => {
+  test("thinPagesGetTocNav", () => {
     const site = mkdtempSync(join(dir, "toc-"));
     mkdirSync(join(site, "artifact"));
     mkdirSync(join(site, "docs"));
@@ -411,7 +411,7 @@ describe("the IG's TOC on its thin pages (owner, 2026-11-02: artifacts.html had 
     // Run twice, nothing doubles.
     expect(stampIgTocNav(site).pages).toBe(0);
   });
-  test("no page declares the TOC: nothing to copy, nothing stamped", () => {
+  test("noTocNothingStamped", () => {
     const site = mkdtempSync(join(dir, "toc-none-"));
     writeFileSync(join(site, "artifacts.html"), thin("ig-index-page"));
     expect(stampIgTocNav(site).pages).toBe(0);

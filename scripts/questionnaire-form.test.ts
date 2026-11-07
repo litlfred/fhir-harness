@@ -36,7 +36,7 @@ function ast(resources: Array<{ type: string; id: string; json: object; source?:
 const intake = { title: "Client intake", item: [{ linkId: "1", type: "string", text: "Name" }] };
 
 describe("questionnaireFormPages", () => {
-  test("a page, the rendered copy and the vendored files for each Questionnaire; nothing for other types", () => {
+  test("pagePerQuestionnaire", () => {
     const out = tmp("q-site-");
     const pages = questionnaireFormPages(
       ast([
@@ -72,7 +72,7 @@ describe("questionnaireFormPages", () => {
     // The platform chrome's path, which an IG repository's site composes at the same root.
     expect(existsSync(join(out, "assets/js/edit-links.js"))).toBe(false);
   });
-  test("no AST, or none with a Questionnaire: nothing written", () => {
+  test("noQuestionnaireNothingWritten", () => {
     const out = tmp("q-site-");
     expect(questionnaireFormPages(join(out, "absent"), out)).toEqual([]);
     expect(questionnaireFormPages(ast([{ type: "Patient", id: "p", json: {} }]), out)).toEqual([]);
@@ -80,7 +80,7 @@ describe("questionnaireFormPages", () => {
   });
 });
 
-test("answerValueSet is expanded from the IG's expansions in the rendered copy only", () => {
+test("answerValueSetExpandedInCopy", () => {
   const out = tmp("q-site-");
   const q = { item: [{ linkId: "s", type: "choice", answerValueSet: "http://example.org/ig/ValueSet/sex" }, { linkId: "t", type: "choice", answerValueSet: "http://example.org/ig/ValueSet/none" }] };
   const vs = { resourceType: "ValueSet", url: "http://example.org/ig/ValueSet/sex", expansion: { contains: [{ system: "http://example.org/cs", code: "f", display: "Female" }] } };
@@ -97,14 +97,14 @@ test("answerValueSet is expanded from the IG's expansions in the rendered copy o
 describe("the Form Builder's index.html, as this site serves it", () => {
   const original = readFileSync(join(import.meta.dir, "assets/vendor/formbuilder-lhcforms/12.9.0/index.html"), "utf-8");
   const html = builderIndexHtml(original, swUrl("index.json"));
-  test("the vendored page loads jQuery and fonts from other origins; the served one loads nothing from anywhere else", () => {
+  test("builderIndexLoadsNothingRemote", () => {
     expect(original).toContain("https://ajax.googleapis.com/ajax/libs/jquery/3.6.0/jquery.min.js");
     expect(original).toContain("fonts.gstatic.com");
     expect(html).not.toMatch(/(src|href)="https?:\/\//);
     expect(html).not.toMatch(/url\(https?:/);
     expect(html).toContain('src="../../jquery/3.6.0/jquery.min.js"');
   });
-  test("the worker guard runs first", () => {
+  test("workerGuardFirst", () => {
     expect(html.indexOf("serviceWorker")).toBeLessThan(html.indexOf("<script src="));
     expect(html).toContain(JSON.stringify(swUrl("index.json")));
   });
@@ -112,7 +112,7 @@ describe("the Form Builder's index.html, as this site serves it", () => {
 
 describe("the page", () => {
   const html = formPageHtml({ id: "intake", title: "Client <intake>" }, { json: "questionnaires/Questionnaire-intake.json", text: "questionnaires/Questionnaire-intake.source.json", source: "input/fsh/intake.fsh", editBase: "https://github.com/o/ig/edit/main", fhirVersion: "5.0.0", slug: "example.ig" });
-  test("✎, 📣 and ✍, the Smart Forms link-out, and nothing loaded from another origin", () => {
+  test("pageLinksAndLocalScripts", () => {
     expect(html).toContain('data-fa-link="edit"');
     expect(html).toContain('data-fa-link="feedback"');
     expect(html).toContain("✍ suggest a change");
@@ -121,11 +121,11 @@ describe("the page", () => {
     expect(html).toContain("Client &lt;intake&gt;: the form");
     expect(html.match(/<script[^>]+src="([^"]+)"/g)!.every((s) => !/src="(https?:)?\/\//.test(s))).toBe(true);
   });
-  test("links the Questionnaire's own page under artifact/, where every artefact page is", () => {
+  test("linksArtefactPage", () => {
     // The form page sits at the site root and the artefact page at artifact/<Type>-<id>.html.
     expect(html).toContain('<a href="artifact/Questionnaire-intake.html">Questionnaire/intake</a>');
   });
-  test("the suggest config names the Questionnaire mode", () => {
+  test("suggestConfigNamesMode", () => {
     const cfg = JSON.parse(/<script type="application\/json" id="fa-edit-cfg">(.*?)<\/script>/.exec(html)![1]!);
     expect(cfg).toEqual({
       repo: "o/ig",
@@ -140,27 +140,27 @@ describe("the page", () => {
     expect(cfg.suggest).not.toHaveProperty("mode");
     expect(cfg.suggest).not.toHaveProperty("checker");
   });
-  test("the form host names the mode and the block, for the runtime to match", () => {
+  test("formHostNamesModeAndBlock", () => {
     expect(html).toContain('<div id="fa-qform" class="fa-qform"');
     expect(/<div id="fa-qform"[^>]*>/.exec(html)![0]).toContain('data-src="input/fsh/intake.fsh" data-suggest-text="questionnaires/Questionnaire-intake.source.json" data-block="questionnaire:intake" data-suggest-mode="questionnaire"');
   });
-  test("the mode edits the unexpanded built JSON; the FSH stays the named source", () => {
+  test("modeEditsUnexpandedJson", () => {
     const host = /<div id="fa-qform"[^>]*>/.exec(html)![0];
     expect(host).toContain('data-suggest-text="questionnaires/Questionnaire-intake.source.json"');
     expect(host).not.toContain('data-suggest-text="questionnaires/Questionnaire-intake.json"');
   });
-  test("without a repository there is no edit, feedback or suggest link", () => {
+  test("noRepoNoLinks", () => {
     const bare = formPageHtml({ id: "x" }, { json: "questionnaires/Questionnaire-x.json" });
     expect(bare).not.toContain("data-fa-link");
     expect(bare).not.toContain("fa-qform-suggest");
   });
 });
 
-test("FHIR versions as LHC-Forms names them", () => {
+test("lformsFhirVersionNames", () => {
   expect(["3.0.2", "4.0.1", "4.3.0", "5.0.0", undefined].map(lformsFhirVersion)).toEqual(["STU3", "R4", "R4B", "R5", "R4"]);
 });
 
-test("the checker ships as a browser module: types stripped, no Node import at load", async () => {
+test("checkerBrowserModule", async () => {
   const js = checkerModule();
   expect(js).not.toContain(": string");
   expect(js).not.toMatch(/^import .*node:/m);

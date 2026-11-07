@@ -16,7 +16,7 @@ function dir(files: Record<string, unknown>): string {
 }
 
 describe("ig-ast-lock/v1 (bean fwtz: the AST is pinned like a layer)", () => {
-  test("no lock is no pins; a lock that does not validate is an error, not no pins", () => {
+  test("noLockNoPinsInvalidLockThrows", () => {
     const none = dir({});
     const bad = dir({ [IG_AST_LOCK_FILE]: { $schema: "ig-ast-lock/v1", pins: [{ ...pin, sha: "45be719" }] } });
     try {
@@ -28,7 +28,7 @@ describe("ig-ast-lock/v1 (bean fwtz: the AST is pinned like a layer)", () => {
     }
   });
 
-  test("a pin must name an instance the lock mounts, from the same repository", () => {
+  test("pinMustNameMountedSameRepo", () => {
     const ok = dir({ [IG_AST_LOCK_FILE]: { $schema: "ig-ast-lock/v1", pins: [pin] }, "index.lock.json": { instances: [{ instance: "ig", repository: "beta/ig", sha: IG }] } });
     const elsewhere = dir({ [IG_AST_LOCK_FILE]: { $schema: "ig-ast-lock/v1", pins: [pin] }, "index.lock.json": { instances: [{ instance: "ig", repository: "fork/ig", sha: IG }] } });
     const unmounted = dir({ [IG_AST_LOCK_FILE]: { $schema: "ig-ast-lock/v1", pins: [pin] }, "index.lock.json": { instances: [] } });
@@ -41,7 +41,7 @@ describe("ig-ast-lock/v1 (bean fwtz: the AST is pinned like a layer)", () => {
     }
   });
 
-  test("a re-pin replaces the instance's pin and keeps the lock sorted", () => {
+  test("repinReplacesAndSorts", () => {
     const other = { ...pin, instance: "alpha" };
     const next = withPin([pin, other], { ...pin, sha: IG });
     expect(next.pins.map((p) => [p.instance, p.sha])).toEqual([["alpha", SHA], ["ig", IG]]);

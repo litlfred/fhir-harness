@@ -120,7 +120,7 @@ function fixture(rail?: string, sync = FAKE_SYNC, root: "folio-site" | "railed" 
 const quiet = () => {};
 
 describe("the plan lists the chrome step", () => {
-  test("between the build and the deploy, scoped to the IG the checkout declares", async () => {
+  test("planListsChromeStep", async () => {
     const { repo, src } = fixture(FAKE_RAIL);
     const r = await stageLocal({ repo, workflowSource: src, plan: true, log: quiet, publishers: [IG_PUBLISHER] });
     const actions = r.plan.steps!.map((s) => s.action);
@@ -132,7 +132,7 @@ describe("the plan lists the chrome step", () => {
     expect(r.plan.missing ?? []).toEqual([]);
   });
 
-  test("on the root, a checkout without the platform's chrome scripts names them as missing", async () => {
+  test("missingChromeScriptsNamed", async () => {
     const { repo, src } = fixture();
     const r = await stageLocal({ repo, workflowSource: src, plan: true, log: quiet, publishers: [IG_PUBLISHER] });
     expect(r.plan.missing).toEqual([expect.stringMatching(/the harness chrome — .*rail-standalone-pages|sync-docs-harness/)]);
@@ -141,7 +141,7 @@ describe("the plan lists the chrome step", () => {
 });
 
 describe("the real rail leaves the folio path's markers on an IG's pages", () => {
-  test("every page gains the rail and the icon row; the IG's own content stays", () => {
+  test("railAddedContentKept", () => {
     const site = tmp("ig-chrome-output-");
     put(site, "index.html", page("<h1>IG home</h1>"));
     put(site, "StructureDefinition-CWT.html", page("<h1>CWT</h1><table><tr><td>cell</td></tr></table>"));
@@ -161,7 +161,7 @@ describe("the real rail leaves the folio path's markers on an IG's pages", () =>
     expect(cwt).toContain("<h1>CWT</h1><table><tr><td>cell</td></tr></table>");
   });
 
-  test("PINNED COPY: no IG page loads the platform's chrome live; the files it loads are in the site (owner, 2026-10-15)", () => {
+  test("chromeIsPinnedCopy", () => {
     const site = tmp("ig-chrome-pinned-");
     put(site, "index.html", page("<h1>IG home</h1>"));
     put(site, "branches/x/index.html", page("<p>nested</p>"));
@@ -181,7 +181,7 @@ describe("a root publish never replaces a chromed root with bare pages", () => {
   const deploys = readIgDeploys(readWorkflow(WORKFLOW));
   const main = igTarget(deploys, { isDefault: true, branchDir: "main", sha: "a", runUrl: "u" });
 
-  test("bare output over a chromed root is refused, stamp or no stamp; railed output does not replace folio-site.yml's side bar and stamp, nor a folio's publish", () => {
+  test("bareNeverReplacesChromed", () => {
     const pages = tmp("ig-chrome-pages-");
     put(pages, "index.html", CHROMED_ROOT);
     const out = tmp("ig-chrome-out-");
@@ -207,14 +207,14 @@ describe("a root publish never replaces a chromed root with bare pages", () => {
     expect(() => applyIgDeploy(pages, out, main, () => {}, { chromed: true })).toThrow(/folio's site \(STAGING\)/);
   });
 
-  test("a chrome step that chromes nothing refuses the root publish, and the publish branch is untouched", async () => {
+  test("emptyChromeRefusesRoot", async () => {
     const { bare, repo, src } = fixture(FAKE_RAIL_NOTHING);
     await expect(stageLocal({ repo, workflowSource: src, log: quiet, publishers: [IG_PUBLISHER] })).rejects.toThrow(/harness chrome was not applied: none of its 2 page\(s\) carries the rail — refusing to publish the root/);
     expect(sh(bare, "log", "-1", "--format=%s", "gh-pages")).toBe("folio-site");
     expect(sh(bare, "show", "gh-pages:index.html")).toBe(CHROMED_ROOT.trim());
   }, 60_000);
 
-  test("a preview whose chrome fails is published bare under branches/, as the workflow publishes it, and says so", async () => {
+  test("previewPublishedBare", async () => {
     const { bare, repo, src } = fixture(FAKE_RAIL_NOTHING);
     sh(repo, "checkout", "-q", "-b", "claude/feat");
     const said: string[] = [];
@@ -224,13 +224,13 @@ describe("a root publish never replaces a chromed root with bare pages", () => {
     expect(sh(bare, "show", "gh-pages:index.html")).toBe(CHROMED_ROOT.trim());
   }, 60_000);
 
-  test("railed IG output over a root folio-site.yml built is refused, naming what it lacks, and the branch is untouched", async () => {
+  test("railedOverSiteRootRefused", async () => {
     const { bare, repo, src } = fixture(FAKE_RAIL);
     await expect(stageLocal({ repo, workflowSource: src, log: quiet, publishers: [IG_PUBLISHER] })).rejects.toThrow(/lacks what the publish root carries: the theme's side bar \(#site-nav\).*folio-build\.json/);
     expect(sh(bare, "log", "-1", "--format=%s", "gh-pages")).toBe("folio-site");
   }, 60_000);
 
-  test("with the chrome applied, a railed root is replaced by the chromed IG", async () => {
+  test("chromedReplacesRailedRoot", async () => {
     const { bare, repo, src } = fixture(FAKE_RAIL, FAKE_SYNC, "railed");
     const r = await stageLocal({ repo, workflowSource: src, log: quiet, publishers: [IG_PUBLISHER] });
     expect(r).toMatchObject({ target: "main", pushed: true });
@@ -239,7 +239,7 @@ describe("a root publish never replaces a chromed root with bare pages", () => {
     expect(sh(bare, "ls-tree", "--name-only", "gh-pages").split("\n").sort()).toEqual(["StructureDefinition-CWT.html", "branches", "index.html"]);
   }, 60_000);
 
-  test("a harness-data sync that refuses is said, not fatal: the chrome is judged on the pages", async () => {
+  test("refusingSyncNotFatal", async () => {
     const { bare, repo, src } = fixture(FAKE_RAIL, FAKE_SYNC_FAILS, "railed");
     const said: string[] = [];
     const r = await stageLocal({ repo, workflowSource: src, log: (s) => said.push(s), publishers: [IG_PUBLISHER] });

@@ -22,7 +22,7 @@ const RECORD = {
 };
 
 describe("ig-qa-page", () => {
-  test("reads qa-results/v1 and reports anything else as unreadable, never drops it", () => {
+  test("readsRecordsKeepsUnreadable", () => {
     const d = dirWith({
       "good.qa-results.json": JSON.stringify(RECORD),
       "other.qa-results.json": JSON.stringify({ $schema: "something/v2" }),
@@ -34,7 +34,7 @@ describe("ig-qa-page", () => {
     expect(rs.filter((r) => r.unreadable).length).toBe(2);
   });
 
-  test("renders families, entries and the record link inside raw", () => {
+  test("rendersFamiliesInsideRaw", () => {
     const d = dirWith({ "swim.qa-results.json": JSON.stringify(RECORD) });
     const page = renderQaPage(readQaRecords([d]), "Quality checks");
     expect(page).toContain("{% raw %}");
@@ -46,7 +46,7 @@ describe("ig-qa-page", () => {
     expect(page).not.toContain("### `clean`");
   });
 
-  test("says so when the directory holds no record", () => {
+  test("noRecordSaysSo", () => {
     expect(renderQaPage([], "QA")).toContain("no check has written a record");
   });
 });

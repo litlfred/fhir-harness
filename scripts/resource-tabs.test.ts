@@ -13,7 +13,7 @@ const lm = resourceFacts({ resourceType: "StructureDefinition", id: "CWT", name:
 const a = { key: "x", resourceType: "Endpoint", id: "E-1" } as unknown as FhirArtifact;
 
 describe("tab pages", () => {
-  it("history: heading names name ?? title ?? id, the sentence names id (measured on all 672)", () => {
+  it("historyHeadingAndSentence", () => {
     const p = historyPage(a, ep, [])!;
     expect(p.heading).toBe("Latvia trust list - Change History");
     expect(p.sections).toEqual([{ text: "History of changes for E-1 ." }]);
@@ -21,7 +21,7 @@ describe("tab pages", () => {
     expect(historyPage(a, lm, [])!.sections[0]!.text).toBe("Changes in the CWT logical model.");
   });
 
-  it("testing: type and title, (Experimental) when the resource says so, and NOTHING when the IG has tests", () => {
+  it("testingTypeTitleExperimental", () => {
     const p = testingPage(vs, [], false)!;
     expect(p.heading).toBe("ValueSet: Actor codes - Testing (Experimental)");
     expect(p.status).toBe("Active as of 2026-10-01");
@@ -31,17 +31,17 @@ describe("tab pages", () => {
     expect(testingPage(lm, [], false)!.sections[0]!.text).toBe("No test plans are currently available for the Profile.");
   });
 
-  it("examples: only for a logical model no resource claims", () => {
+  it("examplesOnlyUnclaimedModel", () => {
     expect(examplesPage(lm, [], false)!.heading).toBe("Logical Model: CWT - Examples");
     expect(examplesPage(lm, [], true)).toBeUndefined();
   });
 
-  it("status line and escaping", () => {
+  it("statusLineAndEscaping", () => {
     expect(statusLine(ep)).toBeUndefined();
     expect(mdText("a_b*[c]")).toBe("a\\_b\\*\\[c\\]");
   });
 
-  it("view pages are told apart from artefact pages by one rule", () => {
+  it("viewPagesOneRule", () => {
     for (const f of ["X.json.md", "X.schema.json.md", "X.jsonld.md", "X.change.history.md", "X-testing.md", "X.profile.history.md", "X.profile.json.md", "X-examples.md"]) expect(VIEW_PAGE.test(f)).toBe(true);
     expect(VIEW_PAGE.test("ValueSet-Actors.md")).toBe(false);
   });

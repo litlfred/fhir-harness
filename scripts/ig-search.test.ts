@@ -42,21 +42,21 @@ const REF = { index: "../assets/ig-search.json", script: "../assets/ig-search.js
 describe("the box", () => {
   const box = igSearchBox(REF, "ACME IG");
 
-  test("carries #search-input, labelled, and names its index", () => {
+  test("boxHasLabelledInput", () => {
     expect(box).toContain('id="search-input"');
     expect(box).toContain('<label class="ig-search-label" for="search-input">Search ACME IG</label>');
     expect(box).toContain('data-ig-search-index="../assets/ig-search.json"');
   });
 
-  test("is not `.search`, which docs-ui would move out of the top bar into its band", () => {
+  test("boxIsNotSearchClass", () => {
     expect(box).not.toMatch(/class="search\b|id="search"/);
   });
 
-  test("holds no <div>: a composed page lifts the top bar up to its first </div> at a line end", () => {
+  test("boxHoldsNoDiv", () => {
     expect(box).not.toContain("<div");
   });
 
-  test("is followed by the language picker's slot, outside the form, empty until docs-ui fills it", () => {
+  test("boxFollowedByLocaleSlot", () => {
     expect(IG_LOCALE_SLOT).toBe('<span class="ig-locale-slot" data-fa-slot="locale"></span>');
     expect(box.endsWith(`</form>${IG_LOCALE_SLOT}`)).toBe(true);
   });
@@ -65,7 +65,7 @@ describe("the box", () => {
 describe("the top bar carries the box and its script only when the site serves the search", () => {
   const menu = { groups: [{ label: "Home", items: [{ label: "Summary", href: "index.html" }] }] };
 
-  test("with search: the box and the deferred script, at the site's own paths, inside the bar", () => {
+  test("barWithSearchCarriesBox", () => {
     const bar = igTopBar(menu, "/b/acme-ig", "ACME IG", igSearchAt("/b/acme-ig"));
     expect(bar).toContain('data-ig-search-index="/b/acme-ig/assets/ig-search.json"');
     expect(bar).toContain('<script src="/b/acme-ig/assets/ig-search.js" defer></script>');
@@ -76,11 +76,11 @@ describe("the top bar carries the box and its script only when the site serves t
     expect(bar.indexOf('data-fa-slot="locale"')).toBeLessThan(bar.lastIndexOf("</div>"));
   });
 
-  test("without: unchanged", () => {
+  test("barWithoutSearchUnchanged", () => {
     expect(igTopBar(menu, "/b/acme-ig", "ACME IG")).not.toContain("search");
   });
 
-  test("a composed page lifts the whole bar, box and script included, into its layout", () => {
+  test("composedLayoutLiftsBar", () => {
     const bar = igTopBar(menu, "/b/acme-ig", "ACME IG", igSearchAt("/b/acme-ig"));
     const staged = tmp("ig-search-staged-");
     put(staged, "_config.yml", 'title: "ACME IG"\n');
@@ -95,7 +95,7 @@ describe("the top bar carries the box and its script only when the site serves t
     expect(layout).toContain("assets/ig-search.js");
   });
 
-  test("the bar's stylesheet styles the box", () => {
+  test("barStylesheetStylesBox", () => {
     expect(IG_TOPBAR_CSS).toContain(IG_SEARCH_CSS.trim());
   });
 });
@@ -105,7 +105,7 @@ describe("the thin pages' header", () => {
   const ix = { count: 1, artifacts: [a] } as unknown as FhirArtifactIndex;
   const base = { label: "ACME IG", home: "../index.html", all: "../artifacts.html" };
 
-  test("an artefact page carries the box in its header and loads the script, when the site serves the search", () => {
+  test("artefactPageHeaderHasBox", () => {
     const html = thinArtifactView(ix, a, "content", { ...base, search: REF });
     const header = /<header class="iga-top fa-page-bar">[\s\S]*?<\/header>/.exec(html)![0];
     expect(header).toContain('id="search-input"');
@@ -113,23 +113,23 @@ describe("the thin pages' header", () => {
     expect(html).toContain('<script src="../assets/ig-search.js" defer></script>');
   });
 
-  test("and nothing when it does not", () => {
+  test("artefactPageNoSearch", () => {
     expect(thinArtifactView(ix, a, "content", base)).not.toContain("search-input");
   });
 
-  test("the artifacts and toc pages too", () => {
+  test("indexPagesHaveBox", () => {
     const html = thinIndexPage({ view: "artifacts", heading: "Artifacts", label: "ACME IG", canonical: "artifacts.html", index: "artifact/index.jsonld", pagesHref: "artifact/", assets: "", home: "index.html", artifacts: "artifacts.html", toc: "toc.html", search: { index: "assets/ig-search.json", script: "assets/ig-search.js" } });
     expect(/<header class="iga-top fa-page-bar">[\s\S]*?<\/header>/.exec(html)![0]).toContain('data-ig-search-index="assets/ig-search.json"');
     expect(html).toContain('<script src="assets/ig-search.js" defer></script>');
   });
 
-  test("the thin pages' one stylesheet styles the box", () => {
+  test("thinStylesheetStylesBox", () => {
     const css = readFileSync(join(import.meta.dir, "templates", "ig-pages", "ig-artifact.css"), "utf-8");
     expect(THIN_PAGE_STYLE).toBe("assets/ig-artifact.css");
     expect(css).toContain(IG_SEARCH_CSS.trim());
   });
 
-  test("it is the IG's ONE stylesheet: the top bar's rules are in it, and no page is capped to a centred column (owner, 2026-10-15: \"full width\")", () => {
+  test("oneStylesheetFullWidth", () => {
     const css = readFileSync(join(import.meta.dir, "templates", "ig-pages", "ig-artifact.css"), "utf-8");
     for (const line of IG_TOPBAR_CSS.trim().split("\n")) expect(css).toContain(line);
     expect(css).not.toMatch(/max-width:\s*60rem/);
@@ -139,7 +139,7 @@ describe("the thin pages' header", () => {
     expect(css).not.toMatch(/(^|\n)body\{/);
   });
 
-  test("every thin page links the shared page layout before the IG's sheet, and wears its classes", () => {
+  test("thinPagesLinkSharedLayout", () => {
     const html = thinArtifactView(ix, a, "content", { ...base, search: REF });
     expect(html.indexOf('href="../assets/page-layout.css"')).toBeGreaterThan(0);
     expect(html.indexOf("page-layout.css")).toBeLessThan(html.indexOf("ig-artifact.css"));
@@ -151,17 +151,17 @@ describe("the thin pages' header", () => {
     expect(list).toContain('<main class="iga igi fa-page-main">');
   });
 
-  test("the client binds a box once, however many times a page loads it", () => {
+  test("clientBindsOnce", () => {
     expect(readFileSync(IG_SEARCH_SCRIPT_SOURCE, "utf-8")).toContain('if (form.hasAttribute("data-ig-search-ready")) return;');
   });
 });
 
 describe("the index", () => {
-  test("plain text: Liquid, HTML and markdown markup removed", () => {
+  test("plainTextStripsMarkup", () => {
     expect(plainText('---\ntitle: x\n---\n## Hello {{ site.title }}\n{% include x.md %}\n<p class="a">A [link](b.html) and **bold** &amp; more</p>')).toBe("Hello A link and bold & more");
   });
 
-  test("the IG's own pages: front matter pages outside artifact/, _*/ and assets/, not search-excluded", () => {
+  test("ownPagesIndexed", () => {
     const s = tmp("ig-search-pages-");
     put(s, "index.md", "---\ntitle: \"ACME: home\"\n---\nWelcome to the guide.\n");
     put(s, "sub/page.html", "---\ntitle: Nested\n---\n<p>Nested text</p>\n");
@@ -176,7 +176,7 @@ describe("the index", () => {
     ]);
   });
 
-  test("a page's whole text, however long: a word deep in a long page is found", () => {
+  test("longPageWholeText", () => {
     const s = tmp("ig-search-long-");
     const long = "lorem ipsum dolor sit amet ".repeat(2000);
     put(s, "long.md", `---\ntitle: Long\n---\n${long}\nzanzibar\n`);
@@ -185,7 +185,7 @@ describe("the index", () => {
     expect(e!.x!.endsWith("zanzibar")).toBe(true);
   });
 
-  test("every artefact, linked to its thin page, with its identifiers and a one-line description", () => {
+  test("artefactsIndexedWithIds", () => {
     const e = artifactSearchEntries([
       { key: "ValueSet/acme-vs", resourceType: "ValueSet", id: "acme-vs", name: "AcmeVS", title: "ACME Codes", canonical: "http://acme.org/ValueSet/acme-vs", description: "The **codes**\nACME uses." },
       { key: "Patient/p1", resourceType: "Patient", id: "p1" },
@@ -196,7 +196,7 @@ describe("the index", () => {
     ]);
   });
 
-  test("the file: its format, hrefs relative to the docs root, pages first", () => {
+  test("indexFileFormat", () => {
     const ix = igSearchIndex([{ t: "Home", h: "index.html", k: "page" }], [{ t: "A", h: "artifact/X-a.html", k: "X" }]);
     expect(ix).toEqual({ format: IG_SEARCH_FORMAT, base: "../", entries: [{ t: "Home", h: "index.html", k: "page" }, { t: "A", h: "artifact/X-a.html", k: "X" }] });
   });
@@ -219,28 +219,28 @@ describe("the client searches the index", () => {
     { t: "Immunization Codes", h: "artifact/ValueSet-immz.html", k: "ValueSet", i: "immz", d: "Codes for vaccines." },
   ].map((e) => c.prep(e, base));
 
-  test("a title match outranks a page's text, and hrefs resolve against the docs root", () => {
+  test("titleOutranksText", () => {
     const hits = c.search(entries, "immunization");
     expect(hits.map((h) => h.e.t)).toEqual(["Immunization Codes", "Home"]);
     expect(hits[0]!.e.href).toBe("https://o.github.io/acme/artifact/ValueSet-immz.html");
   });
 
-  test("an artefact is found by its id", () => {
+  test("artefactFoundById", () => {
     expect(c.search(entries, "acme-patient").map((h) => h.e.t)).toEqual(["ACME Patient"]);
   });
 
-  test("every term must match", () => {
+  test("everyTermMustMatch", () => {
     expect(c.search(entries, "patient vaccines")).toEqual([]);
     expect(c.search(entries, "codes vaccines").map((h) => h.e.t)).toEqual(["Immunization Codes"]);
   });
 
-  test("an empty query finds nothing", () => {
+  test("emptyQueryFindsNothing", () => {
     expect(c.search(entries, "  ")).toEqual([]);
   });
 });
 
 describe("compose writes the search; publisher-pages writes the language picker's block", () => {
-  test("writeSearch: the index and the client under the docs root, refusing a path the host holds", () => {
+  test("writeSearchRefusesExisting", () => {
     const docs = tmp("ig-search-write-");
     const staged = tmp("ig-search-staged2-");
     put(staged, "index.md", "---\ntitle: Home\n---\nHello\n");
@@ -253,7 +253,7 @@ describe("compose writes the search; publisher-pages writes the language picker'
     expect(() => writeSearch(docs, staged, { artifacts: [] })).toThrow(/already holds/);
   });
 
-  test("stampTranslationMeta: every built page that lacks the block gets the platform's, once; a page with its own keeps it", () => {
+  test("stampsTranslationMeta", () => {
     const site = tmp("ig-search-site-");
     const ig = tmp("ig-search-ig-");
     put(site, "index.html", "<html><head><title>a</title></head><body></body></html>");
@@ -276,7 +276,7 @@ describe("publisher-pages gives every built page the IG's one bar and the shared
   const BAR = '<div class="ig-topbar fa-page-bar" role="navigation" aria-label="ACME IG menu"><a class="ig-topbar-home" href="/b/index.html">ACME IG</a><details class="ig-topbar-group"><summary>Home</summary><ul><li><a href="/b/x.html">X</a></li></ul></details><form class="ig-search" role="search" data-ig-search-index="/b/assets/ig-search.json"><input type="search" id="search-input"></form><span class="ig-locale-slot" data-fa-slot="locale"></span><script src="/b/assets/ig-search.js" defer></script></div>';
   const o = { ref: REF2, label: "ACME IG", home: "../index.html", up: "../" };
 
-  test("with no IG bar to give, a fallback bar at the top of the body, the layout then the IG's sheet in the head, the client before </body>", () => {
+  test("noBarGetsSearchBar", () => {
     const out = withIgBar(PAGE, o);
     const body = out.slice(out.indexOf("<body>") + 6);
     expect(body.startsWith('\n<header class="ig-search-top fa-page-bar"><a class="ig-search-home" href="../index.html">ACME IG</a><form class="ig-search"')).toBe(true);
@@ -290,7 +290,7 @@ describe("publisher-pages gives every built page the IG's one bar and the shared
     expect(out.match(/id="search-input"/g)!.length).toBe(1);
   });
 
-  test("the IG's bar, given: its scripts dropped, the client linked once", () => {
+  test("igBarUsedWhenGiven", () => {
     const out = withIgBar(PAGE, { ...o, bar: BAR });
     expect(out).toContain('<div class="ig-topbar fa-page-bar" role="navigation"');
     expect(out).toContain('<summary>Home</summary>');
@@ -298,7 +298,7 @@ describe("publisher-pages gives every built page the IG's one bar and the shared
     expect(out.match(/assets\/ig-search\.js"/g)!.length).toBe(1);
   });
 
-  test("a thin page's own header is REPLACED by the IG's bar, its client and stylesheets kept, not doubled", () => {
+  test("thinPageHeaderReplaced", () => {
     const a = { key: "StructureDefinition/acme-patient", resourceType: "StructureDefinition", id: "acme-patient", title: "ACME Patient", published: {}, materialization: { state: "referenced" } } as unknown as FhirArtifact;
     const thin = thinArtifactView({ count: 1, artifacts: [a] } as unknown as FhirArtifactIndex, a, "content", { label: "ACME IG", home: "../index.html", all: "../artifacts.html", search: REF2 });
     const out = withIgBar(thin, { ...o, bar: BAR });
@@ -311,7 +311,7 @@ describe("publisher-pages gives every built page the IG's one bar and the shared
     expect(out.match(/ig-artifact\.css/g)!.length).toBe(1);
   });
 
-  test("a page that holds the IG's bar, that has a box in a bar of its own, or that has no head and body, is left as it is", () => {
+  test("alreadyBarredUnchanged", () => {
     const once = withIgBar(PAGE, { ...o, bar: BAR });
     expect(withIgBar(once, { ...o, bar: BAR })).toBe(once);
     const own = PAGE.replace("<main>", '<main><input id="search-input">');
@@ -319,7 +319,7 @@ describe("publisher-pages gives every built page the IG's one bar and the shared
     expect(withIgBar("<p>fragment</p>", o)).toBe("<p>fragment</p>");
   });
 
-  test("stampIgBar: the slim bar, never the menu; paths relative to each page, nothing under assets/, nothing without an index", () => {
+  test("stampIgBarNeedsIndex", () => {
     const site = tmp("ig-search-stamp-");
     put(site, "index.html", PAGE.replace("<body>", `<body>\n${BAR}\n`));
     put(site, "hub.html", PAGE);

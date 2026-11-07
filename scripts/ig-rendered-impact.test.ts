@@ -38,7 +38,7 @@ const paths = (changed: string[], opts: Record<string, string> = {}) =>
   igRenderedImpact({ ig: IG, changed, ...opts }).files.map((f) => `${f.role}:${f.path}`);
 
 describe("igRenderedImpact — FSH through the cone to the AST pages", () => {
-  test("a value set change reaches its own page and the plan that uses it, plus the two indexes", () => {
+  test("valueSetReachesPagesAndIndexes", () => {
     expect(paths(["input/fsh/vs.fsh"])).toEqual([
       "data:ast-data/resources/PlanDefinition-Sched.json",
       "data:ast-data/resources/ValueSet-due-vs.json",
@@ -49,22 +49,22 @@ describe("igRenderedImpact — FSH through the cone to the AST pages", () => {
     ].sort((a, b) => a.split(":")[1].localeCompare(b.split(":")[1])));
   });
 
-  test("a leaf changes only itself; a RuleSet-only or Alias-only file reaches its users", () => {
+  test("leafAndRuleSetAliasReach", () => {
     expect(paths(["input/fsh/other.fsh"]).filter((p) => p.startsWith("content:"))).toEqual(["content:ast/artifact/PlanDefinition-Lone.html"]);
     expect(paths(["input/fsh/rules.fsh"]).filter((p) => p.startsWith("content:"))).toContain("content:ast/artifact/ValueSet-due-vs.html");
     expect(paths(["input/fsh/aliases.fsh"]).filter((p) => p.startsWith("content:"))).toContain("content:ast/artifact/ValueSet-due-vs.html");
   });
 
-  test("each file says how the change reached it", () => {
+  test("fileSaysHowReached", () => {
     const f = igRenderedImpact({ ig: IG, changed: ["input/fsh/vs.fsh"] }).files.find((x) => x.path === "ast/artifact/PlanDefinition-Sched.html")!;
     expect(f.via).toEqual(["input/fsh/plan.fsh", "Sched", "PlanDefinition/Sched"]);
   });
 
-  test("the prefixes place the pages where the site serves them", () => {
+  test("prefixesPlacePages", () => {
     expect(paths(["input/fsh/other.fsh"], { sitePrefix: "ex" })).toContain("content:ex/ast/artifact/PlanDefinition-Lone.html");
   });
 
-  test("no SUSHI index: the FSH input is undetermined, never no change", () => {
+  test("noSushiIndexUndetermined", () => {
     const i = igRenderedImpact({ ig: IG, changed: ["input/fsh/vs.fsh"], fshIndex: join(IG, "missing.json") });
     expect(i.files).toEqual([]);
     expect(i.undetermined[0]).toMatchObject({ input: "input/fsh/vs.fsh", scope: "unknown" });
@@ -72,17 +72,17 @@ describe("igRenderedImpact — FSH through the cone to the AST pages", () => {
 });
 
 describe("igRenderedImpact — pages and site-wide inputs", () => {
-  test("a page change renders the page and every page that includes it", () => {
+  test("pageChangeReachesIncluders", () => {
     expect(paths(["input/pagecontent/logic.md"])).toEqual(["index:assets/js/search-data.json", "content:index.html", "content:logic.html"]);
   });
 
-  test("sushi-config is site-wide and an unmapped input is unknown; both are listed, not dropped", () => {
+  test("siteWideAndUnmappedListed", () => {
     const i = igRenderedImpact({ ig: IG, changed: ["sushi-config.yaml", "input/images/x.png"] });
     expect(i.files).toEqual([]);
     expect(i.undetermined.map((u) => [u.input, u.scope])).toEqual([["sushi-config.yaml", "all"], ["input/images/x.png", "unknown"]]);
   });
 
-  test("the review list is the content and data, without the indexes", () => {
+  test("reviewListWithoutIndexes", () => {
     expect(reviewList(igRenderedImpact({ ig: IG, changed: ["input/pagecontent/logic.md"] })).map((f) => f.path)).toEqual(["index.html", "logic.html"]);
   });
 });

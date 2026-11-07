@@ -38,12 +38,12 @@ const java = json<Capability>("scenarios/capabilities/java-runtime.json", HARNES
 const statements = json<{ statements: Statement[] }>("skills/requirements/fhir-validation.json").statements;
 
 describe("the role is mechanical, and its contract is a skill it carries", () => {
-  test("played only by a system Actor, carrying ig-publisher-service-contract", () => {
+  test("roleSystemOnlyCarriesContract", () => {
     expect(role.actorKinds).toEqual(["system"]);
     expect(role.skills).toContain("ig-publisher-service-contract");
   });
 
-  test("the Actor named in the contract plays it, with both capabilities", () => {
+  test("actorPlaysRoleWithCapabilities", () => {
     expect(actor.kind).toBe("system");
     expect(actor.roles).toContain("ig-publisher-service");
     expect(actor.capabilities).toEqual(expect.arrayContaining(["ig-publisher", "fhir-validator"]));
@@ -51,21 +51,21 @@ describe("the role is mechanical, and its contract is a skill it carries", () =>
 });
 
 describe("1. build a FHIR Implementation Guide and report its QA", () => {
-  test("the actor's own description says so", () => {
+  test("actorDescriptionSaysBuildAndQa", () => {
     expect(actor.description).toMatch(/FHIR IG Publisher build and QA reporting/);
   });
 
-  test("ODRL grants it qa-reporting", () => {
+  test("odrlGrantsQaReporting", () => {
     expect(readPolicyGrants(join(ROOT, "policies")).get("ig-publisher-service")).toContain("qa-reporting");
   });
 });
 
 describe("2. complete the IG Publisher build with no errors in qa.html, after SUSHI has compiled the FSH", () => {
-  test("the ig-publisher capability satisfies req:fhir-validation#ig-publisher-qa", () => {
+  test("publisherSatisfiesQaRequirement", () => {
     expect(publisher.satisfies).toContain("req:fhir-validation#ig-publisher-qa");
   });
 
-  test("that statement demands no errors in qa.html, and depends on #sushi-compile", () => {
+  test("qaStatementDemandsNoErrors", () => {
     const s = statements.find((x) => x.key === "ig-publisher-qa")!;
     expect(s.requirement).toMatch(/no errors in qa\.html/);
     expect(s.dependsOn).toEqual(["sushi-compile"]);
@@ -74,7 +74,7 @@ describe("2. complete the IG Publisher build with no errors in qa.html, after SU
 });
 
 describe("3. validate individual resources and profiles against a package — distinct from a whole-IG build", () => {
-  test("fhir-validator is its own capability, and does not claim the whole-IG statement", () => {
+  test("validatorIsSeparateCapability", () => {
     expect(validator.id).toBe("fhir-validator");
     expect(validator.id).not.toBe(publisher.id);
     expect(validator.satisfies ?? []).not.toContain("req:fhir-validation#ig-publisher-qa");
@@ -82,14 +82,14 @@ describe("3. validate individual resources and profiles against a package — di
 });
 
 describe("4. be detectable: `--version` / `-version` on a machine with a Java runtime", () => {
-  test("each capability is detected by a command that asks the jar its version", () => {
+  test("detectedByVersionCommand", () => {
     expect(publisher.detection?.method).toBe("command");
     expect(publisher.detection?.command).toMatch(/^java -jar \S+ --version$/);
     expect(validator.detection?.method).toBe("command");
     expect(validator.detection?.command).toMatch(/^java -jar \S+ -version$/);
   });
 
-  test("each requires java-runtime, which is itself a declared capability", () => {
+  test("bothRequireJavaRuntime", () => {
     expect(publisher.requires).toEqual(["java-runtime"]);
     expect(validator.requires).toEqual(["java-runtime"]);
     expect(java.id).toBe("java-runtime");

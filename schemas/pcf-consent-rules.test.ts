@@ -45,18 +45,18 @@ const req = {
 } as never;
 
 describe("rule 2: a Consent counts only for the agreement version it cites", () => {
-  test("consentsCitingAgreement keeps only Consents whose policy.uri is that version", () => {
+  test("keepsConsentsCitingVersion", () => {
     const kept = consentsCitingAgreement([consent("a", V1), consent("b", V2), consent("c", undefined)], V1);
     expect(kept.map((c) => (c as FhirConsent).id)).toEqual(["a"]);
   });
 
-  test("a Consent for version 1 permits under version 1 and is not counted under version 2", () => {
+  test("version1ConsentOnlyPermitsVersion1", () => {
     const evaluate = createPcfConsentEvaluator([consent("a", V1)]);
     expect(evaluate(req, undefined, undefined, { uid: V1 } as never)).toMatchObject({ verdict: "permit" });
     expect(evaluate(req, undefined, undefined, { uid: V2 } as never)).toEqual({ verdict: "unknown" });
   });
 
-  test("agreementPolicyUri overrides the agreement's uid; with neither, Consents are not filtered", () => {
+  test("policyUriOverridesUid", () => {
     expect(createPcfConsentEvaluator([consent("a", V1)], { agreementPolicyUri: V2 })(req)).toEqual({ verdict: "unknown" });
     expect(createPcfConsentEvaluator([consent("c", undefined)])(req)).toMatchObject({ verdict: "permit" });
   });
@@ -90,7 +90,7 @@ function agreement(uid: string, purpose: string, until: string, extra: Record<st
 }
 
 describe("rule 2 with the version chain (owner card 2026-10-30 19:55Z)", () => {
-  test("a narrower purpose or an earlier end date is a narrowing amendment; the reverse is not", () => {
+  test("narrowerPurposeOrEarlierEndNarrows", () => {
     const base = agreement(V1, "PurposeOfUse", "2028-01-01");
     expect(isNarrowingAmendment(agreement(V2, "TREAT", "2028-01-01"), base)).toBe(true);
     expect(isNarrowingAmendment(agreement(V2, "PurposeOfUse", "2027-01-01"), base)).toBe(true);
@@ -98,7 +98,7 @@ describe("rule 2 with the version chain (owner card 2026-10-30 19:55Z)", () => {
     expect(isNarrowingAmendment(agreement(V2, "PurposeOfUse", "2029-01-01"), base)).toBe(false);
   });
 
-  test("dropping a duty, a prohibition or changing a party widens use", () => {
+  test("droppingDutyOrProhibitionWidens", () => {
     const withProhibition = agreement(V1, "TREAT", "2028-01-01", {
       prohibition: [{ assignee: "org:research-unit", action: "odrl:distribute", target: "dataset:registry" }],
     });
@@ -109,7 +109,7 @@ describe("rule 2 with the version chain (owner card 2026-10-30 19:55Z)", () => {
     expect(isNarrowingAmendment(agreement(V2, "TREAT", "2028-01-01", { assignee: "org:other" }), agreement(V1, "TREAT", "2028-01-01"))).toBe(false);
   });
 
-  test("a Consent for an earlier version counts only while every step back narrows", () => {
+  test("earlierVersionCountsWhileNarrowing", () => {
     const narrowing = new Map<string, AgreementVersion>([
       [V1, { policy: agreement(V1, "PurposeOfUse", "2028-01-01") }],
       [V2, { policy: agreement(V2, "TREAT", "2028-01-01"), previousVersion: V1 }],
@@ -129,7 +129,7 @@ describe("rule 2 with the version chain (owner card 2026-10-30 19:55Z)", () => {
     expect(evaluate2(req, undefined, undefined, { uid: V3 } as never)).toEqual({ verdict: "unknown" });
   });
 
-  test("a missing version or a loop stops the walk", () => {
+  test("missingOrLoopStopsWalk", () => {
     const missing = new Map<string, AgreementVersion>([[V2, { policy: agreement(V2, "TREAT", "2028-01-01"), previousVersion: V1 }]]);
     expect([...versionsCoveredByConsent(V2, missing)]).toEqual([V2]);
     const loop = new Map<string, AgreementVersion>([
@@ -162,7 +162,7 @@ describe("rule 4: cached registry results end when a Consent is withdrawn", () =
   });
   afterAll(() => server.stop(true));
 
-  test("a second lookup is served from cache until the Consent is withdrawn", async () => {
+  test("cacheServesUntilWithdrawn", async () => {
     let now = Date.parse("2026-06-15T12:00:00Z");
     const client = new Iti108ConsentClient(baseUrl, { now: "2026-06-15T12:00:00Z" }, { ttlMs: 60_000, clock: () => now });
     const first = await client.findAccessConsents({ patient: "Patient/p1" });
@@ -182,7 +182,7 @@ describe("rule 4: cached registry results end when a Consent is withdrawn", () =
     expect(hits).toBe(3);
   });
 
-  test("an entry ends no later than its Consent's provision.period.end", async () => {
+  test("cacheEndsAtProvisionEnd", async () => {
     status = "active";
     const before = hits;
     let now = Date.parse("2026-12-31T23:59:00Z");

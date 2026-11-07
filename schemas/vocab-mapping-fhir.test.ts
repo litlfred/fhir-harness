@@ -72,7 +72,7 @@ describe("the fixtures are the published examples, unmodified", () => {
   const prov = read("provenance.json") as { sources: Array<{ files: Record<string, string> }> };
   for (const s of prov.sources) {
     for (const [file, sha] of Object.entries(s.files)) {
-      test(file, () => {
+      test(`fixtureShaMatches[${String(file).replace(/\s+/g, "_")}]`, () => {
         expect(createHash("sha256").update(readFileSync(join(FIX, file))).digest("hex")).toBe(sha);
       });
     }
@@ -81,7 +81,7 @@ describe("the fixtures are the published examples, unmodified", () => {
 
 describe("π ∘ ι = id on published ConceptMaps", () => {
   for (const [file, release] of FIXTURES) {
-    test(`${file} (${release})`, () => {
+    test(`conceptMapRoundTrips[${String(file).replace(/\s+/g, "_")}]`, () => {
       const c = read(file);
       expect(detectRelease(c)).toBe(release);
       const m = fromConceptMap(c, release);
@@ -96,7 +96,7 @@ describe("π ∘ ι = id on published ConceptMaps", () => {
     });
   }
 
-  test("the fixtures exercise dependsOn, product and unmapped in both releases", () => {
+  test("fixturesExerciseDependsOnUnmapped", () => {
     const has = (m: VocabMapping, f: (t: NonNullable<NonNullable<VocabMapping["group"][number]["element"][number]["target"]>[number]>) => boolean) =>
       m.group.some((g) => g.element.some((e) => (e.target ?? []).some(f)));
     const r4 = fromConceptMap(read("r4/ConceptMap-example2.json"), "R4");
@@ -109,7 +109,7 @@ describe("π ∘ ι = id on published ConceptMaps", () => {
     expect(r5.additionalAttribute?.length).toBeGreaterThan(0);
   });
 
-  test("a constructed R5 map using what the examples do not: noMap, fixed unmapped, valueSet, target.property", () => {
+  test("constructedR5MapRoundTrips", () => {
     // CONSTRUCTED, not published: R5's only example with noMap is 216 KB.
     const c: Json = {
       resourceType: "ConceptMap",
@@ -155,7 +155,7 @@ describe("π ∘ ι = id on published ConceptMaps", () => {
 });
 
 describe("crossing releases is a conversion, and says so", () => {
-  test("an R4 map produced as R5 reports each equivalence R5 cannot say", () => {
+  test("r4AsR5ReportsEquivalences", () => {
     const c = read("r4/ConceptMap-example2.json");
     const m = fromConceptMap(c, "R4");
     const narrowed = m.group.flatMap((g) => g.element.flatMap((e) => e.target ?? [])).filter((t) => R5_TO_R4_EQUIVALENCE[t.relationship] !== t.equivalence);
@@ -163,7 +163,7 @@ describe("crossing releases is a conversion, and says so", () => {
     expect(losses.filter((l) => l.field === "equivalence" && l.kind === "converted")).toHaveLength(narrowed.length);
   });
 
-  test("an R5 noMap produced as R4 is written the R4 way, and reported", () => {
+  test("r5NoMapAsR4Reported", () => {
     const m = fromConceptMap({ resourceType: "ConceptMap", status: "draft", group: [{ element: [{ code: "x", noMap: true }] }] }, "R5");
     const { conceptMap, losses } = toConceptMap(m, { release: "R4" });
     const el = ((conceptMap["group"] as Json[])[0]!["element"] as Json[])[0]!;
@@ -199,7 +199,7 @@ const SCHEME: VocabMapping = VocabMappingSchema.parse({
 });
 
 describe("π on what a ConceptMap cannot say reports it, never silently", () => {
-  test("the derived title, the flag and the JSON key are each a reported loss", () => {
+  test("schemeLossesReported", () => {
     const { conceptMap, losses } = toConceptMap(SCHEME, { release: "R5" });
     expect(losses.map((l) => `${l.kind}:${l.field}`).sort()).toEqual(["dropped:authority", "dropped:key", "dropped:transform"]);
     // The mapping FACTS survive: both targets of `label` are in the ConceptMap.
@@ -208,14 +208,14 @@ describe("π on what a ConceptMap cannot say reports it, never silently", () => 
     expect(((groups[1]!["element"] as Json[])[0]!["target"] as Json[])[0]).toEqual({ code: "title", relationship: "equivalent" });
   });
 
-  test("what π produces uses only element paths R5 defines", () => {
+  test("onlyR5ElementPaths", () => {
     for (const [m, release] of [[SCHEME, "R5"], ...FIXTURES.filter(([, r]) => r === "R5").map(([f]) => [fromConceptMap(read(f), "R5"), "R5"])] as Array<[VocabMapping, FhirRelease]>) {
       const bad = undefinedPaths(toConceptMap(m, { release }).conceptMap);
       expect(bad).toEqual([]);
     }
   });
 
-  test("every declared vocab-mapping table produces a valid R5 ConceptMap", () => {
+  test("declaredTablesProduceValidR5", () => {
     const tables = loadVocabMappings(vocabMappingDirs(HARNESS));
     expect(tables.size).toBeGreaterThan(0);
     const prefixes = { ...STANDARD_PREFIXES, ...ownPrefixTable() };
@@ -230,7 +230,7 @@ describe("π on what a ConceptMap cannot say reports it, never silently", () => 
 // the packages are not vendored here (fixtures are a sample, with provenance).
 const CORPUS = process.env["FHIR_EXAMPLES_DIR"];
 describe.skipIf(CORPUS === undefined)("the whole published example corpus", () => {
-  test("every ConceptMap round-trips", () => {
+  test("corpusRoundTrips", () => {
     const pkg = JSON.parse(readFileSync(join(CORPUS!, "package.json"), "utf-8")) as { fhirVersions?: string[]; version: string };
     const release: FhirRelease = (pkg.fhirVersions?.[0] ?? pkg.version).startsWith("4.") ? "R4" : "R5";
     const files = readdirSync(CORPUS!).filter((f) => f.startsWith("ConceptMap-") && f.endsWith(".json"));
