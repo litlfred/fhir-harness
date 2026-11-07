@@ -1,12 +1,12 @@
 Feature: The IG's package dependencies table
 
-  @test:scripts/ig-dependencies.test.ts::declaredFromIgOrSushi
+  @test:scripts/ig-dependencies.test.ts::the_IG's_package_dependencies_(dependency-table.xhtml,_bean_4475)::declaredFromIgOrSushi
   Scenario: declared from the ImplementationGuide, or from sushi-config's map in both of its shapes
     Then an ImplementationGuide's dependsOn gives each package with its version and canonical, skipping one with no package id
     And sushi-config's dependencies give packages in both the short and the long form
     And a sushi-config with no dependencies gives none
 
-  @test:scripts/ig-dependencies.test.ts::nestedFromPackageCache
+  @test:scripts/ig-dependencies.test.ts::the_IG's_package_dependencies_(dependency-table.xhtml,_bean_4475)::nestedFromPackageCache
   Scenario: nested from the package cache; a package the cache lacks is SAID, a repeat is not expanded twice, core is a leaf
     Given a package cache holding two declared packages and the core package
     When the dependency rows are built
@@ -15,7 +15,7 @@ Feature: The IG's package dependencies table
     And a package already listed is marked as a repeat and not expanded
     And the first row carries its title, canonical and FHIR version
 
-  @test:scripts/ig-dependencies.test.ts::templateRendersThreeForms
+  @test:scripts/ig-dependencies.test.ts::the_IG's_package_dependencies_(dependency-table.xhtml,_bean_4475)::templateRendersThreeForms
   Scenario: the template renders all three forms, and says when there is nothing
     Given the dependency table template
     Then it starts with a Liquid comment

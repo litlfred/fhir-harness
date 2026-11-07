@@ -1,6 +1,6 @@
 Feature: Rendering an ODRL 2.2 Agreement one way into a FHIR R5 Permission
 
-  @test:schemas/odrl-to-fhir-r5-permission.test.ts::workedExamplesRenderValidPermissions
+  @test:schemas/odrl-to-fhir-r5-permission.test.ts::One-way_ODRL_2.2_Agreement_→_FHIR_R5_Permission_renderer_(bean_jfbm)::workedExamplesRenderValidPermissions
   Scenario: 1. Done-when #1: worked DSA examples (DSA-042 v1 and PHW DSA 42 v3) render to valid FHIR R5 Permissions and compile with SUSHI (0 errors)
     Given the agreement DSA-042 v1 with its DCAT record
     When it is rendered to a Permission
@@ -13,7 +13,7 @@ Feature: Rendering an ODRL 2.2 Agreement one way into a FHIR R5 Permission
     Then the FSH contains "Instance: Permission-DSA-042-v1", "InstanceOf: Permission" and "* combining = #deny-overrides"
     And when SUSHI is installed and compiles it, its output reports "0 Errors" and "0 Warnings" and the generated resource validates and equals the Permission
 
-  @test:schemas/odrl-to-fhir-r5-permission.test.ts::listsDroppedTerms
+  @test:schemas/odrl-to-fhir-r5-permission.test.ts::One-way_ODRL_2.2_Agreement_→_FHIR_R5_Permission_renderer_(bean_jfbm)::listsDroppedTerms
   Scenario: 2. Done-when #2: every ODRL / DCAT / SPDX term with no exact Permission home is listed in dropped
     Given the agreement PHW DSA 42 v3 with the DCAT record
     When it is rendered
@@ -23,7 +23,7 @@ Feature: Rendering an ODRL 2.2 Agreement one way into a FHIR R5 Permission
     Then the Permission validates and combines as "deny-unless-permit"
     And every one of those terms is listed among the dropped paths
 
-  @test:schemas/odrl-to-fhir-r5-permission.test.ts::schemaFromR5CoreRefusesInvented
+  @test:schemas/odrl-to-fhir-r5-permission.test.ts::One-way_ODRL_2.2_Agreement_→_FHIR_R5_Permission_renderer_(bean_jfbm)::schemaFromR5CoreRefusesInvented
   Scenario: 3. Done-when #3: FhirR5PermissionSchema is built from hl7.fhir.r5.core#5.0.0 StructureDefinition-Permission.json and refuses any invented field
     Then the status, combining, provision type and data meaning codes are the R5 value sets in order
     And a Permission missing status or combining is refused
