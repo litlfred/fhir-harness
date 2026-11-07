@@ -10,12 +10,12 @@
  * @module fhir-harness/scripts/build-ig-indexes.test
  */
 import { afterAll, describe, expect, it } from "bun:test";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, symlinkSync, writeFileSync } from "node:fs";
 import { spawnSync } from "node:child_process";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 
-import { astAgainstPin, cloneAt, instancesIn, lockedMounts, pinnedAt, referenceAbsent, contextsFrom, fhirVersionsOf, hubFrom, igTargets, isSafeInstanceName, lockedRepositories, packFromAst, publishedBase, rebaseOnMount } from "./build-ig-indexes.ts";
+import { astAgainstPin, cloneAt, instancesIn, lockedMounts, pinnedAt, referenceAbsent, contextsFrom, fhirVersionsOf, hubFrom, igTargets, withWorkDir, isSafeInstanceName, lockedRepositories, packFromAst, publishedBase, rebaseOnMount } from "./build-ig-indexes.ts";
 import type { BranchLister } from "./gen-ig-ast-pages.ts";
 
 const instances = [
@@ -334,5 +334,50 @@ describe("pinnedAt and astAgainstPin (bean fwtz: a pinned read writes the same b
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
+  });
+});
+
+describe("withWorkDir", () => {
+  const inTmp = <T>(fn: (tmp: string) => T): T => {
+    const tmp = mkdtempSync(join(tmpdir(), "ig-index-wd-"));
+    const before = process.env.TMPDIR;
+    process.env.TMPDIR = tmp;
+    try {
+      return fn(tmp);
+    } finally {
+      if (before === undefined) delete process.env.TMPDIR;
+      else process.env.TMPDIR = before;
+      rmSync(tmp, { recursive: true, force: true });
+    }
+  };
+
+  it("removes the directory it made when the build fails partway, leaving os.tmpdir() clean", () => {
+    inTmp((tmp) => {
+      expect(tmpdir()).toBe(tmp);
+      expect(() =>
+        withWorkDir(undefined, (work) => {
+          mkdirSync(join(work, "some-ig"), { recursive: true });
+          writeFileSync(join(work, "some-ig", "half.json"), "{");
+          throw new Error("clone failed");
+        }),
+      ).toThrow("clone failed");
+      expect(readdirSync(tmp)).toEqual([]);
+    });
+  });
+
+  it("removes it after a build that succeeds too", () => {
+    inTmp((tmp) => {
+      expect(withWorkDir(undefined, (work) => (writeFileSync(join(work, "x"), "x"), 7))).toBe(7);
+      expect(readdirSync(tmp)).toEqual([]);
+    });
+  });
+
+  it("keeps a directory --work names", () => {
+    inTmp((tmp) => {
+      const given = join(tmp, "mine");
+      mkdirSync(given);
+      expect(() => withWorkDir(given, () => { throw new Error("x"); })).toThrow();
+      expect(existsSync(given)).toBe(true);
+    });
   });
 });
