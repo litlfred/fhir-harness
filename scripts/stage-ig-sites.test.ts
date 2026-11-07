@@ -37,7 +37,7 @@ beforeAll(() => {
 });
 afterAll(() => rmSync(repo, { recursive: true, force: true }));
 
-test("an instance whose declaration records a git source is built from that declared source", () => {
+test("declaredGitSourceBuilt", () => {
   const { build } = igsToBuild(repo);
   const declared = build.find((b) => b.instance === "declared-source");
   expect(declared).toBeDefined();
@@ -45,7 +45,7 @@ test("an instance whose declaration records a git source is built from that decl
   expect(declared?.ref).toBe("def456");
 });
 
-test("an instance whose menu records a sushi-config source is built, from that commit", () => {
+test("menuSushiSourceBuilt", () => {
   const { build } = igsToBuild(repo);
   const withSource = build.find((b) => b.instance === "with-source");
   expect(withSource).toBeDefined();
@@ -53,12 +53,12 @@ test("an instance whose menu records a sushi-config source is built, from that c
   expect(withSource?.ref).toBe("abc123");
 });
 
-test("a menu with no source is skipped AND reported; no menu at all is simply not an IG", () => {
+test("noSourceSkippedReported", () => {
   const { skipped } = igsToBuild(repo);
   expect(skipped).toEqual(["no-source: neither the instance declaration nor menu.json records a source repository and commit"]);
 });
 
-test("an igSite instance reserves each served directory's path, so its IG's input/images copy does not take that route", () => {
+test("igSiteReservesServedPaths", () => {
   const root = join(repo, "served-ig");
   mkdirSync(join(root, "docs"), { recursive: true });
   writeDeclaration(root, {
@@ -72,7 +72,7 @@ test("an igSite instance reserves each served directory's path, so its IG's inpu
   expect(servedPathsFor(root)).toEqual([{ prefix: "openapi/", by: "served directory served-ig-openapi" }]);
 });
 
-test("a served directory the checkout holds reserves each of its files, not the whole route", () => {
+test("servedFilesReservedEach", () => {
   const root = join(repo, "served-files");
   mkdirSync(join(root, "docs"), { recursive: true });
   mkdirSync(join(root, "openapi", "sub"), { recursive: true });
@@ -91,7 +91,7 @@ test("a served directory the checkout holds reserves each of its files, not the 
   ]);
 });
 
-test("an IG site at /<instance>/ig/ reserves nothing: no served route can meet it", () => {
+test("igAtSubdirReservesNothing", () => {
   const root = join(repo, "served-no-igsite");
   mkdirSync(root, { recursive: true });
   writeDeclaration(root, {
@@ -108,7 +108,7 @@ test("an IG site at /<instance>/ig/ reserves nothing: no served route can meet i
 // folio-assistant#2738: smart-immunizations declares no docs, so nothing else
 // answers /<instance>/. Its IG was staged under an `/ig` base but composed at
 // the instance root, and every menu link was dead.
-test("an instance with no pages of its own gets its IG at /<instance>/, and reserves its served routes", () => {
+test("noPagesIgAtRoot", () => {
   const root = join(repo, "served-no-docs");
   mkdirSync(root, { recursive: true });
   writeDeclaration(root, {

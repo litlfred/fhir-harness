@@ -39,7 +39,7 @@ function run(script: string, dir: string) {
 const content = (dir: string) => JSON.parse(readFileSync(join(dir, "Library-Foo.json"), "utf8")).content;
 
 describe("the Library strippers run on a non-WHO IG", () => {
-  it("strip_library_content replaces inline CQL with a reference to the standalone file", () => {
+  it("contentReplacesInlineCql", () => {
     const d = fixture();
     try {
       run("strip_library_content.py", d);
@@ -49,7 +49,7 @@ describe("the Library strippers run on a non-WHO IG", () => {
     }
   });
 
-  it("strip_library_binaries extracts the ELM to a file and references it", () => {
+  it("binariesExtractsElm", () => {
     const d = fixture();
     try {
       run("strip_library_binaries.py", d);
@@ -64,7 +64,7 @@ describe("the Library strippers run on a non-WHO IG", () => {
 describe("the copies are the upstream bytes the README records", () => {
   const readme = readFileSync(join(here, "README.md"), "utf8");
   for (const f of ["strip_library_binaries.py", "strip_library_content.py"]) {
-    it(`${f} matches its recorded sha256`, () => {
+    it(`copyMatchesReadmeSha[${String(f).replace(/\s+/g, "_")}]`, () => {
       const recorded = new RegExp("`" + f.replace(".", "\\.") + "` ([0-9a-f]{64})").exec(readme)?.[1];
       const actual = createHash("sha256").update(readFileSync(join(here, f))).digest("hex");
       expect(recorded).toBe(actual);

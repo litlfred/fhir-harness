@@ -66,7 +66,7 @@ const IX: FhirArtifactIndex = FhirArtifactIndexSchema.parse(compiledIndex("ips")
 const [COMPOSITION, PATIENT] = IX.artifacts as [FhirArtifactIndex["artifacts"][0], FhirArtifactIndex["artifacts"][0]];
 
 describe("ig-artifact-jsonld: one node per artefact, in borrowed vocabularies", () => {
-  it("a compiled artefact: FHIR RDF class, key, canonical as sameAs, the local copy, and PROV", () => {
+  it("compiledNodeShape", () => {
     const n = artifactJsonLd(IX, COMPOSITION, { compiledData: "ast-data" });
     expect(IgArtifactJsonLdSchema.safeParse(n).success).toBe(true);
     expect(n.$schema).toBe(IG_ARTIFACT_JSONLD_SCHEMA_TAG);
@@ -82,13 +82,13 @@ describe("ig-artifact-jsonld: one node per artefact, in borrowed vocabularies", 
     expect(n["dcterms:isPartOf"]["dcterms:identifier"]).toBe(IPS.packageId);
   });
 
-  it("with a base: every IRI is absolute under the docs root", () => {
+  it("baseMakesIrisAbsolute", () => {
     const n = artifactJsonLd(IX, COMPOSITION, { base: "https://example.org/ig/", compiledData: "ast-data" });
     expect(n["@id"]).toBe("https://example.org/ig/artifact/StructureDefinition-Composition-uv-ips.jsonld");
     expect(n["schema:encoding"][0]!["schema:contentUrl"]["@id"]).toBe("https://example.org/ig/ast-data/resources/StructureDefinition/Composition-uv-ips--7ae5e8a1.json");
   });
 
-  it("a referenced artefact names only its upstream files, and no node links its rendering", () => {
+  it("referencedNodeUpstreamOnly", () => {
     const n = artifactJsonLd(IX, PATIENT, { compiledData: "ast-data" });
     expect(n["schema:creativeWorkStatus"]).toBe("referenced");
     expect(n["schema:encoding"].every((e) => e["dcterms:source"] === "upstream")).toBe(true);
@@ -96,12 +96,12 @@ describe("ig-artifact-jsonld: one node per artefact, in borrowed vocabularies", 
     expect(JSON.stringify(n)).not.toContain(".html");
   });
 
-  it("the schema refuses a node whose type and key disagree", () => {
+  it("refusesTypeKeyMismatch", () => {
     const n = { ...artifactJsonLd(IX, COMPOSITION), "@type": "fhir:ValueSet" };
     expect(IgArtifactJsonLdSchema.safeParse(n).success).toBe(false);
   });
 
-  it("nothing in the node is WHO's", () => {
+  it("nodeNamesNoOverlay", () => {
     const text = [...artifactJsonLdFiles(IX).values()].join("\n");
     expect(text).not.toMatch(/who\.int|smart-base|\bDAK\b/i);
   });
@@ -130,36 +130,36 @@ describe("ig-artifact-jsonld check: the kind's QA, beyond shape", () => {
   afterAll(() => sites.forEach((s) => rmSync(s, { recursive: true, force: true })));
   const node = (s: string, a = COMPOSITION) => join(s, "artifact", `${a.resourceType}-${a.id}.jsonld`);
 
-  it("passes on what it wrote", () => {
+  it("checkPassesOnWritten", () => {
     expect(checkArtifactJsonLd(IX, site())).toEqual([]);
   });
-  it("fails on a missing node", () => {
+  it("checkFailsMissingNode", () => {
     const s = site();
     unlinkSync(node(s, PATIENT));
     expect(checkArtifactJsonLd(IX, s).join("\n")).toContain("StructureDefinition/Patient-uv-ips has no node");
   });
-  it("fails on an orphan", () => {
+  it("checkFailsOrphan", () => {
     const s = site();
     cpSync(node(s), join(s, "artifact", "ValueSet-gone.jsonld"));
     expect(checkArtifactJsonLd(IX, s).join("\n")).toContain("ValueSet-gone.jsonld: an orphan");
   });
-  it("fails on a node copied to another artefact's name", () => {
+  it("checkFailsCopiedNode", () => {
     const s = site();
     cpSync(node(s, PATIENT), node(s));
     cpSync(node(s, PATIENT).replace(/\.jsonld$/, ".json"), node(s).replace(/\.jsonld$/, ".json"));
     expect(checkArtifactJsonLd(IX, s).join("\n")).toMatch(/names StructureDefinition\/Patient-uv-ips, but the file is StructureDefinition\/Composition-uv-ips's/);
   });
-  it("fails when the .json twin differs", () => {
+  it("checkFailsJsonTwinDiffers", () => {
     const s = site();
     writeFileSync(node(s).replace(/\.jsonld$/, ".json"), "{}");
     expect(checkArtifactJsonLd(IX, s).join("\n")).toContain("twin is missing or differs");
   });
-  it("fails when the resource the page will draw is not on the site", () => {
+  it("checkFailsResourceMissing", () => {
     const s = site();
     rmSync(join(s, "ast-data"), { recursive: true });
     expect(checkArtifactJsonLd(IX, s).join("\n")).toContain("is not on the site");
   });
-  it("fails when nothing was written, rather than passing over nothing", () => {
+  it("checkFailsNothingWritten", () => {
     const s = mkdtempSync(join(tmpdir(), "fhir-harness-thin-empty-"));
     sites.push(s);
     expect(checkArtifactJsonLd(IX, s).join("\n")).toContain("that is not a pass");
@@ -169,15 +169,15 @@ describe("ig-artifact-jsonld check: the kind's QA, beyond shape", () => {
 describe("thinArtifactPage: identity and a pointer, nothing of the artefact's content", () => {
   const html = thinArtifactPage(IX, COMPOSITION, { label: "IPS", home: "../index.html", all: "../artifacts.html", prev: "../", next: "StructureDefinition-Patient-uv-ips.html", compiledData: "ast-data" });
 
-  it("names itself by its file, and the node as its alternate", () => {
+  it("pageNamesSelfAndNode", () => {
     expect(html).toContain('<link rel="canonical" href="StructureDefinition-Composition-uv-ips.html">');
     expect(html).toContain('<link rel="alternate" type="application/ld+json" href="StructureDefinition-Composition-uv-ips.jsonld">');
   });
-  it("links the rail rather than inlining it", () => {
+  it("pageLinksRail", () => {
     expect(html).toContain('<meta name="folio-navbar" content="linked">');
     expect(html).not.toContain('class="fa-nav"');
   });
-  it("its config names the node, the loaders and the reading order", () => {
+  it("pageConfigNodeLoadersOrder", () => {
     const cfg = thinPageConfigOf(html, THIN_PAGE_CONFIG_ID)!;
     expect(cfg.node).toBe("StructureDefinition-Composition-uv-ips.jsonld");
     expect(cfg.astLoader).toBe("../assets/ast-resource.js");
@@ -185,20 +185,20 @@ describe("thinArtifactPage: identity and a pointer, nothing of the artefact's co
     expect(cfg.next).toBe("StructureDefinition-Patient-uv-ips.html");
     expect(cfg.published).toBe(`${IPS.published}/`);
   });
-  it("a reader without JavaScript is sent to the node and the resource", () => {
+  it("noscriptLinksNodeAndResource", () => {
     expect(html).toMatch(/<noscript>.*href="StructureDefinition-Composition-uv-ips\.jsonld".*href="\.\.\/ast-data\/resources\/StructureDefinition\/Composition-uv-ips--7ae5e8a1\.json"/s);
   });
-  it("holds no description, version or canonical: those are the node's", () => {
+  it("pageHoldsNoContent", () => {
     expect(html).not.toContain("A fixture profile.");
     expect(html).not.toContain(`${IPS.canonical}/StructureDefinition`);
   });
-  it("is small", () => {
+  it("pageIsSmall", () => {
     expect(html.length).toBeLessThan(3000);
   });
 });
 
 describe("the shared renderer", () => {
-  it("parses as a script", () => {
+  it("rendererParses", () => {
     const src = readFileSync(join(import.meta.dir, "templates", "ig-pages", "ig-artifact.js"), "utf8");
     expect(() => new Function(src)).not.toThrow();
     // It reads its own config block, the id the pages write.
@@ -220,7 +220,7 @@ describe("gen-ig-pages: thin by default, end to end (owner, 2026-10-12: \"make t
   run("fat", "--full-pages");
   const docs = (i: string) => join(repo, i, "docs");
 
-  it("with no flag, writes each artefact page as a thin .html at the full page's address, its node beside it, and the index node", () => {
+  it("thinByDefault", () => {
     const art = readdirSync(join(docs("thin"), "artifact")).sort();
     expect(art).toEqual([
       // The compiled profile's tab views (owner, 2026-10-14: "3. Render them
@@ -248,12 +248,12 @@ describe("gen-ig-pages: thin by default, end to end (owner, 2026-10-12: \"make t
     expect(JSON.parse(readFileSync(join(docs("thin"), "artifact", "index.jsonld"), "utf8"))["dcterms:title"]).toBe("IPS");
   });
 
-  it("--thin, the old opt-in, is still accepted and writes the same pages", () => {
+  it("thinFlagSamePages", () => {
     const list = (i: string) => readdirSync(join(docs(i), "artifact")).sort();
     expect(list("legacy")).toEqual(list("thin"));
   });
 
-  it("its nodes pass the kind's QA once the resource is served", () => {
+  it("nodesPassCheckWhenServed", () => {
     const ix = FhirArtifactIndexSchema.parse(JSON.parse(readFileSync(join(repo, "thin", "fhir-artifact-index", "index.json"), "utf8")));
     const res = join(docs("thin"), "ast-data", RESOURCE.replace(/^[^/]+\//, ""));
     mkdirSync(dirname(res), { recursive: true });
@@ -261,13 +261,13 @@ describe("gen-ig-pages: thin by default, end to end (owner, 2026-10-12: \"make t
     expect(checkArtifactJsonLd(ix, docs("thin"))).toEqual([]);
   });
 
-  it("--full-pages keeps the old path: full .md pages, no nodes, no renderer", () => {
+  it("fullPagesOldPath", () => {
     const art = readdirSync(join(docs("fat"), "artifact"));
     expect(art.every((f) => f.endsWith(".md"))).toBe(true);
     expect(existsSync(join(docs("fat"), "assets", "ig-artifact.js"))).toBe(false);
   });
 
-  it("--thin and --full-pages together are refused", () => {
+  it("thinAndFullRefused", () => {
     const r = spawn("both", "--thin", "--full-pages");
     expect(r.exitCode).toBe(2);
     expect(r.stderr.toString()).toContain("pick one");
@@ -275,7 +275,7 @@ describe("gen-ig-pages: thin by default, end to end (owner, 2026-10-12: \"make t
 });
 
 describe("the index node: every artefact once, each entry naming its node", () => {
-  it("lists every artefact in the Publisher's order, with what a row shows, and validates", () => {
+  it("indexNodeListsAll", () => {
     const n = artifactIndexJsonLd(IX, { title: "IPS" });
     expect(IgArtifactIndexJsonLdSchema.safeParse(n).success).toBe(true);
     expect(n.$schema).toBe(IG_ARTIFACT_INDEX_JSONLD_SCHEMA_TAG);
@@ -286,7 +286,7 @@ describe("the index node: every artefact once, each entry naming its node", () =
     // It names nodes, never renderings.
     expect(JSON.stringify(n)).not.toContain(".html");
   });
-  it("the schema refuses a count that is not the list's", () => {
+  it("refusesWrongCount", () => {
     expect(IgArtifactIndexJsonLdSchema.safeParse({ ...artifactIndexJsonLd(IX), "schema:numberOfItems": 3 }).success).toBe(false);
   });
 });
@@ -308,15 +308,15 @@ describe("ig-artifact-jsonld check over the index node (calibrated: each case br
     writeFileSync(indexPath(s).replace(/\.jsonld$/, ".json"), text);
   };
 
-  it("is not an orphan, and passes on what was written", () => {
+  it("indexCheckPasses", () => {
     expect(checkArtifactJsonLd(IX, site())).toEqual([]);
   });
-  it("fails when the index node is missing", () => {
+  it("indexCheckFailsMissing", () => {
     const s = site();
     unlinkSync(indexPath(s));
     expect(checkArtifactJsonLd(IX, s).join("\n")).toContain("index.jsonld: missing");
   });
-  it("fails when it omits an artefact", () => {
+  it("indexCheckFailsOmitted", () => {
     const s = site();
     rewrite(s, (n) => {
       n["schema:hasPart"].pop();
@@ -324,21 +324,21 @@ describe("ig-artifact-jsonld check over the index node (calibrated: each case br
     });
     expect(checkArtifactJsonLd(IX, s).join("\n")).toContain("does not list StructureDefinition/Patient-uv-ips");
   });
-  it("fails when an entry names another artefact's node", () => {
+  it("indexCheckFailsWrongNode", () => {
     const s = site();
     rewrite(s, (n) => {
       n["schema:hasPart"][0]["@id"] = "StructureDefinition-Patient-uv-ips.jsonld";
     });
     expect(checkArtifactJsonLd(IX, s).join("\n")).toContain("names a node that is StructureDefinition/Patient-uv-ips");
   });
-  it("fails when an entry's node is not on the site", () => {
+  it("indexCheckFailsAbsentNode", () => {
     const s = site();
     rewrite(s, (n) => {
       n["schema:hasPart"][0]["@id"] = "StructureDefinition-Gone.jsonld";
     });
     expect(checkArtifactJsonLd(IX, s).join("\n")).toContain("is not on the site");
   });
-  it("fails when its count disagrees with its list", () => {
+  it("indexCheckFailsCount", () => {
     const s = site();
     rewrite(s, (n) => {
       n["schema:numberOfItems"] = 5;
@@ -385,7 +385,7 @@ function instanceIndex(): FhirArtifactIndex {
 describe("what an instance states: its profiles and its code, in the node and the index (owner, 2026-10-12)", () => {
   const ix = instanceIndex();
   const basic = ix.artifacts.find((a) => a.key === "Basic/page-role")!;
-  it("the node names its profiles as dcterms:conformsTo and its code as schema:DefinedTerms, as written", () => {
+  it("nodeProfilesAndSubject", () => {
     const n = artifactJsonLd(ix, basic);
     expect(IgArtifactJsonLdSchema.safeParse(n).success).toBe(true);
     expect(n["dcterms:conformsTo"]).toEqual([{ "@id": `${IPS.canonical}/StructureDefinition/Patient-uv-ips` }, { "@id": "http://example.org/StructureDefinition/elsewhere|1.0" }]);
@@ -395,18 +395,18 @@ describe("what an instance states: its profiles and its code, in the node and th
       { "@type": "schema:DefinedTerm", "schema:name": "Page" },
     ]);
   });
-  it("an artefact that states neither has neither", () => {
+  it("neitherStatedNeither", () => {
     const n = artifactJsonLd(ix, COMPOSITION);
     expect(n["dcterms:conformsTo"]).toBeUndefined();
     expect(n["dcterms:subject"]).toBeUndefined();
   });
-  it("a definition (it has a canonical) is described by its description: its profiles are not written", () => {
+  it("definitionNotByProfile", () => {
     const ig = ix.artifacts.find((a) => a.resourceType === "ImplementationGuide")!;
     expect(ig.profiles).toEqual(["http://hl7.org/fhir/StructureDefinition/shareable-ig"]);
     expect(artifactJsonLd(ix, ig)["dcterms:conformsTo"]).toBeUndefined();
     expect(artifactIndexJsonLd(ix)["schema:hasPart"].find((e) => e["@type"] === "fhir:ImplementationGuide")!["dcterms:conformsTo"]).toBeUndefined();
   });
-  it("the index entry repeats them, and every canonical, so a row can link a profile of the same IG", () => {
+  it("indexEntryRepeatsStated", () => {
     const n = artifactIndexJsonLd(ix);
     expect(IgArtifactIndexJsonLdSchema.safeParse(n).success).toBe(true);
     const e = n["schema:hasPart"].find((x) => x["dcterms:identifier"] === "Basic/page-role")!;
@@ -414,7 +414,7 @@ describe("what an instance states: its profiles and its code, in the node and th
     expect(e["dcterms:subject"]).toEqual(artifactJsonLd(ix, basic)["dcterms:subject"]);
     expect(n["schema:hasPart"].find((x) => x["dcterms:identifier"] === "StructureDefinition/Patient-uv-ips")!["schema:sameAs"]).toEqual({ "@id": `${IPS.canonical}/StructureDefinition/Patient-uv-ips` });
   });
-  it("the schema refuses a term with neither a code nor a name", () => {
+  it("refusesTermWithoutCodeOrName", () => {
     const n = { ...artifactJsonLd(ix, basic), "dcterms:subject": [{ "@type": "schema:DefinedTerm" }] };
     expect(IgArtifactJsonLdSchema.safeParse(n).success).toBe(false);
   });
@@ -432,22 +432,22 @@ describe("what an instance states: its profiles and its code, in the node and th
     writeFileSync(p.replace(/\.jsonld$/, ".json"), text);
     return s;
   };
-  it("check passes on what was written", () => {
+  it("statedCheckPasses", () => {
     expect(checkArtifactJsonLd(ix, rewrite(() => {}))).toEqual([]);
   });
-  it("check fails when an entry's code is not its node's (a summary, never a second home)", () => {
+  it("checkFailsEntrySubject", () => {
     const s = rewrite((n) => {
       n["schema:hasPart"].find((x: Json) => x["dcterms:identifier"] === "Basic/page-role")["dcterms:subject"][0]["schema:termCode"] = "role";
     });
     expect(checkArtifactJsonLd(ix, s).join("\n")).toContain("the entry for Basic/page-role says dcterms:subject");
   });
-  it("check fails when an entry claims a profile its node does not", () => {
+  it("checkFailsEntryProfile", () => {
     const s = rewrite((n) => {
       n["schema:hasPart"][0]["dcterms:conformsTo"] = [{ "@id": "http://example.org/StructureDefinition/invented" }];
     });
     expect(checkArtifactJsonLd(ix, s).join("\n")).toContain("says dcterms:conformsTo");
   });
-  it("check fails when an entry's canonical is not its node's", () => {
+  it("checkFailsEntryCanonical", () => {
     const s = rewrite((n) => {
       n["schema:hasPart"][0]["schema:sameAs"] = { "@id": "http://example.org/other" };
     });
@@ -460,7 +460,7 @@ describe("thinIndexPage: the IG's artifacts and toc pages as thin shells", () =>
   const artifacts = thinIndexPage({ ...base, view: "artifacts", heading: "Artifacts Summary", next: "toc.html" });
   const toc = thinIndexPage({ ...base, view: "toc", heading: "Table of Contents", canonical: "toc.html", outline: '<h2>Pages</h2><ul class="igi-outline"><li><a href="index.html">Home</a></li></ul>' });
 
-  it("names the index node as the asset, links the rail and the shared renderer", () => {
+  it("indexPagesThinShells", () => {
     for (const html of [artifacts, toc]) {
       expect(html).toContain('<link rel="alternate" type="application/ld+json" href="artifact/index.jsonld">');
       expect(html).toContain('<meta name="folio-navbar" content="linked">');
@@ -470,12 +470,12 @@ describe("thinIndexPage: the IG's artifacts and toc pages as thin shells", () =>
       expect(html.length).toBeLessThan(3000);
     }
   });
-  it("its config names the view, the index, the pages and the footer", () => {
+  it("indexConfigNamesViewIndex", () => {
     const cfg = thinPageConfigOf(artifacts, THIN_INDEX_CONFIG_ID)!;
     expect(cfg).toMatchObject({ view: "artifacts", index: "artifact/index.jsonld", pages: "artifact/", footer: "assets/ig-footer.json", next: "toc.html", root: "" });
     expect(thinPageConfigOf(toc, THIN_INDEX_CONFIG_ID)!.view).toBe("toc");
   });
-  it("lists no artefact itself: the list is the node's; the toc keeps the IG's own pages", () => {
+  it("listsNoArtefactItself", () => {
     expect(artifacts).not.toContain("Patient");
     expect(toc).toContain('<a href="index.html">Home</a>');
   });
@@ -483,19 +483,19 @@ describe("thinIndexPage: the IG's artifacts and toc pages as thin shells", () =>
 
 describe("the shared renderer draws both page families", () => {
   const src = readFileSync(join(import.meta.dir, "templates", "ig-pages", "ig-artifact.js"), "utf8");
-  it("reads either config block", () => {
+  it("rendererReadsEitherConfig", () => {
     expect(src).toContain(`getElementById("${THIN_INDEX_CONFIG_ID}")`);
   });
-  it("draws the IG's own resource first, as This guide, never as Not categorised", () => {
+  it("rendererGuideFirst", () => {
     expect(src).toContain('"This guide"');
     expect(src).toContain("guideOf(ix, all)");
   });
-  it("draws only the columns a table's rows fill, and sub-heads a category that mixes types", () => {
+  it("rendererFilledColumnsOnly", () => {
     expect(src).toMatch(/function columnsFor\(rows\)/);
     expect(src).toMatch(/if \(cols\.description\) hr\.append/);
     expect(src).toMatch(/el\("h3", null, t\.name/);
   });
-  it("draws every category OPEN: no <details> (the owner could not find artefacts behind collapsed ones)", () => {
+  it("rendererCategoriesOpen", () => {
     expect(src).not.toMatch(/createElement\("details"\)|el\("details"/);
   });
 });
@@ -513,7 +513,7 @@ describe("the IG site, thin by default: stageIgSite, composeIgSite and artifacts
   const staged = join(d, "site");
   const r = stageIgSite(src, staged, { menu, baseurl: "/b", artifacts: { list, pagesHref: "artifact/", index: "artifact/index.jsonld" } });
 
-  it("writes artifacts.html and toc.html as thin pages, and neither as Liquid", () => {
+  it("stageWritesThinIndexPages", () => {
     expect(r.generated).toEqual(expect.arrayContaining(["artifacts.html", "toc.html"]));
     expect(existsSync(join(staged, "artifacts.md"))).toBe(false);
     expect(existsSync(join(staged, "toc.md"))).toBe(false);
@@ -527,7 +527,7 @@ describe("the IG site, thin by default: stageIgSite, composeIgSite and artifacts
     expect(thinPageConfigOf(toc, THIN_INDEX_CONFIG_ID)!.view).toBe("toc");
   });
 
-  it("composed into a host, the IG's pages wear the thin layout: chrome linked, nothing of the host's inlined", () => {
+  it("composedPagesThinLayout", () => {
     const host = join(d, "host");
     mkdirSync(host, { recursive: true });
     expect(composeIgSite(staged, host, "x", { atRoot: true }).collisions).toEqual([]);
@@ -562,7 +562,7 @@ describe("the IG site, thin by default: stageIgSite, composeIgSite and artifacts
     expect(readFileSync(join(host, "artifacts.html"), "utf8").startsWith("<!doctype html>")).toBe(true);
   });
 
-  it("--full-pages keeps the host's layout", () => {
+  it("fullPagesKeepHostLayout", () => {
     const host = join(d, "host-full");
     mkdirSync(host, { recursive: true });
     expect(composeIgSite(staged, host, "x", { atRoot: true, fullPages: true }).collisions).toEqual([]);
@@ -570,7 +570,7 @@ describe("the IG site, thin by default: stageIgSite, composeIgSite and artifacts
     expect(existsSync(join(host, "_layouts"))).toBe(false);
   });
 
-  it("artifactsFor names the index node, and refuses when the artefact pages were built with --full-pages", () => {
+  it("artifactsForNamesIndexNode", () => {
     const root = join(d, "inst");
     mkdirSync(join(root, "fhir-artifact-index"), { recursive: true });
     mkdirSync(join(root, "docs", "artifact"), { recursive: true });

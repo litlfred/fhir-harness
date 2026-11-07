@@ -98,7 +98,7 @@ const IX = FhirArtifactIndexSchema.parse(siteIndex("unit"));
 const [SD, EXAMPLE, , VS] = IX.artifacts as [(typeof IX.artifacts)[0], (typeof IX.artifacts)[0], (typeof IX.artifacts)[0], (typeof IX.artifacts)[0]];
 
 describe("artifactTabs: which views an artefact gets, at the Publisher's file names", () => {
-  it("a profile: its page, definitions, mappings, the JSON as .profile.json, and examples, claimed or not (owner, 2026-10-14: \"1a\")", () => {
+  it("profileTabs", () => {
     expect(artifactTabs(SD, { resource: true }).map((t) => t.file)).toEqual([
       "StructureDefinition-Composition-uv-ips.html",
       "StructureDefinition-Composition-uv-ips-definitions.html",
@@ -107,11 +107,11 @@ describe("artifactTabs: which views an artefact gets, at the Publisher's file na
       "StructureDefinition-Composition-uv-ips-examples.html",
     ]);
   });
-  it("anything else: its page and the JSON view as .json", () => {
+  it("otherTabs", () => {
     expect(artifactTabs(VS, { resource: true }).map((t) => t.file)).toEqual(["ValueSet-sections.html", "ValueSet-sections.json.html"]);
     expect(artifactTabFile(EXAMPLE, "json")).toBe("Composition-example.json.html");
   });
-  it("none without a resource this site serves: every view is drawn from it", () => {
+  it("noResourceNoTabs", () => {
     expect(artifactTabs(SD, { resource: false })).toEqual([]);
   });
 });
@@ -119,21 +119,21 @@ describe("artifactTabs: which views an artefact gets, at the Publisher's file na
 describe("thinArtifactView: one shell, the view in its config", () => {
   const tabs = artifactTabs(SD, { resource: true });
   const html = thinArtifactView(IX, SD, "definitions", { label: "X IG", home: "../index.html", all: "../artifacts.html", resource: "../StructureDefinition-Composition-uv-ips.json", tabs, index: "index.jsonld" });
-  it("names its own file as canonical and the node as its alternate", () => {
+  it("namesCanonicalAndAlternate", () => {
     expect(html).toContain('<link rel="canonical" href="StructureDefinition-Composition-uv-ips-definitions.html">');
     expect(html).toContain('<link rel="alternate" type="application/ld+json" href="StructureDefinition-Composition-uv-ips.jsonld">');
   });
-  it("its config names the view and the resource; no reading order (that runs through the artefacts' own pages)", () => {
+  it("configNamesViewNoOrder", () => {
     const cfg = thinPageConfigOf(html, THIN_PAGE_CONFIG_ID)!;
     expect(cfg).toMatchObject({ view: "definitions", node: "StructureDefinition-Composition-uv-ips.jsonld", resource: "../StructureDefinition-Composition-uv-ips.json", astLoader: "../assets/ast-resource.js" });
     expect(cfg.prev).toBeUndefined();
     expect(cfg.next).toBeUndefined();
   });
-  it("its tab bar links every view, the current one marked", () => {
+  it("tabBarMarksCurrent", () => {
     for (const t of tabs) expect(html).toContain(`href="${t.file}"`);
     expect(html).toContain('<a href="StructureDefinition-Composition-uv-ips-definitions.html" aria-current="page">');
   });
-  it("is thin: the shared renderer, the rail linked, nothing of the resource in it", () => {
+  it("viewIsThin", () => {
     expect(html).toContain('<script src="../assets/ig-artifact.js"></script>');
     expect(html).toContain('<meta name="folio-navbar" content="linked">');
     expect(html).not.toContain("A fixture profile.");
@@ -144,7 +144,7 @@ describe("thinArtifactView: one shell, the view in its config", () => {
 describe("gen-ig-pages --ig-site --publisher-data: a thin page per view, beside the artefact's", () => {
   const files = readdirSync(join(docs, "artifact")).filter((f) => f.endsWith(".html")).sort();
 
-  it("writes each view where the Publisher made one: definitions, mappings, JSON, and examples for every profile, claimed or not", () => {
+  it("writesEachPublisherView", () => {
     expect(files).toEqual([
       "Composition-example.html",
       "Composition-example.json.html",
@@ -167,7 +167,7 @@ describe("gen-ig-pages --ig-site --publisher-data: a thin page per view, beside 
     expect(views.filter((v) => v === "examples")).toHaveLength(2);
   });
 
-  it("every page is thin and wears none of the Publisher's chrome", () => {
+  it("everyPageThinNoChrome", () => {
     for (const f of files) {
       const html = page(f);
       expect(html.startsWith("<!doctype html>")).toBe(true);
@@ -177,7 +177,7 @@ describe("gen-ig-pages --ig-site --publisher-data: a thin page per view, beside 
     expect(publisherChromePages(docs)).toEqual([]);
   });
 
-  it("the artefact's own page links its tabs", () => {
+  it("ownPageLinksTabs", () => {
     const html = page("StructureDefinition-Composition-uv-ips.html");
     for (const f of ["StructureDefinition-Composition-uv-ips-definitions.html", "StructureDefinition-Composition-uv-ips-mappings.html", "StructureDefinition-Composition-uv-ips.profile.json.html", "StructureDefinition-Composition-uv-ips-examples.html"]) {
       expect(html).toContain(`href="${f}"`);
@@ -185,7 +185,7 @@ describe("gen-ig-pages --ig-site --publisher-data: a thin page per view, beside 
     expect(page("ValueSet-sections.html")).toContain('href="ValueSet-sections.json.html"');
   });
 
-  it("every link, and every file a page's config names, resolves in the site", () => {
+  it("everyLinkResolves", () => {
     const dead: string[] = [];
     for (const f of files) {
       const html = page(f);
@@ -200,14 +200,14 @@ describe("gen-ig-pages --ig-site --publisher-data: a thin page per view, beside 
     expect(dead).toEqual([]);
   });
 
-  it("each view draws from the Publisher's JSON the site carries, never its HTML", () => {
+  it("viewsDrawFromJson", () => {
     const cfg = thinPageConfigOf(page("StructureDefinition-Composition-uv-ips-mappings.html"), THIN_PAGE_CONFIG_ID)!;
     // A mapping row links its element on the definitions view.
     expect(cfg).toMatchObject({ view: "mappings", resource: "../StructureDefinition-Composition-uv-ips.json", definitions: "StructureDefinition-Composition-uv-ips-definitions.html" });
     expect(thinPageConfigOf(page("StructureDefinition-Composition-uv-ips-examples.html"), THIN_PAGE_CONFIG_ID)).toMatchObject({ view: "examples", index: "index.jsonld" });
   });
 
-  it("the narrative loader's list of this site's pages names every view, so a resource's narrative link to one stays", () => {
+  it("loaderListsEveryView", () => {
     const listed = JSON.parse(readFileSync(join(docs, "assets", "ast-pages.json"), "utf8")) as string[];
     expect(listed).toEqual(expect.arrayContaining(files));
     expect(existsSync(join(docs, "assets", "ast-resource.js"))).toBe(true);
@@ -217,7 +217,7 @@ describe("gen-ig-pages --ig-site --publisher-data: a thin page per view, beside 
 describe("the narrative's links to the Publisher's tab file names land on the thin views", () => {
   const a = artifactsFor(inst, "artifact/")!;
 
-  it("artifactsFor names the views the generator wrote, beyond the artefacts' own pages", () => {
+  it("artifactsForNamesViews", () => {
     expect(a.pages).toEqual([
       "Composition-example.json",
       "StructureDefinition-Composition-uv-ips-definitions",
@@ -232,7 +232,7 @@ describe("the narrative's links to the Publisher's tab file names land on the th
     ]);
   });
 
-  it("relinkArtifacts points each at artifact/, anchors kept", () => {
+  it("relinksTabFileNames", () => {
     const names = new Set(["StructureDefinition-Composition-uv-ips", ...a.pages!]);
     const r = relinkArtifacts(
       '[d](StructureDefinition-Composition-uv-ips-definitions.html#Composition.section) <a href="StructureDefinition-Composition-uv-ips.profile.json.html">j</a> [m](StructureDefinition-Composition-uv-ips-mappings.html)',
@@ -245,7 +245,7 @@ describe("the narrative's links to the Publisher's tab file names land on the th
     );
   });
 
-  it("stageIgSite relinks them in the IG's own pages", () => {
+  it("stageRelinksTabLinks", () => {
     const d = mkdtempSync(join(tmpdir(), "fhir-harness-tabs-site-"));
     try {
       const src = join(d, "src");
@@ -268,7 +268,7 @@ describe("the narrative's links to the Publisher's tab file names land on the th
 });
 
 describe("stateFromOutput: what each artefact's own JSON states, copied into the index", () => {
-  it("copies meta.profile and a code concept from the Publisher's <Type>-<id>.json, and looks nothing up", () => {
+  it("copiesStatedProfileAndCode", () => {
     const d = mkdtempSync(join(tmpdir(), "fhir-harness-stated-"));
     try {
       const file = join(d, "index.json");
@@ -289,24 +289,24 @@ describe("stateFromOutput: what each artefact's own JSON states, copied into the
 describe("the shared renderer and the AST loader draw the views", () => {
   const renderer = readFileSync(join(import.meta.dir, "templates", "ig-pages", "ig-artifact.js"), "utf8");
   const ast = readFileSync(join(import.meta.dir, "templates", "ig-pages", "ast-resource.js"), "utf8");
-  it("both parse as scripts", () => {
+  it("scriptsParse", () => {
     expect(() => new Function(renderer)).not.toThrow();
     expect(() => new Function(ast)).not.toThrow();
   });
-  it("one renderer: the views are branches of ig-artifact.js, chosen by the config's view", () => {
+  it("oneRendererBranches", () => {
     expect(renderer).toContain("if (cfg.view)");
     for (const fn of ["drawDefinitions", "drawMappings", "drawExamples"]) expect(renderer).toContain(`function ${fn}(`);
     // The definitions come from the snapshot, the differential where there is none.
     expect(renderer).toMatch(/snap && snap\.length \? snap : diff/);
   });
-  it("an examples view nothing claims says there are no examples", () => {
+  it("noExamplesSaysSo", () => {
     expect(renderer).toContain("No examples: no artefact of this IG claims this profile");
   });
-  it("the JSON view is the AST loader's JSON, alone", () => {
+  it("jsonViewIsAstLoader", () => {
     expect(renderer).toContain('astHolder(src, "json")');
     expect(ast).toContain('getAttribute("data-ast-view") === "json"');
   });
-  it("neither reads the Publisher's HTML", () => {
+  it("neitherReadsPublisherHtml", () => {
     expect(renderer).not.toMatch(/fetch\([^)]*\.html/);
     expect(ast).not.toMatch(/fetch\([^)]*\.html/);
   });

@@ -31,7 +31,7 @@ const vs = {
 };
 
 describe("pyJson", () => {
-  it("writes Python's indent=2 layout and keeps a code-keyed map's order, numeric keys included", () => {
+  it("pyJsonLayoutAndOrder", () => {
     expect(pyJson({ a: [], b: {}, c: [1, "x"] })).toBe('{\n  "a": [],\n  "b": {},\n  "c": [\n    1,\n    "x"\n  ]\n}');
     expect(pyJson(new Ordered().set("b", 1).set("2", 2).set("b", 3))).toBe('{\n  "b": 3,\n  "2": 2\n}');
     expect(plain(new Ordered().set("z", new Ordered().set("1", true)))).toEqual({ z: { "1": true } });
@@ -39,7 +39,7 @@ describe("pyJson", () => {
 });
 
 describe("ValueSets", () => {
-  it("pins a single system, falls back to the code for an empty display, and names files by the entry's id", () => {
+  it("valueSetSinglesSystem", () => {
     const codes = [
       { code: "red", display: "Red", system: vs.expansion.contains[0]!.system },
       { code: "1", display: "1", system: vs.expansion.contains[0]!.system },
@@ -54,7 +54,7 @@ describe("ValueSets", () => {
     expect(valueSetFileId({ fullUrl: "https://example.org/x/ValueSet/from-entry", resource: { resourceType: "ValueSet" } })).toBe("from-entry");
   });
 
-  it("splits a multi-system ValueSet into oneOf, and aliases each system in the vocabulary", () => {
+  it("multiSystemOneOf", () => {
     const codes = [
       { code: "a", display: "A", system: "https://example.org/CodeSystem/one" },
       { code: "b", display: "B", system: "https://example.org/CodeSystem/two" },
@@ -85,7 +85,7 @@ describe("logical models", () => {
       ],
     },
   };
-  it("derives from the base schema, binds a ValueSet by reference and records it in the JSON-LD context", () => {
+  it("logicalModelBindsValueSet", () => {
     const s = plain(logicalModelSchema(logicalModel(sd)!, "https://example.org/ig")) as Json;
     expect(s.$id).toBe("https://example.org/ig/StructureDefinition-PatientLite.schema.json");
     expect(s.required).toEqual(["resourceType", "name"]);
@@ -95,7 +95,7 @@ describe("logical models", () => {
     expect(logicalModel({ ...sd, kind: "resource" })).toBeUndefined();
   });
 
-  it("refers to a model of this IG by sibling file, and to one from another package by that package's absolute schema URL", () => {
+  it("localModelBySiblingFile", () => {
     const withTypes = {
       ...sd,
       differential: {
@@ -121,7 +121,7 @@ describe("logical models", () => {
     expect(overridden.properties.address.$ref).toBe("StructureDefinition-AddressLite.schema.json");
   });
 
-  it("files every non-ValueSet, non-CodeSystem schema as a logical model, and lists them in its enumeration", () => {
+  it("schemaKindsAndEnumeration", () => {
     expect(schemaKind("ValueSet-x.schema.json")).toBe("valueset");
     expect(schemaKind("StructureDefinition-x.schema.json")).toBe("logical_model");
     expect(schemaKind("CodeSystem-x.schema.json")).toBeUndefined();
@@ -132,7 +132,7 @@ describe("logical models", () => {
 });
 
 describe("generateIgApi", () => {
-  it("reads the AST: ValueSet files from its expansions, schemas, their wrappers, the enumerations and the Swagger page", () => {
+  it("readsAstIntoSidecarsAndSite", () => {
     const ast = mkdtempSync(join(tmpdir(), "ig-api-gen-"));
     try {
       mkdirSync(join(ast, "resources"), { recursive: true });
@@ -151,7 +151,7 @@ describe("generateIgApi", () => {
 });
 
 describe("generatedAtOf (cat-harness-tools#1230)", () => {
-  it("stamps the vocabularies with when the AST was compiled, so two runs write the same bytes", () => {
+  it("stampsAstCompileTime", () => {
     const ast = mkdtempSync(join(tmpdir(), "ig-api-gen-"));
     try {
       writeFileSync(join(ast, "manifest.json"), JSON.stringify({ generatedAt: "2026-10-20T16:09:48Z", resources: [] }));

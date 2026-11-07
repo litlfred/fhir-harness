@@ -104,7 +104,7 @@ function makeConsent(
 }
 
 describe("Four IHE PCF 1.1.0 Volume 1 §1:53.2.1 implicit-policy ODRL Sets", () => {
-  test("exports all four canonical implicit policy Sets and resolves them by URI and alias", () => {
+  test("exportsFourImplicitSets", () => {
     expect(Object.keys(PCF_IMPLICIT_POLICY_SETS)).toEqual([
       PCF_POLICY_BASIC_NORMAL_URI,
       PCF_POLICY_ALL_NORMAL_URI,
@@ -126,7 +126,7 @@ describe("Four IHE PCF 1.1.0 Volume 1 §1:53.2.1 implicit-policy ODRL Sets", () 
     expect(getImplicitPolicySet("nonexistent")).toBeUndefined();
   });
 
-  test("1. Policy-basic-normal permits TREAT (and sub-codes), denies non-treatment, unknown without purpose", () => {
+  test("basicNormalPermitsTreat", () => {
     expect(decide(PCF_IMPLICIT_BASIC_NORMAL_SET, { actor: "Practitioner/ex-practitioner", purpose: "TREAT" })).toBe(
       "permit",
     );
@@ -159,7 +159,7 @@ describe("Four IHE PCF 1.1.0 Volume 1 §1:53.2.1 implicit-policy ODRL Sets", () 
     expect(decide(PCF_IMPLICIT_BASIC_NORMAL_SET, { actor: "Practitioner/ex-practitioner" })).toBe("unknown");
   });
 
-  test("2. Policy-all-normal permits any valid HL7 PurposeOfUse, denies draft dpv:*, unknown without purpose", () => {
+  test("allNormalPermitsAnyPurpose", () => {
     for (const purpose of ["TREAT", "HPAYMT", "HOPERAT", "HRESCH", "CLINTRCH", "PUBHLTH", "PATRQT", "BTG"]) {
       expect(decide(PCF_IMPLICIT_ALL_NORMAL_SET, { actor: "Practitioner/ex-practitioner", purpose })).toBe("permit");
     }
@@ -169,7 +169,7 @@ describe("Four IHE PCF 1.1.0 Volume 1 §1:53.2.1 implicit-policy ODRL Sets", () 
     expect(decide(PCF_IMPLICIT_ALL_NORMAL_SET, { actor: "Practitioner/ex-practitioner" })).toBe("unknown");
   });
 
-  test("3. Policy-break-glass-only permits BTG, denies all other purposes, unknown without purpose", () => {
+  test("breakGlassOnlyPermitsBtg", () => {
     expect(decide(PCF_IMPLICIT_BREAK_GLASS_ONLY_SET, { actor: "Practitioner/ex-practitioner", purpose: "BTG" })).toBe(
       "permit",
     );
@@ -182,7 +182,7 @@ describe("Four IHE PCF 1.1.0 Volume 1 §1:53.2.1 implicit-policy ODRL Sets", () 
     expect(decide(PCF_IMPLICIT_BREAK_GLASS_ONLY_SET, { actor: "Practitioner/ex-practitioner" })).toBe("unknown");
   });
 
-  test("4. Policy-deny denies all requests unconditionally", () => {
+  test("denyPolicyDeniesAll", () => {
     expect(decide(PCF_IMPLICIT_DENY_SET, { actor: "Practitioner/ex-practitioner", purpose: "TREAT" })).toBe("deny");
     expect(decide(PCF_IMPLICIT_DENY_SET, { actor: "Practitioner/ex-practitioner", purpose: "BTG" })).toBe("deny");
     expect(decide(PCF_IMPLICIT_DENY_SET, { actor: "Practitioner/ex-practitioner" })).toBe("deny");
@@ -190,7 +190,7 @@ describe("Four IHE PCF 1.1.0 Volume 1 §1:53.2.1 implicit-policy ODRL Sets", () 
 });
 
 describe("IHE PCF Basic Consent & Additional PurposeOfUse (consentToOdrl + decide)", () => {
-  test("ex-consent-basic-treat: translates to ODRL Set with TREAT/HPAYMT/HOPERAT isA rules", () => {
+  test("basicTreatTranslatesToIsARules", () => {
     const consent = makeConsent("ex-consent-basic-treat", {
       type: "permit",
       purpose: TPO_PURPOSES,
@@ -220,7 +220,7 @@ describe("IHE PCF Basic Consent & Additional PurposeOfUse (consentToOdrl + decid
     expect(decide(consent, { actor: "Practitioner/ex-practitioner" })).toBe("unknown");
   });
 
-  test("ex-consent-basic-treat-infant & versionId: cites performer and versionId in policy uid", () => {
+  test("citesPerformerAndVersion", () => {
     const consent = makeConsent(
       "ex-consent-basic-treat-infant",
       { type: "permit", purpose: TPO_PURPOSES },
@@ -245,7 +245,7 @@ describe("IHE PCF Basic Consent & Additional PurposeOfUse (consentToOdrl + decid
     expect(decide(set, { actor: "Practitioner/ex-practitioner", purpose: "TREAT" })).toBe("permit");
   });
 
-  test("ex-consent-basic-research (Additional PurposeOfUse HRESCH): ontological subsumption permits sub-concepts", () => {
+  test("researchSubsumesSubConcepts", () => {
     const consent = makeConsent(
       "ex-consent-basic-research",
       {
@@ -272,7 +272,7 @@ describe("IHE PCF Basic Consent & Additional PurposeOfUse (consentToOdrl + decid
     expect(decide(consent, { actor: "Organization/ex-org-researcher" })).toBe("unknown");
   });
 
-  test("ex-consent-basic-reject: base deny translates to prohibition rules and overrides implicit permit", () => {
+  test("rejectTranslatesToProhibitions", () => {
     const consent = makeConsent("ex-consent-basic-reject", {
       type: "deny",
       purpose: TPO_PURPOSES,
@@ -290,7 +290,7 @@ describe("IHE PCF Basic Consent & Additional PurposeOfUse (consentToOdrl + decid
     expect(decide(consent, { actor: "Practitioner/ex-practitioner" })).toBe("unknown");
   });
 
-  test("ex-consent-expired-treat: provision.period enforces expiration and falls back to implicit policy when expired", () => {
+  test("periodEnforcesExpiration", () => {
     const consent = makeConsent("ex-consent-expired-treat", {
       type: "permit",
       period: { end: "2022-12-31" },
@@ -331,7 +331,7 @@ describe("IHE PCF Basic Consent & Additional PurposeOfUse (consentToOdrl + decid
     expect(decide(consent, { actor: "Practitioner/ex-practitioner", purpose: "TREAT" })).toBe("unknown");
   });
 
-  test("inactive, rejected, draft, entered-in-error or missing Consent -> unknown (or implicit policy)", () => {
+  test("nonActiveConsentIsUnknown", () => {
     expect(decide(null, { actor: "Practitioner/ex-practitioner", purpose: "TREAT" })).toBe("unknown");
     expect(
       decide(null, { actor: "Practitioner/ex-practitioner", purpose: "TREAT" }, { implicitPolicy: "basic-normal" }),
@@ -351,7 +351,7 @@ describe("IHE PCF Basic Consent & Additional PurposeOfUse (consentToOdrl + decid
 });
 
 describe("IHE PCF Intermediate & Advanced Consent examples (nested exceptions, data & securityLabel scoping)", () => {
-  test("ex-consent-intermediate-purpose: specific research project code (FooBar) and actor", () => {
+  test("intermediatePurposeAndActor", () => {
     const consent = makeConsent(
       "ex-consent-intermediate-purpose",
       {
@@ -376,7 +376,7 @@ describe("IHE PCF Intermediate & Advanced Consent examples (nested exceptions, d
     expect(decide(consent, { actor: null, purpose: "FooBar" })).toBe("unknown");
   });
 
-  test("ex-dissent-intermediate-break-glass: root deny with nested BTG permit exception", () => {
+  test("breakGlassNestedPermit", () => {
     const consent = makeConsent(
       "ex-dissent-intermediate-break-glass",
       {
@@ -417,7 +417,7 @@ describe("IHE PCF Intermediate & Advanced Consent examples (nested exceptions, d
     expect(decide(consent, { actor: "Practitioner/ex-clerk", purpose: "BTG" })).toBe("deny");
   });
 
-  test("ex-consent-intermediate-data & not-data: positive and negative data instance scoping", () => {
+  test("dataInstanceScoping", () => {
     const allowData = makeConsent(
       "ex-consent-intermediate-data",
       {
@@ -477,7 +477,7 @@ describe("IHE PCF Intermediate & Advanced Consent examples (nested exceptions, d
     expect(decide(denyData, { actor: "Practitioner/ex-practitioner", purpose: "TREAT" })).toBe("unknown");
   });
 
-  test("ex-consent-intermediate-authoredby, encounter, and timeframe (positive and negative)", () => {
+  test("authoredByEncounterTimeframe", () => {
     const notAuthor = makeConsent(
       "ex-consent-intermediate-not-authoredby",
       {
@@ -561,7 +561,7 @@ describe("IHE PCF Intermediate & Advanced Consent examples (nested exceptions, d
     ).toBe("deny");
   });
 
-  test("ex-consent-advanced-normal-focused-psy-or-sdv & break-glass-restricted: securityLabel scoping", () => {
+  test("securityLabelScoping", () => {
     const focused = makeConsent(
       "ex-consent-advanced-normal-focused-psy-or-sdv",
       {
@@ -637,7 +637,7 @@ describe("IHE PCF Intermediate & Advanced Consent examples (nested exceptions, d
   });
 
 
-  test("all remaining Intermediate and Advanced PCF examples (authoredby, encounter, not-timeframe, normal, restricted, not-restricted, focused-restricted, focused-psy)", () => {
+  test("remainingIntermediateAdvanced", () => {
     const authoredBy = makeConsent(
       "ex-consent-intermediate-authoredby",
       {
@@ -797,7 +797,7 @@ const PCF_EXAMPLES_DIR = dirname(
 );
 
 describe("Published ihe.iti.pcf#1.1.0 package Consent examples sweep", () => {
-  test("every Consent-ex-*.json in ihe.iti.pcf#1.1.0 validates against R4 StructureDefinition-Consent and translates/decides per PCF Volume 1", () => {
+  test("packageExamplesValidateAndDecide", () => {
     const files = readdirSync(PCF_EXAMPLES_DIR)
       .filter((f) => f.startsWith("Consent-") && f.endsWith(".json"))
       .sort();
@@ -820,7 +820,7 @@ describe("Published ihe.iti.pcf#1.1.0 package Consent examples sweep", () => {
 });
 
 describe("Published package provenance, v3-ActReason hierarchy, R4 Consent schema, and injected ConsentEvaluator (bean 6jnx)", () => {
-  test("every file in test/support/pcf matches its recorded sha256 in provenance.json", () => {
+  test("supportFilesMatchSha", () => {
     const prov = JSON.parse(readFileSync(join(SUPPORT_PCF_DIR, "provenance.json"), "utf-8")) as {
       packages: Record<string, { files: Record<string, { sha256: string }> }>;
     };
@@ -841,7 +841,7 @@ describe("Published package provenance, v3-ActReason hierarchy, R4 Consent schem
     }
   });
 
-  test("HL7_PURPOSE_OF_USE is read from hl7.terminology.r4#5.3.0 CodeSystem-v3-ActReason.json without hand-typing", () => {
+  test("purposeOfUseFromTerminology", () => {
     expect(Object.keys(HL7_PURPOSE_OF_USE).length).toBe(60);
     // CLINTRL ("clinical trial" health care), POPHLTH ("population health"), and COC ("coordination of care")
     // have subsumedBy: TREAT in v3-ActReason:
@@ -869,7 +869,7 @@ describe("Published package provenance, v3-ActReason hierarchy, R4 Consent schem
     expect(decide(hoperatConsent, { actor: "Practitioner/ex-practitioner", purpose: "METAMGT" })).toBe("permit");
   });
 
-  test("FhirConsentSchema and code lists come from hl7.fhir.r4.core#4.0.1 and isConsentExpired is deduplicated", () => {
+  test("consentSchemaFromR4Core", () => {
     expect(isConsentExpired).toBe(clientIsConsentExpired);
     expect([...CONSENT_STATE_CODES]).toEqual([
       "draft",
@@ -923,7 +923,7 @@ describe("Published package provenance, v3-ActReason hierarchy, R4 Consent schem
     expect(clientSrc).not.toMatch(/z\.literal\(["']Consent["']\)/);
   });
 
-  test("createPcfConsentEvaluator integrates with cat-harness odrl:obtainConsent duty (a7c1 + 2egb citation)", () => {
+  test("evaluatorIntegratesObtainConsentDuty", () => {
     const g = actionGraph([{ id: "read-dataset", includedIn: ["odrl:use"] }]);
     const dsa = OdrlPolicySchema.parse({
       "@context": "http://www.w3.org/ns/odrl.jsonld",

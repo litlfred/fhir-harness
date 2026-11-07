@@ -17,14 +17,14 @@ const vs = {
 } as unknown as FhirArtifact;
 
 describe("JSON views", () => {
-  it("exist for what the Publisher writes one for: not the IG, not StructureDefinitions (their view is .profile.json)", () => {
+  it("jsonViewsWherePublisherWrites", () => {
     expect(hasJsonView(vs)).toBe(true);
     expect(hasJsonView({ ...vs, resourceType: "ImplementationGuide" } as FhirArtifact)).toBe(false);
     expect(hasJsonView({ ...vs, resourceType: "StructureDefinition" } as FhirArtifact)).toBe(false);
     expect(hasJsonView({ ...vs, published: {} } as unknown as FhirArtifact)).toBe(false);
   });
 
-  it("reads the resource out of the held package, never a copy", () => {
+  it("readsFromHeldPackage", () => {
     const d = jsonViewData(vs, "fhir-artifact-index/package.tgz");
     expect(d.package).toBe("../fhir-artifact-index/package.tgz");
     expect(d.entry).toBe("package/ValueSet-Actors.json");
@@ -32,14 +32,14 @@ describe("JSON views", () => {
     expect(d.script).toBe(`../${JSON_VIEW_SCRIPT}`);
   });
 
-  it("tabs: narrative, JSON active, extra tabs after it -- no XML or TTL", () => {
+  it("tabsJsonActiveExtrasAfter", () => {
     const d = jsonViewData(vs, "p.tgz", [{ label: "JSON Schema", href: "x.html", active: false }]);
     expect(d.tabs.map((t) => `${t.label}${t.active ? "*" : ""}`)).toEqual(["Narrative Content", "JSON*", "JSON Schema"]);
     // The heading drops the Publisher's leading ": " (an empty type label in its template).
     expect(d.heading).toBe("Actors - JSON Representation");
   });
 
-  it("the loader shows the resource as the Publisher's page does", () => {
+  it("loaderPrettyPrintsPackage", () => {
     const js = readFileSync(join(import.meta.dir, "templates", "ig-pages", "resource-json.js"), "utf8");
     expect(js).toContain("JSON.stringify(d, null, 2)");
     expect(js).toContain('DecompressionStream("gzip")');
@@ -48,12 +48,12 @@ describe("JSON views", () => {
 
 describe("rebaseDescriptionLinks", () => {
   const d = "As defined by the [certificate governance](concepts.html#x), see [spec](https://hl7.org/fhir), [up](../a.html) and [here](#top).";
-  it("rebases a relative link onto the IG root and leaves absolute, ../ and anchor links alone", () => {
+  it("rebasesRelativeLinks", () => {
     expect(rebaseDescriptionLinks(d, "../")).toBe(
       "As defined by the [certificate governance](../concepts.html#x), see [spec](https://hl7.org/fhir), [up](../a.html) and [here](#top).",
     );
   });
-  it("with no IG pages on the site, reduces a relative link to its text instead of leaving it to dangle", () => {
+  it("noPagesReducesToText", () => {
     expect(rebaseDescriptionLinks(d, null)).toBe(
       "As defined by the certificate governance, see [spec](https://hl7.org/fhir), [up](../a.html) and [here](#top).",
     );

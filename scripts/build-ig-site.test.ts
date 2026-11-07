@@ -68,7 +68,7 @@ beforeAll(() => {
 afterAll(() => rmSync(dir, { recursive: true, force: true }));
 
 describe("staging one IG as one just-the-docs site", () => {
-  test("site.data.fhir is written from sushi-config, only what is sourced", () => {
+  test("fhirDataFromSushiConfig", () => {
     const fhir = JSON.parse(readFileSync(join(out, "_data", "fhir.json"), "utf-8"));
     expect(fhir.packageId).toBe("example.ig");
     expect(fhir.ig.version).toBe("0.1.0");
@@ -76,7 +76,7 @@ describe("staging one IG as one just-the-docs site", () => {
     expect(JSON.stringify(fhir)).not.toContain('""');
   });
 
-  test("navigation comes from sushi-config pages: titles, parents, order", () => {
+  test("navFromSushiPages", () => {
     const nav = pageNav({ "index.md": { title: "Home", "overview.md": { title: "Overview" } }, "changes.md": { title: "Change Log" } });
     expect(nav.get("index")).toEqual({ title: "Home", navOrder: 1 });
     expect(nav.get("overview")).toEqual({ title: "Overview", parent: "Home", navOrder: 2 });
@@ -84,18 +84,18 @@ describe("staging one IG as one just-the-docs site", () => {
     expect(readFileSync(join(out, "overview.md"), "utf-8")).toStartWith('---\ntitle: "Overview"\nparent: "Home"\nnav_order: 2\nig_footer: true\n');
   });
 
-  test("a page sushi-config does not list is kept, titled by file name, and reported", () => {
+  test("unlistedPageKeptAndReported", () => {
     expect(r.unlisted).toEqual(["orphan.md"]);
     expect(readFileSync(join(out, "orphan.md"), "utf-8")).toContain('title: "orphan"');
   });
 
-  test("pages, includes and images land where Jekyll resolves them", () => {
+  test("pagesIncludesImagesPlaced", () => {
     expect(r.pages).toEqual(["changes.md", "index.md", "orphan.md", "overview.md"]);
     for (const f of ["notes.md", "overview.md", "index.md"]) expect(readFileSync(join(out, "_includes", f), "utf-8").length).toBeGreaterThan(0);
     expect(readFileSync(join(out, "logo.png"), "utf-8")).toBe("png");
   });
 
-  test("a subdirectory of input/images is published as a subdirectory, as the Publisher does", () => {
+  test("imageSubdirKept", () => {
     expect(readFileSync(join(out, "demo", "app.js"), "utf-8")).toBe("export {};");
     expect(readFileSync(join(out, "demo", "lib", "data.json"), "utf-8")).toBe('{"ok": true}');
     expect(existsSync(join(out, "demo", "icon.svg"))).toBe(true);
@@ -103,7 +103,7 @@ describe("staging one IG as one just-the-docs site", () => {
     expect(existsSync(join(out, "_includes", "icon.svg"))).toBe(false);
   });
 
-  test("a data file that does not parse is not published, and is reported", () => {
+  test("unparseableDataNotPublished", () => {
     expect(existsSync(join(out, "good.jsonld"))).toBe(true);
     expect(existsSync(join(out, "broken.jsonld"))).toBe(false);
     expect(existsSync(join(out, "demo", "broken.json"))).toBe(false);
@@ -112,30 +112,30 @@ describe("staging one IG as one just-the-docs site", () => {
     expect(r.unparseable[1]).toStartWith("demo/broken.json (");
   });
 
-  test("a diagram the Publisher renders, with no renderer given, is a VISIBLE marker and reported", () => {
+  test("unrenderedDiagramIsMarker", () => {
     expect(r.notRendered).toEqual(["flow.svg"]);
     expect(r.rendered).toEqual([]);
     expect(readFileSync(join(out, "_includes", "flow.svg"), "utf-8")).toContain("⟦not rendered: flow.svg⟧");
   });
 
-  test("the config is one just-the-docs site at the given baseurl", () => {
+  test("configIsJustTheDocsAtBaseurl", () => {
     const cfg = readFileSync(join(out, "_config.yml"), "utf-8");
     expect(cfg).toContain('title: "Example IG"');
     expect(cfg).toContain('baseurl: "/site/example"');
     expect(cfg).toContain("theme: just-the-docs");
   });
 
-  test("include targets are read from the page, including lang-fragment", () => {
+  test("includeTargetsWithLangFragment", () => {
     expect(includeTargets("{% include a.svg %} x {%- include b.md -%} y {% lang-fragment table.xhtml %}")).toEqual(["a.svg", "b.md", "table.xhtml"]);
   });
 
-  test("a repeated id keeps its first copy and the rest are renamed, each reported", () => {
+  test("dedupeIdsRenamesRepeats", () => {
     const r = dedupeIds(`<h3 id="x">a</h3><h3 id="x">b</h3><a id='x'></a><p id="y"></p>`);
     expect(r.html).toBe(`<h3 id="x">a</h3><h3 id="x--2">b</h3><a id='x--3'></a><p id="y"></p>`);
     expect(r.renamed).toEqual(["x -> x--2", "x -> x--3"]);
   });
 
-  test("with no palette there is no scheme, and the report says so", () => {
+  test("noPaletteNoScheme", () => {
     expect(r.scheme).toBeUndefined();
     expect(readFileSync(join(out, "_config.yml"), "utf-8")).not.toContain("color_scheme");
   });
@@ -145,13 +145,13 @@ describe("staging one IG as one just-the-docs site", () => {
 const PALETTE = { surface: "#f7f7f7", ink: "#111111", edge: "#dddddd", accent: "#123456" };
 
 describe("the instance's palette as a just-the-docs colour scheme", () => {
-  test("WCAG contrast is computed as the spec defines it", () => {
+  test("wcagContrastPerSpec", () => {
     expect(contrast("#000000", "#ffffff")).toBeCloseTo(21, 5);
     expect(contrast("#fff", "#ffffff")).toBeCloseTo(1, 5);
     expect(contrast("navy", "#ffffff")).toBeUndefined();
   });
 
-  test("each role lands on the scheme variable just-the-docs reads", () => {
+  test("rolesLandOnSchemeVars", () => {
     const s = colourScheme(PALETTE).scss;
     expect(s).toContain("$feedback-color: darken($sidebar-color, 3%);");
     expect(s).toContain("$body-background-color: #f7f7f7;");
@@ -161,7 +161,7 @@ describe("the instance's palette as a just-the-docs colour scheme", () => {
     expect(s).toContain("$sidebar-color: #123456;");
   });
 
-  test("sidebar text is the palette role with more contrast on accent, never a literal", () => {
+  test("sidebarTextMoreContrastRole", () => {
     const dark = colourScheme(PALETTE);
     expect(dark.sidebarText).toBe("surface");
     expect(dark.scss).toContain("$nav-child-link-color: #f7f7f7;");
@@ -169,7 +169,7 @@ describe("the instance's palette as a just-the-docs colour scheme", () => {
     expect(light.sidebarText).toBe("ink");
   });
 
-  test("a pairing below AA, or one that cannot be computed, is a finding", () => {
+  test("lowContrastIsFinding", () => {
     expect(colourScheme(PALETTE).findings).toEqual([]);
     const low = colourScheme({ ...PALETTE, accent: "#999999" }).findings;
     expect(low.some((f) => f.startsWith("accent on surface (links)"))).toBe(true);
@@ -177,7 +177,7 @@ describe("the instance's palette as a just-the-docs colour scheme", () => {
     expect(named.some((f) => f.includes("not computable"))).toBe(true);
   });
 
-  test("a staged site with a palette selects the scheme and ships its files", () => {
+  test("paletteSelectsScheme", () => {
     const o = join(dir, "themed");
     const t = stageIgSite(join(dir, "src"), o, { palette: PALETTE });
     expect(t.scheme?.sidebarText).toBe("surface");
@@ -188,7 +188,7 @@ describe("the instance's palette as a just-the-docs colour scheme", () => {
 });
 
 describe("pages the Publisher generates, written from data the build holds (bean jut3)", () => {
-  test("toc lists every page in the tree, nested, and links only pages that exist", () => {
+  test("tocNestsAndLinksExisting", () => {
     const t = tocPage({ "index.md": { title: "Home", "overview.md": { title: "Overview" } }, "artifacts.html": { title: "Artifacts" } }, (s) => s !== "artifacts");
     expect(t).toContain("- [Home](index.html)\n  - [Overview](overview.html)");
     // Not held and not generated: text, never a link to a page that is not there.
@@ -196,13 +196,13 @@ describe("pages the Publisher generates, written from data the build holds (bean
     expect(t).not.toContain("](artifacts.html)");
   });
 
-  test("a staged site always gets a toc, reported as generated rather than as a source page", () => {
+  test("tocAlwaysGenerated", () => {
     expect(r.generated).toContain("toc.md");
     expect(r.pages).not.toContain("toc.md");
     expect(readFileSync(join(out, "toc.md"), "utf-8")).toContain("[Change Log](changes.html)");
   });
 
-  test("the lifted variables keep generate_smart_liquid's families and keys, minus the smart__ prefix", () => {
+  test("artifactVariablesKeepFamilies", () => {
     const list = [
       { resourceType: "ValueSet", id: "a-b", title: "A [b]", category: "Terminology", canonical: "http://x/ValueSet/a-b", version: "1.0", published: { json: { url: "https://p/ValueSet-a-b.json" }, xml: { url: "https://p/ValueSet-a-b.xml" } } },
       { resourceType: "Endpoint", id: "e", category: undefined },
@@ -229,7 +229,7 @@ describe("pages the Publisher generates, written from data the build holds (bean
   });
 
   const ruby = spawnSync("ruby", ["-e", 'require "liquid"'], { encoding: "utf-8" }).status === 0;
-  test.skipIf(!ruby)("the artifacts TEMPLATE renders the variables through real Liquid", () => {
+  test.skipIf(!ruby)("artifactsTemplateRendersLiquid", () => {
     const { vars } = artifactVariables([{ resourceType: "ValueSet", id: "v", title: "V [x]", category: "Terminology: Value Sets", description: "Codes for a | b,\nover two lines." }], "../artifact/");
     const script = 'require "liquid"; require "json"; d = JSON.parse(STDIN.read.force_encoding("UTF-8")); print Liquid::Template.parse(d["t"], error_mode: :strict).render("site" => { "data" => { "fhir" => d["v"] } })';
     const r = spawnSync("ruby", ["-e", script], { input: JSON.stringify({ t: readFileSync(ARTIFACTS_TEMPLATE_PATH, "utf-8"), v: vars }), encoding: "utf-8" });
@@ -244,7 +244,7 @@ describe("pages the Publisher generates, written from data the build holds (bean
     expect(r.stdout).toContain("| [V \\[x\\]](../artifact/ValueSet-v.html) | Codes for a \\| b, over two lines. |");
   });
 
-  test("the artifacts template is a file that opens with the comment describing it", () => {
+  test("artifactsTemplateOpensWithComment", () => {
     // `liquid-templates`: never an inline template in a .ts, and the leading
     // comment is the file's description; computation stays in the generator.
     const t = readFileSync(ARTIFACTS_TEMPLATE_PATH, "utf-8");
@@ -252,14 +252,14 @@ describe("pages the Publisher generates, written from data the build holds (bean
     expect(t).not.toMatch(/\|\s*(plus|minus|size|replace)\b/);
   });
 
-  test("without an index there is no artifacts page, and the menu still reports it missing", () => {
+  test("noIndexNoArtifactsPage", () => {
     expect(existsSync(join(out, "artifacts.md"))).toBe(false);
     expect(r.generated).not.toContain("artifacts.md");
   });
 });
 
 describe("post-processing fills: content a step writes after the Publisher, at a marker the source holds", () => {
-  test("the marker is replaced, the data reaches the page's front matter, and an unused fill is reported", () => {
+  test("fillReplacesMarker", () => {
     const d = mkdtempSync(join(tmpdir(), "ig-fill-"));
     try {
       const src = join(d, "src");
@@ -302,13 +302,13 @@ describe("the releases page: pointers to release binaries, never the bytes (bean
     ],
   };
 
-  test("sizes are labelled as a reader reads them", () => {
+  test("sizeLabels", () => {
     expect(sizeLabel(915317)).toBe("915 KB");
     expect(sizeLabel(13864960)).toBe("13.9 MB");
     expect(sizeLabel(10)).toBe("1 KB");
   });
 
-  test("every value the template shows is computed here", () => {
+  test("releaseVariablesComputed", () => {
     const v = releaseVariables(releases);
     expect(v.releases[0]).toMatchObject({ tag: "v1.0.0", name: "v1.0.0", published: "2026-03-23", prerelease: false });
     expect(v.releases[0].assets.map((a) => [a.name, a.size, a.digest])).toEqual([
@@ -317,7 +317,7 @@ describe("the releases page: pointers to release binaries, never the bytes (bean
     ]);
   });
 
-  test("given releases, the page and its data are written and reported as generated; absent, neither is", () => {
+  test("releasesPageOnlyWhenGiven", () => {
     const d = mkdtempSync(join(tmpdir(), "ig-rel-"));
     try {
       const src = join(d, "src");
@@ -347,7 +347,7 @@ describe("the local template's includes", () => {
     return d;
   };
 
-  test("found from ig.ini's #<dir>, and not from a commented line, a package template or a path", () => {
+  test("localTemplateFromIgIni", () => {
     const cases: [string, boolean, string | undefined][] = [
       ["[IG]\ntemplate = #local-template\n#template = acme.template.root#current\n", true, "local-template/includes"],
       ["[IG]\n#template = #local-template\ntemplate = acme.template.root#current\n", true, undefined],
@@ -364,14 +364,14 @@ describe("the local template's includes", () => {
     }
   });
 
-  test("a templated link to an artefact page is pointed at this site's copy, for a type with pages only", () => {
+  test("relinkTemplatedArtifactLinks", () => {
     const src = '<a href="Requirements-{{r.id}}.html">x</a> [c](CapabilityStatement-{{c.id}}.html) <a href="Other-{{o.id}}.html">o</a> <a href="Requirements-R1.html">r</a>';
     const r = relinkTemplatedArtifacts(src, new Set(["Requirements", "CapabilityStatement"]), "artifact/");
     expect(r.count).toBe(2);
     expect(r.text).toBe('<a href="artifact/Requirements-{{r.id}}.html">x</a> [c](artifact/CapabilityStatement-{{c.id}}.html) <a href="Other-{{o.id}}.html">o</a> <a href="Requirements-R1.html">r</a>');
   });
 
-  test("staged into _includes under the IG's own, relinked, and no longer a marker", () => {
+  test("localIncludesStagedRelinked", () => {
     const d = ig("[IG]\ntemplate = #local-template\n");
     try {
       const src = d;
@@ -399,19 +399,19 @@ describe("the local template's includes", () => {
 // this site keeps artefact pages under `pagesHref`.
 describe("relinkArtifacts", () => {
   const names = new Set(["ValueSet-Domains", "CodeSystem-Actors"]);
-  test("rewrites a markdown link and an href to an artefact page, and nothing else", () => {
+  test("relinkArtifactsOnlyArtefactPages", () => {
     const src = "[d](ValueSet-Domains.html) [a](CodeSystem-Actors.html#x) <a href=\"ValueSet-Domains.html\">v</a> [c](concepts.html) [e](https://x.org/ValueSet-Domains.html) [s](sub/ValueSet-Domains.html)";
     const r = relinkArtifacts(src, names, "artifact/");
     expect(r.count).toBe(3);
     expect(r.text).toBe("[d](artifact/ValueSet-Domains.html) [a](artifact/CodeSystem-Actors.html#x) <a href=\"artifact/ValueSet-Domains.html\">v</a> [c](concepts.html) [e](https://x.org/ValueSet-Domains.html) [s](sub/ValueSet-Domains.html)");
   });
-  test("is a no-op when the source links no artefact", () => {
+  test("relinkArtifactsNoOp", () => {
     expect(relinkArtifacts("[c](concepts.html)", names, "../artifact/")).toEqual({ text: "[c](concepts.html)", count: 0 });
   });
 });
 
 describe("copyDocsInto (an igSite instance's pages built into its IG site)", () => {
-  test("copies every file but the README, and refuses to overwrite one the IG site wrote", () => {
+  test("copyDocsSkipsReadmeNoOverwrite", () => {
     const d = mkdtempSync(join(tmpdir(), "ig-docs-"));
     const docs = join(d, "docs");
     const site = join(d, "site");
@@ -431,7 +431,7 @@ describe("copyDocsInto (an igSite instance's pages built into its IG site)", () 
 });
 
 describe("copyDocsInto: a front-matter-only page declares something ABOUT a generated page", () => {
-  test("its keys land on the generated page's front matter, the page's own keys winning", () => {
+  test("frontMatterOnlyMergesOntoGenerated", () => {
     const d = mkdtempSync(join(tmpdir(), "ig-docs-"));
     mkdirSync(join(d, "docs"), { recursive: true });
     mkdirSync(join(d, "site"), { recursive: true });
@@ -493,7 +493,7 @@ beforeAll(() => {
 afterAll(() => rmSync(fixtureRoot, { recursive: true, force: true }));
 
 describe("igSiteDocs", () => {
-  test("only an instance that DECLARES igSite builds its IG site at its root", () => {
+  test("onlyDeclaredIgSiteBuilds", () => {
     expect(igSiteDocs(join(fixtureRoot, "leaf"))).toBe(join(fixtureRoot, "leaf", "docs/"));
     expect(igSiteDocs(join(fixtureRoot, "base"))).toBe(join(fixtureRoot, "base", "docs/"));
     // A docs directory that does not declare igSite is not one.
@@ -504,13 +504,13 @@ describe("igSiteDocs", () => {
 });
 
 describe("webpagePalette inherits along needs (bean `mftp`)", () => {
-  test("an instance that declares no theme wears the nearest one along its needs, through one that declares none", () => {
+  test("paletteInheritedAlongNeeds", () => {
     const t = webpagePalette(fixtureRoot, "leaf");
     expect(t.palette?.accent).toBe("#0066aa");
     expect(t.note).toContain("inherited from base");
     expect(webpagePalette(fixtureRoot, "base").note).not.toContain("inherited");
   });
-  test("with no theme anywhere along its needs, there is no palette, and the note says why", () => {
+  test("noThemeNoPalette", () => {
     const t = webpagePalette(fixtureRoot, "plain");
     expect(t.palette).toBeUndefined();
     expect(t.note).toContain("no webpage theme");
@@ -521,7 +521,7 @@ describe("webpagePalette inherits along needs (bean `mftp`)", () => {
 // sidebar, and the IG's own top bar preserved.
 describe("every IG site: the IG's top bar, and its TOC declared for the navbar", () => {
   const menu = { groups: [{ label: "Home", items: [{ label: "Summary", href: "overview.html" }] }, { label: "Indices", items: [{ label: "Artifact Index", href: "artifacts.html" }, { label: "Spec", href: "https://example.org/x" }] }] };
-  test("the TOC is a visualiser declaration the navbar reads, rows under each group, hrefs under the baseurl", () => {
+  test("tocNavDeclaration", () => {
     const decl = igTocNav(menu, "/b/acme-ig", [{ label: "Table of Contents", href: "toc.html" }]);
     expect(decl.startsWith('<script type="application/json" data-fa-visualiser-nav>')).toBe(true);
     const rows = JSON.parse(decl.replace(/^<script[^>]*>/, "").replace(/<\/script>$/, ""));
@@ -531,14 +531,14 @@ describe("every IG site: the IG's top bar, and its TOC declared for the navbar",
       { label: "Table of Contents", href: "/b/acme-ig/toc.html" },
     ]);
   });
-  test("the top bar is one dropdown per group, and never reads as the folio navbar", () => {
+  test("topBarDropdownNotFolioNav", () => {
     const bar = igTopBar(menu, "/b/acme-ig", "ACME Example IG");
     expect(bar).toContain('<summary>Home</summary>');
     expect(bar).toContain('href="/b/acme-ig/overview.html"');
     expect(bar).not.toContain("fa-nav");
     expect(bar).not.toContain('id="site-nav"');
   });
-  test("a top-level entry that is a page (`Home: index.html`) is a link in the bar and the TOC, with no section page", () => {
+  test("pageEntryIsLink", () => {
     const pageMenu = { groups: [{ label: "Home", href: "index.html", items: [] }, { label: "Logic", items: [{ label: "Testing", href: "testing.html" }] }, { label: "Artifacts", href: "artifacts.html", items: [] }] };
     const bar = igTopBar(pageMenu, "/b/acme-ig", "ACME Example IG");
     expect(bar).toContain('<a class="ig-topbar-group ig-topbar-link" href="/b/acme-ig/index.html">Home</a>');
@@ -558,7 +558,7 @@ describe("every IG site: the IG's top bar, and its TOC declared for the navbar",
     expect(existsSync(join(d, "out", "menu-artifacts.md"))).toBe(false);
     expect(existsSync(join(d, "out", "menu-logic.md"))).toBe(true);
   });
-  test("the title sits on its own line, the menu on the line below (owner, 2026-10-14)", () => {
+  test("titleLineThenMenu", () => {
     const bar = igTopBar(menu, "/b/acme-ig", "ACME Example IG");
     // The title comes first in the bar, before every group.
     expect(bar.indexOf('class="ig-topbar-home"')).toBeLessThan(bar.indexOf('class="ig-topbar-group"'));
@@ -567,14 +567,14 @@ describe("every IG site: the IG's top bar, and its TOC declared for the navbar",
     expect(rule(".ig-topbar")).toContain("flex-wrap:wrap");
     expect(rule(".ig-topbar-home")).toMatch(/flex:0 0 100%|flex-basis:100%/);
   });
-  test("the Folio tab gets the bar's top row to itself, at every width (folio-assistant#2534)", () => {
+  test("folioTabRowAtEveryWidth", () => {
     // Not inside a media query: the shared layout reserves the row only below
     // 50rem, and an IG bar's title and menu leave no empty middle above that.
     const reserve = /(?:^|\n)body:has\(> \.fa-glass-handle\) \.ig-topbar\.fa-page-bar\{([^}]*)\}/.exec(IG_TOPBAR_CSS)?.[1] ?? "";
     expect(reserve).toContain("padding-top:2.25rem");
     expect(IG_TOPBAR_CSS).not.toMatch(/@media[^{]*\{[^}]*\.fa-glass-handle\) \.ig-topbar/);
   });
-  test("a harness-chrome site has a layout with no sidebar of its own", () => {
+  test("chromeLayoutNoSidebar", () => {
     const d = mkdtempSync(join(tmpdir(), "ig-chrome-"));
     const src = join(d, "src");
     mkdirSync(join(src, "input", "pagecontent"), { recursive: true });
@@ -625,7 +625,7 @@ describe("the Publisher's page footer on the IG site's own pages (#1901)", () =>
   };
   const menu = { groups: [{ label: "Home", items: [{ label: "Concepts", href: "concepts.html" }] }] };
 
-  test("the facts come from the package first, then the IG's source; links only to what is held", () => {
+  test("footerFactsPackageFirst", () => {
     const { d, out } = stage({ menu, footer: { facts: { version: "0.2.1", generated: "2026-10-01", packageId: "x.ig" }, scope: "st-ig", stylesheets: ["assets/ig-pages.css"] } });
     const f = JSON.parse(readFileSync(join(out, "_data", "fhir.json"), "utf-8")).footer;
     expect(f).toMatchObject({
@@ -648,7 +648,7 @@ describe("the Publisher's page footer on the IG site's own pages (#1901)", () =>
     rmSync(d, { recursive: true, force: true });
   });
 
-  test("the QA report: written as qa.md, linked as the Publisher's qa.html, and the AST's build day stands in for the package's", () => {
+  test("qaReportWrittenAsQaMd", () => {
     const d = mkdtempSync(join(tmpdir(), "ig-footer-qa-"));
     const src = join(d, "src");
     mkdirSync(join(src, "input", "pagecontent"), { recursive: true });
@@ -671,7 +671,7 @@ describe("the Publisher's page footer on the IG site's own pages (#1901)", () =>
     rmSync(d, { recursive: true, force: true });
   });
 
-  test("the IG's own qa page wins over the QA report", () => {
+  test("igOwnQaPageWins", () => {
     const d = mkdtempSync(join(tmpdir(), "ig-footer-qa-"));
     const src = join(d, "src");
     mkdirSync(join(src, "input", "pagecontent"), { recursive: true });
@@ -683,7 +683,7 @@ describe("the Publisher's page footer on the IG site's own pages (#1901)", () =>
     rmSync(d, { recursive: true, force: true });
   });
 
-  test("prev and next follow the IG's table-of-contents order, skipping what is not built", () => {
+  test("prevNextFollowTocOrder", () => {
     const { d, out } = stage({ menu });
     const fm = (p: string) => readFileSync(join(out, p), "utf-8").split("\n---")[0]!;
     expect(fm("index.md")).toContain("ig_footer: true");
@@ -703,13 +703,13 @@ describe("the Publisher's page footer on the IG site's own pages (#1901)", () =>
     rmSync(d, { recursive: true, force: true });
   });
 
-  test("without a menu there is no generated layout, so the footer goes into the page", () => {
+  test("noMenuFooterInPage", () => {
     const { d, out } = stage({});
     expect(readFileSync(join(out, "concepts.md"), "utf-8")).toMatch(/\{% include fa-ig-footer\.html %\}\n$/);
     rmSync(d, { recursive: true, force: true });
   });
 
-  test("composed thin, the IG's own layout draws the footer after <main>, not the page", () => {
+  test("thinLayoutDrawsFooterAfterMain", () => {
     const { d, out } = stage({ menu });
     const host = join(d, "host");
     mkdirSync(host, { recursive: true });
@@ -719,7 +719,7 @@ describe("the Publisher's page footer on the IG site's own pages (#1901)", () =>
     rmSync(d, { recursive: true, force: true });
   });
 
-  test("composed into a host site, the footer include is namespaced and gated by the page", () => {
+  test("composedFooterNamespaced", () => {
     const { d, out } = stage({ menu });
     const host = join(d, "host");
     mkdirSync(host, { recursive: true });
@@ -730,7 +730,7 @@ describe("the Publisher's page footer on the IG site's own pages (#1901)", () =>
   });
 
   const ruby = spawnSync("ruby", ["-e", 'require "liquid"'], { encoding: "utf-8" }).status === 0;
-  test.skipIf(!ruby)("the footer TEMPLATE renders the Publisher's three rows through real Liquid", () => {
+  test.skipIf(!ruby)("footerTemplateRendersLiquid", () => {
     const footer = {
       publisher: "Example Org", publisherUrl: "https://example.org", packageId: "x.ig", version: "0.2.1",
       fhirVersion: "5.0.0", fhirUrl: "http://hl7.org/fhir/R5/", generated: "2026-10-01", copyrightYear: "2023+",
@@ -752,7 +752,7 @@ describe("the Publisher's page footer on the IG site's own pages (#1901)", () =>
 });
 
 describe("a path a later site step writes is left to it", () => {
-  test("input/images files under a reserved prefix are not published, and are reported", () => {
+  test("reservedPrefixNotPublished", () => {
     const d = mkdtempSync(join(tmpdir(), "ig-reserved-"));
     const src = join(d, "src");
     mkdirSync(join(src, "input", "pagecontent"), { recursive: true });
@@ -776,7 +776,7 @@ describe("a path a later site step writes is left to it", () => {
 });
 
 describe("a reserved FILE leaves the rest of its directory to the IG", () => {
-  test("only the named file is withheld; the IG's other files at that route publish", () => {
+  test("reservedFileOnlyWithheld", () => {
     const d = mkdtempSync(join(tmpdir(), "ig-reserved-file-"));
     const src = join(d, "src");
     mkdirSync(join(src, "input", "pagecontent"), { recursive: true });
@@ -794,7 +794,7 @@ describe("a reserved FILE leaves the rest of its directory to the IG", () => {
 });
 
 describe("a link into a subdirectory of input/images stays on the site", () => {
-  test("it is served, so it is not relinked to the source", () => {
+  test("imageSubdirLinkStaysOnSite", () => {
     const d = mkdtempSync(join(tmpdir(), "ig-nested-"));
     const src = join(d, "src");
     mkdirSync(join(src, "input", "pagecontent"), { recursive: true });
@@ -812,7 +812,7 @@ describe("a link into a subdirectory of input/images stays on the site", () => {
 });
 
 describe("edit links to the IG's own source (bean `mftp`)", () => {
-  test("a pagecontent page carries its edit URL, a generated page none", () => {
+  test("pagecontentHasEditUrl", () => {
     const d = mkdtempSync(join(tmpdir(), "ig-edit-"));
     const src = join(d, "src");
     mkdirSync(join(src, "input", "pagecontent"), { recursive: true });
@@ -840,7 +840,7 @@ describe("edit links to the IG's own source (bean `mftp`)", () => {
 });
 
 describe("sourceHeadings: each section's line in the IG's source (bean `mftp`)", () => {
-  test("ATX headings with their 1-based line, text as a reader sees it, fences skipped", () => {
+  test("sourceHeadingsWithLines", () => {
     const md = ["# Title {#t}", "", "text", "```", "# not a heading", "```", "### A [link](x.html) and **bold**", "## Last ##"].join("\n");
     expect(sourceHeadings(md)).toEqual([
       { t: "Title", l: 1 },
@@ -878,7 +878,7 @@ describe("heading links on an IG's first page, whose headings live in an include
     return hs.map((h) => ({ id: h.id, edit: h.links.find((a) => a.className === "ig-src")?.href, feedback: h.links.find((a) => a.className === "ig-feedback")?.href }));
   };
 
-  test("index.md that only includes index-ig.md: every heading gets ✎ to its own line in the include and 📣 naming its own section and anchor", () => {
+  test("includeHeadingsLinkToInclude", () => {
     const d = mkdtempSync(join(tmpdir(), "ig-x78e-"));
     const src = join(d, "src");
     const pc = join(src, "input", "pagecontent");
@@ -930,7 +930,7 @@ describe("heading links on an IG's first page, whose headings live in an include
     rmSync(d, { recursive: true, force: true });
   });
 
-  test("an include cycle ends, and a non-markdown include is not read", () => {
+  test("includeCycleEnds", () => {
     const files: Record<string, string> = { "a.md": "# A\n{% include b.md %}", "b.md": "## B\n{% include a.md %}\n{% include x.xhtml %}" };
     const inc = (name: string) => (files[name] ? { md: files[name]!, path: `input/includes/${name}` } : undefined);
     expect(sourceHeadings("{% include a.md %}\n# Own", inc)).toEqual([
@@ -945,7 +945,7 @@ describe("heading links on an IG's first page, whose headings live in an include
 // host site's chrome, with the IG's includes and data namespaced per IG.
 describe("composeIgSite: a staged IG moved into a host Jekyll source", () => {
   // The full path (`--full-pages`): the host's own layout and chrome.
-  test("pages nest under the IG, includes and data are namespaced, chrome is injected (--full-pages)", () => {
+  test("composeNestsAndNamespaces", () => {
     const d = mkdtempSync(join(tmpdir(), "ig-compose-"));
     const src = join(d, "src");
     mkdirSync(join(src, "input", "pagecontent"), { recursive: true });
@@ -1002,7 +1002,7 @@ describe("composeIgSite: a staged IG moved into a host Jekyll source", () => {
 
   // Bean g196: the literal base was one preview's path, so every IG page
   // differed between two previews only by that name.
-  test("the host's base reaches the composed top bar and section as {{ site.baseurl }}, not as one deploy's path", () => {
+  test("hostBaseIsLiquidBaseurl", () => {
     const d = mkdtempSync(join(tmpdir(), "ig-compose-base-"));
     const src = join(d, "src");
     mkdirSync(join(src, "input", "pagecontent"), { recursive: true });
@@ -1026,7 +1026,7 @@ describe("composeIgSite: a staged IG moved into a host Jekyll source", () => {
 
   // folio-assistant#2738: an IG at its instance's root, with no artefact pages
   // to bring `ig-artifact.css`, still gets the stylesheet its layout links.
-  test("an IG composed at /<instance>/ lands there and carries the thin stylesheet its layout links", () => {
+  test("composedAtInstanceCarriesStylesheet", () => {
     const d = mkdtempSync(join(tmpdir(), "ig-compose-at-"));
     const src = join(d, "src");
     mkdirSync(join(src, "input", "pagecontent"), { recursive: true });
@@ -1046,7 +1046,7 @@ describe("composeIgSite: a staged IG moved into a host Jekyll source", () => {
     rmSync(d, { recursive: true, force: true });
   });
 
-  test("liquidSiteBase: only a quoted value starting with the base, and never a sibling path", () => {
+  test("liquidSiteBaseQuotedOnly", () => {
     expect(liquidSiteBase('<a href="/fa/x/">x</a> <a href="/fa-core/">y</a> "/fa"', "/fa/")).toBe('<a href="{{ site.baseurl }}/x/">x</a> <a href="/fa-core/">y</a> "/fa"');
     expect(liquidSiteBase('{"href":"/fa/x.html"}', "/fa")).toBe('{"href":"{{ site.baseurl }}/x.html"}');
     expect(liquidSiteBase('<a href="/x/">', "")).toBe('<a href="/x/">');
@@ -1055,12 +1055,12 @@ describe("composeIgSite: a staged IG moved into a host Jekyll source", () => {
 });
 
 describe("relinkPublisherOutputs — the Publisher's downloads live on the published IG", () => {
-  test("points a bare .zip/.tgz link at the canonical site", () => {
+  test("relinksBareDownloads", () => {
     const r = relinkPublisherOutputs("* [IG Package](package.tgz)\n* [JSON](definitions.json.zip)", "http://example.org/ig/");
     expect(r.text).toBe("* [IG Package](http://example.org/ig/package.tgz)\n* [JSON](http://example.org/ig/definitions.json.zip)");
     expect(r.count).toBe(2);
   });
-  test("leaves pages, paths and absolute URLs alone", () => {
+  test("leavesPagesPathsAbsolute", () => {
     const t = "[a](index.html) [b](files/x.zip) [c](https://x.org/y.zip) <a href=\"z.tgz\">";
     const r = relinkPublisherOutputs(t, "http://c");
     expect(r.text).toBe("[a](index.html) [b](files/x.zip) [c](https://x.org/y.zip) <a href=\"http://c/z.tgz\">");
@@ -1069,11 +1069,11 @@ describe("relinkPublisherOutputs — the Publisher's downloads live on the publi
 });
 
 describe("relinkArtifacts — a case-only mismatch", () => {
-  test("resolves to the one artefact page it can mean", () => {
+  test("caseOnlyMismatchResolves", () => {
     const r = relinkArtifacts("[model](StructureDefinition-hcert.html)", new Set(["StructureDefinition-HCert"]), "artifact/");
     expect(r.text).toBe("[model](artifact/StructureDefinition-HCert.html)");
   });
-  test("is left alone when two pages differ only in case", () => {
+  test("ambiguousCaseLeftAlone", () => {
     const r = relinkArtifacts("[x](A-b.html)", new Set(["A-B", "a-B"]), "artifact/");
     expect(r.text).toBe("[x](A-b.html)");
     expect(r.count).toBe(0);
@@ -1087,21 +1087,21 @@ describe("relinkOffSite — what this build cannot serve goes where it is served
   mkdirSync(join(src, "input", "bpmn"), { recursive: true });
   writeFileSync(join(src, "input", "bpmn", "D.bpmn"), "x");
   const o = { canonical: "http://example.org/ig", sourceBlob: "https://github.com/o/r/blob/main", srcRoot: src, isServed: (t: string) => t === "index.html" };
-  test("a Publisher-only page goes to the published IG", () => {
+  test("publisherOnlyPageToPublished", () => {
     expect(relinkOffSite('<a href="qa.html">QA</a>', o).text).toBe('<a href="http://example.org/ig/qa.html">QA</a>');
   });
-  test("a repository file goes to GitHub, found at its path or under input/", () => {
+  test("repoFileToGithub", () => {
     const r = relinkOffSite("[s](.github/skills/s.yaml) [d](bpmn/D.bpmn)", o);
     expect(r.text).toBe("[s](https://github.com/o/r/blob/main/.github/skills/s.yaml) [d](https://github.com/o/r/blob/main/input/bpmn/D.bpmn)");
     expect(r.count).toBe(2);
   });
-  test("artifacts.html this build does not write goes to the published IG (folio-assistant#2741)", () => {
+  test("artifactsHtmlToPublished", () => {
     expect(relinkOffSite('<a href="artifacts.html">A</a>', o).text).toBe('<a href="http://example.org/ig/artifacts.html">A</a>');
     expect(offSiteHref("artifacts.html", o.canonical, (t) => t === "artifacts.html")).toBe("artifacts.html");
     expect(offSiteHref("downloads.html", o.canonical, o.isServed)).toBe("downloads.html");
     expect(offSiteHref("artifacts.html", undefined, o.isServed)).toBe("artifacts.html");
   });
-  test("a page nothing serves is left as written and REPORTED", () => {
+  test("unservedPageReportedDead", () => {
     const r = relinkOffSite("[v](video_tutorial.html) [i](index.html)", o);
     expect(r.text).toBe("[v](video_tutorial.html) [i](index.html)");
     expect(r.dead).toEqual(["video_tutorial.html"]);
@@ -1109,13 +1109,13 @@ describe("relinkOffSite — what this build cannot serve goes where it is served
 });
 
 describe("rubyLiquidStrings — a Publisher Liquid string Jekyll can read", () => {
-  test("an escaped-quote assign becomes single-quoted with plain quotes", () => {
+  test("escapedQuoteAssignSingleQuoted", () => {
     const src = '{% assign x__link__html = "<a href=\\"V.html\\">V</a>" %}';
     const r = rubyLiquidStrings(src);
     expect(r.text).toBe(`{% assign x__link__html = '<a href="V.html">V</a>' %}`);
     expect(r.count).toBe(1);
   });
-  test("a plain string, and one holding an apostrophe, are left as written", () => {
+  test("plainAndApostropheLeftAlone", () => {
     const plain = '{% assign a = "plain" %}';
     const apos = '{% assign b = "it\'s <a href=\\"x\\">" %}';
     expect(rubyLiquidStrings(plain + apos).text).toBe(plain + apos);
@@ -1177,7 +1177,7 @@ describe("the Publisher's artefact lists, written from the artefact index (bean 
   const section = (h: string) => page.split(`### ${h}`)[1]!.split("### ")[0]!;
   const href = (a: { resourceType: string; id: string }) => `artifact/${artifactPageName(a)}.html`;
 
-  test("a list-simple include on a published IG page lists that type's artefacts, never the placeholder", () => {
+  test("listSimpleListsArtefacts", () => {
     const cs = section("CodeSystems");
     expect(cs).not.toContain("ig-not-rendered");
     expect(cs).not.toContain("not rendered");
@@ -1190,28 +1190,28 @@ describe("the Publisher's artefact lists, written from the artefact index (bean 
     expect(res.notRendered).not.toContain("list-simple-codesystems.xhtml");
   });
 
-  test("the full form carries each artefact's description, escaped", () => {
+  test("fullFormCarriesDescription", () => {
     expect(section("ValueSets")).toContain(`<li><a href="${href(list[2]!)}">Vaccines</a> Codes for &lt;vaccines&gt; &amp; boosters</li>`);
   });
 
-  test("a resource type the index holds none of is SAID, never an empty list or the placeholder", () => {
+  test("emptyTypeIsSaid", () => {
     const sm = section("StructureMaps");
     expect(sm).toContain("This guide's artefact index holds no StructureMap resources.");
     expect(sm).not.toContain("not rendered");
   });
 
-  test("a list that names no resource type stays a visible marker, and is reported", () => {
+  test("untypedListStaysMarker", () => {
     expect(section("Profiles")).toContain("⟦not rendered: list-simple-profiles.xhtml⟧");
     expect(res.notRendered).toEqual(["list-simple-profiles.xhtml"]);
   });
 
-  test("without an artefact index, the lists stay markers rather than empty lists", () => {
+  test("noIndexListsStayMarkers", () => {
     const r2 = stageIgSite(join(d, "src"), join(d, "no-index"));
     expect(r2.listed).toEqual([]);
     expect(r2.notRendered).toContain("list-simple-codesystems.xhtml");
   });
 
-  test("the Publisher's plurals map back to their resource type", () => {
+  test("publisherPluralsMapBack", () => {
     expect(publisherPlural("CodeSystem")).toBe("codesystems");
     expect(publisherPlural("Library")).toBe("libraries");
     expect(publisherPlural("SubscriptionStatus")).toBe("subscriptionstatuses");
@@ -1222,7 +1222,7 @@ describe("the Publisher's artefact lists, written from the artefact index (bean 
     expect(artifactListInclude("list-simple-valuesets-json.xhtml")).toBeUndefined();
   });
 
-  test("the list template is a file that opens with its description and computes nothing", () => {
+  test("listTemplateOpensWithComment", () => {
     const t = readFileSync(ARTIFACT_LIST_TEMPLATE_PATH, "utf-8");
     expect(t.startsWith("{%- comment -%}")).toBe(true);
     expect(t).not.toMatch(/\|\s*(plus|minus|size|replace|sort)\b/);
@@ -1230,7 +1230,7 @@ describe("the Publisher's artefact lists, written from the artefact index (bean 
 });
 
 describe("input/data -> _data (bean yy4u): the IG's own site.data, and every overwrite flagged", () => {
-  test("staged, namespaced on compose, and a clash with the harness's data is a QA finding", () => {
+  test("igDataStagedAndClashesFlagged", () => {
     const d = mkdtempSync(join(tmpdir(), "ig-data-"));
     const src = join(d, "src");
     mkdirSync(join(src, "input", "pagecontent"), { recursive: true });
@@ -1265,7 +1265,7 @@ describe("input/data -> _data (bean yy4u): the IG's own site.data, and every ove
     rmSync(d, { recursive: true, force: true });
   });
 
-  test("no input/data: nothing staged, nothing flagged -- and the record still says it looked", () => {
+  test("noDataNothingFlagged", () => {
     const qa = dataOverwritesQa("x", { script: "s", script_hash: "h" }, []);
     expect(qa.total).toBe(0);
     expect(qa.families["data-overwrite"]!.count).toBe(0);
@@ -1304,7 +1304,7 @@ describe("the FHIR AST's resources as site.data (system-actors rendered EMPTY wi
     return out;
   };
 
-  test("canonicals and one <Type>-<id> per resource are written, and the loop lists every actor", async () => {
+  test("astResourcesAsSiteData", async () => {
     const d = mkdtempSync(join(tmpdir(), "ig-ast-data-"));
     const src = join(d, "src");
     mkdirSync(join(src, "input", "pagecontent"), { recursive: true });
@@ -1337,7 +1337,7 @@ describe("the FHIR AST's resources as site.data (system-actors rendered EMPTY wi
     rmSync(d, { recursive: true, force: true });
   });
 
-  test("no AST: nothing written, and the stage log says what that costs", () => {
+  test("noAstNothingWritten", () => {
     const d = mkdtempSync(join(tmpdir(), "ig-ast-none-"));
     const src = join(d, "src");
     mkdirSync(join(src, "input", "pagecontent"), { recursive: true });
@@ -1352,7 +1352,7 @@ describe("the FHIR AST's resources as site.data (system-actors rendered EMPTY wi
 });
 
 describe("dependency-table.xhtml is written from the IG's declaration, not left a marker (bean 4475)", () => {
-  test("the include and its data are written, and the stage log says where the rows came from", () => {
+  test("dependencyTableFromDeclaration", () => {
     const d = mkdtempSync(join(tmpdir(), "ig-deps-"));
     const src = join(d, "src");
     mkdirSync(join(src, "input", "pagecontent"), { recursive: true });
@@ -1381,20 +1381,20 @@ describe("linkTableCells (owner, 2026-10-10: table ids should be clickable)", ()
     "artifact/",
   );
 
-  test("a markdown cell naming an artefact by title links to its page, keeping the bold", () => {
+  test("markdownCellLinksByTitle", () => {
     const r = linkTableCells("| ID | Description |\n|---|---|\n| **IMMZ.D18.S.BCG schedule** | Recommended schedule |\n", lookup);
     expect(r.text).toContain("| [**IMMZ.D18.S.BCG schedule**](artifact/PlanDefinition-IMMZD18SBCG.html) |");
     expect(r.text).toContain("| Recommended schedule |");
     expect(r.count).toBe(1);
   });
 
-  test("an HTML cell matches an id with its punctuation dropped", () => {
+  test("htmlCellMatchesIdWithoutPunctuation", () => {
     const r = linkTableCells("<tr>\n<td>IMMZ.IND.01</td>\n<td>Coverage for BCG</td>\n</tr>", lookup);
     expect(r.text).toContain('<td><a href="artifact/Measure-IMMZIND01.html">IMMZ.IND.01</a></td>');
     expect(r.text).toContain("<td>Coverage for BCG</td>");
   });
 
-  test("a process name links to its heading on the page, and the row's id cell follows it", () => {
+  test("processNameLinksToHeading", () => {
     const body = [
       "| # | Process Name | Process ID |",
       "|---|---|---|",
@@ -1411,18 +1411,18 @@ describe("linkTableCells (owner, 2026-10-10: table ids should be clickable)", ()
     expect(r.text).toContain("| A | [");
   });
 
-  test("a key two artefacts share links neither, and a cell already holding a link is left alone", () => {
+  test("sharedKeyAndLinkedCellLeftAlone", () => {
     const r = linkTableCells("| x |\n|---|\n| Shared |\n| [IMMZ.D2.DT.BCG](elsewhere.html) |\n", lookup);
     expect(r.count).toBe(0);
   });
 
-  test("kramdownId matches the deployed heading ids", () => {
+  test("kramdownIdMatchesHeadings", () => {
     expect(kramdownId("A.  Vaccination location registration")).toBe("a--vaccination-location-registration");
   });
 });
 
 describe("annexes (owner, 2026-10-10: the data dictionary loaded on demand)", () => {
-  test("annexMount points at the copied JSON and the renderer, with a fallback link", () => {
+  test("annexMountPointsAtJson", () => {
     const m = annexMount("dd.json", ["data element id", "data type"]);
     expect(m).toContain('class="fa-annex" data-src="assets/annex/dd.json"');
     expect(m).toContain('data-columns="data element id|data type"');
@@ -1432,7 +1432,7 @@ describe("annexes (owner, 2026-10-10: the data dictionary loaded on demand)", ()
     expect(m).not.toContain("site.baseurl");
   });
 
-  test("the renderer exists and sets data only through textContent", () => {
+  test("annexRendererUsesTextContent", () => {
     const js = readFileSync(ANNEX_SCRIPT_PATH, "utf-8");
     expect(js).not.toContain("innerHTML");
     expect(js).toContain("textContent");
@@ -1440,7 +1440,7 @@ describe("annexes (owner, 2026-10-10: the data dictionary loaded on demand)", ()
 });
 
 describe("annexes in a staged page", () => {
-  test("a JSON annex mounts the loader; a markdown annex is appended as written", () => {
+  test("jsonAnnexMountsMarkdownAppended", () => {
     const root = mkdtempSync(join(tmpdir(), "annex-"));
     const src = join(root, "ig");
     mkdirSync(join(src, "input", "pagecontent"), { recursive: true });
@@ -1473,7 +1473,7 @@ describe("the annex contract: an ig-annex directory the instance declares (fm9n)
   };
   const table = JSON.stringify({ title: "T", sheets: [] });
 
-  test("annexesIn reads ig-annexes/v1 and the bare array it replaces; files are relative to the directory", () => {
+  test("annexesInReadsBothShapes", () => {
     const d = mkdtempSync(join(tmpdir(), "annex-dir-"));
     writeFileSync(join(d, "t.json"), table);
     expect(annexesIn(d)).toBeUndefined();
@@ -1488,7 +1488,7 @@ describe("the annex contract: an ig-annex directory the instance declares (fm9n)
     rmSync(d, { recursive: true, force: true });
   });
 
-  test("annexesFor reads every declared ig-annex directory, a file in a nested directory of another kind, and nothing undeclared", () => {
+  test("annexesForReadsDeclaredDirs", () => {
     const at = ig({
       directories: [
         { id: "an-ig-annexes", path: "annexes/", graphTypologies: ["ig-annex"] },
@@ -1512,7 +1512,7 @@ describe("the annex contract: an ig-annex directory the instance declares (fm9n)
     rmSync(join(at, ".."), { recursive: true, force: true });
   });
 
-  test("a declared directory absent from the checkout is said and skipped, not read as empty", () => {
+  test("absentAnnexDirSaidAndSkipped", () => {
     const at = ig({ directories: [{ id: "an-ig-annexes", path: "annexes/", graphTypologies: ["ig-annex"] }] });
     const said: string[] = [];
     expect(annexesFor(at, (s) => said.push(s))).toBeUndefined();
@@ -1520,7 +1520,7 @@ describe("the annex contract: an ig-annex directory the instance declares (fm9n)
     rmSync(join(at, ".."), { recursive: true, force: true });
   });
 
-  test("the fhir-artifact-index/annexes.json an existing caller holds is still read", () => {
+  test("legacyArtifactIndexAnnexesRead", () => {
     const at = ig({});
     mkdirSync(join(at, "fhir-artifact-index"));
     writeFileSync(join(at, "fhir-artifact-index", "t.json"), table);
@@ -1534,15 +1534,15 @@ describe("an inlined runtime is kept out of Liquid's reach (smart-trust, 2026-10
   // The edit-links runtime's variable pattern carries `{%`; inlined bare into
   // `_includes/ig/_bottom.html` it was a Liquid syntax error that stopped the build.
   const liquid = new Liquid({ strictFilters: false });
-  test("a script carrying {% and {{ renders to its own bytes", async () => {
+  test("inertScriptRendersOwnBytes", async () => {
     const js = "var re = /\\{\\{[\\s\\S]*?\\}\\}|\\{%[\\s\\S]*?%\\}/g; var t = '{{ x }} {% if y %}';";
     expect(await liquid.parseAndRender(`<script>${liquidInertScript(js)}</script>`, {})).toBe(`<script>${js}</script>`);
   });
-  test("a script that would close the raw block is refused", () => {
+  test("refusesScriptClosingRaw", () => {
     expect(() => liquidInertScript("var s = '{% endraw %}';")).toThrow(/endraw/);
     expect(() => liquidInertScript("var s = '{%- endraw -%}';")).toThrow(/endraw/);
   });
-  test("the full pages' bottom parses, and carries both runtimes verbatim", async () => {
+  test("fullPagesBottomCarriesRuntimes", async () => {
     const { bottom } = igChromeIncludes("");
     const html = await liquid.parseAndRender(bottom, { page: { ig_source_lines: [1], ig_edit_url: "e" } });
     expect(html).toContain(EDIT_LINKS_RUNTIME);
@@ -1551,12 +1551,12 @@ describe("an inlined runtime is kept out of Liquid's reach (smart-trust, 2026-10
 });
 
 describe("include names are refused unless they are one safe path segment", () => {
-  test("ordinary include names pass; separators, dot segments and template text do not", () => {
+  test("safeIncludeNames", () => {
     for (const ok of ["foo.md", "bar.svg", "x.liquid", "list-simple-profiles.xhtml", "_top.html"]) expect(isSafeIncludeName(ok)).toBe(true);
     for (const bad of ["", ".", "..", "../x.md", "a/b.md", "a\\b.md", "/abs.md", "{{", "x\0.md", "-x.md"]) expect(isSafeIncludeName(bad)).toBe(false);
   });
 
-  test("staging writes nothing for a refused include name, and reports it", () => {
+  test("refusedIncludeWritesNothing", () => {
     const d = mkdtempSync(join(tmpdir(), "ig-site-refuse-"));
     try {
       const src = join(d, "src");
@@ -1577,7 +1577,7 @@ describe("include names are refused unless they are one safe path segment", () =
 });
 
 describe("relinkPublisherTemplateAssets — staged input/images HTML pages point Publisher template assets at canonical (#2741)", () => {
-  test("rewrites ../ relative links to fhir.css, fhir-table-scripts.js and assets/{css,js,ico}/* while preserving sibling Swagger UI assets", () => {
+  test("relinksTemplateAssets", () => {
     const html = [
       '<link href="../../fhir.css" rel="stylesheet"/>',
       '<link href="../../assets/css/bootstrap-fhir.css" rel="stylesheet"/>',
@@ -1600,7 +1600,7 @@ describe("relinkPublisherTemplateAssets — staged input/images HTML pages point
     expect(r.text).toContain('src="./swagger-ui-bundle.js"');
   });
 
-  test("stageIgSite rewrites Publisher template asset links in staged input/images/<dir>/*.html files", () => {
+  test("stageRelinksTemplateAssets", () => {
     const d = mkdtempSync(join(tmpdir(), "ig-openapi-assets-"));
     try {
       const src = join(d, "src");

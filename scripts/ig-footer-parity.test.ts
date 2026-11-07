@@ -72,7 +72,7 @@ const frontMatter = (file: string): Record<string, unknown> => {
 };
 
 describe("an IG site's artefact pages carry the site's footer, not one of their own", () => {
-  test("every artefact page flags the site's footer and draws none itself", () => {
+  test("artefactPagesFlagSiteFooter", () => {
     expect(artefactPages.length).toBeGreaterThan(0);
     for (const f of artefactPages) {
       const text = readFileSync(join(docs, "artifact", f), "utf-8");
@@ -85,7 +85,7 @@ describe("an IG site's artefact pages carry the site's footer, not one of their 
     expect(existsSync(join(docs, "assets", "ig-footer.js"))).toBe(false);
   });
 
-  test("the artefact pages build into the site that holds the footer's one data object", () => {
+  test("artefactPagesBuildIntoSite", () => {
     expect(copied.collisions).toEqual([]);
     const f = JSON.parse(readFileSync(join(out, "_data", "fhir.json"), "utf-8")).footer;
     // The package's facts laid over the source's: the year from the source,
@@ -98,7 +98,7 @@ describe("an IG site's artefact pages carry the site's footer, not one of their 
   });
 
   const ruby = spawnSync("ruby", ["-e", 'require "liquid"'], { encoding: "utf-8" }).status === 0;
-  test.skipIf(!ruby)("rendered through the one include, both footers resolve to the same facts and the same targets", () => {
+  test.skipIf(!ruby)("bothFootersResolveSame", () => {
     const footer = JSON.parse(readFileSync(join(out, "_data", "fhir.json"), "utf-8")).footer;
     const script =
       'require "liquid"; require "json"; d = JSON.parse(STDIN.read.force_encoding("UTF-8")); print Liquid::Template.parse(d["t"], error_mode: :strict).render("site" => { "data" => { "fhir" => { "footer" => d["f"] } } }, "page" => d["p"])';

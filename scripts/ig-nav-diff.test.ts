@@ -24,7 +24,7 @@ menu:
 `;
 
 describe("the two sides", () => {
-  it("reads the Publisher's top bar: dropdowns, a top-level page, entities decoded", () => {
+  it("readsPublisherTopBar", () => {
     expect(renderedMenu(`<html><body>${BAR}</body></html>`)).toEqual([
       { label: "Home", items: [{ label: "Summary", href: "index.html" }, { label: "Change & Log", href: "changes.html" }] },
       { label: "Framework", href: "framework.pdf", items: [] },
@@ -32,7 +32,7 @@ describe("the two sides", () => {
     ]);
   });
 
-  it("refuses a page with no top bar rather than reporting it as empty", () => {
+  it("refusesPageWithoutTopBar", () => {
     expect(() => renderedMenu("<html></html>")).toThrow("navbar-nav");
   });
 });
@@ -40,21 +40,21 @@ describe("the two sides", () => {
 describe("the diff, entry by entry", () => {
   const d = navDiff(derivedMenu(SUSHI), renderedMenu(BAR));
 
-  it("matches by href, so a relabel is a label difference, not a removal plus an addition", () => {
+  it("relabelIsLabelDifference", () => {
     expect(d).toContainEqual({ kind: "label", group: "Home", href: "changes.html", derived: "Change Log", rendered: "Change & Log" });
   });
 
-  it("names an entry only the Publisher rendered", () => {
+  it("namesOnlyRenderedEntry", () => {
     expect(d).toContainEqual({ kind: "only-rendered", group: "Indices", label: "API Hub", href: "api-hub.html" });
   });
 
-  it("reports nothing for what agrees, and an order change once per group", () => {
+  it("agreementSilentOrderOnce", () => {
     expect(d.length).toBe(2);
     const swapped = navDiff(derivedMenu(SUSHI), renderedMenu(BAR.replace('<li><a href="index.html">Summary</a></li><li><a href="changes.html">Change &amp; Log</a></li>', '<li><a href="changes.html">Change Log</a></li><li><a href="index.html">Summary</a></li>')));
     expect(swapped.filter((x) => x.kind === "order")).toEqual([{ kind: "order", group: "Home", derived: ["index.html", "changes.html"], rendered: ["changes.html", "index.html"] }]);
   });
 
-  it("names a whole group either side lacks", () => {
+  it("namesMissingGroup", () => {
     expect(navDiff([{ label: "Only", items: [] }], [{ label: "Other", items: [] }])).toEqual([
       { kind: "group-only-derived", group: "Only" },
       { kind: "group-only-rendered", group: "Other" },
@@ -67,12 +67,12 @@ describe("per IG and combined", () => {
   const a = navDiffRecord("a.ig", derivedMenu(SUSHI), renderedMenu(BAR), script);
   const b = navDiffRecord("b.ig", derivedMenu(SUSHI), derivedMenu(SUSHI), script);
 
-  it("an IG whose diff is empty is a record of zero, not an absent record", () => {
+  it("emptyDiffIsZeroRecord", () => {
     expect(b.total).toBe(0);
     expect(b.families["nav-diff"]!.count).toBe(0);
   });
 
-  it("combines with each difference tagged by IG, and each IG's count stated", () => {
+  it("combinedTagsByIg", () => {
     const c = combinedNavDiff([a, b], script);
     expect(c.total).toBe(2);
     expect(c.families["by-ig"]!.entries).toEqual([{ ig: "a.ig", differences: 2 }, { ig: "b.ig", differences: 0 }]);
@@ -95,19 +95,19 @@ pages:
 <tr><td><a href="overview.html#top">Overview</a></td></tr><tr><td><a href="qa.html">QA</a></td></tr>
 <tr><td><a href="ValueSet-x.html">x</a></td></tr><tr><td><a href="https://hl7.org/x.html">ext</a></td></tr></table>`;
 
-  it("derives nested pages as .html, and reads the toc's pages without anchors, artefacts or external links", () => {
+  it("derivesPagesAndReadsToc", () => {
     expect(derivedPages(SUSHI_PAGES)).toEqual(["index.html", "overview.html", "changes.html"]);
     expect(renderedTocPages(TOC)).toEqual(["index.html", "overview.html", "qa.html"]);
   });
 
-  it("names pages either side lacks", () => {
+  it("namesTocPagesEitherSide", () => {
     expect(tocDiff(derivedPages(SUSHI_PAGES), renderedTocPages(TOC))).toEqual([
       { kind: "page-only-derived", page: "changes.html" },
       { kind: "page-only-rendered", page: "qa.html" },
     ]);
   });
 
-  it("refuses a page that is not a table of contents", () => {
+  it("refusesNonToc", () => {
     expect(() => renderedTocPages("<html></html>")).toThrow("Table of Contents");
   });
 });

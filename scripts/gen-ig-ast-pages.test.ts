@@ -96,7 +96,7 @@ describe("gen-ig-ast-pages --site", () => {
   const remote = join("en", "harness", "ig-ast", "remote", "index.html");
   const read = (f: string): string => readFileSync(join(site, f), "utf8");
 
-  it("the Tool declares the kind it renders and the site flag a site build passes", async () => {
+  it("toolDeclaresKindAndSiteFlag", async () => {
     const { tools } = await import("../tools/index.ts");
     const t = tools().find((x) => x.id === "ig-ast-pages")!;
     expect(t.renders).toContain("ig-ast");
@@ -105,13 +105,13 @@ describe("gen-ig-ast-pages --site", () => {
     expect(t.io?.inputs?.filter((i) => i.required) ?? []).toEqual([]);
   });
 
-  it("writes the hub and one page per declaring instance at the declared route, and nothing else", () => {
+  it("writesHubAndDeclaredPages", () => {
     expect(first.exitCode).toBe(0);
     expect(files()).toEqual([hub, held, remote].sort());
     for (const f of files()) expect(read(f)).toContain("rendered-by: ig-ast-pages");
   });
 
-  it("an AST on disk: package id from its ImplementationGuide, counts, edges and plan", () => {
+  it("astOnDiskPage", () => {
     const html = read(held);
     expect(html).toContain("hl7.fhir.uv.ips");
     expect(html).toContain("<strong>3</strong> resource(s) across 3 type(s)");
@@ -121,7 +121,7 @@ describe("gen-ig-ast-pages --site", () => {
     expect(html).toContain("cache, never an authority");
   });
 
-  it("a declared directory not in the build is unknown, never zero, and names its family", () => {
+  it("remoteDirIsUnknown", () => {
     const html = read(remote);
     expect(html).toContain("<strong>unknown</strong>, not none");
     expect(html).not.toMatch(/\b0 AST/);
@@ -131,11 +131,11 @@ describe("gen-ig-ast-pages --site", () => {
     expect(read(hub)).toContain("1 AST(s), 3 resource(s)");
   });
 
-  it("authored text never reaches Liquid", () => {
+  it("authoredTextNeverLiquid", () => {
     for (const f of files()) expect(read(f)).toMatch(/^---\n[\s\S]*?render_with_liquid: false[\s\S]*?\n---\n/);
   });
 
-  it("--check passes on what it wrote and fails on a changed or orphaned page", () => {
+  it("checkPassesThenFails", () => {
     expect(run("--check").exitCode).toBe(0);
     writeFileSync(join(site, held), "changed");
     expect(run("--check").exitCode).toBe(1);
@@ -148,7 +148,7 @@ describe("gen-ig-ast-pages --site", () => {
 });
 
 describe("astsIn", () => {
-  it("is null for a directory not on disk, and [] for one holding no manifest", () => {
+  it("astsInNullOrEmpty", () => {
     const d = mkdtempSync(join(tmpdir(), "fhir-harness-ig-ast-empty-"));
     try {
       expect(astsIn(join(d, "absent"))).toBeNull();
@@ -159,7 +159,7 @@ describe("astsIn", () => {
     }
   });
 
-  it("reads one AST per member directory, keyed by the directory name when the AST names no package", () => {
+  it("astsInKeyedByDir", () => {
     const d = mkdtempSync(join(tmpdir(), "fhir-harness-ig-ast-family-"));
     try {
       write(join(d, "example.pkg", "manifest.json"), { $schema: "ig-ast/v1", authority: "cache", provisional: [], resources: [] });
@@ -186,7 +186,7 @@ describe("fhir-harness declares the viewer it draws", () => {
   // under this instance, so an entry here names a directory that stays empty
   // and `derive:publish` refuses it ("built nothing there"). The site build
   // runs the writer as a declared visualiser's (`visualiser-writers.ts`).
-  it("a visualiser rendered by ig-ast-pages, covering ig-ast per instance, whose writer is a checkout script and not declared built at publish here", () => {
+  it("declaresViewer", () => {
     const v = decl.visualisers?.find((x) => x.renderedBy === "ig-ast-pages");
     expect(v).toMatchObject({ id: "ig-ast", coversKinds: ["ig-ast"], subgraphs: "instance", writer: ["scripts/gen-ig-ast-pages.ts"] });
     const pkg = JSON.parse(readFileSync(join(import.meta.dir, "..", "package.json"), "utf8")) as { checkoutScripts: Record<string, string> };
@@ -214,11 +214,11 @@ describe("an IG repository inherits its AST listing from needing this layer", ()
     return { branches: ["cat/fhir-harness/fhir-ast/hl7.fhir.uv.ips", "fhir-ast/hl7.fhir.uv.old"] };
   };
 
-  it("needing follows needs through the layers above, and excludes the layer itself", () => {
+  it("needingFollowsNeeds", () => {
     expect([...needing(instances, "fhir-harness")].sort()).toEqual(["held", "ig", "overlay", "overlay-ig"]);
   });
 
-  it("asks only undeclared instances that need the layer, keys each family, and says a failed lookup", () => {
+  it("inheritedSubjectsAsksUndeclared", () => {
     const subjects = inheritedSubjects(instances, new Set(["held"]), list);
     expect(asked.sort()).toEqual(["example/ig", "example/overlay", "example/overlay-ig"]);
     expect(subjects.map((s) => s.name)).toEqual(["ig", "overlay-ig"]);
@@ -233,7 +233,7 @@ describe("an IG repository inherits its AST listing from needing this layer", ()
     expect(directoryVerdict(failed)).toContain("unknown");
   });
 
-  it("the page links each branch and calls the AST unknown, not none", () => {
+  it("pageLinksBranchesUnknown", () => {
     const subjects = inheritedSubjects(instances, new Set(["held"]), list);
     const html = subjectPage({ id: "ig-ast", title: "IG ASTs" }, subjects[0]!, subjects);
     expect(html).toContain("https://github.com/example/ig/tree/cat/fhir-harness/fhir-ast/hl7.fhir.uv.ips");

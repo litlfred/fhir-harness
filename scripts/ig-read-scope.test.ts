@@ -50,7 +50,7 @@ function ig(include?: string[]): string {
 const DECLARED = ["sushi-config.yaml", "input/fsh/", "input/pagecontent/"];
 
 describe("igReadScope", () => {
-  it("declares only the include list, and reaches the directories leading to it", () => {
+  it("declaresOnlyIncludeList", () => {
     const s = igReadScope(ig(DECLARED));
     expect(s.legacy).toBe(false);
     expect(s.declares("sushi-config.yaml")).toBe(true);
@@ -62,11 +62,11 @@ describe("igReadScope", () => {
     expect(() => s.path("input/ignoreWarnings.txt")).toThrow(/not declared in contentTypes\.ig\.include/);
   });
 
-  it("refuses a section that declares nothing rather than reading everything", () => {
+  it("refusesSectionDeclaringNothing", () => {
     expect(() => igReadScope(ig([]))).toThrow(/declares nothing usable/);
   });
 
-  it("reads a repository with no section as a legacy IG, and warns once naming the declaration", () => {
+  it("legacyWarnsOnce", () => {
     const d = ig();
     const said: string[] = [];
     const s = igReadScope(d, { warn: (m) => said.push(m) });
@@ -79,7 +79,7 @@ describe("igReadScope", () => {
 });
 
 describe("copyDeclared and onlyDeclared", () => {
-  it("copies the declaration and the include entries, and nothing else", () => {
+  it("copyDeclaredOnly", () => {
     const s = igReadScope(ig(DECLARED));
     expect(onlyDeclared(s)).toBe(false);
     const to = tmp("ig-read-scope-copy-");
@@ -92,18 +92,18 @@ describe("copyDeclared and onlyDeclared", () => {
 });
 
 describe("the IG readers, gated", () => {
-  it("fsh-cone reads FSH and leaves undeclared CQL alone", () => {
+  it("fshConeSkipsUndeclaredCql", () => {
     const g = buildFshGraph(ig(DECLARED));
     expect([...g.nodes.keys()]).toContain("ExPatient");
     expect([...g.nodes.keys()].some((k) => k.startsWith("cql:"))).toBe(false);
   });
 
-  it("fsh-cone still reads everything in a legacy IG", () => {
+  it("fshConeReadsLegacy", () => {
     const g = buildFshGraph(ig());
     expect([...g.nodes.keys()]).toContain("cql:ExLib");
   });
 
-  it("build-ig-indexes reads no undeclared images, and the declared sushi-config", () => {
+  it("indexesReadDeclaredOnly", () => {
     const d = ig(DECLARED);
     expect(contextsFrom(d, tmp("ig-read-scope-out-"), undefined)).toEqual([]);
     expect(fhirVersionsOf(d)).toEqual(["4.0.1"]);
@@ -111,7 +111,7 @@ describe("the IG readers, gated", () => {
     expect(contextsFrom(ig([...DECLARED, "input/images/"]), tmp("ig-read-scope-out-"), undefined)).toHaveLength(1);
   });
 
-  it("ig-repo-site copies only the declared source, and takes no title it may not read", () => {
+  it("repoSiteCopiesDeclared", () => {
     const src = tmp("ig-read-scope-src-");
     expect(copyIgSource(ig(DECLARED), src)).toEqual(["index.config.json", ...DECLARED]);
     expect(existsSync(join(src, "notes"))).toBe(false);
@@ -119,16 +119,16 @@ describe("the IG readers, gated", () => {
     expect(igTitle(ig(["input/fsh/"]))).toBeUndefined();
   });
 
-  it("ingest-ig-menu refuses an undeclared sushi-config.yaml", () => {
+  it("menuRefusesUndeclaredSushi", () => {
     expect(() => buildMenu(ig(["input/fsh/"]), "2026-10-30")).toThrow(/not declared in contentTypes\.ig\.include/);
   });
 
-  it("the IG API hub looks only in declared pages", () => {
+  it("apiHubDeclaredPagesOnly", () => {
     expect(igApiHubPageOf(ig(DECLARED), "{{API_HUB}}")).toBe("index.html");
     expect(igApiHubPageOf(ig(["sushi-config.yaml"]), "{{API_HUB}}")).not.toBe("index.html");
   });
 
-  it("build-ig-site stages only declared pages, and leaves the source as it was", () => {
+  it("siteStagesDeclaredPages", () => {
     const d = ig(["sushi-config.yaml", "input/pagecontent/index.md"]);
     writeFileSync(join(d, "input/pagecontent/other.md"), "# Other\n");
     const r = stageIgSite(d, join(tmp("ig-read-scope-site-"), "site"));

@@ -27,7 +27,7 @@ const ix = {
 } as unknown as Pick<FhirArtifactIndex, "artifacts">;
 
 describe("hubEntries", () => {
-  it("lists each bound sidecar with its artefact, and a view only for a held schema or JSON-LD", () => {
+  it("hubEntriesListBoundSidecars", () => {
     const e = hubEntries(ix);
     expect(e.map((x) => x.file)).toEqual(["ValueSet-vs-a.openapi.json", "ValueSet-vs-a.schema.json"]);
     const schema = e.find((x) => x.label === "JSON Schema")!;
@@ -41,7 +41,7 @@ describe("hubEntries", () => {
 });
 
 describe("igApiHubNode and igApiHubBody", () => {
-  it("names the API by the label given and points the loader at the node from the page's place", () => {
+  it("hubNodeNamedByLabel", () => {
     const n = igApiHubNode({ label: "Example API", entries: hubEntries(ix), openapi: true, documents: ["B.schema.json", "A.schema.json"] });
     expect(n["schema:name"]).toBe("Example API");
     expect(n["schema:documentation"]).toBe("openapi/");
@@ -53,7 +53,7 @@ describe("igApiHubNode and igApiHubBody", () => {
 });
 
 describe("igApiHubPageOf and writeIgApiHubSite", () => {
-  it("takes the IG's page holding the marker, else the default, and writes page, node and loader", () => {
+  it("hubPageAndSiteWritten", () => {
     const ig = mkdtempSync(join(tmpdir(), "ig-api-hub-"));
     try {
       mkdirSync(join(ig, "input", "pagecontent"), { recursive: true });
