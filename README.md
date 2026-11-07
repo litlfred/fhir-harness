@@ -16,11 +16,31 @@ implementation guide instantiates.
 
 <!-- readme:toc:begin -->
 
+- [Render and publish an IG](#render-and-publish-an-ig)
 - [Scope](#scope)
 - [Generic steps taken from the WHO build](#generic-steps-taken-from-the-who-build)
 - [Skills](#skills)
 
 <!-- readme:toc:end -->
+
+## Render and publish an IG
+
+From an IG repository whose layers are mounted:
+
+```bash
+bun run cat prepare:fhir-harness             # build the AST (the one IG Publisher run)
+bun run cat stage:local --repo . --dry-run   # render the site from it; push nothing
+```
+
+The pages that explain it, on the platform's docs site:
+
+- [Render an IG from the command line](https://litlfred.github.io/folio-assistant/fhir-harness/fhir/run-locally.html):
+  harnessed or bare, what to install, each step.
+- [Publishing an IG](https://litlfred.github.io/folio-assistant/fhir-harness/fhir/publishing.html):
+  the workflows, where each output lands, what is published now, and the
+  deployment targets (GitHub Pages, Cloudflare).
+- [The FHIR IG Publisher](https://litlfred.github.io/folio-assistant/fhir-harness/fhir/ig-publisher.html):
+  what it does, and how the harness runs it.
 
 ## Scope
 

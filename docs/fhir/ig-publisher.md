@@ -34,6 +34,27 @@ In a build with pre- and post-processing it is **one step among many**. API
 sidecars, JSON Schemas and JSON-LD vocabularies on a published IG are written
 by scripts *after* it exits, not by the Publisher.
 
+## How the harness runs it
+{: #how-the-harness-runs-it data-fa-label="sec:ig-publisher-how-the-harness-runs-it" }
+
+[✎ Edit](https://github.com/litlfred/fhir-harness/edit/main/docs/source/fhir-ig-publisher/how-the-harness-runs-it.md){: .fa-node-edit title="Edit docs/source/fhir-ig-publisher/how-the-harness-runs-it.md" data-fa-link="edit" data-src="docs/source/fhir-ig-publisher/how-the-harness-runs-it.md" data-repo="litlfred/fhir-harness" } <span class="fa-qa-badges"><button type="button" class="fa-qa-badge fa-qa-pending fa-qa-fam-block" lang="en" dir="ltr" data-qa-family="block" data-qa-key="how-the-harness-runs-it.block" data-qa-label="Content QA" data-qa-noun="block" data-qa-src="{{ '/assets/qa/fhir-harness/fhir-ig-publisher/how-the-harness-runs-it.block.json' | relative_url }}" data-qa-index="{{ '/assets/qa/fhir-harness/fhir-ig-publisher/qa-index.json' | relative_url }}" aria-expanded="false" aria-busy="true" title="Content QA: loading the verdict…" aria-label="Content QA: loading the verdict…"><span class="fa-qa-tag">QA</span><span class="fa-qa-glyph" aria-hidden="true">…</span></button> <button type="button" class="fa-qa-badge fa-qa-pending fa-qa-fam-translation" lang="en" dir="ltr" data-qa-family="translation" data-qa-key="how-the-harness-runs-it.translation" data-qa-label="Translation QA" data-qa-noun="block" data-qa-src="{{ '/assets/qa/fhir-harness/fhir-ig-publisher/how-the-harness-runs-it.translation.json' | relative_url }}" data-qa-index="{{ '/assets/qa/fhir-harness/fhir-ig-publisher/qa-index.json' | relative_url }}" aria-expanded="false" aria-busy="true" title="Translation QA: loading the verdict…" aria-label="Translation QA: loading the verdict…"><span class="fa-qa-tag">TR</span><span class="fa-qa-glyph" aria-hidden="true">…</span></button></span>
+
+The harness runs the Publisher **once per AST**, not once per site build:
+
+- `ig-ast-build.sh` (the checkout script `prepare:fhir-harness`) and the
+  reusable `ig-ast-refresh.yml` run `AstExportCli`, an entry point added to a
+  fork of the Publisher ([litlfred/fhir-ig-publisher](https://github.com/litlfred/fhir-ig-publisher)).
+  The fork is pinned by its `ast-export` commit. The run writes `output-ast/`,
+  one JSON dump per resource.
+- The site is then rendered **from the AST**, never from the Publisher's
+  `output/` HTML. No Publisher runs while a site is published.
+- An IG with no `index.config.json`, or a run with `--bare-ig`, takes the
+  **bare** route instead: the IG's own `ghbuild.yml` steps run, and the
+  Publisher's output is published as it is.
+
+How to run each route: [Render an IG from the command line](run-locally.html).
+How the result is deployed: [Publishing an IG](publishing.html).
+
 ## What one run emits
 {: #what-it-emits data-fa-label="sec:ig-publisher-what-it-emits" }
 
