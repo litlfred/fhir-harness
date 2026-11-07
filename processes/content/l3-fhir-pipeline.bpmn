@@ -44,6 +44,7 @@
         <bpmn:flowNodeRef>Task_Sushi</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>Task_Validate</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>Gateway_Valid</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Call_PublishStatements</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>Task_IgPublisher</bpmn:flowNodeRef>
       </bpmn:lane>
       <bpmn:lane id="Lane_Qc" name="QC reviewer">
@@ -121,12 +122,20 @@
         <bpmn:targetRef>DSR_work_plan</bpmn:targetRef>
       </bpmn:dataOutputAssociation>
     </bpmn:task>
+    <bpmn:callActivity id="Call_PublishStatements" name="Publish extracted statements" calledElement="Process_PublishExtractedStatements">
+      <bpmn:documentation>The IG draws on library sources; every statement extracted from them is published as pages of the IG and in the shared extraction viewer, each linked to its library entry and section, before the IG Publisher builds the site. The sub-process is core's, the same for every content type: this IG supplies only the page look (its pages' table class) and registers the pages in its own menu. The generated pages are checked for staleness in CI.</bpmn:documentation>
+      <bpmn:extensionElements>
+        <bootstrap.processes:skill ref="publish-extracted-statements" />
+      </bpmn:extensionElements>
+      <bpmn:incoming>C11</bpmn:incoming>
+      <bpmn:outgoing>C11b</bpmn:outgoing>
+    </bpmn:callActivity>
     <bpmn:serviceTask id="Task_IgPublisher" name="IG Publisher build">
       <bpmn:documentation>Run the IG Publisher: it renders output/, writes each resource's JSON, the package, canonicals and qa.json, and does the two things no cache can — validates every resource against its profiles and resolves the dependency closure with terminology expansion.</bpmn:documentation>
       <bpmn:extensionElements>
         <bootstrap.processes:skill ref="ig-publication" />
       </bpmn:extensionElements>
-      <bpmn:incoming>C11</bpmn:incoming>
+      <bpmn:incoming>C11b</bpmn:incoming>
       <bpmn:outgoing>C12</bpmn:outgoing>
     </bpmn:serviceTask>
     <bpmn:serviceTask id="Task_PublishIg" name="Publish the IG site">
@@ -151,7 +160,8 @@
     <bpmn:sequenceFlow id="C08" sourceRef="Task_QcGates" targetRef="Gateway_QcPass" />
     <bpmn:sequenceFlow id="C09" name="no" sourceRef="Gateway_QcPass" targetRef="Task_QcBeans" />
     <bpmn:sequenceFlow id="C10" sourceRef="Task_QcBeans" targetRef="Task_AuthorFsh" />
-    <bpmn:sequenceFlow id="C11" name="yes" sourceRef="Gateway_QcPass" targetRef="Task_IgPublisher" />
+    <bpmn:sequenceFlow id="C11" name="yes" sourceRef="Gateway_QcPass" targetRef="Call_PublishStatements" />
+    <bpmn:sequenceFlow id="C11b" sourceRef="Call_PublishStatements" targetRef="Task_IgPublisher" />
     <bpmn:sequenceFlow id="C12" sourceRef="Task_IgPublisher" targetRef="Task_PublishIg" />
     <bpmn:sequenceFlow id="C13" sourceRef="Task_PublishIg" targetRef="EndEvent_IgPublished" />
     <bpmn:dataStoreReference id="DSR_work_plan" name="Work plan (beans)" dataStoreRef="work-plan"/>
@@ -254,7 +264,7 @@
         <di:waypoint x="1400" y="305" />
         <di:waypoint x="1495" y="305" />
         <bpmndi:BPMNLabel>
-          <dc:Bounds x="1406" y="500" width="25" height="27" />
+          <dc:Bounds x="1372" y="540" width="25" height="27" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="C10_di" bpmnElement="C10">
@@ -263,10 +273,17 @@
         <di:waypoint x="600" y="100" />
         <di:waypoint x="600" y="110" />
       </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="Call_PublishStatements_di" bpmnElement="Call_PublishStatements">
+        <dc:Bounds x="1420" y="395" width="120" height="120" />
+      </bpmndi:BPMNShape>
       <bpmndi:BPMNEdge id="C11_di" bpmnElement="C11">
         <di:waypoint x="1425" y="605" />
-        <di:waypoint x="1720" y="605" />
-        <di:waypoint x="1720" y="500" />
+        <di:waypoint x="1480" y="605" />
+        <di:waypoint x="1480" y="515" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="C11b_di" bpmnElement="C11b">
+        <di:waypoint x="1540" y="455" />
+        <di:waypoint x="1660" y="455" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="C12_di" bpmnElement="C12">
         <di:waypoint x="1780" y="455" />
