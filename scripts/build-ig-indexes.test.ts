@@ -36,7 +36,7 @@ const list: BranchLister = (repo) => {
 };
 
 describe("igTargets", () => {
-  it("builds every instance that needs the layer, has a repository and an AST family; says why each other one is skipped", () => {
+  it("targetsBuildableSkipsWithReason", () => {
     const { targets, skipped } = igTargets(instances, list);
     expect(targets.map((t) => [t.name, t.branches])).toEqual([
       ["ig", ["cat/fhir-harness/fhir-ast/ig.pkg"]],
@@ -50,7 +50,7 @@ describe("igTargets", () => {
     expect(why["lone"]).toBeUndefined();
   });
 
-  it("refuses an instance name that is not one safe path segment, and says why", () => {
+  it("refusesUnsafeInstanceName", () => {
     const odd = ["..", "../x", "a/b", "it's", "-x", ""].map((name) => ({ name, root: `/c/odd${name.length}`, repository: "example/ig", needs: ["fhir-harness"] }));
     const { targets, skipped } = igTargets([instances[0]!, ...odd], list);
     expect(targets).toEqual([]);
@@ -60,19 +60,19 @@ describe("igTargets", () => {
     expect(isSafeInstanceName("ig.v2_x")).toBe(true);
   });
 
-  it("--only narrows to one instance", () => {
+  it("onlyNarrowsToOne", () => {
     expect(igTargets(instances, list, "overlay-ig").targets.map((t) => t.name)).toEqual(["overlay-ig"]);
   });
 });
 
 describe("publishedBase", () => {
-  it("prefers the committed copy's published site, then the declaration's iriBase, else none", () => {
+  it("publishedBasePrecedence", () => {
     expect(publishedBase({ source: { kind: "gh-pages", of: "https://example.org/ig/" } }, { iriBase: "https://other.example/" }).base).toBe("https://example.org/ig");
     expect(publishedBase({ source: { kind: "sushi-config", of: "https://github.com/x/y" } }, { iriBase: "https://other.example/ig/" }).base).toBe("https://other.example/ig");
     expect(publishedBase(undefined, undefined).base).toBeUndefined();
   });
 
-  it("re-bases the declared repository's own Pages address on the repository the checkout mounts", () => {
+  it("rebasesPagesOnMountedRepo", () => {
     const decl = { repository: "alpha/ig", iriBase: "https://alpha.github.io/ig/" };
     expect(publishedBase(undefined, decl, "beta/ig").base).toBe("https://beta.github.io/ig");
     expect(publishedBase(undefined, decl, "beta/ig").from).toContain("beta/ig");
@@ -84,11 +84,11 @@ describe("publishedBase", () => {
 });
 
 describe("rebaseOnMount", () => {
-  it("re-bases only the declared repository's own Pages address, keeping the path under it", () => {
+  it("rebasesOwnPagesKeepingPath", () => {
     expect(rebaseOnMount("https://Alpha.github.io/ig/sub/", "alpha/ig", "Beta/ig")).toBe("https://beta.github.io/ig/sub/");
     expect(rebaseOnMount("https://alpha.github.io/ig", "alpha/ig", "beta/ig2")).toBe("https://beta.github.io/ig2");
   });
-  it("keeps any other address: a site the IG chose is not the owner's to move", () => {
+  it("keepsOtherAddresses", () => {
     expect(rebaseOnMount("https://ig.example.org/", "alpha/ig", "beta/ig")).toBe("https://ig.example.org/");
     expect(rebaseOnMount("https://alpha.github.io/other/", "alpha/ig", "beta/ig")).toBe("https://alpha.github.io/other/");
     expect(rebaseOnMount("https://alpha.github.io/ig/", undefined, "beta/ig")).toBe("https://alpha.github.io/ig/");
@@ -97,7 +97,7 @@ describe("rebaseOnMount", () => {
 });
 
 describe("instancesIn", () => {
-  it("reads an instance's declaration by the name it gives itself, not by the directory it is checked out in", () => {
+  it("readsDeclarationBySelfName", () => {
     // CI checks an IG repository out at `fa/`: `fa/fa.json` is absent, and the
     // IG's declaration is `ig-x.json`. Read as `<directory>.json`, the IG was an
     // instance named `fa` needing nothing, so no index was built for it.
@@ -116,7 +116,7 @@ describe("instancesIn", () => {
 });
 
 describe("lockedRepositories", () => {
-  it("reads each instance's mounted repository from the checkout's lock, and nothing without one", () => {
+  it("lockedRepositoriesFromLock", () => {
     const dir = mkdtempSync(join(tmpdir(), "ig-index-lock-"));
     try {
       expect(lockedRepositories(dir).size).toBe(0);
@@ -129,7 +129,7 @@ describe("lockedRepositories", () => {
 });
 
 describe("packFromAst", () => {
-  it("packs the same AST into the same bytes, a second later (cat-harness-tools#1230)", () => {
+  it("packIsReproducible", () => {
     const dir = mkdtempSync(join(tmpdir(), "ig-index-pack-same-"));
     try {
       const ast = join(dir, "output-ast");
@@ -152,7 +152,7 @@ describe("packFromAst", () => {
     }
   });
 
-  it("refuses a manifest file outside the AST, by path or by symlink", () => {
+  it("refusesFilesOutsideAst", () => {
     const dir = mkdtempSync(join(tmpdir(), "ig-index-pack-out-"));
     try {
       const ast = join(dir, "output-ast");
@@ -182,7 +182,7 @@ describe("packFromAst", () => {
   });
 
 
-  it("packs each AST resource at package/<Type>-<id>.json, with a package.json from sushi-config.yaml", () => {
+  it("packsTypeIdWithPackageJson", () => {
     const dir = mkdtempSync(join(tmpdir(), "ig-index-pack-"));
     try {
       const ast = join(dir, "output-ast");
@@ -206,7 +206,7 @@ describe("packFromAst", () => {
 });
 
 describe("contextsFrom and fhirVersionsOf", () => {
-  it("indexes each context-only .jsonld under input/images, skips data, and reads the FHIR version", () => {
+  it("indexesContextOnlyJsonld", () => {
     const ig = mkdtempSync(join(tmpdir(), "ig-index-ctx-"));
     try {
       mkdirSync(join(ig, "input", "images", "ctx"), { recursive: true });
@@ -229,7 +229,7 @@ describe("contextsFrom and fhirVersionsOf", () => {
 });
 
 describe("hubFrom", () => {
-  it("names the IG's page holding the descriptor's marker, with the descriptor's label, only when a layer left a descriptor", () => {
+  it("hubNamesMarkerPage", () => {
     const ig = mkdtempSync(join(tmpdir(), "ig-index-hub-"));
     try {
       const work = join(ig, "work");
@@ -262,7 +262,7 @@ describe("referenceAbsent", () => {
     inputs: { sourceRevision: "abc123" },
   });
 
-  it("keeps an artefact whose bytes are under the instance root, and references one whose bytes are not", () => {
+  it("referencesAbsentBytes", () => {
     const ix = { artifacts: [{ key: "A", materialization: mat("output-ast/here.json") }, { key: "B", materialization: mat("output-ast/gone.json") }] };
     expect(referenceAbsent(ix, root)).toBe(1);
     expect((ix.artifacts[0]!.materialization as { state: string }).state).toBe("materialized");
@@ -273,14 +273,14 @@ describe("referenceAbsent", () => {
     });
   });
 
-  it("leaves records that are not materialized alone", () => {
+  it("leavesNonMaterializedAlone", () => {
     const ix = { artifacts: [{ key: "C", materialization: { state: "referenced", provenance: { upstream: "u" } } }] };
     expect(referenceAbsent(ix, root)).toBe(0);
   });
 });
 
 describe("lockedMounts and cloneAt (bean fwtz: the IG is read at its pin)", () => {
-  it("reads each instance's pinned commit from the lock, and only a full sha", () => {
+  it("lockedMountsFullShaOnly", () => {
     const dir = mkdtempSync(join(tmpdir(), "ig-index-pin-"));
     try {
       const sha = "d1cfa96b0e83f088deaaba9e4672c77568663cbd";
@@ -291,7 +291,7 @@ describe("lockedMounts and cloneAt (bean fwtz: the IG is read at its pin)", () =
     }
   });
 
-  it("fetches the pinned commit rather than cloning the default branch", () => {
+  it("fetchesPinnedCommit", () => {
     const calls: string[][] = [];
     const git = (_cmd: string, args: string[]) => (calls.push(args), { ok: true, out: "" });
     expect(cloneAt("beta/ig", "/w/ig", "d1cfa96b0e83f088deaaba9e4672c77568663cbd", git).ok).toBe(true);
@@ -306,7 +306,7 @@ describe("lockedMounts and cloneAt (bean fwtz: the IG is read at its pin)", () =
     expect(calls).toEqual([["clone", "--quiet", "--depth", "1", "https://github.com/beta/ig", "/w/ig"]]);
   });
 
-  it("stops at the first git step that fails", () => {
+  it("stopsAtFirstFailingGit", () => {
     let n = 0;
     const git = () => (++n === 3 ? { ok: false, out: "not our ref" } : { ok: true, out: "" });
     expect(cloneAt("beta/ig", "/w/ig", "d1cfa96b0e83f088deaaba9e4672c77568663cbd", git)).toEqual({ ok: false, out: "not our ref" });
@@ -315,13 +315,13 @@ describe("lockedMounts and cloneAt (bean fwtz: the IG is read at its pin)", () =
 });
 
 describe("pinnedAt and astAgainstPin (bean fwtz: a pinned read writes the same bytes any day)", () => {
-  it("stamps the pinned commit's time, never the clock", () => {
+  it("stampsPinnedCommitTime", () => {
     const git = () => ({ ok: true, out: "2026-10-30T18:07:13+00:00\n" });
     expect(pinnedAt("/w/ig", git)).toBe("2026-10-30T18:07:13+00:00");
     expect(pinnedAt("/w/ig", () => ({ ok: false, out: "no HEAD" }))).toBeUndefined();
   });
 
-  it("says whether the restored AST was compiled from the pin", () => {
+  it("saysWhetherAstMatchesPin", () => {
     const dir = mkdtempSync(join(tmpdir(), "ig-index-ast-"));
     try {
       const pin = "633b11fb2e628a9aa6086815e78edfe2d47d2095";
@@ -351,7 +351,7 @@ describe("withWorkDir", () => {
     }
   };
 
-  it("removes the directory it made when the build fails partway, leaving os.tmpdir() clean", () => {
+  it("removesWorkDirOnFailure", () => {
     inTmp((tmp) => {
       expect(tmpdir()).toBe(tmp);
       expect(() =>
@@ -365,14 +365,14 @@ describe("withWorkDir", () => {
     });
   });
 
-  it("removes it after a build that succeeds too", () => {
+  it("removesWorkDirOnSuccess", () => {
     inTmp((tmp) => {
       expect(withWorkDir(undefined, (work) => (writeFileSync(join(work, "x"), "x"), 7))).toBe(7);
       expect(readdirSync(tmp)).toEqual([]);
     });
   });
 
-  it("keeps a directory --work names", () => {
+  it("keepsNamedWorkDir", () => {
     inTmp((tmp) => {
       const given = join(tmp, "mine");
       mkdirSync(given);

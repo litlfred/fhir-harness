@@ -273,7 +273,7 @@ describe("ITI-108 Consent Registry read client (PCF7)", () => {
     server.stop(true);
   });
 
-  test("against a test FHIR server: finds active Consents and ignores expired, future, inactive, other-patient, and informational OperationOutcome entries", async () => {
+  test("findsActiveIgnoresOthers", async () => {
     const result = await findAccessConsents({
       baseUrl,
       patient: "Patient/pat-1",
@@ -305,7 +305,7 @@ describe("ITI-108 Consent Registry read client (PCF7)", () => {
     expect(lastRequestUrl?.searchParams.get("purpose")).toBe("TREAT");
   });
 
-  test("follows Bundle next links across pages when followNext is enabled", async () => {
+  test("followsNextLinks", async () => {
     const client = new Iti108ConsentClient(baseUrl, { now: NOW_ISO });
     const result = await client.findAccessConsents({ patient: "Patient/page-test" });
 
@@ -315,7 +315,7 @@ describe("ITI-108 Consent Registry read client (PCF7)", () => {
     expect(result.bundleTotal).toBe(2);
   });
 
-  test("returns determined with empty consents array when server returns an empty searchset Bundle", async () => {
+  test("emptyBundleIsDeterminedEmpty", async () => {
     const result = await findAccessConsents({
       baseUrl,
       patient: "Patient/empty",
@@ -329,7 +329,7 @@ describe("ITI-108 Consent Registry read client (PCF7)", () => {
     expect(result.bundleTotal).toBe(0);
   });
 
-  test("unreachable server (connection refused) gives status: unknown with reason: unreachable", async () => {
+  test("connectionRefusedIsUnreachable", async () => {
     // Ephemeral server started and immediately stopped to guarantee a closed local port.
     const deadServer = Bun.serve({
       port: 0,
@@ -354,7 +354,7 @@ describe("ITI-108 Consent Registry read client (PCF7)", () => {
     expect(result.requestUrl).toContain(`/Consent?`);
   });
 
-  test("request timeout gives status: unknown with reason: timeout", async () => {
+  test("slowServerIsTimeout", async () => {
     const result = await findAccessConsents({
       baseUrl: `http://127.0.0.1:${server.port}/slow`,
       patient: "Patient/pat-1",
@@ -367,7 +367,7 @@ describe("ITI-108 Consent Registry read client (PCF7)", () => {
     expect(result.reason).toBe("timeout");
   });
 
-  test("non-2xx HTTP status (503) gives status: unknown with reason: http-error and httpStatus", async () => {
+  test("http503IsHttpError", async () => {
     const result = await findAccessConsents({
       baseUrl: `http://127.0.0.1:${server.port}/error-503`,
       patient: "Patient/pat-1",
@@ -380,7 +380,7 @@ describe("ITI-108 Consent Registry read client (PCF7)", () => {
     expect(result.httpStatus).toBe(503);
   });
 
-  test("malformed JSON and non-searchset Bundles give status: unknown", async () => {
+  test("badJsonOrBundleIsUnknown", async () => {
     const badJson = await findAccessConsents({
       baseUrl: `http://127.0.0.1:${server.port}/malformed-json`,
       patient: "Patient/pat-1",
@@ -412,7 +412,7 @@ describe("ITI-108 Consent Registry read client (PCF7)", () => {
     }
   });
 
-  test("buildIti108SearchUrl and date-only period boundary evaluation", () => {
+  test("buildsSearchUrlAndDateOnlyPeriod", () => {
     const url = buildIti108SearchUrl({
       baseUrl: "https://registry.example.org/fhir/",
       patient: "Patient/pat-1",

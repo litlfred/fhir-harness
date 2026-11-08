@@ -13,18 +13,18 @@ const tree = [
 ].join("\n");
 
 describe("ig-binary-audit", () => {
-  test("names the Publisher's binaries and nothing else", () => {
+  test("namesPublisherBinaries", () => {
     expect(isPublisherBinary("full-ig.zip")).toBe(true);
     expect(isPublisherBinary("validator-x.y.pack")).toBe(true);
     expect(isPublisherBinary("adr.zip")).toBe(false);
     expect(isPublisherBinary("index.html")).toBe(false);
   });
 
-  test("skips entries with no size, such as submodules", () => {
+  test("skipsSizelessEntries", () => {
     expect(parseLsTree(tree)).toHaveLength(7);
   });
 
-  test("counts copies and bytes, and splits out the previews", () => {
+  test("countsCopiesAndPreviews", () => {
     const a = auditTree("gh-pages", parseLsTree(tree));
     expect(a.total).toEqual({ files: 7, bytes: 108900 });
     expect(a.binaries).toEqual({ files: 6, bytes: 107900 });

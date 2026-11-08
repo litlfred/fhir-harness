@@ -91,16 +91,16 @@ beforeAll(() => {
 afterAll(() => rmSync(root, { recursive: true, force: true }));
 
 describe("source readers", () => {
-  test("reads a RuleSet's declared parameters", () => {
+  test("readsRuleSetParams", () => {
     const rs = readFshBlocks(root).find((b) => b.name === "PlanDefMain");
     expect(rs?.params).toEqual(["library", "version"]);
   });
 
-  test("reads each CQL file's library name", () => {
+  test("readsCqlLibraryNames", () => {
     expect([...readCqlNames(root)].sort()).toEqual(["ACommon", "AOneLogic"]);
   });
 
-  test("resolves a logic type from a dependency-package profile URL, not just a bare type", () => {
+  test("resolvesLogicType", () => {
     const blocks = readFshBlocks(root);
     expect(logicTypeOf(blocks.find((b) => b.name === "AOne")!)).toBe("PlanDefinition");
     expect(logicTypeOf(blocks.find((b) => b.name === "AOneMeasure")!)).toBe("Measure");
@@ -110,20 +110,20 @@ describe("source readers", () => {
 });
 
 describe("the export side", () => {
-  test("counts only the logic layer, and finds no field able to hold an edge", () => {
+  test("exportCountsLogicOnly", () => {
     const m = measure(root, indexPath);
     expect(m.exportTotal).toBe(5);
     expect(m.exportCounts).toEqual({ Library: 2, PlanDefinition: 1, Measure: 1 });
     expect(m.exportFields.some((f) => /depend|edge/i.test(f))).toBe(false);
   });
 
-  test("reconciles every index id against a source declaration", () => {
+  test("reconcilesIndexIds", () => {
     expect(measure(root, indexPath).unmatchedExportIds).toEqual([]);
   });
 });
 
 describe("fsh-cone as merged — coverage and information are different numbers", () => {
-  test("coverage and information are different numbers, and only the second moved", () => {
+  test("coverageAndInformationDiffer", () => {
     // Before cause (a) was fixed, both Libraries carried one edge each, BOTH to
     // the shared `LogicLibrary` RuleSet: 100% "coverage", one distinct target,
     // and no way to tell one Library from another. Coverage is unchanged at
@@ -136,7 +136,7 @@ describe("fsh-cone as merged — coverage and information are different numbers"
     expect([...r.distinctTargets].sort()).toEqual(["LogicLibrary", "cql:ACommon", "cql:AOneLogic"]);
   });
 
-  test("a Library that omits `Id:` still reaches its CQL body — cause (a), fixed", () => {
+  test("libraryWithoutIdReachesCql", () => {
     // The defect this measurement found: `fsh-cone` guarded the cql-by-name edge
     // on `node.id`, and SUSHI defaults an Instance's id to its NAME, so the edge
     // was dead on every real IG. `ACommon` and `AOneLogic` both omit `Id:`.
@@ -147,7 +147,7 @@ describe("fsh-cone as merged — coverage and information are different numbers"
     expect(reached.sort()).toEqual(["cql:ACommon", "cql:AOneLogic"]);
   });
 
-  test("a PlanDefinition reaches its Logic library through the RuleSet — cause (b), fixed", () => {
+  test("planDefinitionReachesLogic", () => {
     // `* library = Canonical({library}Logic)` lives inside `PlanDefMain`, so the
     // token read literally is `{library}Logic` and resolves to nothing. With the
     // call's arguments substituted it resolves to `AOneLogic`. The edge to the
@@ -157,7 +157,7 @@ describe("fsh-cone as merged — coverage and information are different numbers"
     expect([...r.distinctTargets].sort()).toEqual(["AOneLogic", "PlanDefMain"]);
   });
 
-  test("a Measure reaches its Logic library through TWO levels of RuleSet", () => {
+  test("measureReachesThroughTwoLevels", () => {
     // `MeasureProportion` forwards `{library}` to `MeasureProportionBasic`,
     // which writes the canonical as a string URL rather than a `Canonical()`.
     const r = measure(root, indexPath).rows.Measure;
@@ -166,25 +166,25 @@ describe("fsh-cone as merged — coverage and information are different numbers"
 });
 
 describe("ground truth — after RuleSet parameter substitution", () => {
-  test("recovers the Library -> its own CQL body by the name convention", () => {
+  test("libraryGroundTruth", () => {
     const r = measure(root, indexPath).rows.Library;
     expect(r.withLogicEdge).toBe(2);
     expect([...r.distinctLogicTargets].sort()).toEqual(["ACommon", "AOneLogic"]);
   });
 
-  test("recovers `Canonical({library}Logic)` from inside a parameterised RuleSet", () => {
+  test("planDefinitionGroundTruth", () => {
     const r = measure(root, indexPath).rows.PlanDefinition;
     expect(r.withLogicEdge).toBe(1);
     expect([...r.distinctLogicTargets]).toEqual(["AOneLogic"]);
   });
 
-  test("recovers a canonical written as a string URL, not a Canonical() call", () => {
+  test("measureGroundTruth", () => {
     const r = measure(root, indexPath).rows.Measure;
     expect(r.withLogicEdge).toBe(1);
     expect([...r.distinctLogicTargets]).toEqual(["AOneLogic"]);
   });
 
-  test("extraction reaches every logic target ground truth names — the guard, for every type", () => {
+  test("extractionReachesGroundTruth", () => {
     // The durable assertion. Passes 2 and 3 read the same source by different
     // means; a target (3) names that (2) misses is an artefact whose staleness
     // cannot be marked. Compared per RESOURCE TYPE, because an aggregate would
@@ -206,7 +206,7 @@ describe("ground truth — after RuleSet parameter substitution", () => {
 });
 
 describe("report", () => {
-  test("names the distinct-target collapse rather than only printing a percentage", () => {
+  test("reportNamesCollapse", () => {
     const text = report(measure(root, indexPath));
     expect(text).toContain("a field that could hold a dependency edge: NONE");
     // (a) fixed: the two Libraries reach their CQL bodies, so not every target

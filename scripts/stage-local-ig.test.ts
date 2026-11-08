@@ -144,7 +144,7 @@ const ctx = (env: Record<string, string> = {}): ExprContext => ({
 });
 
 describe("the IG publisher declares the workflows it publishes for", () => {
-  test("a caller of fhirbuild.yml is an IG; with ghbuild.yml beside it, the Pages one is the build", () => {
+  test("detectsIgPublisher", () => {
     const on = [FOLIO_PUBLISHER, IG_PUBLISHER];
     expect(detectPublisher(new Map([["fhirbuild.yml", IG_CALLER]]), on)).toMatchObject({ kind: "ig", uses: { file: "fhirbuild.yml" } });
     expect(detectPublisher(new Map([["fhirbuild.yml", IG_CALLER], ["ghbuild.yml", IG_PAGES_CALLER]]), on).uses.file).toBe("ghbuild.yml");
@@ -156,13 +156,13 @@ describe("stage-local: an IG lands where its workflow's deploy step puts it", ()
   const wf = readWorkflow(IG_WORKFLOW);
   const deploys = readIgDeploys(wf);
 
-  test("the deploy steps are read, retries ignored", () => {
+  test("readsDeploySteps", () => {
     expect(deploys.candidate).toEqual({ branch: "gh-pages", folder: "output", targetFolder: "branches/${{ env.BRANCH_DIR }}", message: "Deploy candidate branch", clean: false, cleanExclude: [], singleCommit: true });
     expect(deploys.main).toMatchObject({ targetFolder: "", message: "Deploy main branch", clean: true, cleanExclude: ["branches", "sitepreview"] });
     expect(wf.inputs).toEqual({ do_preprocess: true, deploy: true });
   });
 
-  test("default branch → the root, kept paths are the action's own and clean-exclude; other branches → branches/<last component>", () => {
+  test("defaultRootOthersBranches", () => {
     const main = igTarget(deploys, { isDefault: true, branchDir: "main", sha: "abc", runUrl: "u" });
     expect(main.dest).toBe("");
     expect(main.keep).toEqual([".git", ".ssh", ".github", "branches", "sitepreview"]);
@@ -174,13 +174,13 @@ describe("stage-local: an IG lands where its workflow's deploy step puts it", ()
     expect(cand.commit[0]).toBe("Deploy candidate branch");
   });
 
-  test("a candidate that would land at the root, or outside it, is refused", () => {
+  test("refusesRootOrOutsideCandidate", () => {
     expect(() => igTarget({ candidate: { ...deploys.candidate!, targetFolder: "" } }, { isDefault: false, branchDir: "x", sha: "a", runUrl: "u" })).toThrow(/overwrite the root/);
     expect(() => igTarget(deploys, { isDefault: false, branchDir: "..", sha: "a", runUrl: "u" })).toThrow(/leaves the publish root/);
     expect(() => igTarget({ main: deploys.main! }, { isDefault: false, branchDir: "x", sha: "a", runUrl: "u" })).toThrow(/no candidate-branch deploy/);
   });
 
-  test("the main deploy cleans the root but keeps branches/ and sitepreview/; a candidate deletes nothing", () => {
+  test("mainCleansCandidateAdds", () => {
     const pages = tmp("stage-local-ig-pages-");
     put(pages, "branches/feat/index.html", "feat");
     put(pages, "sitepreview/a.html");
@@ -199,7 +199,7 @@ describe("stage-local: an IG lands where its workflow's deploy step puts it", ()
     expect(readFileSync(join(pages, "branches/feat/index.html"), "utf-8")).toBe("new main");
   });
 
-  test("a clean IG deploy at the root is refused on a publish branch that carries a folio's site", () => {
+  test("refusesCleanOverFolioSite", () => {
     const pages = tmp("stage-local-ig-pages-");
     put(pages, "STAGING/x/index.html");
     put(pages, "_main-site.json", "{}");
@@ -209,7 +209,7 @@ describe("stage-local: an IG lands where its workflow's deploy step puts it", ()
     expect(existsSync(join(pages, "STAGING/x/index.html"))).toBe(true);
   });
 
-  test("so is one over the folio site an IG repository's folio-site.yml deployed, known by its build stamp", () => {
+  test("refusesOverStampedFolioSite", () => {
     const pages = tmp("stage-local-ig-pages-");
     put(pages, "index.html", "<title>Example IG | folio-assistant</title>");
     put(pages, "folio-build.json", "{}");
@@ -221,7 +221,7 @@ describe("stage-local: an IG lands where its workflow's deploy step puts it", ()
 });
 
 describe("stage-local: the IG build is the workflow's own steps, planned", () => {
-  test("each step is run, run in its image, stood in for, performed here, or skipped with its reason", () => {
+  test("planEachStepAction", () => {
     const plan = planIgSteps(readWorkflow(IG_WORKFLOW), ctx({ IS_DEFAULT_BRANCH: "true", BRANCH_DIR: "main" }));
     const by = Object.fromEntries(plan.map((s) => [s.name, s]));
     expect(by["Checkout code"]!.action).toBe("skip");
@@ -236,13 +236,13 @@ describe("stage-local: the IG build is the workflow's own steps, planned", () =>
     expect(by["Commit README.md branch links update"]).toMatchObject({ action: "skip", reason: expect.stringMatching(/source branch/) });
   });
 
-  test("a run that needs Docker names it when there is no daemon", () => {
+  test("dockerNamedWhenMissing", () => {
     const plan = planIgSteps(readWorkflow(IG_WORKFLOW), ctx());
     expect(missingPrerequisites(plan, (cmd) => cmd[0] !== "docker")).toEqual([expect.stringMatching(/Docker daemon/)]);
     expect(missingPrerequisites(plan, () => true)).toEqual([]);
   });
 
-  test("expressions read as the runner reads them", () => {
+  test("expressionsAsRunner", () => {
     const c = ctx({ PREPROCESS_ENABLED: "true" });
     expect(evalExpr("inputs.do_preprocess != 'false' && env.PREPROCESS_ENABLED == 'true'", c)).toBe(true);
     expect(evalExpr("${{ inputs.deploy != false }}", c)).toBe(true);
@@ -252,7 +252,7 @@ describe("stage-local: the IG build is the workflow's own steps, planned", () =>
     expect(evalExpr("secrets.GITHUB_TOKEN", c)).toBeUndefined();
   });
 
-  test("GITHUB_ENV files and docker args are read as the runner writes and splits them", () => {
+  test("envFilesAndDockerArgs", () => {
     expect(readEnvFile("A=1\nB=x=y\nC<<EOF\nl1\nl2\nEOF\n")).toEqual({ A: "1", B: "x=y", C: "l1\nl2" });
     expect(splitArgs(`-c "mkdir -p ./x && chown 1001:127 ./x"`)).toEqual(["-c", "mkdir -p ./x && chown 1001:127 ./x"]);
     expect(splitArgs("curl -L u -o ./p.jar")).toEqual(["curl", "-L", "u", "-o", "./p.jar"]);
@@ -262,7 +262,7 @@ describe("stage-local: the IG build is the workflow's own steps, planned", () =>
 describe("stage-local end to end: an IG published to a local origin, preview then main", () => {
   const sh = (cwd: string, ...args: string[]) => execFileSync("git", ["-C", cwd, ...args], { encoding: "utf-8" }).trim();
 
-  test("runs the workflow's steps, lays the output where its deploy steps say, and pushes with its commit message", async () => {
+  test("endToEndPreviewThenMain", async () => {
     const bare = tmp("stage-local-origin-");
     sh(bare, "init", "-q", "--bare", "-b", "main");
     const repo = tmp("stage-local-ig-repo-");
@@ -346,14 +346,14 @@ describe("an IG repository's folio site (owner, 2026-10-14)", () => {
   const landing = { kind: "instance", name: "base-harness" };
   const identity = { title: "Example IG" };
 
-  test("the site's title and description are the IG's own, from sushi-config.yaml", () => {
+  test("siteTitleFromSushi", () => {
     expect(igIdentity("id: x\ntitle: Example IG\ndescription: An example.\n", "repo")).toEqual({ title: "Example IG", description: "An example." });
     expect(igIdentity("id: x\nname: ExampleIG\n", "repo")).toEqual({ title: "ExampleIG" });
     expect(igIdentity(undefined, "repo")).toEqual({ title: "repo" });
     expect(igIdentity(": not yaml : [", "repo")).toEqual({ title: "repo" });
   });
 
-  test("harnessed, with the steps mounted: the folio route from the AST, scoped to the landing instance", () => {
+  test("harnessedFolioRoute", () => {
     const r = igFolioSite({ hasIndexConfig: true, scripts, landing, identity });
     expect(r.site).toMatchObject({
       scope: "base-harness",
@@ -366,21 +366,21 @@ describe("an IG repository's folio site (owner, 2026-10-14)", () => {
     });
   });
 
-  test("the checkout's declared coverage policy reaches the build; absent, none is set (refuse)", () => {
+  test("coveragePolicyReachesBuild", () => {
     expect(igFolioSite({ hasIndexConfig: true, scripts, landing, identity, coverage: "report" }).site?.coverage).toBe("report");
     expect(igFolioSite({ hasIndexConfig: true, scripts, landing, identity }).site?.coverage).toBeUndefined();
   });
 
-  test("not harnessed, or nothing mounted to build it: the bare IG route, and why", () => {
+  test("bareRouteWithReason", () => {
     expect(igFolioSite({ hasIndexConfig: false, scripts, landing, identity }).why).toMatch(/no index\.config\.json/);
     expect(igFolioSite({ hasIndexConfig: true, scripts: table([]), landing, identity }).why).toMatch(new RegExp(IG_SITE_STEPS.site));
   });
 
-  test("some of the required steps but not all: refused, naming the missing ones (mounts pinned apart)", () => {
+  test("partialStepsRefused", () => {
     expect(() => igFolioSite({ hasIndexConfig: true, scripts: table([IG_SITE_STEPS.source, IG_SITE_STEPS.site]), landing, identity })).toThrow(new RegExp(`not ${IG_SITE_STEPS.ast}`));
   });
 
-  test("the IG API sidecars run when the LANDING layer provides them, after the AST; another provider is said, not run", () => {
+  test("sidecarsOnlyFromLanding", () => {
     const withSide = new Map([...scripts, [IG_SITE_OPTIONAL.sidecars, { manifest: "base-harness-mount/package.json" }]]);
     const run = igFolioSite({ hasIndexConfig: true, scripts: withSide, landing, landingPath: "base-harness-mount", identity }).site!;
     expect(run.pre).toEqual([IG_SITE_STEPS.ast, IG_SITE_OPTIONAL.sidecars]);
@@ -389,13 +389,13 @@ describe("an IG repository's folio site (owner, 2026-10-14)", () => {
     expect(other.notes.join("\n")).toMatch(/NOT run — provided by base-harness-mount\/package\.json/);
   });
 
-  test("the artefact indexes are built at publish, after the AST and the sidecars, when a mounted layer provides the step", () => {
+  test("indexesAfterAstAndSidecars", () => {
     const withSide = new Map([...scripts, [IG_SITE_OPTIONAL.sidecars, { manifest: "base-harness-mount/package.json" }], [IG_SITE_OPTIONAL.index, { manifest: "fhir-harness/package.json" }]]);
     expect(igFolioSite({ hasIndexConfig: true, scripts: withSide, landing, landingPath: "base-harness-mount", identity }).site!.pre).toEqual([IG_SITE_STEPS.ast, IG_SITE_OPTIONAL.sidecars, IG_SITE_OPTIONAL.index]);
     expect(igFolioSite({ hasIndexConfig: true, scripts, landing, identity }).site!.notes.join("\n")).toMatch(/no artefact index is built/);
   });
 
-  test("the process drawings are built at publish, after the artefact indexes, when a mounted layer provides render:bpmn", () => {
+  test("drawingsAfterIndexes", () => {
     const all = new Map([...scripts, [IG_SITE_OPTIONAL.index, { manifest: "fhir-harness/package.json" }], [IG_SITE_OPTIONAL.drawings, { manifest: "cat-harness-tools/package.json" }]]);
     expect(IG_SITE_OPTIONAL.drawings).toBe("render:bpmn");
     const run = igFolioSite({ hasIndexConfig: true, scripts: all, landing, identity }).site!;
@@ -406,14 +406,14 @@ describe("an IG repository's folio site (owner, 2026-10-14)", () => {
     expect(without.notes.join("\n")).toMatch(/no process drawings are built/);
   });
 
-  test("the OpenAPI pages run when the checkout holds an OpenAPI graph, before the AST's data is served", () => {
+  test("openapiBeforeServing", () => {
     const withOa = new Map([...scripts, [IG_SITE_OPTIONAL.openapi, { manifest: "tools/package.json" }]]);
     expect(igFolioSite({ hasIndexConfig: true, scripts: withOa, landing, hasOpenapi: true, identity }).site!.siteSteps).toEqual([IG_SITE_OPTIONAL.openapi, IG_SITE_STEPS.site]);
     expect(igFolioSite({ hasIndexConfig: true, scripts: withOa, landing, hasOpenapi: false, identity }).site!.siteSteps).toEqual([IG_SITE_STEPS.site]);
     expect(igFolioSite({ hasIndexConfig: true, scripts, landing, hasOpenapi: true, identity }).site!.notes.join("\n")).toMatch(/NOT built/);
   });
 
-  test("the IG's bar runs as a FINAL step, after the platform's own writers, when a mounted layer provides it", () => {
+  test("igBarFinalStep", () => {
     const withBar = new Map([...scripts, [IG_SITE_OPTIONAL.bar, { manifest: "fhir-harness/package.json" }]]);
     expect(igFolioSite({ hasIndexConfig: true, scripts: withBar, landing, identity }).site!.finalSteps).toEqual([IG_SITE_OPTIONAL.bar]);
     const without = igFolioSite({ hasIndexConfig: true, scripts, landing, identity }).site!;
@@ -421,7 +421,7 @@ describe("an IG repository's folio site (owner, 2026-10-14)", () => {
     expect(without.notes.join("\n")).toMatch(/keep no IG bar/);
   });
 
-  test("the root's parity guard excuses exactly what the owner ruled dropped: the comparisons, schemas/ and the theme's side bar", () => {
+  test("parityExcusesRuledDrops", () => {
     expect(IG_DROPPED.map((d) => d.dir ?? `feature:${d.feature}`)).toEqual(["comparison-v*", "schemas", "feature:siteNav"]);
     expect(IG_DROPPED[0]!.ruling).toContain("2a");
     expect(IG_DROPPED[1]!.ruling).toContain("New address only");
@@ -432,27 +432,27 @@ describe("an IG repository's folio site (owner, 2026-10-14)", () => {
     expect(IG_DROPPED.map((d) => d.feature).filter(Boolean)).toEqual(["siteNav"]);
   });
 
-  test("the plan says each drop in words", () => {
+  test("dropsInWords", () => {
     expect(IG_DROPPED.map(droppedWords)).toEqual(["comparison-v*/", "schemas/", "the page feature siteNav"]);
   });
 
-  test("harnessed but no landing named: refused, never guessed among the mounts", () => {
+  test("noLandingRefused", () => {
     expect(() => igFolioSite({ hasIndexConfig: true, scripts, landing: { kind: "ambiguous", reason: "none-flagged" }, identity })).toThrow(/site.*landing/);
   });
 
-  test("the IG workflow's per-branch previews are kept at the root", () => {
+  test("previewsKeptAtRoot", () => {
     expect(IG_KEEP).toContain("branches");
     expect(IG_KEEP).toContain("ns");
     expect(versionedRoots(["0.1.0", "1.2.3-ballot", "branches", "assets", "v1", "0.1"])).toEqual(["0.1.0", "1.2.3-ballot"]);
   });
 
-  test("the root keeps what the landing instance's site.build.keep declares, besides the IG's own", () => {
+  test("declaredKeepAdded", () => {
     const r = igFolioSite({ hasIndexConfig: true, scripts, landing, identity, keep: ["ns", "branches", "0.1.0"] }).site!;
     // "ns" and "branches" are the IG's own (IG_KEEP) as well as declared: kept once, not doubled.
     expect(r.keep).toEqual([...IG_KEEP, "0.1.0"]);
   });
 
-  test("the declared keep is read from the landing instance's index.config.json entry; none declared is none kept", () => {
+  test("declaredKeepFromConfig", () => {
     const repo = tmp("ig-declared-keep-");
     put(repo, "index.config.json", JSON.stringify({
       $schema: "folio-index-config/v1",
@@ -465,7 +465,7 @@ describe("an IG repository's folio site (owner, 2026-10-14)", () => {
     expect(() => declaredKeep(repo, "base-harness")).toThrow(/site\.build\.keep/);
   });
 
-  test("the stamp the folio route requires is a folio root marker, so a bare IG deploy refuses that root", () => {
+  test("stampIsFolioRootMarker", () => {
     expect(FOLIO_ROOT_MARKERS as readonly string[]).toContain(IG_SITE_STAMP);
     const pages = mkdtempSync(join(tmpdir(), "ig-folio-root-"));
     writeFileSync(join(pages, IG_SITE_STAMP), "{}");
@@ -483,11 +483,11 @@ describe("where the checkout holds the landing instance (lockedMountPath)", () =
   };
   const lock = { instances: [{ instance: "fhir-harness", path: "fhir-harness" }, { instance: "base-ig", path: "base-ig" }] };
 
-  test("a mounted instance: its path in index.lock.json", () => {
+  test("mountedInstancePath", () => {
     expect(lockedMountPath(repoWith({ "index.lock.json": lock }), "base-ig")).toBe("base-ig");
   });
 
-  test("a LOCAL instance (the base harness's own repository): its source.local.at, which the lock does not list", () => {
+  test("localInstancePath", () => {
     const config = { instances: [{ name: "base-ig", source: { local: { at: "./base-ig/" } } }, { name: "fhir-harness", source: { remote: { repository: "o/fhir-harness", ref: "x" } } }] };
     const repo = repoWith({ "index.lock.json": { instances: [{ instance: "fhir-harness", path: "fhir-harness" }] }, "index.config.json": config });
     expect(lockedMountPath(repo, "base-ig")).toBe("base-ig");
@@ -495,7 +495,7 @@ describe("where the checkout holds the landing instance (lockedMountPath)", () =
     expect(lockedMountPath(repo, "absent")).toBeUndefined();
   });
 
-  test("so a local landing layer's sidecars are its own, and run", () => {
+  test("localLandingSidecarsRun", () => {
     const repo = repoWith({ "index.config.json": { instances: [{ name: "base-ig", source: { local: { at: "base-ig" } } }] } });
     const landingPath = lockedMountPath(repo, "base-ig");
     const scripts = new Map([...Object.values(IG_SITE_STEPS), IG_SITE_OPTIONAL.sidecars].map((n) => [n, { manifest: n === IG_SITE_OPTIONAL.sidecars ? "base-ig/package.json" : "fhir-harness/package.json" }]));

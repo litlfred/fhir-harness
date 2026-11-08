@@ -120,13 +120,13 @@ function banner(src: string): string {
 }
 
 describe("gen-ig-pages: the banner's identity is the index's", () => {
-  it("an IG with its own identity file keeps its status watermark", () => {
+  it("ownIdentityKeepsWatermark", () => {
     const b = banner(page("ips"));
     expect(b).toContain(`>${IPS.packageId}</a>`);
     expect(b).toContain('class="ig-status-active"');
   });
 
-  it("an IG with none names itself and asserts no status borrowed from another IG", () => {
+  it("noIdentityNoBorrowedStatus", () => {
     const b = banner(page("ipa"));
     expect(b).toContain(`>${IPA.packageId}</a>`);
     expect(b).toContain(IPA.canonical);
@@ -136,7 +136,7 @@ describe("gen-ig-pages: the banner's identity is the index's", () => {
 });
 
 describe("gen-ig-pages --summary: the landing page", () => {
-  it("with --summary the index opens with the instance's own harness section, then the artefact index", () => {
+  it("summaryOpensWithHarnessSection", () => {
     const src = page("ipa");
     expect(src).toMatch(/^---\ntitle: "International Patient Access"\n/);
     const include = src.indexOf('{% include harness_details.html instance="ipa" %}');
@@ -145,7 +145,7 @@ describe("gen-ig-pages --summary: the landing page", () => {
     expect(index).toBeGreaterThan(include);
   });
 
-  it("generated without --summary: no include, artefact-index title", () => {
+  it("noSummaryArtefactIndexTitle", () => {
     const src = page("ips");
     expect(src).not.toContain("harness_details.html");
     expect(src).toMatch(/^---\ntitle: "International Patient Summary — artefact index"\n/);
@@ -153,13 +153,13 @@ describe("gen-ig-pages --summary: the landing page", () => {
 });
 
 describe("gen-ig-pages: the publish note and the sidecar label are the caller's", () => {
-  it("a caller's note and label are what the pages carry", () => {
+  it("callerNoteAndLabelCarried", () => {
     const index = page("ips");
     expect(index).toContain('<p id="publish-box">This page mirrors a published HL7 Implementation Guide.');
     expect(index).toContain("## HL7 sidecars surface");
   });
 
-  it("with no --publish-note or --sidecar-label, the pages carry the layer's neutral defaults only", () => {
+  it("neutralDefaults", () => {
     const index = page("plain");
     // The banner is drawn (a chrome is given), so the publish note is really on the page.
     expect(index).toContain('<p id="publish-box">This page mirrors a published FHIR Implementation Guide.');
@@ -179,7 +179,7 @@ describe("gen-ig-pages --compiled-data: an AST-built artefact page loads its res
   const artefact = (instance: string, name: string): string =>
     readFileSync(join(repo, instance, "docs", "artifact", `${name}.md`), "utf8");
 
-  it("with --compiled-data: a pointer, a visible loading state, a no-script link, and the shared loader", () => {
+  it("compiledDataLoadsResource", () => {
     const md = artefact("compiled", "StructureDefinition-Composition-uv-ips");
     // `artifact/Name.html` → docs root `../` → the data beside the docs.
     expect(md).toContain('data-ast-src="../../ast-data/resources/StructureDefinition/Composition-uv-ips--7ae5e8a1.json"');
@@ -196,7 +196,7 @@ describe("gen-ig-pages --compiled-data: an AST-built artefact page loads its res
     expect(artefact("compiled", "StructureDefinition-Patient-uv-ips")).not.toContain("data-ast-src");
   });
 
-  it("without --compiled-data: no section, no loader — the published-IG pages are unchanged", () => {
+  it("noCompiledDataNoLoader", () => {
     expect(artefact("uncompiled", "StructureDefinition-Composition-uv-ips")).not.toContain("data-ast-src");
     expect(existsSync(join(repo, "uncompiled", "docs", "assets", "ast-resource.js"))).toBe(false);
   });
@@ -207,12 +207,12 @@ describe("gen-ig-pages: an AST build's revision is printed once, on the index (b
   generate("built2", "--label", "Same");
   const read = (instance: string, rel: string): string => readFileSync(join(repo, instance, "docs", rel), "utf8");
 
-  it("the index carries the revision and the anchor artefact pages link to", () => {
+  it("indexCarriesRevision", () => {
     expect(read("built1", "index.md")).toContain('<a id="build-revision"></a>');
     expect(read("built1", "index.md")).toContain("`" + "1".repeat(12) + "`");
   });
 
-  it("an artefact built at the index's revision links to it, so a new commit leaves its page byte-identical", () => {
+  it("sameRevisionLinksIndex", () => {
     const md = read("built1", "artifact/StructureDefinition-Composition-uv-ips.md");
     expect(md).toContain("compiled copy of the [build revision](../#build-revision)");
     expect(md).not.toContain("1".repeat(12));
@@ -220,7 +220,7 @@ describe("gen-ig-pages: an AST build's revision is printed once, on the index (b
     expect(read("built2", "artifact/StructureDefinition-Composition-uv-ips.md").replaceAll("/built2/", "/built1/")).toBe(md);
   });
 
-  it("an artefact built at a different revision still names its own", () => {
+  it("otherRevisionNamesOwn", () => {
     expect(read("built1", "artifact/StructureDefinition-Patient-uv-ips.md")).toContain("`" + "9".repeat(12) + "`");
   });
 });
@@ -247,7 +247,7 @@ describe("gen-ig-pages --site: only the declared route pages, under the site", (
   writeFileSync(join(withIndex, "sited", "index.md"), "---\ntitle: held\n---\n");
   const second = run("--site", withIndex);
 
-  it("the Tool declares the flags a site build passes: --instance and --site", async () => {
+  it("toolDeclaresSiteFlags", async () => {
     const { tools } = await import("../tools/index.ts");
     const t = tools().find((x) => x.id === "ig-pages")!;
     const flag = (n: string): string | undefined => {
@@ -258,17 +258,17 @@ describe("gen-ig-pages --site: only the declared route pages, under the site", (
     expect(flag("site")).toBe("--site");
   });
 
-  it("writes the full view and the instance's sub-graph view at the localised route, and nothing else", () => {
+  it("siteWritesRoutePagesOnly", () => {
     expect(first.exitCode).toBe(0);
     expect(files(site)).toEqual([full, sub].sort());
   });
 
-  it("writes nothing into the instance: no docs/", () => {
+  it("siteWritesNothingInInstance", () => {
     expect(existsSync(join(siteRepo, "sited", "docs"))).toBe(false);
     expect(existsSync(join(siteRepo, "_site"))).toBe(false);
   });
 
-  it("a site without the IG's index gets the index itself, every artefact linked upstream", () => {
+  it("siteWithoutIndexGetsIndex", () => {
     const html = readFileSync(join(site, full), "utf8");
     expect(html).toContain('<meta name="rendered-by" content="ig-pages">');
     expect(html).toContain("<title>Sited IG — artefact index</title>");
@@ -277,22 +277,22 @@ describe("gen-ig-pages --site: only the declared route pages, under the site", (
     expect(readFileSync(join(site, sub), "utf8")).toBe(html);
   });
 
-  it("a site that carries the index gets a redirect to it, relative to the route", () => {
+  it("siteWithIndexRedirects", () => {
     expect(second.exitCode).toBe(0);
     expect(readFileSync(join(withIndex, full), "utf8")).toContain('content="0; url=../../../sited/"');
     expect(readFileSync(join(withIndex, sub), "utf8")).toContain('content="0; url=../../../../sited/"');
   });
 
-  it("--check with --site judges the route pages under the site", () => {
+  it("siteCheckJudgesRoutes", () => {
     expect(run("--site", site, "--label", "Sited IG", "--check").exitCode).toBe(0);
     expect(run("--site", site, "--label", "Another", "--check").exitCode).toBe(1);
   });
 
-  it("--site and --out together are refused", () => {
+  it("siteAndOutRefused", () => {
     expect(run("--site", site, "--out", join(site, "x")).exitCode).toBe(2);
   });
 
-  it("an IG instance that declares no index directory (#124: built at publish) still gets its sub-graph view", () => {
+  it("noIndexDirStillGetsPage", () => {
     const bare = scratchRepo({ bare: { index: artifactIndex(IPS, "bare") } });
     const d = join(bare, "bare", "bare.json");
     writeFileSync(d, JSON.stringify({
@@ -312,17 +312,17 @@ describe("gen-ig-pages --site: only the declared route pages, under the site", (
 });
 
 describe("gen-ig-pages --site-prefix: the shared assets are linked where the pages are published", () => {
-  it("by default, under /<instance>/", () => {
+  it("assetsUnderInstanceByDefault", () => {
     expect(page("plain")).toContain("{{ '/plain/assets/ig-pages.css' | relative_url }}");
   });
 
-  it("under the prefix the caller names, e.g. an AST site copied to /<instance>/ast/", () => {
+  it("assetsUnderNamedPrefix", () => {
     const p = page("prefixed");
     expect(p).toContain("{{ '/prefixed/ast/assets/ig-pages.css' | relative_url }}");
     expect(p).not.toContain("'/prefixed/assets/");
   });
 
-  it("refuses a prefix that is not one site-absolute path", () => {
+  it("refusesBadSitePrefix", () => {
     for (const bad of ["prefixed/ast", "/prefixed/ast/", "/a/../b", "/a//b"]) {
       const r = Bun.spawnSync(["bun", "run", SCRIPT, "--instance", join(repo, "plain"), "--full-pages", "--site-prefix", bad], { cwd: ROOT });
       expect(r.exitCode).toBe(2);

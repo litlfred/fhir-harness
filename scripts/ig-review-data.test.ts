@@ -7,7 +7,7 @@ import { join } from "node:path";
 import { igChangeSet, kramdownId, openPrFor, splitPage, writeReviewData } from "./ig-review-data.ts";
 
 describe("kramdownId: the id Jekyll gives a heading", () => {
-  test("as the Uganda schedule page's headings were published", () => {
+  test("kramdownIdsAsPublished", () => {
     expect(kramdownId("Children")).toBe("children");
     expect(kramdownId("Women of child-bearing age (15 to 49 years)")).toBe("women-of-child-bearing-age-15-to-49-years");
     expect(kramdownId("Messages to caregivers (Ministry of Health poster)")).toBe("messages-to-caregivers-ministry-of-health-poster");
@@ -16,7 +16,7 @@ describe("kramdownId: the id Jekyll gives a heading", () => {
 });
 
 describe("splitPage", () => {
-  test("cuts at headings, keeps the text before the first, numbers repeats and ignores fenced code", () => {
+  test("splitPageAtHeadings", () => {
     const parts = splitPage("Intro.\n\n### Notes\nA\n```\n# not a heading\n```\n### Notes\nB\n");
     expect(parts.map((p) => p.id)).toEqual(["_top", "notes", "notes-1"]);
     expect(parts[1]!.text).toContain("# not a heading");
@@ -42,7 +42,7 @@ describe("igChangeSet: the default branch against the working tree", () => {
   };
   const plain = (md: string) => `<p>${md}</p>`;
 
-  test("a schedule change reads as one reworded section, the logic file and the binary workbook", () => {
+  test("changeSetSectionsLogicWorkbook", () => {
     const d = repo();
     writeFileSync(join(d, "input", "pagecontent", "schedule.md"), "Ages.\n\n### Children\n| 9 years | HPV |\n{:.grid}\n\n### Women\nTd\n");
     writeFileSync(join(d, "input", "cql", "Logic.cql"), "define Due: birthDate + 9 years\n");
@@ -66,7 +66,7 @@ describe("igChangeSet: the default branch against the working tree", () => {
     expect(r.changeset.summary).toMatchObject({ added: 1, changed: 3, removed: 0, unchanged: 3, prose: 2, manifest: 1 });
   });
 
-  test("the outline lists the pages, then the sources, keyed as the ChangeSet's sections (bean 0om7)", () => {
+  test("outlinePagesThenSources", () => {
     const d = repo();
     writeFileSync(join(d, "sushi-config.yaml"), "id: x\ntitle: \"Uganda Immunizations\"\n");
     const r = igChangeSet({ ig: d, base: "main", render: plain });
@@ -80,7 +80,7 @@ describe("igChangeSet: the default branch against the working tree", () => {
     for (const c of r.changeset.changes) expect(keys.has((c.change === "removed" ? c.base : c.head).section)).toBe(true);
   });
 
-  test("the rendered impact names each page with its changed anchors, and every other source as not mapped (bean 0om7)", () => {
+  test("impactNamesPagesAndAnchors", () => {
     const d = repo();
     writeFileSync(join(d, "input", "pagecontent", "schedule.md"), "Ages.\n\n### Children\n| 9 years | HPV |\n{:.grid}\n");
     writeFileSync(join(d, "input", "cql", "Logic.cql"), "define Due: birthDate + 9 years\n");
@@ -99,7 +99,7 @@ describe("igChangeSet: the default branch against the working tree", () => {
     ]);
   });
 
-  test("an unchanged tree is a determined empty, and the files land at the site root", () => {
+  test("unchangedTreeDeterminedEmpty", () => {
     const d = repo();
     const r = igChangeSet({ ig: d, base: "main", render: plain });
     expect(r.changeset.changes).toEqual([]);
@@ -115,7 +115,7 @@ describe("igChangeSet: the default branch against the working tree", () => {
 describe("openPrFor: the PR a preview's banner names (bean zvl0)", () => {
   const reply = (body: unknown, ok = true) => (async () => ({ ok, json: async () => body })) as unknown as typeof fetch;
 
-  test("a pull_request run reads its PR from the event payload, without asking the API", async () => {
+  test("prFromEventPayload", async () => {
     const dir = mkdtempSync(join(tmpdir(), "zvl0-"));
     const ev = join(dir, "event.json");
     writeFileSync(ev, JSON.stringify({ pull_request: { number: 12, html_url: "https://github.com/o/r/pull/12" } }));
@@ -123,7 +123,7 @@ describe("openPrFor: the PR a preview's banner names (bean zvl0)", () => {
     expect(pr).toEqual({ number: "12", url: "https://github.com/o/r/pull/12" });
   });
 
-  test("a hand-started run asks for the branch's open PR, scoped to the repository owner", async () => {
+  test("prFromApiForBranch", async () => {
     let asked = "";
     const f = (async (u: string) => {
       asked = u;
@@ -134,7 +134,7 @@ describe("openPrFor: the PR a preview's banner names (bean zvl0)", () => {
     expect(asked).toBe("https://api.github.com/repos/o/r/pulls?state=open&head=o%3Afeat%2Fx");
   });
 
-  test("no open PR, a refused call and a network error all read as no PR, never a guess", async () => {
+  test("noPrNeverGuess", async () => {
     expect(await openPrFor("o/r", "b", { env: {}, fetch: reply([]) })).toBeNull();
     expect(await openPrFor("o/r", "b", { env: {}, fetch: reply({ message: "rate limited" }, false) })).toBeNull();
     expect(await openPrFor("o/r", "b", { env: {}, fetch: (async () => { throw new Error("offline"); }) as unknown as typeof fetch })).toBeNull();

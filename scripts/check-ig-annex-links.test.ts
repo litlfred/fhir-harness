@@ -29,7 +29,7 @@ function ig(annexes: Record<string, string>): string {
 }
 
 describe("a markdown annex's links are judged from its HOST page", () => {
-  test("links to the other page's headings and to ids an annex adds resolve; nothing is a finding", () => {
+  test("resolvesHostAndAnnexLinks", () => {
     const at = ig({
       "personas-swimlanes.md": '| <span id="persona-hw"></span>HW | [A](business-processes.html#a--vaccination-location-registration), [H](business-processes.html#h--resolve-duplicates) |\n',
       "processes-swimlanes.md": "| lane | [HW](personas.html#persona-hw) [top](#a--vaccination-location-registration) [actor](ActorDefinition-HW.html) [qa](qa.html) |\n",
@@ -41,7 +41,7 @@ describe("a markdown annex's links are judged from its HOST page", () => {
     rmSync(join(at, ".."), { recursive: true, force: true });
   });
 
-  test("a missing page, a missing anchor and a missing same-page anchor are each findings", () => {
+  test("missingTargetsAreFindings", () => {
     const at = ig({
       "processes-swimlanes.md": "[a](nowhere.html) [b](personas.html#persona-nobody) [c](#no-such-heading) [d](images/x.png)\n",
     });
@@ -52,7 +52,7 @@ describe("a markdown annex's links are judged from its HOST page", () => {
     rmSync(join(at, ".."), { recursive: true, force: true });
   });
 
-  test("an IG with no ig-annex directory has nothing to judge", () => {
+  test("noAnnexDirNothingToJudge", () => {
     const at = mkdtempSync(join(tmpdir(), "annex-none-"));
     expect(checkAnnexLinks(at)).toEqual({ annexes: 0, checked: 0, notJudged: [], findings: [] });
     rmSync(at, { recursive: true, force: true });
@@ -60,10 +60,10 @@ describe("a markdown annex's links are judged from its HOST page", () => {
 });
 
 describe("the pieces", () => {
-  test("link targets skip absolute URLs, site-rooted paths and Liquid", () => {
+  test("linkTargetsSkipAbsolute", () => {
     expect(annexLinkTargets('[a](x.html#y) [b](https://e.org) [c](/root) [d]({{site.data}}) <a href="z.html">z</a>')).toEqual(["x.html#y", "z.html"]);
   });
-  test("ids: kramdown heading ids, an explicit {#id}, and id=/name= attributes", () => {
+  test("pageIdsFromHeadingsAndAttrs", () => {
     expect([...pageIds('### 1. Intro\n## Named {#chosen}\n<span id="s"></span><a name="n"></a>\n')].sort()).toEqual(["chosen", "intro", "n", "s"]);
   });
 });

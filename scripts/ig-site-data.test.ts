@@ -17,7 +17,7 @@ afterAll(() => {
 });
 
 describe("from sushi-config.yaml (what the IG Publisher reads)", () => {
-  test("the ImplementationGuide fields and the package identity", () => {
+  test("fieldsFromSushiConfig", () => {
     const dir = mkdtempSync(join(tmpdir(), "ig-sushi-"));
     made.push(dir);
     writeFileSync(
@@ -65,7 +65,7 @@ describe("from published IGs' artifact indexes", () => {
   describe("an index with no identity file", () => {
     const r = igSiteData(join(repo, "ipa"));
 
-    test("writes what the index carries, from the index", () => {
+    test("indexFieldsFromIndex", () => {
       expect(r.data.packageId).toBe(IPA.packageId);
       expect(r.data.canonical).toBe(IPA.canonical);
       expect(r.data.ig.version).toBe(IPA.version);
@@ -73,12 +73,12 @@ describe("from published IGs' artifact indexes", () => {
       expect(r.provenance["ig.version"]).toBe("fhir-artifact-index/index.json");
     });
 
-    test("lists what it could not source instead of writing empty strings", () => {
+    test("listsUnsourcedFields", () => {
       expect(r.undetermined).toEqual(expect.arrayContaining(["ig.id", "ig.name", "ig.publisher"]));
       expect(JSON.stringify(r.data)).not.toContain('""');
     });
 
-    test("states no status: there is no ig-identity.json, and a chrome states none", () => {
+    test("noIdentityNoStatus", () => {
       expect(r.data.ig.status).toBeUndefined();
       expect(r.refused).toEqual([]);
     });
@@ -87,14 +87,14 @@ describe("from published IGs' artifact indexes", () => {
   describe("an index beside its own ig-identity.json", () => {
     const r = igSiteData(join(repo, "ips"));
 
-    test("status comes from the IG's own identity file", () => {
+    test("statusFromIdentityFile", () => {
       expect(r.data.ig.status).toBe("active");
       expect(r.provenance["ig.status"]).toBe("fhir-artifact-index/ig-identity.json");
     });
   });
 });
 
-test("no source at all is an error, not an empty site.data.fhir", () => {
+test("noSourceIsError", () => {
   const dir = mkdtempSync(join(tmpdir(), "ig-none-"));
   made.push(dir);
   expect(() => igSiteData(dir)).toThrow(/nothing to populate/);
@@ -121,7 +121,7 @@ describe("from the FHIR AST first (owner 2026-10-09, bean jut3)", () => {
     packageId: "example.fhir.demo",
   };
 
-  test("the ImplementationGuide resource supplies every field, provenance naming the AST as a cache", () => {
+  test("astSuppliesEveryField", () => {
     const dir = mkdtempSync(join(tmpdir(), "ig-ast-"));
     made.push(dir);
     ast(dir, IG);
@@ -136,7 +136,7 @@ describe("from the FHIR AST first (owner 2026-10-09, bean jut3)", () => {
     expect(r.disagreements).toEqual([]);
   });
 
-  test("sushi-config fills only gaps; a field it states differently is a disagreement, the AST's value kept", () => {
+  test("sushiFillsGapsOnly", () => {
     const dir = mkdtempSync(join(tmpdir(), "ig-ast-sushi-"));
     made.push(dir);
     const { publisher: _p, ...noPublisher } = IG;
@@ -149,7 +149,7 @@ describe("from the FHIR AST first (owner 2026-10-09, bean jut3)", () => {
     expect(r.disagreements).toEqual(['ig.version: FHIR AST ImplementationGuide-x.json (cache) says "0.2.0", sushi-config.yaml says "0.1.0"']);
   });
 
-  test("an AST with no ImplementationGuide is reported and not used; the build goes on from sushi-config", () => {
+  test("astWithoutIgNotUsed", () => {
     const dir = mkdtempSync(join(tmpdir(), "ig-ast-empty-"));
     made.push(dir);
     ast(dir, undefined);

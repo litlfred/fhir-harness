@@ -13,7 +13,7 @@ import { spawnSync } from "node:child_process";
 import { join } from "node:path";
 
 describe("plugin-slots.ts", () => {
-  it("registers the ig content type in the default registry when the contributions loader requires it", () => {
+  it("registersIgContentType", () => {
     const here = import.meta.dir;
     const script = [
       `require(${JSON.stringify(join(here, "plugin-slots.ts"))});`,

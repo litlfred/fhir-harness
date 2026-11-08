@@ -60,7 +60,7 @@ function syntheticAst(inputs: Record<string, string> | null = {
 describe("astToArtifactIndex", () => {
   const { index, unreadable } = astToArtifactIndex(syntheticAst(), { instanceId: "example", publishedBase: "https://pub.example.org/ig/" });
 
-  test("validates, and every key is Type/id even where the manifest keyed url|version", () => {
+  test("validatesWithTypeIdKeys", () => {
     expect(FhirArtifactIndexSchema.safeParse(index).success).toBe(true);
     expect(unreadable).toEqual([]);
     expect(index.artifacts.map((a) => a.key)).toEqual([
@@ -71,14 +71,14 @@ describe("astToArtifactIndex", () => {
     ]);
   });
 
-  test("takes identity from the IG resource, and the source from the build", () => {
+  test("identityFromIgSourceFromBuild", () => {
     expect(index.packageId).toBe("example.ig");
     expect(index.version).toBe("1.0.0");
     expect(index.canonicalBase).toBe(X);
     expect(index.source).toEqual({ kind: "output", of: "output-ast", revision: "a".repeat(40), readAt: "2026-10-01" });
   });
 
-  test("every artefact is a compiled copy carrying the manifest's inputs", () => {
+  test("artefactsAreCompiledCopies", () => {
     for (const a of index.artifacts) {
       expect(a.materialization.state).toBe("materialized");
       expect(a.materialization.purpose).toBe("compiled");
@@ -86,14 +86,14 @@ describe("astToArtifactIndex", () => {
     }
   });
 
-  test("an Endpoint is titled by its id, and its free-text name becomes the description", () => {
+  test("endpointTitledById", () => {
     const ep = index.artifacts.find((a) => a.key === "Endpoint/ep-1")!;
     expect(ep.title).toBe("ep-1");
     expect(ep.description).toBe("Trustlist one resolvable at https://x");
     expect(ep.name).toBeUndefined();
   });
 
-  test("published URLs come from --published-base, never from the canonical", () => {
+  test("publishedUrlsFromPublishedBase", () => {
     const cs = index.artifacts.find((a) => a.key === "CodeSystem/Colours")!;
     expect(cs.published.html?.url).toBe("https://pub.example.org/ig/CodeSystem-Colours.html");
     const ig = index.artifacts.find((a) => a.resourceType === "ImplementationGuide")!;
@@ -101,7 +101,7 @@ describe("astToArtifactIndex", () => {
     expect(ig.category).toBeUndefined();
   });
 
-  test("an artefact the published IG does not have yet gets no published link", () => {
+  test("unpublishedArtefactGetsNoLink", () => {
     const { index: ix } = astToArtifactIndex(syntheticAst(), {
       instanceId: "example",
       publishedBase: "https://pub.example.org/ig",
@@ -115,12 +115,12 @@ describe("astToArtifactIndex", () => {
     expect(ep.materialization.provenance.upstream).toBeUndefined();
   });
 
-  test("no published base → no published representation claimed", () => {
+  test("noPublishedBaseNoClaim", () => {
     const { index: bare } = astToArtifactIndex(syntheticAst(), { instanceId: "example" });
     expect(bare.artifacts.every((a) => Object.keys(a.published).length === 0)).toBe(true);
   });
 
-  test("an AST that records no source revision is not claimed as materialized", () => {
+  test("noRevisionNotMaterialized", () => {
     const { index: noRev } = astToArtifactIndex(syntheticAst(null), { instanceId: "example" });
     expect(noRev.artifacts.every((a) => a.materialization.state === "unknown" && a.materialization.note)).toBe(true);
   });
@@ -140,7 +140,7 @@ describe("withCrossVersionFields", () => {
     ],
   };
 
-  test("an R5 type written as an R4 Basic reads its fields back from its own extensions", () => {
+  test("basicReadsCrossVersionFields", () => {
     const r = withCrossVersionFields(basic, "ActorDefinition");
     expect(r.resourceType).toBe("ActorDefinition");
     expect(r.url).toBe(`${X}/ActorDefinition/P`);
@@ -149,14 +149,14 @@ describe("withCrossVersionFields", () => {
     expect(publisherCategory(r)).toBe("Requirements: Actor Definitions");
   });
 
-  test("a resource already of the manifest's type is returned as is", () => {
+  test("sameTypeReturnedAsIs", () => {
     const cs = { resourceType: "CodeSystem", id: "c", title: "t" };
     expect(withCrossVersionFields(cs, "CodeSystem")).toBe(cs);
   });
 });
 
 describe("publisherCategory", () => {
-  test("the Publisher's default grouping", () => {
+  test("publisherDefaultGrouping", () => {
     expect(publisherCategory({ resourceType: "StructureDefinition", kind: "logical" })).toBe("Structures: Logical Models");
     expect(publisherCategory({ resourceType: "StructureDefinition", type: "Extension", derivation: "constraint" })).toBe("Structures: Extension Definitions");
     expect(publisherCategory({ resourceType: "StructureDefinition", kind: "resource", derivation: "constraint" })).toBe("Structures: Resource Profiles");
@@ -175,7 +175,7 @@ describe("compareIndexes", () => {
     return ix;
   };
 
-  test("whitespace and Markdown links are equivalent, not different", () => {
+  test("whitespaceAndLinksEquivalent", () => {
     expect(readerText("See the [palette](p.html).  Two spaces.")).toBe("See the palette. Two spaces.");
     const c = compareIndexes(ast, pub((ix) => {
       ix.artifacts.find((a) => a.key === "CodeSystem/Colours")!.description = "See the palette. Two spaces.";
@@ -184,7 +184,7 @@ describe("compareIndexes", () => {
     expect(c.equivalent).toEqual([{ field: "description", count: 1 }]);
   });
 
-  test("a field the published index lacks is the AST being richer", () => {
+  test("missingFieldIsAstRicher", () => {
     const c = compareIndexes(ast, pub((ix) => {
       delete ix.artifacts.find((a) => a.key === "Endpoint/ep-1")!.description;
     }));
@@ -192,7 +192,7 @@ describe("compareIndexes", () => {
     expect(c.differs).toEqual([]);
   });
 
-  test("a real change, an addition and a removal are all reported", () => {
+  test("reportsChangeAdditionRemoval", () => {
     const c = compareIndexes(ast, pub((ix) => {
       ix.artifacts.find((a) => a.key === "StructureDefinition/Cat")!.title = "Dog";
       ix.artifacts = ix.artifacts.filter((a) => a.key !== "Endpoint/ep-1");
@@ -205,7 +205,7 @@ describe("compareIndexes", () => {
 });
 
 describe("a resource whose `name` is not a string (bean c65n)", () => {
-  test("an example Patient (name is HumanName[]) is indexed under its id, not a crash", () => {
+  test("patientIndexedUnderId", () => {
     const dir = mkdtempSync(join(tmpdir(), "ast-index-patient-"));
     const patient = { resourceType: "Patient", id: "child-1", name: [{ family: "Doe", given: ["Ada"] }] };
     put(dir, "resources/Patient/child-1--0000.json", patient);
@@ -239,7 +239,7 @@ describe("attachSidecars", () => {
     return dir;
   };
 
-  test("binds by <Type>-<id>, serves from the local prefix, and records what binds to nothing", () => {
+  test("attachSidecarsBindsByTypeId", () => {
     const { index } = astToArtifactIndex(syntheticAst(), { instanceId: "example" });
     const r = attachSidecars(index, sidecars(), { localPrefix: "fhir-artifact-index/sidecars/" });
     expect(FhirArtifactIndexSchema.safeParse(index).success).toBe(true);
@@ -252,7 +252,7 @@ describe("attachSidecars", () => {
     expect(index.sidecarsUnbound?.map((u) => u.filename)).toEqual(["LogicalModels.schema.json"]);
   });
 
-  test("a title stem binds where neither the id nor the name does, and a published base becomes the url", () => {
+  test("titleStemBindsWithPublishedUrl", () => {
     const { index } = astToArtifactIndex(syntheticAst(), { instanceId: "example" });
     const cat = index.artifacts.find((a) => a.key === "StructureDefinition/Cat")!;
     cat.id = "C4";
@@ -265,7 +265,7 @@ describe("attachSidecars", () => {
     expect(cat.sidecars?.schema).toEqual({ url: "https://pub.example.org/ig/StructureDefinition-Cat_the_record.schema.json", localPath: "sc/StructureDefinition-Cat_the_record.schema.json", bytes: 2 });
   });
 
-  test("no sidecars leaves the index saying it cannot tell", () => {
+  test("noSidecarsCannotTell", () => {
     const { index } = astToArtifactIndex(syntheticAst(), { instanceId: "example" });
     const r = attachSidecars(index, mkdtempSync(join(tmpdir(), "ast-sidecars-")), { localPrefix: "sc" });
     expect(r).toEqual({ attached: 0, unbound: [] });
@@ -275,7 +275,7 @@ describe("attachSidecars", () => {
 });
 
 describe("keepPublishedGrouping", () => {
-  test("the published grouping wins where the published index holds the key; the default stays elsewhere", () => {
+  test("publishedGroupingWins", () => {
     const { index } = astToArtifactIndex(syntheticAst(), { instanceId: "example" });
     const published = structuredClone(index);
     const cs = published.artifacts.find((a) => a.key === "CodeSystem/Colours")!;
@@ -291,21 +291,21 @@ describe("keepPublishedGrouping", () => {
 });
 
 describe("what an instance states: profilesOf and conceptOf (owner, 2026-10-12)", () => {
-  test("meta.profile as written, or nothing", () => {
+  test("profilesOfAsWritten", () => {
     expect(profilesOf({ meta: { profile: ["http://x/StructureDefinition/p", ""] } })).toEqual(["http://x/StructureDefinition/p"]);
     expect(profilesOf({})).toBeUndefined();
     expect(profilesOf({ meta: { profile: "not a list" } })).toBeUndefined();
   });
-  test("a CodeableConcept keeps its text and codings, and invents no display", () => {
+  test("conceptKeepsTextAndCodings", () => {
     expect(conceptOf({ code: { coding: [{ system: "http://x/cs", code: "page" }] } })).toEqual({ coding: [{ system: "http://x/cs", code: "page" }] });
     expect(conceptOf({ code: { text: "iHRIS Relationship" } })).toEqual({ text: "iHRIS Relationship" });
   });
-  test("a Coding list (Questionnaire.code) is its codings; a string code (SearchParameter's) is no concept", () => {
+  test("codingListIsConcept", () => {
     expect(conceptOf({ code: [{ code: "a", display: "A" }] })).toEqual({ coding: [{ code: "a", display: "A" }] });
     expect(conceptOf({ code: "name" })).toBeUndefined();
     expect(conceptOf({ code: {} })).toBeUndefined();
   });
-  test("the index carries them for the artefact that states them", () => {
+  test("indexCarriesProfilesAndCode", () => {
     const dir = mkdtempSync(join(tmpdir(), "ast-index-"));
     const r = { resourceType: "Basic", id: "page-role", meta: { profile: [`${X}/StructureDefinition/page`] }, code: { coding: [{ system: `${X}/CodeSystem/k`, code: "page" }] } };
     put(dir, "resources/Basic/page-role--0000.json", r);
