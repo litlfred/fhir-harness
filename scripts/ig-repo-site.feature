@@ -175,3 +175,22 @@ Feature: Building an IG repository's own site from its AST
   Scenario: no page declares the TOC: nothing to copy, nothing stamped
     Given a site where no page declares the TOC
     Then nothing is stamped
+
+  @test:scripts/ig-repo-site.test.ts::libraryByUrl::cqlByUrlNoElm
+  Scenario: a Library in the docs site links its CQL in the KG and carries no ELM
+    Given a Library with CQL and ELM content and the IG holding its CQL file
+    Then the Library's CQL is a URL to that file and the ELM is left out
+
+  @test:scripts/ig-repo-site.test.ts::libraryByUrl::cqlKeptWithoutSource
+  Scenario: CQL whose source the IG does not hold is kept inline
+    Given a Library whose CQL file the IG does not hold
+    Then its CQL stays inline and only the ELM is left out
+
+  @test:scripts/ig-repo-site.test.ts::libraryByUrl::otherResourcesUntouched
+  Scenario: other resources, and a Library already by URL, are served as they are
+    Then nothing is changed
+
+  @test:scripts/ig-repo-site.test.ts::libraryByUrl::urlFromRepositoryAndCommit
+  Scenario: the CQL URL names the repository and commit the site is built from
+    Given SITE_REPOSITORY and SITE_COMMIT
+    Then each CQL file is linked at that commit, and with either missing nothing is linked
