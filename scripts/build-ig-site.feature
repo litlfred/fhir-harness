@@ -339,14 +339,12 @@ Feature: Staging an IG as one just-the-docs site
     Then the headings are "Title" at line 1, "A link and bold" at line 7 and "Last" at line 8
 
   @test:scripts/build-ig-site.test.ts::heading_links_on_an_IG's_first_page,_whose_headings_live_in_an_include_(bean_`x78e`)::includeHeadingsLinkToInclude
-  Scenario: index.md that only includes index-ig.md: every heading gets ✎ to its own line in the include and 📣 naming its own section and anchor
+  Scenario: index.md that only includes index-ig.md: each heading's source line is its own line in the include
     Given a first page that only includes another markdown page holding three headings
     When the IG is staged with an edit base
     Then the page's source lines are the three headings at lines 8, 11 and 15 of the include
-    When the layout's heading-link script runs on that page
-    Then each heading's edit link points to its own line in the include
-    And each feedback issue is titled by the section, adding the page only when it differs
-    And each issue body names the page, the section and the source line
+    And the layout hands those lines to the page as ig-source-lines data
+    And nothing is appended to a heading's text: the shared edit-links runtime draws the links in the right gutter
 
   @test:scripts/build-ig-site.test.ts::heading_links_on_an_IG's_first_page,_whose_headings_live_in_an_include_(bean_`x78e`)::includeCycleEnds
   Scenario: an include cycle ends, and a non-markdown include is not read
@@ -612,9 +610,9 @@ Feature: Staging an IG as one just-the-docs site
     Then a script holding "{% endraw %}" or "{%- endraw -%}" is refused with a message naming endraw
 
   @test:scripts/build-ig-site.test.ts::an_inlined_runtime_is_kept_out_of_Liquid's_reach_(smart-trust,_2026-10-14)::fullPagesBottomCarriesRuntimes
-  Scenario: the full pages' bottom parses, and carries both runtimes verbatim
+  Scenario: the full pages' bottom parses, and carries the edit-links runtime verbatim
     When the full pages' bottom include is rendered with source lines and an edit URL
-    Then it carries the edit links runtime and the source links script verbatim
+    Then it carries the edit links runtime verbatim and the ig-source-lines data
 
   @test:scripts/build-ig-site.test.ts::include_names_are_refused_unless_they_are_one_safe_path_segment::safeIncludeNames
   Scenario: ordinary include names pass; separators, dot segments and template text do not
