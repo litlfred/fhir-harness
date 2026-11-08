@@ -10,7 +10,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { spawnSync } from "node:child_process";
 
-import { astJsonLd, astValidity, buildKind, refuseIncremental, diffAst, igAstSchemaFiles, inputDigest, inputDigestAt, listAst, readAst, recordSourceInputs, renderDelta } from "./ig-ast";
+import { astJsonLd, astValidity, buildKind, cachedStepLine, refuseIncremental, diffAst, igAstSchemaFiles, inputDigest, inputDigestAt, listAst, readAst, recordSourceInputs, renderDelta } from "./ig-ast";
 import { igAstJsonSchemas } from "../schemas/ig-ast.ts";
 import Ajv from "ajv";
 
@@ -174,6 +174,26 @@ describe("validity — compiledValidity on the manifest's inputs", () => {
     expect(astValidity(readAst(ast([pat], [])), ig).verdict).toBe("cannot-tell");
     const legacy = readAst(ast([pat], [], { inputs: { toolchain: "t", sourceRevision: "r", inputDigest: "sha256:" + "0".repeat(64) } }));
     expect(astValidity(legacy, ig).verdict).toBe("cannot-tell");
+  });
+});
+
+describe("cachedStepLine — the fhir-ast cache's summary, in cached-step's format", () => {
+  const base = { recorded: undefined, current: {} } as unknown as Omit<Parameters<typeof cachedStepLine>[0], "verdict" | "detail">;
+  const KEY = "a".repeat(64);
+  test("a valid AST restored as it was is a hit, keyed by the input digest", () => {
+    const line = cachedStepLine({ ...base, verdict: "valid", detail: { verdict: "valid" } }, KEY);
+    expect(line).toBe(`**cached-step \`ig-ast\`: hit** (exact) — built from the inputs this tree has. Key \`${KEY}\`.`);
+  });
+  test("a valid AST the refresh made from a delta is warm", () => {
+    expect(cachedStepLine({ ...base, verdict: "valid", detail: { verdict: "valid" } }, KEY, { warm: true })).toStartWith("**cached-step `ig-ast`: warm** (exact) — a delta was applied");
+  });
+  test("stale and cannot-tell are misses that say why; warm never turns a miss into a hit", () => {
+    expect(cachedStepLine({ ...base, verdict: "stale-inputs", detail: { verdict: "stale-inputs", differs: ["inputDigest"] } }, KEY, { warm: true })).toBe(
+      `**cached-step \`ig-ast\`: miss** (exact) — stale: inputDigest differ. Key \`${KEY}\`.`,
+    );
+    expect(cachedStepLine({ ...base, verdict: "cannot-tell", detail: { verdict: "cannot-tell", why: "no manifest" } }, undefined)).toBe(
+      "**cached-step `ig-ast`: miss** (exact) — cannot tell: no manifest. Key `unknown`.",
+    );
   });
 });
 

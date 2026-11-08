@@ -30,6 +30,9 @@
  *   here by the same algorithm as the Java `InputDigest`, and a golden vector
  *   shared by both test suites keeps the two from drifting.
  * - `digest --ig <root>`: the IG's input digest now, as `validity` computes it.
+ * - `cache-line <ast> --ig <root> [--warm]`: the `fhir-ast` cache's one
+ *   summary line in cached-step's format (`cachedStepLine`): hit, warm or
+ *   miss, why, and the key. Always exits 0; `validity` is the verdict.
  * - `source-inputs <ast> --digest <hex> --pre-export <command>`: after a
  *   `pre-export` command rewrote the tree, record the AST against the
  *   source's digest (`recordSourceInputs`).
@@ -330,6 +333,32 @@ export interface AstValidity {
   detail: CompiledValidity;
   recorded: AstManifest["inputs"];
   current: { toolchain?: string; sourceRevision?: string; inputDigest?: string };
+}
+
+/**
+ * The one summary line of the declared `fhir-ast` cache
+ * (`caches/fhir-ast.cache.json`), in cached-step's format, so a run's log
+ * reads the same for every cache Process_Cache knows:
+ * `**cached-step `ig-ast`: hit|warm|miss** (exact) — <why>. Key `<key>`.`
+ *
+ * `hit` is a valid AST restored as it was; `warm` is a valid AST that the
+ * refresh made by applying a delta over an older one (`IncrementalBuildCli`);
+ * anything else is a `miss`, and the IG builds. The key is the IG's input
+ * digest as `digest` computes it: derived from the content of its inputs,
+ * so it survives merges and rebases that leave them alone.
+ */
+export function cachedStepLine(v: AstValidity, key: string | undefined, opts: { warm?: boolean } = {}): string {
+  const d = v.detail;
+  const outcome = d.verdict === "valid" ? (opts.warm ? "warm" : "hit") : "miss";
+  const why =
+    d.verdict === "valid"
+      ? opts.warm
+        ? "a delta was applied over an older AST, and the result was built from the inputs this tree has"
+        : "built from the inputs this tree has"
+      : d.verdict === "stale-inputs"
+        ? `stale: ${d.differs.join(", ")} differ`
+        : `cannot tell: ${d.why}`;
+  return `**cached-step \`ig-ast\`: ${outcome}** (exact) — ${why}. Key \`${key ?? "unknown"}\`.`;
 }
 
 /**
@@ -799,7 +828,7 @@ if (import.meta.main) {
   };
   const pos = args.filter((a, i) => !a.startsWith("--") && !(i > 0 && args[i - 1]!.startsWith("--")));
   const usage =
-    "usage: ig-ast.ts list <ast> | validity <ast> --ig <root> [--toolchain <s>] [--at <rev>] | digest --ig <root> [--at <rev>] | " +
+    "usage: ig-ast.ts list <ast> | validity <ast> --ig <root> [--toolchain <s>] [--at <rev>] | digest --ig <root> [--at <rev>] | cache-line <ast> --ig <root> [--warm] | " +
     "source-inputs <ast> --digest <hex> --pre-export <command> | build-kind <ast> [--require-full] | " +
     "diff <base-ast> <head-ast> [--plan plan.json] [--json out.json] [--site dir] | render <delta.json> --site dir | " +
     "jsonld <ast> | schema [--check]";
@@ -809,6 +838,11 @@ if (import.meta.main) {
     const v = astValidity(readAst(pos[0]), opt("--ig")!, opt("--toolchain"), { at: opt("--at") });
     console.log(JSON.stringify(v, null, 2));
     process.exit(v.verdict === "valid" ? 0 : v.verdict === "stale-inputs" ? 1 : 2);
+  } else if (cmd === "cache-line" && pos[0] && opt("--ig")) {
+    // The cached-step summary of the `fhir-ast` cache; always exit 0, since
+    // `validity` is the verdict and this only reports it.
+    const v = astValidity(readAst(pos[0]), opt("--ig")!, opt("--toolchain"));
+    console.log(cachedStepLine(v, v.current.inputDigest ?? inputDigest(opt("--ig")!), { warm: args.includes("--warm") }));
   } else if (cmd === "digest" && opt("--ig")) {
     const d = opt("--at") ? inputDigestAt(opt("--ig")!, opt("--at")!) : inputDigest(opt("--ig")!);
     if (d === null) {

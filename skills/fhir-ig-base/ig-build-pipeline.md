@@ -122,6 +122,29 @@ each page holds, and the QA over the nodes, is
 
 Process: [`ig-ast-cache.bpmn`](../../processes/content/ig-ast-cache.bpmn).
 
+**The declared cache.** The cache branch is the `cache/1.0.0` node
+[`caches/fhir-ast.cache.json`](../../caches/fhir-ast.cache.json) (cache-first
+CI, rule 6), and `ig-ast-cache.bpmn` is its component of the harness's one
+optional cache process: `Task_Restore` and `GW_Valid` are the component's
+verify, and `Task_Seed` is its save. The dispatched AST refresh
+(`Task_Dispatch`, `Task_Export`, on the Java runner) stays this cache's own
+save path. The node carries the key recipe (`ig-ast.ts digest`), the
+producer, the consumers, the save policy and the uses. The stored key against
+the key today's inputs imply, and so whether the cache is stale, is computed
+by cat-harness-tools' `caches:viz`, never written here. **Only a step that
+builds or renders an IG restores it** (owner, 2026-11-05: *"not all
+rendering/CI/merge processes need all caches. be optimal"*). A test shard,
+a gate or a merge job never does.
+
+The node's `materializes` (`output-ast/`, `input-cache/txcache/`) is how a
+plan decides that: a target needs this cache when what it reads touches those
+paths. Its `needs` is `layers-ref`, so the layers are restored first. Every
+restore, verify and refresh prints one line in cached-step's format,
+`**cached-step `ig-ast`: hit|warm|miss** (exact) — <why>. Key `<key>`.`
+(`ig-ast.ts cache-line`). `warm` means the refresh applied a delta over an
+older AST. The key is the input digest: it is derived from the content of
+the inputs, so a merge or rebase that leaves them alone keeps it.
+
 Terms:
 
 - **AST**: the per-resource dump the IG Publisher AST exporter writes
