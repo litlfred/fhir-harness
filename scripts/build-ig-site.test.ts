@@ -8,7 +8,7 @@ import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, 
 import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
 import { join } from "node:path";
-import { igChromeIncludes, liquidInertScript, SOURCE_LINKS_JS } from "./build-ig-site";
+import { igChromeIncludes, liquidInertScript } from "./build-ig-site";
 import { Liquid } from "liquidjs";
 import { EDIT_LINKS_RUNTIME } from "../../cat-harness-tools/src/core/edit-links.js";
 import { ARTIFACT_LIST_TEMPLATE_PATH, artifactListInclude, publisherPlural, FOOTER_TEMPLATE_PATH, ARTIFACTS_TEMPLATE_PATH,IG_FIGURE_IMAGES_STAMP, annexMount, ANNEX_SCRIPT_PATH, artifactVariables, artifactCellLookup, kramdownId, linkTableCells, colourScheme, composeIgSite, liquidSiteBase, contrast, dedupeIds, igTocNav, igTopBar, IG_TOPBAR_CSS, includeTargets, isSafeIncludeName, localTemplateIncludes, pageNav, relinkArtifacts, relinkTemplatedArtifacts, relinkOffSite, offSiteHref, rubyLiquidStrings, relinkPublisherOutputs, relinkPublisherTemplateAssets, sourceHeadings, dataOverwritesQa, describeStage, RELEASES_TEMPLATE_PATH, releaseVariables, sizeLabel, stageIgSite, tocPage, type StageResult } from "./build-ig-site";
@@ -852,32 +852,9 @@ describe("sourceHeadings: each section's line in the IG's source (bean `mftp`)",
 
 // Bean `x78e`: an HL7 IG's landing page is `index.md` = `{% include index-ig.md %}`,
 // so every heading the reader sees lives in the include. The ✎ / 📣 heading
-// links (bean `mftp`) must follow the include to its own file and line.
+// links (bean `mftp`) must follow the include to its own file and line, in the data
+// the edit-links runtime reads.
 describe("heading links on an IG's first page, whose headings live in an include (bean `x78e`)", () => {
-  /** Run the layout's per-section script against a page holding `headings`, as a browser would. */
-  const runHeadingLinks = (js: string, data: unknown, title: string, headings: Array<{ id: string; text: string }>) => {
-    const hs = headings.map(({ id, text }) => {
-      const links: Array<{ className: string; href: string; textContent: string }> = [];
-      return {
-        id,
-        links,
-        textContent: text,
-        appendChild(n: { className?: string; href?: string; textContent: string }) {
-          if (n.className) links.push(n as { className: string; href: string; textContent: string });
-        },
-      };
-    });
-    const document = {
-      title,
-      getElementById: (id: string) => (id === "ig-source-lines" ? { textContent: JSON.stringify(data) } : null),
-      querySelectorAll: () => hs,
-      createElement: () => ({ className: "", href: "", title: "", textContent: "", rel: "", target: "" }),
-      createTextNode: (t: string) => ({ textContent: t }),
-    };
-    new Function("document", "location", js)(document, { href: "https://o.github.io/r/#top" });
-    return hs.map((h) => ({ id: h.id, edit: h.links.find((a) => a.className === "ig-src")?.href, feedback: h.links.find((a) => a.className === "ig-feedback")?.href }));
-  };
-
   test("includeHeadingsLinkToInclude", () => {
     const d = mkdtempSync(join(tmpdir(), "ig-x78e-"));
     const src = join(d, "src");
@@ -899,34 +876,15 @@ describe("heading links on an IG's first page, whose headings live in an include
       { t: "Disclaimer", l: 15, b: inc },
     ]);
 
-    // The script the layout carries, on the page as Jekyll renders it. The
-    // page is titled after its menu entry — "Summary", the first section's name too.
+    // The layout hands those lines to the page as data; the platform's
+    // edit-links runtime draws ✎ / 📣 from them in the right gutter
+    // (cat-harness-tools edit-links.test.ts holds its behaviour), and nothing
+    // is appended to the heading itself any more (owner, 2026-11-08).
     const layout = readFileSync(join(d, "out", "_layouts", "default.html"), "utf-8");
-    // Inlined in a Liquid raw block (`liquidInertScript`), which Jekyll strips.
-    const js = /<script>(?:\{% raw %\})?(\(function\(\)\{var d=document\.getElementById\("ig-source-lines"\)[\s\S]*?)(?:\{% endraw %\})?<\/script>/.exec(layout)?.[1];
-    expect(js).toBeDefined();
-    const got = runHeadingLinks(js!, { blob: "https://github.com/o/r/blob/main/input/pagecontent/index.md", lines }, "Summary | X IG", [
-      { id: "summary", text: "Summary" },
-      { id: "about-this-implementation-guide", text: "About this implementation guide" },
-      { id: "disclaimer", text: "Disclaimer" },
-    ]);
-    const want = [
-      { id: "summary", text: "Summary", l: 8 },
-      { id: "about-this-implementation-guide", text: "About this implementation guide", l: 11 },
-      { id: "disclaimer", text: "Disclaimer", l: 15 },
-    ];
-    for (const [i, w] of want.entries()) {
-      expect(got[i]!.edit).toBe(`${inc}#L${w.l}`);
-      const issue = new URL(got[i]!.feedback!);
-      const title = issue.searchParams.get("title")!;
-      const body = issue.searchParams.get("body")!;
-      // The section first, the page apart from it and only when it is not the
-      // section: the defect read "Feedback: Summary — About this implementation guide".
-      expect(title).toBe(`Feedback on “${w.text}”${w.text === "Summary" ? "" : " (page: Summary)"}`);
-      expect(body).toContain(`**Page:** https://o.github.io/r/#${w.id}\n`);
-      expect(body).toContain(`**Section:** ${w.text}`);
-      expect(body).toContain(`**Source:** ${inc}#L${w.l}\n`);
-    }
+    expect(layout).toContain('<script type="application/json" id="ig-source-lines">');
+    expect(layout).toContain("page.ig_source_lines | jsonify");
+    expect(layout).not.toContain('"ig-src"');
+    expect(layout).not.toContain('"ig-feedback"');
     rmSync(d, { recursive: true, force: true });
   });
 
@@ -1546,7 +1504,7 @@ describe("an inlined runtime is kept out of Liquid's reach (smart-trust, 2026-10
     const { bottom } = igChromeIncludes("");
     const html = await liquid.parseAndRender(bottom, { page: { ig_source_lines: [1], ig_edit_url: "e" } });
     expect(html).toContain(EDIT_LINKS_RUNTIME);
-    expect(html).toContain(SOURCE_LINKS_JS);
+    expect(html).toContain('id="ig-source-lines"');
   });
 });
 
