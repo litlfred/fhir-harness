@@ -111,6 +111,23 @@ answers report `not-yet` or `unknown`, never a live URL.
 `scripts/pages-bootstrap.ts` implements this three-state probe and
 `decisions/pages-live-gate.dmn` states the same logic as a table.
 
+## Pages of statements extracted from the IG's sources
+
+When the IG draws on library sources, the statements extracted from them are
+published as pages of the IG before the Publisher runs, each linked to its
+library entry and section. That is core's standard step
+(`publish-extracted-statements`, `bun run cat statements:pages`), the same for
+every content type. What the IG supplies is its look, and nothing else:
+
+- the page spec's `out` is a page under the IG's own page content directory,
+  so the Publisher and the site route render it like any other page;
+- its `tableAttr` is the kramdown class the IG's tables use (for example
+  `{:.grid}`);
+- the page is registered in the IG's own `sushi-config.yaml` pages and menu.
+
+`statements:pages --check` runs in the IG's CI, so a page that no longer
+matches its extraction fails the build.
+
 ## Afterwards
 
 `quality-control` runs the QC gates on what was built; the summary goes on the

@@ -17,6 +17,7 @@
   "usedBy": [
     "scripts/build-ig-indexes.ts",
     "scripts/build-ig-site.ts",
+    "scripts/check-translation-supplements.ts",
     "scripts/fhir-cache-seed-npm.ts",
     "scripts/ig-footer-parity.test.ts",
     "scripts/ig-nav-diff.ts",

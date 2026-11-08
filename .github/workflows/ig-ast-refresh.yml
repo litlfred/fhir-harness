@@ -72,6 +72,10 @@ on:
         description: "Optional command run with bash at the IG root before the AST export: the caller's overlay. Its changes to the IG's inputs are not part of the source the AST is recorded against"
         type: string
         default: ""
+      package-lock:
+        description: "The caller's FHIR package lock, relative to its root (fhir-packages.lock.json format: name, version, tarball, integrity sha512-/sha256- and/or hex sha256). Every package it pins is installed from its URL into the FHIR package cache, hash verified, before the Publisher runs; a mismatch fails the run. Skipped when the default file is absent; empty disables it"
+        type: string
+        default: fhir-packages.lock.json
       template-repos:
         description: "Space-separated name=owner/repo for a `#current` template FHIR/ig-registry's templates.json does not list, e.g. who.template.root=WorldHealthOrganization/smart-ig-template. Named by the caller, never stored here"
         type: string
@@ -221,6 +225,7 @@ jobs:
           TX_SERVER: ${{ inputs.tx }}
           PRE_EXPORT: ${{ inputs.pre-export }}
           TEMPLATE_REPOS: ${{ inputs.template-repos }}
+          PACKAGE_LOCK: ${{ inputs.package-lock }}
           VERDICT: ${{ steps.ast.outputs.verdict }}
           FORCE: ${{ inputs.force }}
           SUSHI_VERSION: ${{ steps.toolchain.outputs.SUSHI_VERSION }}
@@ -234,6 +239,22 @@ jobs:
           git -C "$RUNNER_TEMP/igp" checkout -q "$AST_EXPORT_REF"
           (cd "$RUNNER_TEMP/igp/ast-export" && mvn -q -B -DskipTests compile dependency:build-classpath -Dmdep.outputFile=cp.txt)
           CP="$RUNNER_TEMP/igp/ast-export/target/classes:$(cat "$RUNNER_TEMP/igp/ast-export/cp.txt")"
+          # The packages the caller's lock pins are installed from the lock, each
+          # verified against its pinned hash, before SUSHI or the Publisher runs:
+          # with them in the cache neither fetches them, so nothing it pins is
+          # resolved at run time (Tool fhir-cache-seed-npm, `--lock`). A package
+          # that does not match its pin fails the run; the Publisher is not run.
+          if [ -n "$PACKAGE_LOCK" ]; then
+            case "$PACKAGE_LOCK" in /*|*..*) echo "::error::package-lock must be a path inside the repository: $PACKAGE_LOCK"; exit 2 ;; esac
+            if [ -f "$PACKAGE_LOCK" ]; then
+              echo "::group::install the FHIR packages $PACKAGE_LOCK pins"
+              bun run fhir-harness/scripts/fhir-cache-seed-npm.ts --cache "$HOME/.fhir/packages" --lock "$PACKAGE_LOCK" \
+                || { echo "::error::a FHIR package $PACKAGE_LOCK pins was not installed as pinned"; exit 1; }
+              echo "::endgroup::"
+            elif [ "$PACKAGE_LOCK" != fhir-packages.lock.json ]; then
+              echo "::error::package-lock names $PACKAGE_LOCK, which this commit does not have"; exit 2
+            fi
+          fi
           # The ig.ini template, when it is a `#current` package the cache lacks,
           # is seeded from the template's own repository at HEAD (the fork's
           # seeder, Tool fhir-cache-seed-npm; skill ig-publisher-fork). The
@@ -257,6 +278,63 @@ jobs:
             python3 -I "$RUNNER_TEMP/igp/ast-export/scripts/seed-fhir-cache-from-npm.py" --cache "$HOME/.fhir/packages" "${targs[@]}" "$tpl" \
               || echo "::warning::could not seed the template $tpl from its repository: the Publisher tries the CI build server"
             echo "::endgroup::"
+          fi
+          # The Publisher's terminology cache (input-cache/txcache/), restored
+          # with the AST, holds only for the FHIR version it was built with. Its
+          # system-map.json keeps the registry's routing, code system to server
+          # endpoint, and the endpoint names a FHIR version (tx.fhir.org/r5).
+          # The Publisher reuses a persisted route without asking the registry
+          # again, and appends its own version to a tx.fhir.org endpoint that
+          # does not end in it, so an IG moved from R5 to R4 asked for
+          # https://tx.fhir.org/r5/r4 and failed (core 7.0.1,
+          # TerminologyClientFactory.checkEndsWith). A cache whose core package
+          # is another FHIR version than sushi-config.yaml's fhirVersion is
+          # dropped, and the Publisher builds its own. Either version unknown:
+          # the cache is kept, as before.
+          if [ -d input-cache/txcache ] && [ -f output-ast/manifest.json ] && [ -f sushi-config.yaml ]; then
+            if ! python3 -I - output-ast/manifest.json sushi-config.yaml <<'PY'
+          import json, re, sys
+          def minor(v):
+              return tuple(re.findall(r"\d+", str(v or ""))[:2])
+          try:
+              m = json.load(open(sys.argv[1], encoding="utf-8"))
+              lines = open(sys.argv[2], encoding="utf-8").read().splitlines()
+          except Exception:
+              sys.exit(0)
+          built = None
+          for p in m.get("packages") or []:
+              if isinstance(p, dict) and re.fullmatch(r"hl7\.fhir\.r\d+b?\.core", str(p.get("id", ""))):
+                  built = p.get("version")
+                  break
+          if not built and isinstance(m.get("ig"), dict):
+              built = m["ig"].get("version")
+          wanted = []
+          for i, line in enumerate(lines):
+              f = re.match(r"fhirVersion:(.*)$", line)
+              if not f:
+                  continue
+              v = f.group(1).split("#")[0].strip()
+              if v.startswith("["):
+                  wanted = [x.strip(" '\"") for x in v.strip("[]").split(",")]
+              elif v:
+                  wanted = [v.strip("'\"")]
+              else:
+                  for n in lines[i + 1:]:
+                      item = re.match(r"\s+-\s*([^\s#]+)", n)
+                      if item:
+                          wanted.append(item.group(1).strip("'\""))
+                      elif n.strip() and not n.lstrip().startswith("#"):
+                          break
+              break
+          wanted = [w for w in wanted if w]
+          if not built or not wanted or minor(built) in {minor(w) for w in wanted}:
+              sys.exit(0)
+          print(f"::notice::the restored terminology cache was built for FHIR {built}, the IG is FHIR {', '.join(wanted)}: it is dropped")
+          sys.exit(1)
+          PY
+            then
+              rm -rf input-cache/txcache
+            fi
           fi
           # Incremental only over a STALE cache, from a clean tree (the build
           # refuses any other), never for a release (force). Anything it cannot
