@@ -196,7 +196,9 @@ const INDEX = INDEX_ARG ? resolve(process.cwd(), INDEX_ARG) : join(INSTANCE, "fh
 const MENU = join(INSTANCE, "fhir-artifact-index", "menu.json");
 /**
  * `--compiled-data <dir>`: where a COMPILED index's files are served, as a
- * path from the docs root (e.g. `../ast-data` beside `docs/`). When set, each
+ * path from the docs root (e.g. `../ast-data` beside `docs/`), or `.`
+ * (`COMPILED_BY_NAME`) when each is served once at the docs root as
+ * `<Type>-<id>.json`, as the IG site does. When set, each
  * artefact page whose materialization is a compiled copy gets a resource
  * section its browser fills from that file: the narrative and the JSON, by
  * the shared loader `assets/ast-resource.js` (skill `visualizer-loading`).
@@ -857,9 +859,7 @@ function repLinks(a: FhirArtifact): string {
   // linked only when nothing here holds it, and it says so.
   const out: string[] = [];
   const m = a.materialization;
-  const local = COMPILED_DATA && m.state === "materialized" && m.purpose === "compiled" && m.localPath
-    ? `../${COMPILED_DATA}/${m.localPath.replace(/^[^/]+\//, "")}`
-    : undefined;
+  const local = localResourceHref(a, COMPILED_DATA);
   if (local) out.push(`<a href="${esc(local)}">json</a>`);
   else if (a.published.json) out.push(`<a href="${esc(a.published.json.url)}" rel="external">json (upstream)</a>`);
   for (const [k, label] of [["schema", "JSON Schema"], ["jsonld", "JSON-LD"]] as const) {
@@ -1140,10 +1140,9 @@ function stateTag(a: FhirArtifact): string {
  * `localPath` with the AST directory's own name dropped.
  */
 function compiledResourceSection(a: FhirArtifact): string[] {
-  const m = a.materialization;
-  if (!COMPILED_DATA || m.state !== "materialized" || m.purpose !== "compiled" || !m.localPath) return [];
-  // `artifact/Name.html` → the docs root is `../`.
-  const src = `../${COMPILED_DATA}/${m.localPath.replace(/^[^/]+\//, "")}`;
+  // `artifact/Name.html` → the docs root is `../` (`localResourceHref`).
+  const src = localResourceHref(a, COMPILED_DATA);
+  if (!src) return [];
   // The narrative is the Publisher's XHTML, whose relative links name the
   // Publisher's own pages. The loader keeps one that names a page THIS site has
   // (`ast-pages.json`, the same `Type-id` names) and sends the rest to the

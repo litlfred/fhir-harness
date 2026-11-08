@@ -82,12 +82,22 @@ export interface JsonLdOptions {
   title?: string;
 }
 
+/**
+ * `--compiled-data` value meaning each compiled copy is served once, at the
+ * docs root under the Publisher's name `<Type>-<id>.json`, with no mirror of
+ * the AST tree (owner, 2026-11-08: "we dont need ast-data/resources
+ * published"). The IG site uses it; a docs root beside the AST still passes a
+ * directory.
+ */
+export const COMPILED_BY_NAME = ".";
+
 /** The served path of a compiled copy, relative to an artefact page or node, or undefined. */
 export function localResourceHref(a: FhirArtifact, compiledData: string | undefined): string | undefined {
   const m = a.materialization;
   if (!compiledData || m.state !== "materialized" || m.purpose !== "compiled" || !m.localPath) return undefined;
-  // `artifact/X.jsonld` → the docs root is `../`; the served tree mirrors the
-  // AST directory, so its own name is dropped (as `compiledResourceSection`).
+  // `artifact/X.jsonld` → the docs root is `../`.
+  if (compiledData.replace(/\/+$/, "") === COMPILED_BY_NAME) return `../${a.resourceType}-${a.id}.json`;
+  // The served tree mirrors the AST directory, so its own name is dropped.
   return `../${compiledData.replace(/\/+$/, "")}/${m.localPath.replace(/^[^/]+\//, "")}`;
 }
 

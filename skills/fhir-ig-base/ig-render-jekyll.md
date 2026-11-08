@@ -111,7 +111,8 @@ graph, unless a build passes `--full-pages`. The shell is cat-harness-tools'
   site serves the artefact's JSON: a compiled copy (`--compiled-data`) or,
   failing that, the Publisher's own `<Type>-<id>.json` carried as data
   (`--publisher-data <dir>`, from the docs root). An IG repository's site
-  (`ig-site:compose`) passes only `--compiled-data ast-data`, the AST's copy.
+  (`ig-site:compose`) passes only `--compiled-data .`: the AST's copy, served
+  once at the root as `<Type>-<id>.json`.
   Each view keeps the Publisher's file name:
   - `-definitions`: the snapshot's element table, differential marked;
   - `-mappings`: each `mapping` declaration with the elements mapped to it;
@@ -126,8 +127,9 @@ graph, unless a build passes `--full-pages`. The shell is cat-harness-tools'
   rendered nor published. The IG API view pages stay full pages.
 - **Nothing under `comparison-v*/` is published.** `ig-site:publisher-pages`
   serves the AST's data and reads no Publisher output.
-- In an IG site the docs root is the site root, so `--compiled-data` is
-  `ast-data`; `../ast-data` would point every resource link above the site.
+- In an IG site the docs root is the site root, so `--compiled-data .` points
+  each resource at `../<Type>-<id>.json` from `artifact/`. No `ast-data/`
+  mirror is published.
 
 ### The artefact list and the table of contents (`build-ig-site.ts`)
 

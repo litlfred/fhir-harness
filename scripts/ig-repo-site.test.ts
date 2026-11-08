@@ -13,7 +13,6 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import {
-  AST_DATA,
   acceptStaleFromEnv,
   astGate,
   builtPage,
@@ -161,8 +160,8 @@ describe("publisher pages: the AST's data, never the Publisher's HTML", () => {
     mkdirSync(sidecars);
     writeFileSync(join(sidecars, "ValueSet-x.schema.json"), "{}");
     const r = serveAstData({ site, ast, index, igApi: { sidecars, files: 1 } });
-    expect(r).toEqual({ resources: 2, named: 1, kept: 1, sidecars: 1, siteFiles: 0, siteKept: [], siteFilled: [], index: true });
-    expect(existsSync(join(site, AST_DATA, "resources", "ValueSet", "x--0000.json"))).toBe(true);
+    expect(r).toEqual({ named: 1, kept: 1, sidecars: 1, siteFiles: 0, siteKept: [], siteFilled: [], index: true });
+    expect(existsSync(join(site, "ast-data"))).toBe(false);
     expect(JSON.parse(readFileSync(join(site, "ValueSet-x.json"), "utf-8")).id).toBe("x");
     expect(readFileSync(join(site, "CodeSystem-y.json"), "utf-8")).toBe("site");
     expect(existsSync(join(site, "fhir-artifact-index", "index.json"))).toBe(true);
@@ -184,7 +183,7 @@ describe("publisher pages: the AST's data, never the Publisher's HTML", () => {
     const site = join(root, "_site");
     mkdirSync(site, { recursive: true });
     const said: string[] = [];
-    expect(publisherPages({ site, ast, work, log: (s) => said.push(s) })).toEqual({ resources: 1, named: 1, kept: 0, sidecars: 1, siteFiles: 0, siteKept: [], siteFilled: [], index: true });
+    expect(publisherPages({ site, ast, work, log: (s) => said.push(s) })).toEqual({ named: 1, kept: 0, sidecars: 1, siteFiles: 0, siteKept: [], siteFilled: [], index: true });
     expect(said.join("\n")).toContain("The Publisher's HTML is not taken");
   });
 });

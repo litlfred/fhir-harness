@@ -22,7 +22,7 @@ export default toolFactory((t) =>
         { name: "summary", schema: t("Flag"), required: false, description: "Open the index page with the instance's own declaration (`harness_details.html` with `instance=`), making it the instance's landing page." },
         { name: "full-pages", schema: t("Flag"), required: false, description: "Default: each artefact page is a thin shell at the same address, with its JSON-LD node, the index node (`artifact/index.jsonld`) and the shared renderer `assets/ig-artifact.js`. With it: full pages, no JSON-LD." },
         { name: "jsonld-base", schema: t("Url"), required: false, description: "Thin pages only: the docs root's published URL, so each node's IRIs are absolute. Absent, they are relative to the node's own file." },
-        { name: "compiled-data", schema: t("RepoPath"), required: false, description: "Where a compiled index's resource files are served, as a path from the docs root. In an IG site the docs root IS the site root, so it is `ast-data`, not `../ast-data`." },
+        { name: "compiled-data", schema: t("RepoPath"), required: false, description: "Where a compiled index's resource files are served, as a path from the docs root. `.` means each is served once at the docs root as `<Type>-<id>.json`, as the IG site does; a docs root beside the AST passes `../ast-data`." },
         { name: "check", schema: t("Flag"), required: false, description: "Write nothing; exit 1 when any page is stale or orphaned." },
       ],
       outputs: [

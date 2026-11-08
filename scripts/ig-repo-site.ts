@@ -89,17 +89,17 @@
  * view (`.json.html`, a profile's `.profile.json.html`) and `-examples.html`
  * where an artefact claims the profile, at the Publisher's file names beside
  * the artefact's page, drawn from the AST's copy of the resource the site
- * serves under `ast-data/`. The narrative's links to those names are pointed at them
+ * serves at its root as `<Type>-<id>.json`. The narrative's links to those names are pointed at them
  * as its links to the artefact pages are. The Publisher's `comparison-v*`
  * directories are not rendered and not published.
  *
  * ## `publisher-pages`: the AST's data, never the Publisher's HTML
  *
- * The thin artefact pages draw each resource from `ast-data/` (the AST's
- * `resources/`, as `gen-ig-pages --compiled-data` names it); the narrative
- * links a resource's JSON by the Publisher's name, `<Type>-<id>.json`, so
- * each resource is served under that name at the root as well, unless the
- * site already holds the path. The artefact index is served at
+ * Each resource is served ONCE, at the root under the Publisher's name,
+ * `<Type>-<id>.json`, unless the site already holds the path: the thin
+ * artefact pages draw it from there (`gen-ig-pages --compiled-data .`) and
+ * the narrative links it by that name. No `ast-data/` mirror of the AST tree
+ * is published (owner, 2026-11-08). The artefact index is served at
  * `fhir-artifact-index/index.json`, and the IG API sidecars a layer above
  * left at `fhir-artifact-index/sidecars/`. The Publisher's finished HTML is
  * never published (owner, 2026-10-14: "I DO NOT WANT THE IG PUBLISHER
@@ -164,6 +164,7 @@ import { igOpenapiGraph, OPENAPI_DIR } from "../../cat-harness-tools/openapi/scr
 import type { FhirArtifactIndex } from "../schemas/fhir-artifact-index.js";
 import { buildMenu } from "./ingest-ig-menu.ts";
 import { THIN_INDEX_CONFIG_ID, THIN_PAGE_CONFIG_ID } from "./ig-thin-pages.ts";
+import { COMPILED_BY_NAME } from "./ig-artifact-jsonld.ts";
 import { copyDeclared, igReadScope, type IgReadScope } from "./ig-read-scope.ts";
 import { siteBuild, type SiteBuild, STAMP_FILE } from "./site-build-stamp.ts";
 import { buildQaPage, publishQaAssets } from "./ig-qa-page.ts";
@@ -273,8 +274,13 @@ export function notSource(root: string): Set<string> {
 
 /** Where `ig-cache.sh restore` lays the AST down, in the IG checkout. */
 export const AST_DIR = "output-ast";
-/** Where the site serves the AST's resources, for the thin pages to draw (`gen-ig-pages --compiled-data`). */
-export const AST_DATA = "ast-data";
+/**
+ * How the thin pages find the AST's resources (`gen-ig-pages --compiled-data`):
+ * each is served once at the site root under the Publisher's name,
+ * `<Type>-<id>.json`. No `ast-data/` mirror of the AST tree is published
+ * (owner, 2026-11-08: "we dont need ast-data/resources published").
+ */
+export const AST_DATA = COMPILED_BY_NAME;
 /** Where the site serves the artefact index: the graph's own name. */
 export const INDEX_SERVED = "fhir-artifact-index";
 /** Where the site serves the IG API sidecars, the `localPath` each is bound at. */
@@ -454,8 +460,8 @@ export function astArtefactPages(o: { ig: string; ast: string; work: string; nam
     if (r.status !== 0) throw new Error(`${script} failed (exit ${r.status}):\n${`${r.stderr}\n${r.stdout}`.trim().split("\n").slice(-15).join("\n")}`);
     for (const l of `${r.stdout}`.trim().split("\n").filter(Boolean).slice(0, 12)) o.log(`  ${l}`);
   };
-  // Relative to the IG: each artefact's `localPath` is then `output-ast/resources/...`,
-  // which `--compiled-data` serves as `ast-data/resources/...`.
+  // Relative to the IG: each artefact's `localPath` is then `output-ast/resources/...`;
+  // the pages point at the resource's root name instead (`AST_DATA`).
   const args = ["--ast", relative(o.ig, o.ast) || ".", "--instance-id", o.name, "--out", index];
   const published = join(o.ig, INDEX_SERVED, "index.json");
   if (existsSync(published)) args.push("--compare", published, "--keep-published-grouping", "--report", join(o.work, "ast-parity.json"));
@@ -802,11 +808,9 @@ export function publisherChromePages(site: string): string[] {
 
 /** What `publisher-pages` put in the site. */
 export interface ServedData {
-  /** AST resource files served under `ast-data/`. */
-  resources: number;
-  /** Resources served at the root under the Publisher's name, `<Type>-<id>.json`. */
+  /** Resources served at the root under the Publisher's name, `<Type>-<id>.json`, the one copy the pages draw. */
   named: number;
-  /** Root paths the site already held, so the AST's copy was not laid over them. */
+  /** Root paths the site already held, so the AST's copy was not laid over them (the pages show the site's file). */
   kept: number;
   /** IG API sidecar files served under `fhir-artifact-index/sidecars/`. */
   sidecars: number;
@@ -829,21 +833,19 @@ function serve(from: string, site: string, rel: string): boolean {
 }
 
 /**
- * Serve the AST's data in the built site: its resources under `ast-data/` and
- * by the Publisher's name at the root, the artefact index, and the IG API
- * sidecars. Never the Publisher's HTML, and never a path the site already holds.
+ * Serve the AST's data in the built site: each resource once, by the
+ * Publisher's name at the root, the artefact index, and the IG API sidecars.
+ * Never the Publisher's HTML, and never a path the site already holds.
  */
 export function serveAstData(o: { site: string; ast: string; index?: string; igApi?: IgApi }): ServedData {
   const manifest = join(o.ast, "manifest.json");
   if (!existsSync(manifest)) throw new Error(`${o.ast}: no AST to serve — run ${IG_SITE_SCRIPTS.ast} first`);
-  const out: ServedData = { resources: 0, named: 0, kept: 0, sidecars: 0, siteFiles: 0, siteKept: [], siteFilled: [], index: false };
+  const out: ServedData = { named: 0, kept: 0, sidecars: 0, siteFiles: 0, siteKept: [], siteFilled: [], index: false };
   const m = JSON.parse(readFileSync(manifest, "utf-8")) as { resources?: { resourceType?: string; id?: string; file?: string }[] };
   for (const r of m.resources ?? []) {
     if (!r.file || !r.resourceType || !r.id) continue;
     const src = join(o.ast, r.file);
     if (!existsSync(src)) continue;
-    // `resources/<Type>/<id>--<hash>.json`, the path the index's localPath names under `ast-data/`.
-    if (serve(src, o.site, join(AST_DATA, r.file))) out.resources += 1;
     if (serve(src, o.site, `${r.resourceType}-${r.id}.json`)) out.named += 1;
     else out.kept += 1;
   }
@@ -874,7 +876,7 @@ export function publisherPages(o: { site: string; ast: string; work?: string; ig
   const index = o.work ? join(o.work, INDEX_WORK, "index.json") : undefined;
   const served = serveAstData({ site: o.site, ast: o.ast, ...(index ? { index } : {}), ...(igApi ? { igApi } : {}) });
   log(
-    `publisher pages: from the AST, ${served.resources} resource(s) under ${AST_DATA}/ and ${served.named} as <Type>-<id>.json at the root` +
+    `publisher pages: from the AST, ${served.named} resource(s) as <Type>-<id>.json at the root (no ast-data/ mirror)` +
       `${served.kept ? ` (${served.kept} the site already held were kept)` : ""}; ` +
       `${served.index ? `the artefact index at ${INDEX_SERVED}/index.json` : "no artefact index served"}; ` +
       `${served.sidecars} IG API sidecar(s) at ${SIDECARS_SERVED}/; ${served.siteFiles} file(s) the layer above wrote for the site root. The Publisher's HTML is not taken`,

@@ -60,11 +60,11 @@ Feature: Building an IG repository's own site from its AST
     Then reading the IG API throws about the label
 
   @test:scripts/ig-repo-site.test.ts::publisher_pages:_the_AST's_data,_never_the_Publisher's_HTML::servesAstDataAndIndex
-  Scenario: serves each resource under ast-data/ and by the Publisher's name, the index and the sidecars; never replaces a site file
+  Scenario: serves each resource once, by the Publisher's name, the index and the sidecars; no ast-data mirror; never replaces a site file
     Given an AST of a ValueSet and a CodeSystem, a site that already has the CodeSystem's JSON, an index and a sidecar
     When the AST data is served
-    Then 2 resources are served, 1 by the Publisher's name, 1 kept, 1 sidecar and the index
-    And the resources are under ast-data, the ValueSet is served by its Publisher name, and the site's CodeSystem file is kept
+    Then 1 resource is served by the Publisher's name, 1 kept, 1 sidecar and the index
+    And no ast-data directory is written, the ValueSet is served by its Publisher name, and the site's CodeSystem file is kept
     And the index and the sidecar are served
 
   @test:scripts/ig-repo-site.test.ts::publisher_pages:_the_AST's_data,_never_the_Publisher's_HTML::noAstRefusedNamingStep
