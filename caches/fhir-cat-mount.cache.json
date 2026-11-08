@@ -19,6 +19,10 @@
   "consumers": [
     "the same workflow's mount step (CAT_MOUNT_CACHE_DIR)"
   ],
+  "stateInputs": {
+    "reads": "unmeasured",
+    "how": "not yet derived from a recorded read set; the producer may read state:mount graphs"
+  },
   "needs": [],
   "savePolicy": "any run that misses the key",
   "verify": "mount-from-lock checks each mounted layer against the lock's digests, so a stale entry only costs a fetch",
@@ -26,5 +30,5 @@
   "uses": [
     ".github/workflows/ig-ast-refresh.yml:116-122"
   ],
-  "notes": "Superseded by the layers cache ref (`layers-ref`, cat-harness-tools): once the IG repositories mount through it, this step is removed rather than kept beside it. Called by smart-base (1), smart-trust (2), smart-trust-phw (2) and smart-immunizations (2) through this reusable workflow."
+  "notes": "Superseded by the layers cache ref (`layers-ref`, cat-harness-tools): once the IG repositories mount through it, this step is removed rather than kept beside it. The IG repositories above this layer call it through this reusable workflow."
 }

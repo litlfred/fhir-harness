@@ -23,6 +23,10 @@
   "materializes": [
     "~/.fhir/packages/"
   ],
+  "stateInputs": {
+    "reads": "unmeasured",
+    "how": "not yet derived from a recorded read set; the producer may read state:mount graphs"
+  },
   "needs": [],
   "savePolicy": "any run that misses the key",
   "verify": "the mount half is checked by mount-from-lock against the lock; the FHIR packages are used as found (versioned by name)",

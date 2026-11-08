@@ -26,6 +26,10 @@
     "~/.m2/repository/",
     "~/.npm-global/"
   ],
+  "stateInputs": {
+    "reads": "unmeasured",
+    "how": "not yet derived from a recorded read set; the producer may read state:mount graphs"
+  },
   "needs": [],
   "refresh": {
     "mode": "whole",
