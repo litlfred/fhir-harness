@@ -216,7 +216,7 @@ describe("gen-ig-pages: an AST build's revision is printed once, on the index (b
     const md = read("built1", "artifact/StructureDefinition-Composition-uv-ips.md");
     expect(md).toContain("compiled copy of the [build revision](../#build-revision)");
     expect(md).not.toContain("1".repeat(12));
-    // The two scratch instances differ in NAME, which the asset paths carry; that is the fixture, not the stamp.
+    // The two scratch layers differ in NAME, which the asset paths carry; that is the fixture, not the stamp.
     expect(read("built2", "artifact/StructureDefinition-Composition-uv-ips.md").replaceAll("/built2/", "/built1/")).toBe(md);
   });
 
@@ -226,7 +226,7 @@ describe("gen-ig-pages: an AST build's revision is printed once, on the index (b
 });
 
 describe("gen-ig-pages --site: only the declared route pages, under the site", () => {
-  // An instance that declares the artefact-index visualiser, per instance, as
+  // A layer that declares the artefact-index visualiser, per layer, as
   // a harness does (`renderedBy: ig-pages`, `subgraphs: "instance"`).
   const siteRepo = scratchRepo({ sited: { index: artifactIndex(IPS, "sited") } });
   const decl = join(siteRepo, "sited", "sited.json");

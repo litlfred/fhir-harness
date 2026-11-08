@@ -11,7 +11,7 @@ description: >
 
 # ig-binary-artefacts
 
-> Skill id: `ig-binary-artefacts` · Package: `fhir-ig-base` · Instance:
+> Skill id: `ig-binary-artefacts` · Package: `fhir-ig-base` · Layer:
 > `fhir-harness` · Tool `ig-binary-audit`
 
 ## What the Publisher writes

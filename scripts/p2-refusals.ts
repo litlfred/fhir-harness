@@ -16,9 +16,9 @@
  *   Turtle, so its absence from the two lists above is a fact about the IG,
  *   not a gap in this record.
  *
- * Read from the instance's artefact index (`fhir-artifact-index/index.json`),
+ * Read from the layer's artefact index (`fhir-artifact-index/index.json`),
  * whose `published` URLs the ingest recorded; written as a `qa-results/v1`
- * sidecar in the instance's `test/results/`. Generic: nothing here knows whose
+ * sidecar in the layer's `test/results/`. Generic: nothing here knows whose
  * IG it is.
  *
  *   bun run fhir-harness/scripts/p2-refusals.ts --instance <dir> [--check]

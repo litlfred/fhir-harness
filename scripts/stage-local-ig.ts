@@ -685,7 +685,7 @@ export const droppedWords = (d: DroppedByRuling): string => (d.feature !== undef
 /**
  * Root entries an IG repository's publish keeps besides the folio's own:
  * `branches/`, where its IG workflow's per-branch previews are, and `ns/`,
- * the instance's JSON-LD context, which `publish-context.yml` publishes on
+ * the layer's JSON-LD context, which `publish-context.yml` publishes on
  * its own schedule. Deleting either is a separate question for the owner,
  * never a side effect of a publish. Owner, 2026-10-15, ruling on a base IG
  * repository's publish: "Keep both" — `ns/` and the versioned copies
@@ -706,7 +706,7 @@ export function versionedRoots(entries: readonly string[]): string[] {
 }
 
 /**
- * The root entries the landing instance's `site.build.keep` declares in this
+ * The root entries the landing layer's `site.build.keep` declares in this
  * checkout's `index.config.json` entry, read by build-instance-site's own
  * reader ({@link recipeRead}), so the IG route keeps what a declared recipe
  * would. An IG repository's Pages root can hold entries no build writes, laid
@@ -750,7 +750,7 @@ export function igIdentity(sushiText: string | undefined, repoName: string): { t
 }
 
 export interface IgFolioSite {
-  /** The mounted instance whose chrome the site wears: `index.config.json` `site.landing`. */
+  /** The mounted layer whose chrome the site wears: `index.config.json` `site.landing`. */
   scope: string;
   title: string;
   description?: string;
@@ -780,13 +780,13 @@ export interface IgFolioSite {
  *   (`why`), since nothing can build the site;
  * - some but not all of them: REFUSED, naming the missing ones — the mounts
  *   are pinned at commits that do not agree on the route;
- * - otherwise the folio route, scoped to the landing instance the index
+ * - otherwise the folio route, scoped to the landing layer the index
  *   names, with the optional steps {@link IG_SITE_OPTIONAL} their conditions
  *   admit; an index that names no landing is REFUSED, because the chrome
  *   cannot be scoped by guessing among the layers the repository mounts.
  *
  * `scripts` maps each checkout script to the manifest declaring it;
- * `landingPath` is the landing instance's mount path (`index.lock.json`);
+ * `landingPath` is the landing layer's mount path (`index.lock.json`);
  * `keep` is what the checkout declares kept at the root, besides {@link IG_KEEP}.
  */
 export function igFolioSite(o: {
@@ -881,7 +881,7 @@ export function composeIg(pages: string, folder: string, t: IgTarget, chromed = 
  *
  * A sync that fails is said and not fatal: the harness commits its own
  * `_data/harness.json`, and the rail's foreign-site scope exists to rebase
- * exactly that platform data onto another instance's site (#2263). Measured
+ * exactly that platform data onto another layer's site (#2263). Measured
  * 2026-10-14 on an IG repository: the sync refuses there ("cannot decide the
  * site's landing page", its `index.config.json` names no `landing`), and the
  * rail over the pinned data still chromed every page. Whether the chrome
@@ -900,7 +900,7 @@ export function composeIg(pages: string, folder: string, t: IgTarget, chromed = 
 export interface IgChrome {
   sync: string;
   rail: string;
-  /** The instance the checkout declares at its root: the IG whose site this is. Absent, the rail is the platform's. */
+  /** The layer the checkout declares at its root: the IG whose site this is. Absent, the rail is the platform's. */
   instance?: string;
   homeLabel: string;
 }
@@ -1059,13 +1059,13 @@ function folioSiteFor(repo: string, ownerRepo: string): ReturnType<typeof igFoli
 }
 
 /**
- * Where the checkout holds an instance: its mount path in `index.lock.json`,
- * or, for a LOCAL instance (`index.config.json` `source.local.at`), the
- * directory the checkout keeps it in. A local instance is not mounted, so the
+ * Where the checkout holds a layer: its mount path in `index.lock.json`,
+ * or, for a LOCAL layer (`index.config.json` `source.local.at`), the
+ * directory the checkout keeps it in. A local layer is not mounted, so the
  * lock does not list it. Undefined when neither names it.
  *
  * The local case is a base harness's own repository: it declares its own
- * instance as `source.local.at: "<instance>"` and lands its site on it, so
+ * layer as `source.local.at: "<instance>"` and lands its site on it, so
  * without this its own IG API sidecars (`ig-site:sidecars`, from
  * `<instance>/package.json`) read as "not provided by the landing layer" and
  * were not run, where an IG repository that mounts the base harness runs them
@@ -1101,12 +1101,12 @@ interface IgBuilt {
  * An IG repository's folio site, built from its cached AST by
  * `build-instance-site.ts` with the steps the mounted layers provide
  * ({@link igFolioSite}): the AST restored and judged, the landing layer's IG
- * API sidecars, the chrome of the landing instance, the IG and its thin
+ * API sidecars, the chrome of the landing layer, the IG and its thin
  * artefact pages composed at the root, Jekyll, the OpenAPI pages, the AST's
  * data served, the link check. No IG Publisher runs (owner, 2026-10-14: "Yes,
  * fix in platform"; ig-build-pipeline rule 1), so no Docker is needed. The root keeps `branches/`,
  * `_render-log/`, the IG workflow's `branches/` and every entry the landing
- * instance's `site.build.keep` declares; a preview goes to
+ * layer's `site.build.keep` declares; a preview goes to
  * `branches/<branch>/`, as every folio's does. The workflow's own deploy steps
  * are not mirrored: the folio site replaces them.
  */

@@ -13,7 +13,7 @@
     "tone": 10,
     "reads": "a flame — the FHIR implementation-guide harness"
   },
-  "_avatar_comment": "A flame, for FHIR's own pun on its name. Moved here from cat-harness/schemas/avatars.ts, 2026-10-05 (bean sod4 #4): an instance declares its own mark.",
+  "_avatar_comment": "A flame, for FHIR's own pun on its name. Moved here from cat-harness/schemas/avatars.ts, 2026-10-05 (bean sod4 #4): a layer declares its own mark.",
   "directories": [
     {
       "id": "fhir-harness-translations",
@@ -191,12 +191,12 @@
   },
   "_canonicalUrl_comment": "A placeholder base under this repository's own publication root, NOT a FHIR canonical: this layer publishes no FHIR artefacts, it publishes a Tool graph. It exists because a Tool node's I/O type IRIs are minted against it at load and Zod refuses a relative one. Stated rather than left blank so nobody reads it as a claim that fhir-harness is an IG.",
   "canonicalUrl": "https://litlfred.github.io/folio-assistant/fhir-harness",
-  "_name_comment": "THE NAME IS NOT AN INSTANTIATION CLAIM. `fhir-harness` is DECLARED here and is not instantiated: instantiation is a `<name>.config.json` at the REPOSITORY root (`harness-tiles`, bean `6n23`), and there is no `fhir-harness.config.json`. It also declares no `coverage.visualiser` on either directory, so by the tile rule it owes no tile and gets none — making it, measured 2026-09-23, the least harness-like thing in this repository that carries the word in its name. That is not a defect: this repository stages future instances as siblings, and `description` above says so (\"What a non-WHO implementation guide instantiates\") — a downstream IG instantiates it, this checkout does not. Written down because the name says otherwise to anyone who has not read the declaration, and `check:harness-claims` reports the pairing rather than leaving the next reader to re-derive it.",
+  "_name_comment": "THE NAME IS NOT AN INSTANTIATION CLAIM. `fhir-harness` is DECLARED here and is not instantiated: instantiation is a `<name>.config.json` at the REPOSITORY root (`harness-tiles`, bean `6n23`), and there is no `fhir-harness.config.json`. It also declares no `coverage.visualiser` on either directory, so by the tile rule it owes no tile and gets none — making it, measured 2026-09-23, the least harness-like thing in this repository that carries the word in its name. That is not a defect: this repository stages future layers as siblings, and `description` above says so (\"What a non-WHO implementation guide instantiates\") — a downstream IG instantiates it, this checkout does not. Written down because the name says otherwise to anyone who has not read the declaration, and `check:harness-claims` reports the pairing rather than leaving the next reader to re-derive it.",
   "taskIo": {
     "check:artifact-index": {
       "inputs": ["{tracked}"],
       "outputs": [],
-      "because": "measured 2026-10-01 (bean xpcu); moved from cat-harness/scripts/task-io.ts to its owning instance 2026-10-06 (bean 0r7u)"
+      "because": "measured 2026-10-01 (bean xpcu); moved from cat-harness/scripts/task-io.ts to its owning layer 2026-10-06 (bean 0r7u)"
     },
     "check:ig-annex-links": {
       "inputs": ["{tracked}"],
@@ -205,12 +205,12 @@
     },
     "ig-ast:schema:check": {
       "outputs": [],
-      "because": "measured 2026-10-01 (bean xpcu); moved from cat-harness/scripts/task-io.ts to its owning instance 2026-10-06 (bean 0r7u)"
+      "because": "measured 2026-10-01 (bean xpcu); moved from cat-harness/scripts/task-io.ts to its owning layer 2026-10-06 (bean 0r7u)"
     },
     "p2:refusals:check": {
       "inputs": ["{tracked}"],
       "outputs": [],
-      "because": "measured 2026-10-01 (bean xpcu); moved from cat-harness/scripts/task-io.ts to its owning instance 2026-10-06 (bean 0r7u)"
+      "because": "measured 2026-10-01 (bean xpcu); moved from cat-harness/scripts/task-io.ts to its owning layer 2026-10-06 (bean 0r7u)"
     }
   },
   "gateExemptions": {
@@ -267,18 +267,18 @@
           "extensions": [
             ".json"
           ],
-          "notes": "Translations land as FHIR translation extensions on Coding.display, CodeableConcept.text, etc. No injector is declared at this layer, which must stay WHO-free; an instance above it that has one says so in its own profile."
+          "notes": "Translations land as FHIR translation extensions on Coding.display, CodeableConcept.text, etc. No injector is declared at this layer, which must stay WHO-free; a layer above it that has one says so in its own profile."
         }
       ],
       "rtlSupported": true,
       "notes": "IG Publisher handles some translation via its own PO mechanism. This pipeline handles narrative and FSH."
     }
   ],
-  "_visualisers_comment": "THE VISUALISERS THIS LAYER DECLARES, for the kinds it owns (owner, 2026-10-16: \"ig-ast is fhir-harness\"). `ig-ast` covers every `ig-ast` directory in the checkout, one page per declaring instance at <locale>/fhir-harness/ig-ast/<instance>/ and a hub at the route, drawn by the `ig-ast-pages` Tool. A directory kept on a branch family and not restored is shown as unknown, never as zero.",
+  "_visualisers_comment": "THE VISUALISERS THIS LAYER DECLARES, for the kinds it owns (owner, 2026-10-16: \"ig-ast is fhir-harness\"). `ig-ast` covers every `ig-ast` directory in the checkout, one page per declaring layer at <locale>/fhir-harness/ig-ast/<instance>/ and a hub at the route, drawn by the `ig-ast-pages` Tool. A directory kept on a branch family and not restored is shown as unknown, never as zero.",
   "visualisers": [
     {"id": "ig-ast", "renderedBy": "ig-ast-pages", "coversKinds": ["ig-ast"], "subgraphs": "instance", "title": "IG ASTs", "writer": ["scripts/gen-ig-ast-pages.ts"]}
   ],
-  "_builtAtPublish_comment": "Owner, 2026-10-14 (B1; schemas/built-at-publish.ts in cat-harness). This instance's JSON-LD @context is generated by `jsonld:contexts` (cat-harness-tools scripts/gen-instance-contexts.ts) from the prefixes and content-context terms its documents use, flattened with the prefix tables of every instance it needs. Those tables are read at the CHECKOUT's pins, not at pins this instance's commit names, so no commit of it can hold the file current: it is built at publish and never committed (bean folio-assistant-63q4).",
+  "_builtAtPublish_comment": "Owner, 2026-10-14 (B1; schemas/built-at-publish.ts in cat-harness). This layer's JSON-LD @context is generated by `jsonld:contexts` (cat-harness-tools scripts/gen-instance-contexts.ts) from the prefixes and content-context terms its documents use, flattened with the prefix tables of every layer it needs. Those tables are read at the CHECKOUT's pins, not at pins this layer's commit names, so no commit of it can hold the file current: it is built at publish and never committed (bean folio-assistant-63q4).",
   "builtAtPublish": [
     {"path": "ns/context/v1.jsonld", "writer": ["jsonld:contexts"], "because": "checkout", "reason": "the prefixes and content-context terms its documents use, flattened with the jsonldPrefixes of the layers it needs at the checkout's pins"}
   ]

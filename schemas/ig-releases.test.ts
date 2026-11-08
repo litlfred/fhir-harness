@@ -43,8 +43,8 @@ describe("ig-releases/v1", () => {
   // as an ingest writes it, then read back from disk as a consumer reads it,
   // still parses -- over a SYNTHETIC repository, so this layer names no IG
   // above it. Whether a REAL IG's committed `releases.json` validates is a
-  // fact about that IG, and is tested by the instance that holds it -- an
-  // instance above this layer, which this file does not name.
+  // fact about that IG, and is tested by the layer that holds it -- a
+  // layer above this layer, which this file does not name.
   test("roundTripValidatesPointersOnly", async () => {
     const dir = mkdtempSync(join(tmpdir(), "ig-releases-"));
     try {

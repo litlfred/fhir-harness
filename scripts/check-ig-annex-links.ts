@@ -136,7 +136,7 @@ export function checkAnnexLinks(root: string): AnnexLinkReport {
 
 if (import.meta.main) {
   const ROOT = repoRootFor(join(import.meta.dir, ".."));
-  // The repository root and every instance at its top level: an index mounts
+  // The repository root and every layer at its top level: an index mounts
   // IGs beside each other; an IG repository is its own root.
   const roots = [ROOT, ...gitTopLevelDirs(ROOT).names.map((n) => join(ROOT, n))].filter((r) => existsSync(join(r, "input", "pagecontent")));
   let annexes = 0;

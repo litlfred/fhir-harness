@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * List the IG instances whose source repository carries an IG Publisher AST
+ * List the IG layers whose source repository carries an IG Publisher AST
  * cache, one line each, tab-separated: `<instance-dir> <clone-url> <label> <chrome-owner|->`.
  *
  * @module fhir-harness/scripts/stage-ast-sites
@@ -10,19 +10,19 @@
  * which IGs are rendered is DATA. Here the data is two facts the repository
  * already holds and one it asks the IG's repository for:
  *
- * - the instance has a `fhir-artifact-index/` (it is an IG instance);
+ * - the layer has a `fhir-artifact-index/` (it is an IG layer);
  * - its declaration names the IG's `repository` (`owner/repo`);
  * - that repository has a `cat/fhir-harness/fhir-ast/*` branch (`git
  *   ls-remote`; bean tlk2, the older names retired with bean oycs), i.e. a
  *   seeded AST cache `ig-cache.sh restore` can fetch.
  *
- * An instance with no AST branch is skipped AND SAID to be, on stderr: a
+ * A layer with no AST branch is skipped AND SAID to be, on stderr: a
  * preview that silently lacks an AST site cannot be told from one whose
  * pipeline broke.
  *
- * The fourth column is the instance that owns the template chrome, also as
- * data: the instance's own `fhir-artifact-index/chrome.json` if it has one,
- * else the ONE instance in the repository that holds one, else `-` (none,
+ * The fourth column is the layer that owns the template chrome, also as
+ * data: the layer's own `fhir-artifact-index/chrome.json` if it has one,
+ * else the ONE layer in the repository that holds one, else `-` (none,
  * and the page generator says the chrome is absent).
  *
  * Nothing here may know about WHO (fhir-harness/AGENTS.md).
@@ -36,7 +36,7 @@ import { readChangedFiles, siteFilter } from "../../cat-harness-tools/scripts/st
 
 const ROOT = resolve(import.meta.dir, "..", "..");
 
-/** Which instance owns the template chrome for `instance`, or undefined. */
+/** Which layer owns the template chrome for `instance`, or undefined. */
 export function chromeOwnerFor(root: string, instance: string, all: string[]): string | undefined {
   const has = (i: string) => existsSync(join(root, i, "fhir-artifact-index", "chrome.json"));
   if (has(instance)) return instance;
@@ -44,7 +44,7 @@ export function chromeOwnerFor(root: string, instance: string, all: string[]): s
   return holders.length === 1 ? holders[0] : undefined;
 }
 
-/** The IG instances under `root` that declare a source repository. */
+/** The IG layers under `root` that declare a source repository. */
 export function igInstances(root: string): { instance: string; repository: string; label: string }[] {
   const out: { instance: string; repository: string; label: string }[] = [];
   for (const e of readdirSync(root, { withFileTypes: true })) {

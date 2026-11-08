@@ -10,7 +10,7 @@ description: >
 
 # smart-launch
 
-> Skill id: `smart-launch` · Package: `fhir-client` · Instance:
+> Skill id: `smart-launch` · Package: `fhir-client` · Layer:
 > `fhir-harness`
 
 ## Provenance — read this first

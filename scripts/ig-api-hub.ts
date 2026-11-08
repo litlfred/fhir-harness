@@ -9,7 +9,7 @@
  * draws (`visualizer-loading`). The same node and loader serve three places:
  *
  * - the docs site (`gen-ig-pages`): the hub page `<page>.md`;
- * - an `igSite` instance's IG site (`stage-ig-sites`): the IG's own hub page
+ * - an `igSite` layer's IG site (`stage-ig-sites`): the IG's own hub page
  *   holds the placeholder, and {@link igApiHubNodeFill} fills it;
  * - an IG repository's own site (`ig-repo-site`): {@link writeIgApiHubSite}
  *   writes the page as HTML, in place of the IG's page holding the placeholder.

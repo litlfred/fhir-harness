@@ -1,25 +1,25 @@
 /**
- * Stage every IG whose instance records its source, one Jekyll site each
+ * Stage every IG whose layer records its source, one Jekyll site each
  * (bean `bamf`).
  *
- * An instance that ingested a published IG's navigation holds
+ * A layer that ingested a published IG's navigation holds
  * `fhir-artifact-index/menu.json` (`folio-ig-menu/v1`), and that file records
  * WHERE the menu was read: `source.of` (the IG repository) and `source.ref`
  * (the commit). That pair is the declared source, so no workflow names an IG:
  * this clones `of` at `ref`, stages it with `build-ig-site` using the IG's own
  * menu, and prints one `<instance> <jekyll source> <at>` line per IG for the
  * caller to build into `<site>/<instance>/<at>/` ({@link igSiteAt}) — `ig`
- * beside the instance's own pages, or `.` when there are none (#2738) or
- * when the instance's docs directory declares `igSite`
- * (bean `mftp`): the IG site is then the instance's root, and the docs
+ * beside the layer's own pages, or `.` when there are none (#2738) or
+ * when the layer's docs directory declares `igSite`
+ * (bean `mftp`): the IG site is then the layer's root, and the docs
  * directory's pages (artefact pages, their assets) are copied into its
  * Jekyll source to build under the IG's own menu. One site, one menu, as the
  * Publisher builds one.
  *
- * An instance with no menu, or a menu with no sushi-config source, is skipped
+ * A layer with no menu, or a menu with no sushi-config source, is skipped
  * and reported: nothing to build is not the same as a build that failed.
  *
- * The site wears the palette of the ONE `webpage` theme the instance declares
+ * The site wears the palette of the ONE `webpage` theme the layer declares
  * (bean `u3cd`), resolved through `instanceThemes` — the same answer every
  * other generator reads, so the palette has one home. None declared builds
  * with just-the-docs' default scheme and says so; two declared is refused,
@@ -49,7 +49,7 @@
  * its source instead of cloning the recorded commit — what an IG's own
  * repository runs in its CI, so the site is built from the commit being
  * pushed (bean `mftp`, owner 2026-10-05: *"build on the fork"*). The menu,
- * index and artefact pages still come from the instance's declaration here.
+ * index and artefact pages still come from the layer's declaration here.
  *
  * @covers none — a build step: it stages sites and judges no declared graph
  *
@@ -76,25 +76,25 @@ interface MenuFile extends IgMenu {
 
 export interface IgToBuild {
   instance: string;
-  /** The instance's root directory. */
+  /** The layer's root directory. */
   root: string;
   menuPath: string;
   repo: string;
   ref: string;
-  /** The instance's declared name — what `instanceThemes` keys on. */
+  /** The layer's declared name — what `instanceThemes` keys on. */
   declaredAs: string;
 }
 
 /**
- * The palette of the one webpage theme an instance declares, or why there is none.
+ * The palette of the one webpage theme a layer declares, or why there is none.
  *
- * An instance that declares no webpage theme INHERITS the nearest one along
+ * A layer that declares no webpage theme INHERITS the nearest one along
  * its `needs` chain, breadth-first — as it inherits its dependencies'
  * directories. The WHO SMART Trust IG is the case (bean `mftp`): its WHO theme moved to
  * the WHO SMART Base IG's `themes/` in the smart-* separation (`kg83`), because the theme
  * is the WHO template's rather than one IG's, and from then on the IG site
  * built in just-the-docs' default scheme. Two webpage themes at the same
- * distance are refused, as two in one instance are: nothing says which.
+ * distance are refused, as two in one layer are: nothing says which.
  */
 export function webpagePalette(repoRoot: string, instance: string): { palette?: SitePalette; note: string } {
   const seen = new Set<string>([instance]);
@@ -149,23 +149,23 @@ export function githubEditBase(repo: string): string | undefined {
   }
 }
 
-/** The instances `name` declares it `needs`, by name. */
+/** The layers `name` declares it `needs`, by name. */
 export function instanceNeeds(repoRoot: string, name: string): string[] {
   const root = instanceRootsIn(repoRoot).find((r) => (readDeclaration(r)?.name ?? basename(r)) === name);
   return root ? (readDeclaration(root)?.needs ?? []) : [];
 }
 
 /**
- * The instance's artefact index and where its artefact pages are, for the IG
+ * The layer's artefact index and where its artefact pages are, for the IG
  * site's `artifacts` page — or undefined when it holds either half not.
- * The pages are the instance's `docs/artifact/`, published one level above
+ * The pages are the layer's `docs/artifact/`, published one level above
  * the IG site (`/<instance>/artifact/` beside `/<instance>/ig/`), so a link
- * from the IG site is `../artifact/`. Read off the disk, not assumed: an
- * instance with an index and no artefact pages gets no `artifacts` page.
+ * from the IG site is `../artifact/`. Read off the disk, not assumed: a
+ * layer with an index and no artefact pages gets no `artifacts` page.
  */
 export function artifactsFor(root: string, pagesHref = "../artifact/", opts: { fullPages?: boolean } = {}): StageOptions["artifacts"] {
   const index = join(root, "fhir-artifact-index", "index.json");
-  // declared-path-literal: the staged IG instance's own docs/artifact/ under `root`, not folio-assistant's docs/
+  // declared-path-literal: the staged IG layer's own docs/artifact/ under `root`, not folio-assistant's docs/
   if (!existsSync(index) || !existsSync(join(root, "docs", "artifact"))) return undefined;
   const ix = JSON.parse(readFileSync(index, "utf-8")) as { artifacts: IndexedArtifact[] };
   if (opts.fullPages) return { list: ix.artifacts, pagesHref };
@@ -173,7 +173,7 @@ export function artifactsFor(root: string, pagesHref = "../artifact/", opts: { f
   // `gen-ig-pages` writes beside the artefact pages. Not there means those pages
   // were generated with `--full-pages`, and two halves of one site disagreeing
   // is refused rather than papered over with a page that draws nothing.
-  // declared-path-literal: the staged IG instance's own docs/artifact/ under `root`
+  // declared-path-literal: the staged IG layer's own docs/artifact/ under `root`
   if (!existsSync(join(root, "docs", "artifact", ARTIFACT_INDEX_FILE))) {
     throw new Error(
       `${join(root, "docs", "artifact", ARTIFACT_INDEX_FILE)} is not there: the artefact pages were generated with --full-pages. ` +
@@ -184,7 +184,7 @@ export function artifactsFor(root: string, pagesHref = "../artifact/", opts: { f
   // the Publisher's tab file names land on them (owner, 2026-10-14: "3. Render
   // them too"). Read off the disk: only a view the generator wrote is named.
   const own = new Set(ix.artifacts.map((a) => artifactPageName(a)));
-  // declared-path-literal: the staged IG instance's own docs/artifact/ under `root`
+  // declared-path-literal: the staged IG layer's own docs/artifact/ under `root`
   const pages = readdirSync(join(root, "docs", "artifact"))
     .filter((f) => f.endsWith(".html"))
     .map((f) => f.slice(0, -".html".length))
@@ -198,7 +198,7 @@ export function artifactsFor(root: string, pagesHref = "../artifact/", opts: { f
  * 2026-10-10: the data dictionary in the KG, dynamically loaded). The
  * directory holds `annexes.json` (`ig-annexes/v1`, {@link IgAnnexesSchema}):
  * `{ $schema, annexes: [{ page, file, columns? }] }`, with `file` relative to
- * the directory (it may name a file in a nested directory), so an annex is a node of the instance's graph rather than a
+ * the directory (it may name a file in a nested directory), so an annex is a node of the layer's graph rather than a
  * build-time product. A bare array of the same records is read too: it is
  * the shape `fhir-artifact-index/annexes.json` carried before the contract
  * had a kind (fhir-harness#33).
@@ -220,7 +220,7 @@ export function annexesIn(dir: string): StageOptions["annexes"] {
 }
 
 /**
- * The directories an instance declares as the generic `ig-annex` kind
+ * The directories a layer declares as the generic `ig-annex` kind
  * (`typologies/ig-annex.json`), absolute, in declaration order. The annex
  * files themselves may sit in a directory nested inside, declared with the
  * kind of the layer that writes them. One that is declared and absent from
@@ -239,7 +239,7 @@ export function annexDirsFor(root: string, log: (s: string) => void = (s) => con
 }
 
 /**
- * The instance's ANNEXES: every `ig-annex` directory it declares
+ * The layer's ANNEXES: every `ig-annex` directory it declares
  * ({@link annexDirsFor}), then `fhir-artifact-index/annexes.json` where one is
  * still held (the location before the kind; an IG repository commits no
  * artefact index, #124, so it declares an `ig-annex` directory instead).
@@ -261,7 +261,7 @@ export function annexesFor(root: string, log?: (s: string) => void): StageOption
  * source's values, unstyled.
  */
 export function footerFor(root: string, prefix = "../"): StageOptions["footer"] {
-  // declared-path-literal: the staged IG instance's own docs/assets/ under `root`, not folio-assistant's docs/
+  // declared-path-literal: the staged IG layer's own docs/assets/ under `root`, not folio-assistant's docs/
   const assets = join(root, "docs", "assets");
   const data = join(assets, "ig-footer.json");
   const facts = existsSync(data) ? (JSON.parse(readFileSync(data, "utf-8")) as IgFooterData) : undefined;
@@ -275,7 +275,7 @@ export function footerFor(root: string, prefix = "../"): StageOptions["footer"] 
 }
 
 /**
- * The instance's docs directory when it declares `igSite` (bean `mftp`):
+ * The layer's docs directory when it declares `igSite` (bean `mftp`):
  * built INTO the IG's own site at `/<instance>/`. Undefined otherwise — the
  * IG site then sits at `/<instance>/ig/` beside it. Read off the declaration,
  * never inferred from the menu: the WHO SMART Base IG holds a menu too, and its root is
@@ -287,12 +287,12 @@ export function igSiteDocs(root: string): string | undefined {
 }
 
 /**
- * Where the IG site sits under `/<instance>/`: `"ig"` beside the instance's own
- * pages, `"."` (the IG IS the instance's root) when its docs directory declares
- * `igSite`, or when the instance declares no `docs` directory at all, so
+ * Where the IG site sits under `/<instance>/`: `"ig"` beside the layer's own
+ * pages, `"."` (the IG IS the layer's root) when its docs directory declares
+ * `igSite`, or when the layer declares no `docs` directory at all, so
  * nothing else would answer `/<instance>/`.
  *
- * The second case is folio-assistant#2738: an IG instance that declares no
+ * The second case is folio-assistant#2738: an IG layer that declares no
  * docs, its IG was built with an `/ig` base but composed at `/<instance>/`,
  * so every menu link pointed at an `ig/` folder that was never published.
  * One answer, read by the base URL, the relative links and the composer alike.
@@ -311,8 +311,8 @@ function servedFiles(dir: string, rel = ""): string[] {
 }
 
 /**
- * The site paths a later step publishes inside an `igSite` instance's IG site:
- * each FILE of every directory the instance declares `served`. The
+ * The site paths a later step publishes inside an `igSite` layer's IG site:
+ * each FILE of every directory the layer declares `served`. The
  * served-directory mount refuses a file the site already holds, so an IG's own
  * `input/images/` copy must leave those files to it. Other files at the same
  * route stay: an IG's vendored Swagger UI at `openapi/index.html` sits beside
@@ -394,7 +394,7 @@ export function copyDocsInto(docs: string, site: string): { copied: number; merg
 }
 
 /**
- * The instance's recorded GitHub releases (`fhir-artifact-index/releases.json`),
+ * The layer's recorded GitHub releases (`fhir-artifact-index/releases.json`),
  * validated, for the IG site's `releases` page; undefined when none was
  * recorded. A file that does not validate throws: a wrong download link is
  * worse than none.
@@ -405,9 +405,9 @@ export function releasesFor(root: string): IgReleases | undefined {
 }
 
 /**
- * The upstream git source an instance's own declaration records, if any
+ * The upstream git source a layer's own declaration records, if any
  * (bean `bamf`, owner ruling 2026-10-07: declare the IG source in the
- * instance declaration, `source: { kind: "git", repository, ref }`).
+ * layer declaration, `source: { kind: "git", repository, ref }`).
  *
  * Read from the declaration's raw JSON rather than through
  * `readDeclaration`, and narrowed here: this layer must stay usable against
@@ -431,7 +431,7 @@ export function declaredSource(root: string): { repository: string; ref: string 
 }
 
 /**
- * Every instance with an IG menu whose source is recorded: in its own
+ * Every layer with an IG menu whose source is recorded: in its own
  * declaration (`source`, preferred — bean `bamf`) or, failing that, in the
  * menu's sushi-config record.
  */
@@ -472,9 +472,9 @@ if (import.meta.main) {
     console.error("--source needs --only: a local checkout is one IG's source");
     process.exit(2);
   }
-  // By directory name or by declared name: an instance declared at its checkout's
+  // By directory name or by declared name: a layer declared at its checkout's
   // root (an IG repository's own, as the WHO SMART Trust IG's main declares it) has a
-  // directory named after the checkout, not after the instance.
+  // directory named after the checkout, not after the layer.
   const build = only ? all.build.filter((b) => b.instance === only || b.declaredAs === only) : all.build;
   const skipped = all.skipped;
   if (only && build.length === 0) {
@@ -523,7 +523,7 @@ if (import.meta.main) {
     const r = stageIgSite(src, site, {
       palette: theme.palette,
       // At the root, the IG IS the site, so its base is the site's own; else
-      // it is mounted under its instance name inside the host site.
+      // it is mounted under its layer name inside the host site.
       baseurl: atRoot ? base.replace(/\/$/, "") : `${base.replace(/\/$/, "")}/${ig.instance}${at === "." ? "" : `/${at}`}`,
       plantumlJar: opt("--plantuml-jar"),
       menu: JSON.parse(readFileSync(ig.menuPath, "utf-8")) as IgMenu,
@@ -540,7 +540,7 @@ if (import.meta.main) {
     });
     console.error(`${ig.instance} (${ig.repo}@${ig.ref.slice(0, 7)}):\n${describeStage(r)}`);
     // The `site.data` overwrite record (bean `yy4u`), as a QA sidecar in the
-    // instance's results — beside `p2-refusals`, written even when empty.
+    // layer's results — beside `p2-refusals`, written even when empty.
     const qaOut = join(ig.root, "test", "results", "ig-data-overwrites.qa-results.json");
     const script = join(import.meta.dir, "build-ig-site.ts");
     mkdirSync(join(ig.root, "test", "results"), { recursive: true });

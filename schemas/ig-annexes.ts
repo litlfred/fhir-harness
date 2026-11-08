@@ -19,7 +19,7 @@ import { z } from "zod";
 import { nodeKind } from "@litlfred/cat-harness-tools/schemas/kg/node-kind.ts";
 
 export const IG_ANNEXES_TAG = "ig-annexes/v1" as const;
-/** The graph typology an IG instance declares a directory of annexes as. */
+/** The graph typology an IG layer declares a directory of annexes as. */
 export const IG_ANNEX_KIND = "ig-annex" as const;
 /** The declaration's file name inside such a directory. */
 export const IG_ANNEXES_FILE = "annexes.json" as const;

@@ -1,5 +1,5 @@
 /**
- * An IG repository's own site with no instance declaration: the closure's top,
+ * An IG repository's own site with no layer declaration: the closure's top,
  * the AST it is built from (restore gate, served data, the IG API sidecars a
  * layer above leaves), and what is never staged as the IG's source.
  * Driven by synthetic trees, so it names no real IG.

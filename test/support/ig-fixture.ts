@@ -6,7 +6,7 @@
  * `ig-build-pipeline.md` §"What this layer refuses to know about" says
  * fhir-harness names no WHO IG, and `check:fhir-harness-exclusions` enforces
  * it. This layer's tests used to borrow the committed `smart-base` and
- * `smart-trust` instances as sample data, so the layer's own suite was the
+ * `smart-trust` layers as sample data, so the layer's own suite was the
  * place it knew most about WHO (#1963). The assertions are kept. Only the
  * subject changes: the IG here is shaped like HL7's International Patient
  * Summary. The checks that were really about the COMMITTED WHO pages moved to
@@ -121,14 +121,14 @@ export const NEUTRAL_CHROME: IgChrome = {
 };
 
 export interface ScratchInstance {
-  /** The instance root: its basename is the instance name. */
+  /** The layer root: its basename is the layer name. */
   dir: string;
   index: Record<string, unknown>;
   identity?: IgIdentity;
 }
 
 /**
- * A scratch repository holding the named IG instances and one chrome owner
+ * A scratch repository holding the named IG layers and one chrome owner
  * named `chrome-owner`, each a direct child of the repository root, as
  * `repoRootFor` requires. Returns the root; the caller removes it.
  */

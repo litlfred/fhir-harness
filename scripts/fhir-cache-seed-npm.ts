@@ -19,7 +19,7 @@
  *   2. npm, account `grahamegrieve` (owner, 2026-09-30: trusted);
  *   3. a publisher's published-site repository on GitHub, for package-name prefixes
  *      the caller maps with --site-repo (none by default: which publisher owns which
- *      prefix is the instance's to say, not this layer's);
+ *      prefix is the layer's to say, not this layer's);
  *   4. a template's own repository (from FHIR/ig-registry or explicit --template-repo);
  *   5. `--mirror`: directory or git repository of `<name>#<version>.tgz` with SHA512SUMS.
  *

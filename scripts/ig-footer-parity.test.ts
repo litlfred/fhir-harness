@@ -9,7 +9,7 @@
  * `site.data.fhir.footer` the site's own pages read.
  *
  * End to end over a scratch, non-WHO IG: `gen-ig-pages` writes the artefact
- * pages of an `igSite` instance, `stageIgSite` + `copyDocsInto` build them
+ * pages of an `igSite` layer, `stageIgSite` + `copyDocsInto` build them
  * into the IG's site beside its own pages, and the footer include is rendered
  * through real Liquid with each page's OWN front matter. Every href is then
  * resolved against the page's own URL, so "the same link" means the same
@@ -36,7 +36,7 @@ import { artifactsFor, copyDocsInto, footerFor } from "./stage-ig-sites";
 const ROOT = resolve(import.meta.dir, "..", "..");
 const SCRIPT = join(ROOT, "fhir-harness/scripts/gen-ig-pages.ts");
 
-// An IG-site instance: its docs directory builds INTO the IG's own site.
+// An IG-site layer: its docs directory builds INTO the IG's own site.
 const repo = scratchRepo({ igs: { index: artifactIndex(IPS, "igs") } });
 const instance = join(repo, "igs");
 const declPath = join(instance, "igs.json");

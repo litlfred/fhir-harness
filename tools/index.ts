@@ -44,7 +44,7 @@ import type { ToolDefinition } from "@litlfred/cat-harness-tools/schemas/tools/t
 import { toolsFromFolders } from "@litlfred/cat-harness-tools/schemas/tools/tool-folders.js";
 import { declarationPathIn } from "@litlfred/cat-harness-tools/schemas/kg/cat-harness.js";
 
-/** The INSTANCE root — `<repo>/fhir-harness`, where `fhir-harness.json` lives. */
+/** The LAYER root — `<repo>/fhir-harness`, where `fhir-harness.json` lives. */
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 
 function decl(): { canonicalUrl?: string } {

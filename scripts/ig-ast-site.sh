@@ -19,7 +19,7 @@
 #   must not know.
 #
 #   --ig-root   a checkout of the IG source (the repository with sushi-config.yaml)
-#   --instance  the folio instance directory holding fhir-artifact-index/ (menu,
+#   --instance  the folio layer directory holding fhir-artifact-index/ (menu,
 #               published index for parity) — e.g. smart-trust
 #   --out       where the pages, index and parity report are written
 #

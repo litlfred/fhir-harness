@@ -1,13 +1,13 @@
 /**
- * Record an IG repository's GitHub releases in its instance's
+ * Record an IG repository's GitHub releases in its layer's
  * `fhir-artifact-index/releases.json` (`ig-releases/v1`): pointers to the
  * release's binary assets, never the bytes (bean `b8ip`, skill
  * `ig-binary-artefacts`).
  *
  *   bun run fhir-harness/scripts/ingest-ig-releases.ts --instance <dir> [--repo owner/repo] [--from releases.json] [--as-of <ISO time>]
  *
- * `--repo` defaults to the repository the instance's `menu.json` records the
- * IG source from, else the instance declaration's `repository`. `--from` reads
+ * `--repo` defaults to the repository the layer's `menu.json` records the
+ * IG source from, else the layer declaration's `repository`. `--from` reads
  * a saved GitHub API response instead of asking the API, for a run with no
  * network. Re-running rewrites the file: GitHub is the authority on what a
  * release carries, and this is a record of it on the day it was read.
@@ -28,7 +28,7 @@ export function repoSlug(s: string): string | undefined {
   return m?.[1];
 }
 
-/** Where an instance's IG source lives: its menu's recorded source, else its declaration. */
+/** Where a layer's IG source lives: its menu's recorded source, else its declaration. */
 export function instanceRepo(root: string): string | undefined {
   const menu = join(root, "fhir-artifact-index", "menu.json");
   if (existsSync(menu)) {

@@ -272,7 +272,7 @@ export function fromConceptMap(cm: Json, release: FhirRelease = detectRelease(cm
 
 // ── π : M → C ──────────────────────────────────────────────────────────
 
-/** Prefixes a table may write a system with. Callers add an instance's own (`NS_PREFIXES`). */
+/** Prefixes a table may write a system with. Callers add a layer's own (`NS_PREFIXES`). */
 export const STANDARD_PREFIXES: Readonly<Record<string, string>> = {
   skos: "http://www.w3.org/2004/02/skos/core#",
   dcterms: "http://purl.org/dc/terms/",

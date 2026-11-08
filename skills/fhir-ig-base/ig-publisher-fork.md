@@ -9,7 +9,7 @@ description: >
 
 # ig-publisher-fork
 
-> Skill id: `ig-publisher-fork` · Package: `fhir-ig-base` · Instance:
+> Skill id: `ig-publisher-fork` · Package: `fhir-ig-base` · Layer:
 > `fhir-harness`
 
 The brief for an agent taking a **local, experimental** fork of the FHIR IG

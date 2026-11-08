@@ -56,7 +56,7 @@ export const IgAstLockSchema = z
 export type IgAstLock = z.infer<typeof IgAstLockSchema>;
 
 /**
- * The checkout's AST pins by instance; empty when it holds no lock. A lock
+ * The checkout's AST pins by layer; empty when it holds no lock. A lock
  * that does not validate is an error, never "no pins": reading it as absent
  * would build from the tip while the checkout says otherwise.
  */

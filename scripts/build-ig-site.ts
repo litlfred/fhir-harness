@@ -22,7 +22,7 @@
  * | `ig-site-data` over the source | `_data/fhir.json` | `site.data.fhir.*`, only what is sourced |
  * | `input/data/*` (`.yml`/`.yaml`/`.json`/`.csv`/`.tsv`, and directories) | `_data/` | the Publisher's Jekyll reads them as `site.data.<stem>`; a key two sources define keeps the harness's and is a QA finding (bean `yy4u`) |
  * | — | `_config.yml` | just-the-docs, one site |
- * | the instance's declared `webpage` theme | `_sass/color_schemes/ig.scss` | just-the-docs' own colour-scheme mechanism, so the IG wears its palette with the machinery unchanged (bean `u3cd`) |
+ * | the layer's declared `webpage` theme | `_sass/color_schemes/ig.scss` | just-the-docs' own colour-scheme mechanism, so the IG wears its palette with the machinery unchanged (bean `u3cd`) |
  *
  * Nothing is inferred that the source does not say: a page with no `pages:`
  * entry keeps its file name as title and is reported, and every field
@@ -205,7 +205,7 @@ export interface StageResult {
   footer: IgSiteFooter;
   /** The QA report page (`qa.md`, {@link StageOptions.qaPage}): written, or why not. */
   qa?: "written" | "the IG's source holds its own qa page";
-  /** The colour scheme written from the instance's palette; undefined when none was declared. */
+  /** The colour scheme written from the layer's palette; undefined when none was declared. */
   scheme: ColourScheme | undefined;
   siteData: IgSiteDataResult;
   /** The AST's resources as `site.data.canonicals` and `site.data["<Type>-<id>"]`; undefined when there is no AST. */
@@ -905,7 +905,7 @@ export function composeIgSite(
     put(join(docsRoot, "_layouts", `${layoutName}.html`), thinIgLayout(assetsAt, tocNav, label?.replace(/&quot;/g, '"').replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&"), topBar, incNames.has(IG_FOOTER_INCLUDE) ? `ig/${instance}/${IG_FOOTER_INCLUDE}` : undefined));
     // The shared page layout's two files, unless the staged site brings them
     // (the artefact pages' generator writes them beside `ig-artifact.css`).
-    // The thin layout links `ig-artifact.css` too; an IG whose instance has no
+    // The thin layout links `ig-artifact.css` too; an IG whose layer has no
     // artefact pages (an IG with no docs of its own, folio-assistant#2738) had none, so
     // its pages lost their styling.
     for (const [rel, src] of [[PAGE_LAYOUT_CSS_FILE, PAGE_LAYOUT_CSS_SOURCE], [PAGE_LAYOUT_JS_FILE, PAGE_LAYOUT_JS_SOURCE], [IG_THIN_CSS_FILE, IG_THIN_CSS_SOURCE]] as const) {
@@ -1204,10 +1204,10 @@ export interface StageOptions {
   menu?: IgMenu;
   /** `owner/repo@ref` for Jekyll's remote-theme plugin, instead of the `just-the-docs` gem. */
   remoteTheme?: string;
-  /** The palette of the theme the IG's instance declares for its web pages; none, no scheme. */
+  /** The palette of the theme the IG's layer declares for its web pages; none, no scheme. */
   palette?: SitePalette;
   /**
-   * The instance's artefact index and where its artefact pages are, relative
+   * The layer's artefact index and where its artefact pages are, relative
    * to this site. Given, an `artifacts` page is written — the Publisher's
    * `artifacts.html` — linking each artefact to `<pagesHref><stem>.html`.
    * Absent, this build holds no `artifacts.html`, so a link or menu item to
@@ -1248,7 +1248,7 @@ export interface StageOptions {
    * ANNEXES: tabular content a page loads when it is opened (owner,
    * 2026-10-10: the data dictionary "should be in the KG but it should also be
    * dynamically loaded", not the full Excel). Each names the page it belongs
-   * on and a JSON file in the instance's graph shaped as `{ title, source,
+   * on and a JSON file in the layer's graph shaped as `{ title, source,
    * sheets: [{ name, columns: [{ key, label }], rows: string[][] }] }`; the
    * file is copied to `assets/annex/` and a mount point is appended to the
    * page, rendered by `assets/js/ig-annex.js`. Generic: this layer knows a
@@ -1379,7 +1379,7 @@ export interface ArtifactVariables {
  *   for the IG Publisher's NEXT build, so its surface takes two builds to
  *   converge; `_data/` is read by the same Jekyll run.
  *
- * Source: the instance's artefact index — the Publisher's post-processed
+ * Source: the layer's artefact index — the Publisher's post-processed
  * output. `url.page` is this site's page; `url.json` is where the Publisher
  * published the resource's JSON. There is no `url.xml` or `url.ttl`: under P2
  * only JSON is rendered, and since 2026-10-23 XML and Turtle are not linked
@@ -1907,7 +1907,7 @@ function stageDeclaredSource(igSrc: string, out: string, opts: StageOptions): St
     }
     for (const a of (opts.annexes ?? []).filter((x) => x.page === f)) {
       annexed.push(`${f} <- ${basename(a.src)}`);
-      // A MARKDOWN annex is content the instance's graph holds for this page
+      // A MARKDOWN annex is content the layer's graph holds for this page
       // (a cross-reference section, say) and is appended as written. A JSON
       // one is a table, loaded when the page opens.
       if (a.src.endsWith(".md")) {

@@ -9,7 +9,7 @@ export default toolFactory((t) =>
       "For every visualiser an instance declares `renderedBy: ig-ast-pages`, write the hub at `<locale>/<harness>/<id>/` and, with `subgraphs: \"instance\"`, one page per instance that declares an `ig-ast` directory, at `…/<instance>/`. Each lists the ASTs the directory holds: the IG's package id, resources in total and by type, dependency edges (resolved inside the IG, by origin, by kind), the rebuild plan when one is recorded, and what stays provisional. A declared directory not on disk — a branch-family member not restored, which is the normal case — is reported UNKNOWN with the family it would be restored from, never as zero ASTs. `ig-ast-list` summarises one AST it is handed; this Tool needs no AST path.",
     install: { none: true },
     invoke: { shell: "bun run fhir-harness/scripts/gen-ig-ast-pages.ts" },
-    // What this Tool CAN draw. An instance declares that it DOES, in its own
+    // What this Tool CAN draw. A layer declares that it DOES, in its own
     // `visualisers`, and `check:visualiser-routes` checks the kind is listed here.
     renders: ["ig-ast"],
     io: {

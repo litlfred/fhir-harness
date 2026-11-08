@@ -11,7 +11,7 @@ model, not `smart.who.int` canonicals, not the DAK API's names or the
 post-processing that produces it, not the pre/post-processing steps, and
 nothing from the `authoring-who-smart-guidelines` package. **Rendering** the
 sidecars an IG publishes is generic and is here, as the IG API
-(`ig-api-views.ts`); a WHO instance passes the "DAK API" names in as
+(`ig-api-views.ts`); a WHO layer passes the "DAK API" names in as
 configuration.
 
 The import direction is the enforceable half: the WHO package may reference
@@ -72,9 +72,9 @@ repository's site route"; `ig-repo-site.ts`, `ast-to-artifact-index.ts`), and
 its entry in the `ig-ast` viewer (`gen-ig-ast-pages.ts`), which it inherits
 through `needs`. Its `fhir-artifact-index/` (index, menu, releases) is written
 at publish by `ig-index:build` (`build-ig-indexes.ts`) from the same AST and
-the IG's own `sushi-config.yaml`, so an IG instance commits none. **Read that
+the IG's own `sushi-config.yaml`, so an IG layer commits none. **Read that
 skill and the IG's own AGENTS.md before proposing a folder, page or
-declaration for an IG.** An IG instance that still declares such directories
+declaration for an IG.** An IG layer that still declares such directories
 does so only because an index still mounts files it commits: an exception, not
 a pattern to copy. The one directory an IG repository does declare for this
 layer is an `ig-annex` directory of annexes its pages load on demand, data no

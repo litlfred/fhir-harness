@@ -9,7 +9,7 @@ export default toolFactory((t) =>
       "Write `<instance>/docs/` — an index page, one page per artefact, a page per over-large category and per menu group — from `fhir-artifact-index/index.json` (and `menu.json` when ingested), styled by the template chrome an owning instance ingested. For an instance whose docs declare `igSite` it writes no index, menu or category pages — the IG site's own replace them — and only a front-matter `artifacts.md` naming the Tool that drew it. `build-ig-site` renders an IG's narrative pages from source; this Tool writes the artefact pages for every IG instance (`stage-ig-sites` copies them in).",
     install: { none: true },
     invoke: { shell: "bun run fhir-harness/scripts/gen-ig-pages.ts" },
-    // What this Tool CAN draw. An instance declares that it DOES, in its
+    // What this Tool CAN draw. A layer declares that it DOES, in its
     // own `visualisers` (`renderedBy: ig-pages`), and
     // `check:visualiser-routes` checks the covered kind is listed here.
     renders: ["fhir-artifact-index"],

@@ -1,7 +1,7 @@
 #!/usr/bin/env bun
 /**
- * Build each IG instance's `fhir-artifact-index/` at publish, from the IG's
- * cached AST and its own source, so no IG instance commits one (issue #124).
+ * Build each IG layer's `fhir-artifact-index/` at publish, from the IG's
+ * cached AST and its own source, so no IG layer commits one (issue #124).
  *
  * @module fhir-harness/scripts/build-ig-indexes
  * @covers fhir-artifact-index
@@ -13,16 +13,16 @@
  * removed when the run ends, fails or is cancelled (`withWorkDir`).
  * ```
  *
- * ## Which instances
+ * ## Which layers
  *
- * An IG instance declares nothing of this layer's (AGENTS.md). It is found
+ * An IG layer declares nothing of this layer's (AGENTS.md). It is found
  * the way the `ig-ast` viewer finds one (`gen-ig-ast-pages.ts`): it needs
  * this layer, directly or through a layer above it, it declares a
  * `repository`, and that repository carries an AST branch family
- * ({@link AST_FAMILY_PREFIXES}). An instance missing any of the three is
+ * ({@link AST_FAMILY_PREFIXES}). A layer missing any of the three is
  * skipped, and the run says which and why.
  *
- * ## What it writes, per instance, at the paths every reader already uses
+ * ## What it writes, per layer, at the paths every reader already uses
  *
  * - `index.json`: `ast-to-artifact-index.ts` over the AST `ig-cache.sh
  *   restore` lays down from the branch family. The AST is a cache, and the
@@ -76,15 +76,15 @@
  * The published links (`published.json`, `.html`, ...) need the address the
  * IG is published at, which a canonical URL is not ({@link publishedBase}). It is
  * the committed copy's `source.of` when that names a published site (the rule
- * `ig-ast-site.sh` follows), else the instance declaration's `iriBase`, else
+ * `ig-ast-site.sh` follows), else the layer declaration's `iriBase`, else
  * none, and the run says which.
  *
  * The SITE decides the owner, not the declaration. A declaration names one
  * repository and one `iriBase`, and both travel with every copy of the
- * instance. A checkout that mounts the instance from a different repository
+ * layer. A checkout that mounts the layer from a different repository
  * (a sync of the same IG to another owner, say) is building that repository's
  * site. So the repository is the one the checkout's `index.lock.json` mounts
- * the instance from, when it names one, and the IG is cloned from there. An
+ * the layer from, when it names one, and the IG is cloned from there. An
  * `iriBase` that is the declared repository's own GitHub Pages address is
  * re-based on the mounted repository's ({@link rebaseOnMount}). Any other
  * `iriBase` is a site the IG chose, and is kept.
@@ -119,16 +119,16 @@ import { astPinsIn, IG_AST_LOCK_FILE, type IgAstPin } from "../schemas/ig-ast-lo
 
 const HERE = import.meta.dir;
 
-/** One IG instance this run builds the index of. */
+/** One IG layer this run builds the index of. */
 export interface IgTarget {
   name: string;
   root: string;
-  /** The repository the checkout mounts the instance from, else the declared one. */
+  /** The repository the checkout mounts the layer from, else the declared one. */
   repository: string;
-  /** The repository the instance's declaration names, when the mount differs from it. */
+  /** The repository the layer's declaration names, when the mount differs from it. */
   declaredRepository?: string;
   /**
-   * The commit the checkout's lock pins the instance at. The IG is cloned AT
+   * The commit the checkout's lock pins the layer at. The IG is cloned AT
    * this commit, so `menu.json`'s `source.ref` is the pin and not whatever the
    * repository's default branch says at build time (a live read of an unpinned
    * branch made the published index move without a re-pin, bean `fwtz`).
@@ -138,17 +138,17 @@ export interface IgTarget {
   branches: string[];
 }
 
-/** An instance that is not built, and why. */
+/** A layer that is not built, and why. */
 export interface Skipped {
   name: string;
   why: string;
 }
 
 /**
- * The instance declaration at `root`: the file that names itself, found as
+ * The layer declaration at `root`: the file that names itself, found as
  * every reader finds one (`declarationPathIn`), never `<directory>.json`. A
- * checkout's directory is not its instance's name: CI checks an IG repository
- * out at `fa/`, where `fa/fa.json` is absent, so the IG read as an instance
+ * checkout's directory is not its layer's name: CI checks an IG repository
+ * out at `fa/`, where `fa/fa.json` is absent, so the IG read as a layer
  * named `fa` that needs nothing, and no index was built for it.
  */
 function declarationOf(root: string): Record<string, unknown> | undefined {
@@ -163,7 +163,7 @@ function declarationOf(root: string): Record<string, unknown> | undefined {
 const OWNER_REPO = /^[\w.-]+\/[\w.-]+$/;
 
 /**
- * An instance name this run will use as a directory under `--work`: one path
+ * A layer name this run will use as a directory under `--work`: one path
  * segment of letters, digits, `.`, `_` and `-`, starting with a letter or digit.
  * Any other name is refused (skipped), never rewritten.
  */
@@ -174,7 +174,7 @@ export function isSafeInstanceName(name: string): boolean {
   return safeSegment(name) !== undefined && INSTANCE_NAME.test(name);
 }
 
-/** One instance's mount in the checkout's `index.lock.json`: its repository and, when the lock records one, the commit it is pinned at. */
+/** One layer's mount in the checkout's `index.lock.json`: its repository and, when the lock records one, the commit it is pinned at. */
 export interface LockedMount {
   repository: string;
   sha?: string;
@@ -182,7 +182,7 @@ export interface LockedMount {
 
 const SHA = /^[0-9a-f]{40}$/;
 
-/** Each instance's mount as the checkout's `index.lock.json` records it; empty when there is no lock. */
+/** Each layer's mount as the checkout's `index.lock.json` records it; empty when there is no lock. */
 export function lockedMounts(checkout: string): Map<string, LockedMount> {
   const out = new Map<string, LockedMount>();
   try {
@@ -198,12 +198,12 @@ export function lockedMounts(checkout: string): Map<string, LockedMount> {
   return out;
 }
 
-/** Each instance's repository as the checkout's `index.lock.json` mounts it; empty when there is no lock. */
+/** Each layer's repository as the checkout's `index.lock.json` mounts it; empty when there is no lock. */
 export function lockedRepositories(checkout: string): Map<string, string> {
   return new Map([...lockedMounts(checkout)].map(([k, v]) => [k, v.repository]));
 }
 
-/** The checkout's instances, as the inheritance needs them, with their roots. The repository is the mounted one, else the declared one. */
+/** The checkout's layers, as the inheritance needs them, with their roots. The repository is the mounted one, else the declared one. */
 export function instancesIn(checkout: string): (InstanceFacts & { root: string; declaredRepository?: string; sha?: string })[] {
   const out: (InstanceFacts & { root: string; declaredRepository?: string; sha?: string })[] = [];
   const locked = lockedMounts(checkout);
@@ -220,7 +220,7 @@ export function instancesIn(checkout: string): (InstanceFacts & { root: string; 
   return out.sort((a, b) => a.name.localeCompare(b.name));
 }
 
-/** The IG instances to build, and every instance that needs this layer but is skipped. */
+/** The IG layers to build, and every layer that needs this layer but is skipped. */
 export function igTargets(instances: readonly (InstanceFacts & { root: string; declaredRepository?: string; sha?: string })[], list: BranchLister, only?: string): { targets: IgTarget[]; skipped: Skipped[] } {
   const targets: IgTarget[] = [];
   const skipped: Skipped[] = [];
@@ -272,7 +272,7 @@ export function rebaseOnMount(iri: string, declared: string | undefined, mounted
 
 /**
  * An artefact the index calls `materialized` must have its bytes under the
- * instance root, because that is where `check:materialized-fixity` looks.
+ * layer root, because that is where `check:materialized-fixity` looks.
  * Built at publish, the compiled AST sits in a temporary clone that is gone
  * when the index is read, so such an artefact is only `referenced`: the
  * published page is where it is, and the note keeps what it was built from.
@@ -623,7 +623,7 @@ export function buildOne(t: IgTarget, work: string, log: (s: string) => void, ch
  * Run `fn` in the work directory: the one `--work` names, kept, or else a new
  * `ig-index-*` under `os.tmpdir()`, removed when `fn` returns or throws, or
  * the run is cancelled (SIGINT, SIGTERM). Every output is copied out of it
- * into the instance, so nothing is lost; a directory left behind holds a clone
+ * into the layer, so nothing is lost; a directory left behind holds a clone
  * per IG, and those filled a session's disk (measured 2026-11-05: 447 MB each).
  */
 export function withWorkDir<T>(given: string | undefined, fn: (work: string) => T): T {

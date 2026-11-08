@@ -17,7 +17,7 @@ governs:
 
 # ig-build-pipeline
 
-> Skill id: `ig-build-pipeline` · Package: `fhir-ig-base` · Instance:
+> Skill id: `ig-build-pipeline` · Package: `fhir-ig-base` · Layer:
 > `fhir-harness`
 
 The **base**: run the FHIR IG Publisher over an IG, with no pre-processing and
@@ -33,7 +33,7 @@ sushi-config.yaml   ┘  →  IG Publisher (JVM, Docker)  →  output/
                                                         →  publish to a pages branch
 ```
 
-The publish target (the pages branch) is declared by the instance.
+The publish target (the pages branch) is declared by the layer.
 
 SUSHI and the Publisher both need `packages.fhir.org`. Where it is refused,
 see [`fhir-validation`](../content/fhir-ig-authoring/fhir-validation.md)
@@ -408,7 +408,7 @@ must contain no reference to:
   `dak-api.html` hub page and its `DAK_API_*` markers, and the
   post-processing that writes the sidecars. **Rendering** the sidecars an IG
   publishes is generic and IS here, as the **IG API** (`ig-api-views.ts`).
-  A WHO instance passes its names in as configuration (`--sidecar-label`,
+  A WHO layer passes its names in as configuration (`--sidecar-label`,
   `--api-hub-page`, `--api-hub-markers`, `--api-placeholder`); nothing here
   writes them down. The per-artefact `.schema.json`, `.displays.json` and
   `.openapi.json` sidecars are that API, not DAK's.
@@ -498,4 +498,4 @@ position on whether an overlay exists, and must not gain a flag for one — a
 
 `publisher.jar` is re-downloaded from the **latest** release on every WHO build,
 so two builds of an unchanged commit can differ. If this layer pins instead, say
-so in the instance's declaration and make the pin visible in the QA record.
+so in the layer's declaration and make the pin visible in the QA record.

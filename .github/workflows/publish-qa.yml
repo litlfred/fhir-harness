@@ -1,7 +1,7 @@
-# Publish this instance's QA results (its declared `qa` directory,
+# Publish this layer's QA results (its declared `qa` directory,
 # test/results/) to the cat/cat-harness/qa-reports branch of THIS repository,
 # keyed by commit: main/<sha> on a push to main, pr/<n>/<sha> on a pull
-# request. An index that mounts this instance reads them at the commit its
+# request. An index that mounts this layer reads them at the commit its
 # lock pins. The branch is created on the first run.
 #
 # Bean folio-assistant-7mwa; owner, 2026-11-03, "2. Each layer publishes".

@@ -13,7 +13,7 @@ description: >
 
 # pcf-consent
 
-> Skill id: `pcf-consent` · Package: `fhir-ig-authoring` · Instance:
+> Skill id: `pcf-consent` · Package: `fhir-ig-authoring` · Layer:
 > `fhir-harness` · Modules:
 > [`schemas/pcf-consent.ts`](../../../schemas/pcf-consent.ts) (`consentToOdrl`,
 > `decide`, `evaluatePcfPolicy`, `PCF_IMPLICIT_POLICY_SETS`),

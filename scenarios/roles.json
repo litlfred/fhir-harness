@@ -1,5 +1,5 @@
 {
-  "_comment": "Roles this instance owns outright (`roles`: `fhir-modeller`, `ig-publisher-service`, moved here from cat-harness in placement PR4, bean 4fv8) and role EXTENSIONS by id (`extensions`, placement PR0b; PR1, bean ybwt). Each extension adds this instance's skills to a role the harness declares, so the edge points DOWN: the harness's scenarios/roles.json names no skill that lives above it. Schema: cat-harness/schemas/process/role-graph.ts; overlay: cat-harness/schemas/process/scenario-overlay.ts.",
+  "_comment": "Roles this layer owns outright (`roles`: `fhir-modeller`, `ig-publisher-service`, moved here from cat-harness in placement PR4, bean 4fv8) and role EXTENSIONS by id (`extensions`, placement PR0b; PR1, bean ybwt). Each extension adds this layer's skills to a role the harness declares, so the edge points DOWN: the harness's scenarios/roles.json names no skill that lives above it. Schema: cat-harness/schemas/process/role-graph.ts; overlay: cat-harness/schemas/process/scenario-overlay.ts.",
   "name": "fhir-harness",
   "roles": [
     {

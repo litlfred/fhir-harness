@@ -17,14 +17,14 @@
  *   bare array `annexesIn` still reads is the shape `fhir-artifact-index/
  *   annexes.json` carried before the kind (fhir-harness#33); an `ig-annex`
  *   directory is newer than that, so it has no reason to hold it.
- * - **every file is held, inside its instance** — `file` is relative to the
- *   directory, and resolves to a file of the same instance. One that is not
+ * - **every file is held, inside its layer** — `file` is relative to the
+ *   directory, and resolves to a file of the same layer. One that is not
  *   held is the failure `annexesIn` throws on at build time, found here first;
- *   one outside the instance is a file an index mounting it does not carry.
+ *   one outside the layer is a file an index mounting it does not carry.
  * - **no record twice, no column twice** — two records for one page and one
  *   file mount the same table twice; a column named twice is shown twice.
  * - **the page** — `page` names a file under the IG's `input/pagecontent/`.
- *   It is judged when the instance holds that directory; an index mounts only
+ *   It is judged when the layer holds that directory; an index mounts only
  *   declared directories, so there it is NOT verified, and the result says
  *   so rather than counting it.
  *
@@ -48,7 +48,7 @@ export interface IgAnnexJudgement {
   /** Records the declaration holds (0 when it could not be read). */
   records: number;
   findings: string[];
-  /** Pages named and not verified, because the instance holds no `input/pagecontent/`. */
+  /** Pages named and not verified, because the layer holds no `input/pagecontent/`. */
   pagesUnverified: string[];
 }
 
@@ -68,7 +68,7 @@ function within(root: string, abs: string): boolean {
 }
 
 /**
- * Judge ONE `ig-annex` directory of the instance at `instanceRoot`.
+ * Judge ONE `ig-annex` directory of the layer at `instanceRoot`.
  * `instanceRoot` bounds where a record's `file` may point, and is where the
  * IG's `input/pagecontent/` is looked for.
  */
@@ -117,7 +117,7 @@ export function judgeIgAnnexDir(instanceRoot: string, dir: string): IgAnnexJudge
 }
 
 /**
- * Every `ig-annex` directory the instance at `instanceRoot` declares, judged.
+ * Every `ig-annex` directory the layer at `instanceRoot` declares, judged.
  * A directory declared and absent from this checkout is returned in `absent`
  * — said, never read as empty and never counted as judged.
  */
