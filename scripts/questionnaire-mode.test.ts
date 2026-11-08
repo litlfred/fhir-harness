@@ -14,11 +14,11 @@ const dob = { linkId: "2", type: "date", text: "Date of birth", code: [{ code: "
 const text = (o: object) => JSON.stringify(o, null, 2);
 
 describe("check: findings in the registry's shape", () => {
-  test("errors are syntax only", () => {
+  test("checkErrorsSyntaxOnly", () => {
     expect(check(text(q(name)), "{nope")).toEqual([{ severity: "error", message: expect.stringMatching(/^not JSON/) }]);
     expect(check(text(q(name)), '{"resourceType":"Patient"}')[0].severity).toBe("error");
   });
-  test("warnings report only what the edit introduces", () => {
+  test("checkWarnsIntroducedOnly", () => {
     const before = text(q(name, { ...dob, enableWhen: [{ question: "9" }] }));
     const after = text(q(name, { ...dob, linkId: "1", enableWhen: [{ question: "9" }] }));
     expect(check(before, after)).toEqual([
@@ -27,7 +27,7 @@ describe("check: findings in the registry's shape", () => {
     ]);
     expect(check(before, before)).toEqual([]);
   });
-  test("a wireframe adds fidelity warnings", () => {
+  test("wireframeAddsFidelityWarning", () => {
     const f = check(text(q(name, dob)), text(q(dob, name)), { wireframe: '<input data-element="name"><input data-element="DE2">' });
     expect(f).toHaveLength(1);
     expect(f[0].message).toContain("order differs");
@@ -35,11 +35,11 @@ describe("check: findings in the registry's shape", () => {
 });
 
 describe("the JSON Patch", () => {
-  test("a changed item text is one replace, annotated with its linkId", () => {
+  test("changedTextOneReplace", () => {
     const p = annotatedPatch(q(name, dob), q(name, { ...dob, text: "Birth date" }));
     expect(p).toEqual([{ op: "replace", path: "/item/1/text", value: "Birth date", linkId: "2" }]);
   });
-  test("added and removed items, and keys", () => {
+  test("addedRemovedItemsAndKeys", () => {
     expect(jsonPatch(q(name), q(name, dob))).toEqual([{ op: "add", path: "/item/1", value: dob }]);
     expect(jsonPatch(q(name, dob), q(name))).toEqual([{ op: "remove", path: "/item/1" }]);
     expect(jsonPatch({ a: 1, "b/c": 2 }, { a: 1 })).toEqual([{ op: "remove", path: "/b~1c" }]);
@@ -48,7 +48,7 @@ describe("the JSON Patch", () => {
 
 describe("issue: the change request", () => {
   const cfg = { repo: "o/ig", branch: "main", suggest: { source: "input/fsh/intake.fsh#L12", slug: "example.ig" } };
-  test("title and body, and no template: GitHub drops a body sent with an issue form", () => {
+  test("issueTitleAndBodyOnly", () => {
     const r = issue(text(q(name, dob)), text(q(name, { ...dob, required: true })), { repo: "o/ig", branch: "dev", config: cfg, edited: "wireframe", why: "Birth date is mandatory.", page: "https://o.github.io/ig/Questionnaire-intake-form.html" });
     expect(Object.keys(r).sort()).toEqual(["body", "title"]);
     expect(r.title).toBe("Suggested edit [example.ig]: Questionnaire/intake");
@@ -63,12 +63,12 @@ describe("issue: the change request", () => {
     const patch = /```json\n([\s\S]*?)\n```/.exec(r.body)![1]!;
     expect(JSON.parse(patch)).toEqual([{ op: "add", path: "/item/1/required", value: true, linkId: "2" }]);
   });
-  test("the side defaults to the Questionnaire", () => {
+  test("sideDefaultsQuestionnaire", () => {
     const r = issue(text(q(name)), text(q({ ...name, text: "Full name" })));
     expect(r.body).toContain("the Questionnaire — bring the L2 wireframe in line with it");
     expect(r.title).toBe("Suggested edit: Questionnaire/intake");
   });
-  test("ctx.sourcePath names the source, anchored on the Instance line of ctx.sourceText", () => {
+  test("sourceAnchoredOnInstanceLine", () => {
     const fsh = "Alias: $x = http://x\n\nInstance:   intake\nInstanceOf: Questionnaire\n";
     const r = issue(text(q(name)), text(q({ ...name, text: "Full name" })), { repo: "o/ig", branch: "main", config: cfg, sourcePath: "input/fsh/q.fsh", sourceText: fsh });
     expect(r.body).toContain("**Source:** [input/fsh/q.fsh#L3](https://github.com/o/ig/blob/main/input/fsh/q.fsh#L3)");
@@ -76,15 +76,15 @@ describe("issue: the change request", () => {
     expect(plain.body).toContain("**Source:** [input/fsh/q.fsh](https://github.com/o/ig/blob/main/input/fsh/q.fsh)");
     expect(instanceLine(undefined, "intake")).toBeUndefined();
   });
-  test("withWhy appends the Why as the runtime does, once", () => {
+  test("withWhyAppendsOnce", () => {
     expect(withWhy("body", "  Reads better.  ")).toBe("body\n\n**Why:**\nReads better.\n");
     expect(withWhy("body", "")).toBe("body");
     expect(withWhy(withWhy("body", "Reads better."), "Reads better.")).toBe("body\n\n**Why:**\nReads better.\n");
   });
-  test("an unchanged item list says so", () => {
+  test("unchangedItemsSaysSo", () => {
     expect(itemTable(q(name), { ...q(name), title: "New" })).toStartWith("No item changed");
   });
-  test("the fallback link mirrors the runtime: title and body, the clipboard past the cap", () => {
+  test("fallbackLinkMirrorsRuntime", () => {
     const small = issueUrl("o/r", issue(text(q(name)), text(q({ ...name, text: "Full name" }))));
     expect(small.clipboard).toBeUndefined();
     const u = new URL(small.url);
@@ -132,7 +132,7 @@ function page() {
 
 describe("open: the mode the runtime calls", () => {
   const original = text(q(name, dob));
-  test("an untouched editor hands back ctx.text, so the runtime sees no change", async () => {
+  test("untouchedEditorHandsBack", async () => {
     const { host } = page();
     const said: string[] = [];
     const h = open(host, { text: original, status: (m: string) => said.push(m) });
@@ -141,7 +141,7 @@ describe("open: the mode the runtime calls", () => {
     h.dispose();
     expect(host.kids).toHaveLength(0);
   });
-  test("the raw JSON edit and the side chosen reach issue() through the session; the Why is ctx's, not the DOM's", async () => {
+  test("rawEditReachesIssue", async () => {
     const { host } = page();
     const ctx = { text: original, sourcePath: "input/fsh/intake.fsh", sourceText: "Instance: intake\n", why: "Reads better.", repo: "o/ig", status: () => {}, config: { suggest: {} } };
     const h = open(host, ctx);
@@ -162,17 +162,17 @@ describe("open: the mode the runtime calls", () => {
     expect(r.body).toContain('"path": "/item/1/text"');
     h.dispose();
   });
-  test("text that is not a Questionnaire is refused, which the runtime reports", () => {
+  test("refusesNonQuestionnaire", () => {
     expect(() => open(page().host, { text: "# a page", src: "x.json" })).toThrow("x.json is not a Questionnaire as JSON");
   });
 });
 
 describe("the Form Builder hand-back (formbuilder-lhcforms API.md)", () => {
   const Q = q(name);
-  test("initialized is answered with the Questionnaire", () => {
+  test("initializedAnsweredWithQ", () => {
     expect(builderStep({ status: "opening" }, { type: "initialized" }, Q)).toEqual({ state: { status: "editing" }, reply: { type: "initialQuestionnaire", questionnaire: Q } });
   });
-  test("updates and close keep the latest; cancel and abort say so", () => {
+  test("updatesKeepLatest", () => {
     let s = builderStep({ status: "editing" }, { type: "updateQuestionnaire", questionnaire: q(dob) }, Q).state;
     expect(s.latest).toEqual(q(dob));
     s = builderStep(s, { type: "closed", questionnaire: q(name, dob) }, Q).state;
@@ -182,7 +182,7 @@ describe("the Form Builder hand-back (formbuilder-lhcforms API.md)", () => {
     expect(builderStep(s, { type: "aborted", error: "bad" }, Q).state).toMatchObject({ status: "aborted", error: "bad" });
     expect(builderStep(s, { type: "other" }, Q)).toEqual({ state: s });
   });
-  test("the builder is opened with referrer and fhirVersion, on the same site", () => {
+  test("builderOpenedSameSite", () => {
     const u = new URL(builderUrl("assets/formbuilder/index.html", "https://o.github.io/ig/Questionnaire-intake-form.html"));
     expect(u.origin + u.pathname).toBe("https://o.github.io/ig/assets/formbuilder/index.html");
     expect(u.searchParams.get("referrer")).toBe("https://o.github.io/ig/Questionnaire-intake-form.html");

@@ -33,21 +33,21 @@ function chrome(over: Partial<IgChrome> = {}): IgChrome {
 }
 
 describe("the schema", () => {
-  test("a chrome with no layer is refused — provenance is the point of the file", () => {
+  test("refusesChromeWithNoLayer", () => {
     expect(IgChromeSchema.safeParse(chrome({ layers: [] })).success).toBe(false);
   });
 
-  test("a token name without its leading `--` is refused", () => {
+  test("refusesTokenWithoutDashes", () => {
     const bad = chrome({ tokens: [{ name: "navbar-bg-color", value: "#00477d", from: "x", overrides: [] }] });
     expect(IgChromeSchema.safeParse(bad).success).toBe(false);
   });
 
-  test("a layer with a truncated ref is refused — a 4-character sha is not provenance", () => {
+  test("refusesTruncatedLayerRef", () => {
     const bad = chrome({ layers: [{ ...chrome().layers[0]!, ref: "849a" }] });
     expect(IgChromeSchema.safeParse(bad).success).toBe(false);
   });
 
-  test("a `malformed` conflict may name ONE site, which a min(2) would have made unrepresentable", () => {
+  test("acceptsMalformedConflictWithOneSite", () => {
     const one = chrome({
       conflicts: [
         {
@@ -61,7 +61,7 @@ describe("the schema", () => {
     expect(IgChromeSchema.safeParse(one).success).toBe(true);
   });
 
-  test("a conflict with no site at all is still refused", () => {
+  test("refusesConflictWithNoSite", () => {
     const none = chrome({
       conflicts: [{ token: "--x", kind: "malformed", detail: "d", sites: [] }],
     });
@@ -70,7 +70,7 @@ describe("the schema", () => {
 });
 
 describe("tokensByPackage", () => {
-  test("counts what each layer actually WON, not what it declared", () => {
+  test("countsTokensWonPerPackage", () => {
     const c = chrome({
       tokens: [
         { name: "--a", value: "1", from: "acme.template.root", overrides: [{ package: "fhir.base.template", value: "0" }] },
@@ -84,13 +84,13 @@ describe("tokensByPackage", () => {
 });
 
 describe("chromeCss", () => {
-  test("never emits a bare `:root` — these pages are ours, not the IG's", () => {
+  test("neverEmitsBareRoot", () => {
     const css = chromeCss(chrome(), ".st-ig");
     expect(css).toContain(".st-ig {");
     expect(css).not.toMatch(/(^|[\s,}]):root\s*\{/);
   });
 
-  test("a conflicted token is EMITTED with a note, never dropped", () => {
+  test("emitsConflictedTokenWithNote", () => {
     const c = chrome({
       tokens: [{ name: "--toc-box-border", value: "navy", from: "acme.template.root", overrides: [] }],
       conflicts: [
@@ -112,7 +112,7 @@ describe("chromeCss", () => {
     expect(css).toContain("shape conflict");
   });
 
-  test("a mirrored rule is scoped too, so `#publish-box` cannot escape onto the site", () => {
+  test("scopesMirroredRule", () => {
     const c = chrome({
       rules: [
         {
@@ -127,7 +127,7 @@ describe("chromeCss", () => {
 });
 
 describe("tokenOf", () => {
-  test("finds a token, and returns undefined rather than a default for one that is absent", () => {
+  test("tokenOfFindsOrUndefined", () => {
     expect(tokenOf(chrome(), "--navbar-bg-color")?.value).toBe("#00477d");
     expect(tokenOf(chrome(), "--nope")).toBeUndefined();
   });
@@ -142,7 +142,7 @@ describe("chromeFileFor", () => {
     join: (...parts: string[]) => parts.join("/"),
   });
 
-  test("resolves through the DECLARATION, so a directory that moves moves for every reader", () => {
+  test("resolvesThroughDeclaration", () => {
     const found = chromeFileFor(
       "/repo",
       "acme-base",
@@ -155,7 +155,7 @@ describe("chromeFileFor", () => {
     expect(found).toBe("/repo/sb/somewhere-else/chrome.json");
   });
 
-  test("ignores an instance with the same DIRECTORY but a different name", () => {
+  test("ignoresSameDirDifferentName", () => {
     const found = chromeFileFor(
       "/repo",
       "acme-base",
@@ -166,7 +166,7 @@ describe("chromeFileFor", () => {
     expect(found).toBeUndefined();
   });
 
-  test("a declared directory with no chrome.json yields undefined, not a path that does not exist", () => {
+  test("declaredDirWithoutChromeIsUndefined", () => {
     const found = chromeFileFor(
       "/repo",
       "acme-base",
@@ -175,7 +175,7 @@ describe("chromeFileFor", () => {
     expect(found).toBeUndefined();
   });
 
-  test("a PATH reaches an instance the one-level scan cannot: the platform as a submodule in a fork (n3ni stage E)", () => {
+  test("pathReachesNestedInstance", () => {
     // In an IG fork the platform is a submodule, so the chrome's owner sits two levels down.
     const d = deps(
       ["/fork/platform", "/fork/ig-data"],
@@ -187,7 +187,7 @@ describe("chromeFileFor", () => {
     expect(chromeFileFor("/fork", "platform/base-harness", d)).toBe("/fork/platform/base-harness/themes/chrome.json");
   });
 
-  test("a path to a directory that declares no instance yields undefined, never a guess", () => {
+  test("pathWithoutInstanceIsUndefined", () => {
     const d = deps([], {}, {}, ["/fork/nowhere/themes/chrome.json"]);
     expect(chromeFileFor("/fork", "nowhere", d)).toBeUndefined();
     expect(chromeFileFor("/fork", "x/nowhere", d)).toBeUndefined();

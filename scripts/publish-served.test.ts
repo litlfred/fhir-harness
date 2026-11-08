@@ -8,7 +8,7 @@ const served = [
 ];
 
 describe("publish-served", () => {
-  it("copies only this instance's served directories, at the site root", () => {
+  it("copiesServedDirsToRoot", () => {
     const p = planServed(served, "my-ig", "/site", (x) => x.startsWith("/r/"));
     expect(p.copy).toEqual([
       { from: "/r/my-ig/fhir-artifact-index", to: "/site/fhir-artifact-index" },
@@ -17,13 +17,13 @@ describe("publish-served", () => {
     expect(p.refused).toEqual([]);
   });
 
-  it("refuses a destination the site already publishes, rather than merging into it", () => {
+  it("refusesAlreadyPublished", () => {
     const p = planServed(served, "my-ig", "/site", (x) => x.startsWith("/r/") || x === "/site/openapi");
     expect(p.copy.map((c) => c.to)).toEqual(["/site/fhir-artifact-index"]);
     expect(p.refused).toEqual(["openapi/ is declared served, but the site already publishes something there"]);
   });
 
-  it("refuses a declared directory that does not exist", () => {
+  it("refusesMissingDir", () => {
     const p = planServed(served, "my-ig", "/site", (x) => x === "/r/my-ig/openapi");
     expect(p.refused).toEqual(["fhir-artifact-index/ is declared served, but /r/my-ig/fhir-artifact-index does not exist"]);
   });

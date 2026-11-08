@@ -8,7 +8,7 @@ import { groupsFromSushiMenu } from "../scripts/ingest-ig-menu";
  * parser that assumed either would silently drop the other's entries.
  */
 describe("groupsFromSushiMenu — both shapes, in file order", () => {
-  test("a nested map becomes a group with its children, in the config's order", () => {
+  test("nestedMapBecomesGroups", () => {
     const groups = groupsFromSushiMenu({
       Home: { Summary: "index.html", Dependencies: "dependencies.html" },
       Indices: { "Artifact Index": "artifacts.html", Downloads: "downloads.html" },
@@ -24,12 +24,12 @@ describe("groupsFromSushiMenu — both shapes, in file order", () => {
    * ORDER IS THE FILE'S ORDER, never sorted: the top bar's order IS the
    * config's, and alphabetising here would silently re-navigate the IG.
    */
-  test("order is preserved, not alphabetised", () => {
+  test("preservesConfigOrder", () => {
     const groups = groupsFromSushiMenu({ Zeta: { a: "a.html" }, Alpha: { b: "b.html" } });
     expect(groups.map((g) => g.label)).toEqual(["Zeta", "Alpha"]);
   });
 
-  test("a bare string is a top-level PAGE — href set, `items` empty rather than absent", () => {
+  test("bareStringIsTopLevelPage", () => {
     const [g] = groupsFromSushiMenu({ Home: "index.html" });
     expect(g).toEqual({ label: "Home", href: "index.html", items: [] });
   });
@@ -39,11 +39,11 @@ describe("groupsFromSushiMenu — both shapes, in file order", () => {
    * label the IG shows is a label this file should carry; one that vanished
    * here would read downstream as an IG that never had it.
    */
-  test("an unrecognised entry is kept, not dropped", () => {
+  test("keepsUnrecognisedEntry", () => {
     expect(groupsFromSushiMenu({ Odd: 42 })).toEqual([{ label: "Odd", items: [] }]);
   });
 
-  test("an absent or non-object menu is an empty list, not a crash", () => {
+  test("nonObjectMenuIsEmpty", () => {
     expect(groupsFromSushiMenu(undefined)).toEqual([]);
     expect(groupsFromSushiMenu(null)).toEqual([]);
     expect(groupsFromSushiMenu(["a"])).toEqual([]);
@@ -52,15 +52,15 @@ describe("groupsFromSushiMenu — both shapes, in file order", () => {
 
 describe("menuHref — the join is written once", () => {
   const menu = { canonical: "http://hl7.org/fhir/uv/ips" };
-  test("joins a relative href to the canonical base", () => {
+  test("joinsRelativeHref", () => {
     expect(menuHref(menu, { href: "ips-overview.html" })).toBe(
       "http://hl7.org/fhir/uv/ips/ips-overview.html",
     );
   });
-  test("does not double a slash, from either side", () => {
+  test("doesNotDoubleSlash", () => {
     expect(menuHref({ canonical: "http://x.org/ig/" }, { href: "/a.html" })).toBe("http://x.org/ig/a.html");
   });
-  test("leaves an absolute href alone", () => {
+  test("leavesAbsoluteHrefAlone", () => {
     expect(menuHref(menu, { href: "https://elsewhere.org/p.html" })).toBe("https://elsewhere.org/p.html");
   });
 });
@@ -80,7 +80,7 @@ describe("the schema refuses a menu with no provenance", () => {
     groups: [{ label: "Home", items: [{ label: "Summary", href: "index.html" }] }],
   };
 
-  test("a complete menu parses", () => {
+  test("completeMenuParses", () => {
     expect(IgMenuSchema.safeParse(valid).success).toBe(true);
     expect(menuItemCount(valid)).toBe(1);
   });
@@ -90,12 +90,12 @@ describe("the schema refuses a menu with no provenance", () => {
    * claim about an IG with nothing behind it — which is the transcription this
    * whole ingest exists to avoid.
    */
-  test("a missing `ref` is refused", () => {
+  test("refusesMissingRef", () => {
     const { ref: _ref, ...rest } = valid.source;
     expect(IgMenuSchema.safeParse({ ...valid, source: rest }).success).toBe(false);
   });
 
-  test("a non-URL `of` is refused", () => {
+  test("refusesNonUrlOf", () => {
     expect(
       IgMenuSchema.safeParse({ ...valid, source: { ...valid.source, of: "somewhere" } }).success,
     ).toBe(false);
@@ -106,7 +106,7 @@ describe("the schema refuses a menu with no provenance", () => {
    * children is legal; omitting the field would make "declared empty" and
    * "the parser lost them" the same shape.
    */
-  test("a group with an empty `items` is legal; one with no `items` key is not", () => {
+  test("emptyItemsLegalMissingItemsNot", () => {
     expect(IgMenuSchema.safeParse({ ...valid, groups: [{ label: "X", items: [] }] }).success).toBe(true);
     expect(IgMenuSchema.safeParse({ ...valid, groups: [{ label: "X" }] }).success).toBe(false);
   });

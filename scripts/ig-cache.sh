@@ -419,9 +419,15 @@ cmd_verify() {
   local root; root=$(resolve_ig_root)
   local out="$root/output-ast"
   if [ ! -d "$out" ]; then
+    printf '**cached-step `ig-ast`: miss** (exact) — no output-ast restored. Key `%s`.\n' \
+      "$(bun run "$IG_AST_TS" digest --ig "$root" 2>/dev/null || echo unknown)"
     die "no output-ast found in $root"
   fi
-  bun run "$IG_AST_TS" validity "$out" --ig "$root"
+  local rc=0
+  bun run "$IG_AST_TS" validity "$out" --ig "$root" || rc=$?
+  # The `fhir-ast` cache's summary line (caches/fhir-ast.cache.json).
+  bun run "$IG_AST_TS" cache-line "$out" --ig "$root" || true
+  return "$rc"
 }
 
 cmd_doctor() {

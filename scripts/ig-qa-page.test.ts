@@ -32,7 +32,7 @@ const MANIFEST = {
 };
 
 describe("ig-qa-page", () => {
-  test("FHIR QA: the Publisher's summary when the AST carries it, its counts and its record", () => {
+  test("fhirQaSummaryFromAst", () => {
     const ast = dirWith({ "qa.json": JSON.stringify({ errs: 3, warnings: 7, hints: 0, tool: "2.0.15", version: "5.0.0", date: "Wed, 05 Nov 2026" }), "manifest.json": JSON.stringify(MANIFEST) });
     const md = fhirQaMarkdown(readFhirQa(ast), { up: "" }).join("\n");
     expect(md).toContain("(IG Publisher 2.0.15, FHIR 5.0.0, on Wed, 05 Nov 2026)");
@@ -44,7 +44,7 @@ describe("ig-qa-page", () => {
     expect(md).toContain("| provisional | `indices`, `versions`, until a full IG Publisher run |");
   });
 
-  test("FHIR QA: an AST without the summary says so, never zeros", () => {
+  test("fhirQaWithoutSummarySaysSo", () => {
     const ast = dirWith({ "manifest.json": JSON.stringify(MANIFEST) });
     const validity = join(dirWith({ "v.json": JSON.stringify({ verdict: "stale", detail: { verdict: "stale", why: "the inputs changed" }, recorded: { inputDigest: "a" }, current: { inputDigest: "b" } }) }), "v.json");
     const md = fhirQaMarkdown(readFhirQa(ast, validity)).join("\n");
@@ -54,7 +54,7 @@ describe("ig-qa-page", () => {
     expect(md).toContain("| inputDigest | `a` | `b` |");
   });
 
-  test("the page: both halves inside raw, the KG records laid out by the harness's renderer", () => {
+  test("pageRawHalvesKgRecords", () => {
     const d = dirWith({ "swim.qa-results.json": JSON.stringify(RECORD) });
     const page = renderQaPage({ title: "QA Report", fhir: {}, kg: { view: "en/h/qa/", instances: [{ instance: "an-ig", dirs: [d], records: readQaRecords([d]), page: "en/h/qa/an-ig/" }] } });
     expect(page.startsWith("---\ntitle: \"QA Report\"\nnav_exclude: true\n")).toBe(true);

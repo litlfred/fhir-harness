@@ -23,13 +23,13 @@ const a = {
 } as unknown as FhirArtifact;
 
 describe("IG API views", () => {
-  it("has a page for each HELD schema and JSON-LD sidecar, in the Publisher's tab order, and none for displays", () => {
+  it("viewsForHeldSidecarsOnly", () => {
     expect(igApiViews(a).map((v) => v.file)).toEqual(["ValueSet-Actors.schema.json", "ValueSet-Actors.jsonld"]);
     const byRef = { ...a, sidecars: { schema: { url: "https://p/x.schema.json" } } } as unknown as FhirArtifact;
     expect(igApiViews(byRef)).toEqual([]);
   });
 
-  it("tabs: narrative, JSON (no XML or TTL), then the IG API views with this one active", () => {
+  it("tabsNarrativeJsonViews", () => {
     const d = igApiViewData(a, igApiViews(a)[1]!);
     expect(d.tabs.map((t) => `${t.label}${t.active ? "*" : ""}`)).toEqual(["Narrative Content", "JSON", "JSON Schema", "JSON-LD*"]);
     expect(d.tabs[0]!.href).toBe("ValueSet-Actors.html");
@@ -41,18 +41,18 @@ describe("IG API views", () => {
     expect(JSON.stringify(d)).not.toContain("@context");
   });
 
-  it("the loader shows the file as the Publisher does: JSON.stringify(parsed, null, 2)", () => {
+  it("loaderPrettyPrintsJson", () => {
     const js = readFileSync(join(import.meta.dir, "templates", "ig-pages", "ig-api-view.js"), "utf8");
     expect(js).toContain("JSON.stringify(d, null, 2)");
   });
 
-  it("the template is a file that opens with the comment describing it, and computes nothing", () => {
+  it("templateOpensWithComment", () => {
     const t = readFileSync(join(import.meta.dir, "templates", "ig-pages", "ig-api-view.liquid"), "utf8");
     expect(t.startsWith("{%- comment -%}")).toBe(true);
     expect(t).not.toMatch(/\|\s*(plus|minus|size|replace|jsonify)\b/);
   });
 
-  it("the JSON tab is this site's view only when that page is written", () => {
+  it("jsonTabOnlyWhenWritten", () => {
     const withJson = { ...a, resourceType: "ValueSet", published: { json: { url: "https://p/ValueSet-Actors.json" } } } as unknown as FhirArtifact;
     const v = igApiViews(withJson)[0]!;
     expect(igApiViewData(withJson, v).tabs.find((t) => t.label === "JSON")!.href).toBe("https://p/ValueSet-Actors.json");
@@ -61,7 +61,7 @@ describe("IG API views", () => {
 });
 
 describe("igApiServed finds the declaration by its own name, not the directory's (bean rbz3)", () => {
-  it("a separated IG keeps its data under a directory not named after it, and its declaration is still <name>.json", () => {
+  it("servedFoundBySelfName", () => {
     const d = mkdtempSync(join(tmpdir(), "ig-api-served-"));
     try {
       const root = join(d, "ig-data");

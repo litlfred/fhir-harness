@@ -98,7 +98,7 @@
       <bpmn:outgoing>F01</bpmn:outgoing>
     </bpmn:startEvent>
     <bpmn:serviceTask id="Task_Restore" name="Restore derived state">
-      <bpmn:documentation>`ig-cache restore`: the IG's AST and the Publisher's terminology cache (`input-cache/txcache/`). Exit 0 usable, 1 miss, 2 environment error, 3 present but unusable (corrupt or mismatched, such as a moved toolchain).</bpmn:documentation>
+      <bpmn:documentation>`ig-cache restore`: the IG's AST and the Publisher's terminology cache (`input-cache/txcache/`). Exit 0 usable, 1 miss, 2 environment error, 3 present but unusable (corrupt or mismatched, such as a moved toolchain). The cache restored is the declared `fhir-ast` cache (`caches/fhir-ast.cache.json`), whose component process is `ig-ast-cache.bpmn`: this task is that component's verify, run inside the incremental build.</bpmn:documentation>
       <bpmn:extensionElements>
         <bootstrap.processes:skill ref="ig-publication" />
       </bpmn:extensionElements>
@@ -308,7 +308,7 @@
       <bpmn:outgoing>F26</bpmn:outgoing>
     </bpmn:serviceTask>
     <bpmn:serviceTask id="Task_Seed" name="Seed the cache from the green build">
-      <bpmn:documentation>Only a green build of main or a release seeds. Seed writes to the -test branch, verifies a restore from a clean clone, then promotes.</bpmn:documentation>
+      <bpmn:documentation>Only a green build of main or a release seeds. Seed writes to the -test branch, verifies a restore from a clean clone, then promotes. This is the save of the declared `fhir-ast` cache (`caches/fhir-ast.cache.json`), under its save policy: the default branch only.</bpmn:documentation>
       <bpmn:extensionElements>
         <cat-harness.processes:fulfilment kinds="person system" reason="seeding, verifying and promoting the cache is a fixed program the publication manager is accountable for; the manual promote is the same program run by hand." />
         <bootstrap.processes:skill ref="ig-publication" />

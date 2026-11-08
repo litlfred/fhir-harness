@@ -10,7 +10,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { spawnSync } from "node:child_process";
 
-import { astJsonLd, astValidity, buildKind, refuseIncremental, diffAst, igAstSchemaFiles, inputDigest, inputDigestAt, listAst, readAst, recordSourceInputs, renderDelta } from "./ig-ast";
+import { astJsonLd, astValidity, buildKind, cachedStepLine, refuseIncremental, diffAst, igAstSchemaFiles, inputDigest, inputDigestAt, listAst, readAst, recordSourceInputs, renderDelta } from "./ig-ast";
 import { igAstJsonSchemas } from "../schemas/ig-ast.ts";
 import Ajv from "ajv";
 
@@ -59,7 +59,7 @@ const pd = { type: "PlanDefinition", id: "PD", json: { url: X + "PlanDefinition/
 const pat = { type: "Patient", id: "p1", json: { active: true } };
 
 describe("inputDigest — the same algorithm as the Java InputDigest", () => {
-  test("golden vector shared with ast-export's AstExporterTest", () => {
+  test("goldenDigestVector", () => {
     const ig = tmp("golden-");
     put(ig, "sushi-config.yaml", "id: x\n");
     put(ig, "ig.ini", "[IG]\nig = fsh-generated/resources/ImplementationGuide-x.json\n");
@@ -69,7 +69,7 @@ describe("inputDigest — the same algorithm as the Java InputDigest", () => {
     expect(inputDigest(ig)).toBe("58871352384745e1d7fd68f7ea918b0e2febbd86cf36a9cb5f0c7ce9d13a82f1");
   });
 
-  test("in a git work tree, an ignored file is not an input but an untracked one is", () => {
+  test("gitIgnoredNotInput", () => {
     const ig = tmp("gitdigest-");
     put(ig, "sushi-config.yaml", "id: x\n");
     put(ig, "input/fsh/a.fsh", "Profile: A\n");
@@ -100,13 +100,13 @@ describe("validity — compiledValidity on the manifest's inputs", () => {
     return { ig, rev: git("rev-parse", "HEAD").stdout.trim() };
   }
 
-  test("built from the inputs the IG has now: valid", () => {
+  test("currentInputsValid", () => {
     const { ig, rev } = igRepo();
     const a = readAst(ast([pat], [], { inputs: { toolchain: "ig-publisher 2.3.4 / core 6.6.0", sourceRevision: rev, inputDigest: inputDigest(ig) } }));
     expect(astValidity(a, ig).verdict).toBe("valid");
   });
 
-  test("an edited input is stale, and says which input", () => {
+  test("editedInputStale", () => {
     const { ig, rev } = igRepo();
     const a = readAst(ast([pat], [], { inputs: { toolchain: "t", sourceRevision: rev, inputDigest: inputDigest(ig) } }));
     put(ig, "input/fsh/a.fsh", "Profile: A2\n");
@@ -115,7 +115,7 @@ describe("validity — compiledValidity on the manifest's inputs", () => {
     expect(v.detail).toEqual({ verdict: "stale-inputs", differs: ["inputDigest"] });
   });
 
-  test("a later commit that changes no input is still valid; one that changes an input is not", () => {
+  test("laterCommitInputsDecide", () => {
     const { ig, rev } = igRepo();
     const a = readAst(ast([pat], [], { inputs: { toolchain: "t", sourceRevision: rev, inputDigest: inputDigest(ig) } }));
     const git = (...x: string[]) => spawnSync("git", ["-c", "user.email=t@t", "-c", "user.name=t", ...x], { cwd: ig, encoding: "utf-8" });
@@ -129,13 +129,13 @@ describe("validity — compiledValidity on the manifest's inputs", () => {
     expect(astValidity(a, ig).detail).toEqual({ verdict: "stale-inputs", differs: ["sourceRevision", "inputDigest"] });
   });
 
-  test("a recorded revision that is not an ancestor is stale even with the same inputs", () => {
+  test("nonAncestorRevisionStale", () => {
     const { ig } = igRepo();
     const a = readAst(ast([pat], [], { inputs: { toolchain: "t", sourceRevision: "f".repeat(40), inputDigest: inputDigest(ig) } }));
     expect(astValidity(a, ig).detail).toEqual({ verdict: "stale-inputs", differs: ["sourceRevision"] });
   });
 
-  test("drift: a build that writes under input/ makes the work tree stale, never the commit", () => {
+  test("driftStalesWorkTreeNotCommit", () => {
     // smart-trust run 38609595363: the Publisher rendered images-source into
     // input/images, overwriting a tracked SVG and adding an untracked one.
     const { ig, rev } = igRepo();
@@ -163,17 +163,37 @@ describe("validity — compiledValidity on the manifest's inputs", () => {
     expect(rev).not.toBe(head);
   });
 
-  test("a newer Publisher is stale even when the source is not", () => {
+  test("newerPublisherStale", () => {
     const { ig, rev } = igRepo();
     const a = readAst(ast([pat], [], { inputs: { toolchain: "ig-publisher 2.3.4 / core 6.6.0", sourceRevision: rev, inputDigest: inputDigest(ig) } }));
     expect(astValidity(a, ig, "ig-publisher 2.3.5 / core 6.6.1").detail).toEqual({ verdict: "stale-inputs", differs: ["toolchain"] });
   });
 
-  test("a manifest without usable inputs is cannot-tell, never valid", () => {
+  test("noUsableInputsCannotTell", () => {
     const { ig } = igRepo();
     expect(astValidity(readAst(ast([pat], [])), ig).verdict).toBe("cannot-tell");
     const legacy = readAst(ast([pat], [], { inputs: { toolchain: "t", sourceRevision: "r", inputDigest: "sha256:" + "0".repeat(64) } }));
     expect(astValidity(legacy, ig).verdict).toBe("cannot-tell");
+  });
+});
+
+describe("cachedStepLine — the fhir-ast cache's summary, in cached-step's format", () => {
+  const base = { recorded: undefined, current: {} } as unknown as Omit<Parameters<typeof cachedStepLine>[0], "verdict" | "detail">;
+  const KEY = "a".repeat(64);
+  test("a valid AST restored as it was is a hit, keyed by the input digest", () => {
+    const line = cachedStepLine({ ...base, verdict: "valid", detail: { verdict: "valid" } }, KEY);
+    expect(line).toBe(`**cached-step \`ig-ast\`: hit** (exact) — built from the inputs this tree has. Key \`${KEY}\`.`);
+  });
+  test("a valid AST the refresh made from a delta is warm", () => {
+    expect(cachedStepLine({ ...base, verdict: "valid", detail: { verdict: "valid" } }, KEY, { warm: true })).toStartWith("**cached-step `ig-ast`: warm** (exact) — a delta was applied");
+  });
+  test("stale and cannot-tell are misses that say why; warm never turns a miss into a hit", () => {
+    expect(cachedStepLine({ ...base, verdict: "stale-inputs", detail: { verdict: "stale-inputs", differs: ["inputDigest"] } }, KEY, { warm: true })).toBe(
+      `**cached-step \`ig-ast\`: miss** (exact) — stale: inputDigest differ. Key \`${KEY}\`.`,
+    );
+    expect(cachedStepLine({ ...base, verdict: "cannot-tell", detail: { verdict: "cannot-tell", why: "no manifest" } }, undefined)).toBe(
+      "**cached-step `ig-ast`: miss** (exact) — cannot tell: no manifest. Key `unknown`.",
+    );
   });
 });
 
@@ -189,7 +209,7 @@ describe("source-inputs — an AST exported after a pre-export command", () => {
     return { ig, git, rev: git("rev-parse", "HEAD").stdout.trim() };
   }
 
-  test("recorded against the prepared tree it is stale once the tree is put back; against the source, valid", () => {
+  test("preparedTreeRecordsSource", () => {
     const { ig, git, rev } = igRepo();
     const source = inputDigest(ig);
     // The pre-export command: rewrites a tracked input and adds an untracked one.
@@ -210,7 +230,7 @@ describe("source-inputs — an AST exported after a pre-export command", () => {
     expect(astValidity(readAst(dir), ig).verdict).toBe("valid");
   });
 
-  test("refuses what it cannot record honestly", () => {
+  test("refusesDishonestRecord", () => {
     const { rev } = igRepo();
     const none = ast([pat], []);
     expect(() => recordSourceInputs(none, "a".repeat(64), "cmd")).toThrow(/records no inputs.inputDigest/);
@@ -221,7 +241,7 @@ describe("source-inputs — an AST exported after a pre-export command", () => {
     expect(() => recordSourceInputs(dir, "c".repeat(64), "cmd")).toThrow(/already records a preExport/);
   });
 
-  test("the CLI prints the same digest validity computes", () => {
+  test("cliPrintsSameDigest", () => {
     const { ig } = igRepo();
     const r = spawnSync("bun", ["run", join(import.meta.dir, "ig-ast.ts"), "digest", "--ig", ig], { encoding: "utf-8" });
     expect(r.status).toBe(0);
@@ -252,7 +272,7 @@ describe("diff — list and view what changed between two ASTs", () => {
       ),
     );
 
-  test("every status, with a version move paired rather than split", () => {
+  test("diffEveryStatus", () => {
     const d = diffAst(base(), head());
     expect(d.counts).toEqual({ added: 1, removed: 1, changed: 1, versionChanged: 1, unchanged: 1 });
     const by = Object.fromEntries(d.resources.map((r) => [r.id, r]));
@@ -263,7 +283,7 @@ describe("diff — list and view what changed between two ASTs", () => {
     expect(by.A!.changes).toEqual([{ path: "Library.relatedArtifact", op: "added", head: [{ type: "depends-on", resource: X + "Library/B|1.1.0" }] }]);
   });
 
-  test("edges added and removed, and the head's mixed provenance carried", () => {
+  test("diffEdgesAndProvenance", () => {
     const d = diffAst(base(), head());
     expect(d.edges.added.map((e) => e.source)).toEqual([X + "Library/A|1.0.0", X + "Measure/M"]);
     expect(d.edges.removed.map((e) => e.source)).toEqual([X + "Library/A|1.0.0", X + "PlanDefinition/PD|1.0.0"]);
@@ -271,13 +291,13 @@ describe("diff — list and view what changed between two ASTs", () => {
     expect(d.authority).toBe("cache");
   });
 
-  test("identical ASTs: an empty delta, determined", () => {
+  test("identicalEmptyDelta", () => {
     const d = diffAst(base(), base());
     expect(d.resources).toEqual([]);
     expect(d.counts.unchanged).toBe(4);
   });
 
-  test("list counts by type and by origin", () => {
+  test("listByTypeAndOrigin", () => {
     const l = listAst(head());
     expect(l.byType).toEqual({ Library: 2, Measure: 1, Patient: 1 });
     expect(l.mixed).toBe(true);
@@ -288,7 +308,7 @@ describe("diff — list and view what changed between two ASTs", () => {
 describe("render — just-the-docs pages for the delta", () => {
   const page = (pages: string[], prefix: string) => pages.find((p) => p.split("/").pop()!.startsWith(prefix))!;
 
-  test("an index that lists, a page per changed resource that shows, and the provisional mark on every page", () => {
+  test("renderIndexAndPages", () => {
     const b = readAst(ast([libA(), libB("1.0.0")], []));
     const h = readAst(ast([libA({ description: "uses {{ site.data.fhir.ig.version }} | and a pipe" }), libB("1.1.0")], []));
     const site = tmp("site-");
@@ -308,7 +328,7 @@ describe("render — just-the-docs pages for the delta", () => {
     expect(idx).toContain("1.0.0 → 1.1.0");
   });
 
-  test("a value carrying {% endraw %} cannot close the raw block or run Liquid", () => {
+  test("endrawCannotEscape", () => {
     const b = readAst(ast([libA()], []));
     const h = readAst(ast([libA({ description: "x {% endraw %}{% include evil.html %}{{ site.secret }}" })], []));
     const pages = renderDelta(diffAst(b, h), tmp("site-"));
@@ -318,7 +338,7 @@ describe("render — just-the-docs pages for the delta", () => {
     expect(body).toContain("endraw");
   });
 
-  test("two resources sharing type/id but not key get two pages", () => {
+  test("sameTypeIdTwoPages", () => {
     const b = readAst(ast([libA()], []));
     const twin = { type: "Library", id: "A", json: { url: X + "Other/A", version: "9.9.9", name: "A2" } };
     const h = readAst(ast([libA({ description: "changed" }), twin], []));
@@ -330,13 +350,13 @@ describe("render — just-the-docs pages for the delta", () => {
 });
 
 describe("an incomplete AST is cannot-tell, never a clean diff", () => {
-  test("a missing dependencies.json refuses to read", () => {
+  test("missingDependenciesRefused", () => {
     const dir = ast([pat], []);
     rmSync(join(dir, "dependencies.json"));
     expect(() => readAst(dir)).toThrow(/dependencies.json is missing/);
   });
 
-  test("a missing resource payload fails the diff rather than reading as unchanged", () => {
+  test("missingPayloadFailsDiff", () => {
     const b = ast([libA()], []);
     const h = ast([libA()], []);
     rmSync(join(b, "resources/Library/A.json"));
@@ -346,7 +366,7 @@ describe("an incomplete AST is cannot-tell, never a clean diff", () => {
 });
 
 describe("the formats, declared once — JSON Schema and JSON-LD for downstream (bean l0lq)", () => {
-  test("a valid AST validates against the GENERATED JSON Schemas too, so the published schema accepts what the reader does", () => {
+  test("validatesGeneratedSchemas", () => {
     const dir = ast([libA(), libB("1.1.0"), pd], [[X + "PlanDefinition/PD|1.0.0", "library", X + "Library/A", null]]);
     // draft-07: what the installed validator (and most Java ones) read.
     const ajv = new Ajv();
@@ -357,12 +377,12 @@ describe("the formats, declared once — JSON Schema and JSON-LD for downstream 
     expect(ajv.validate(schemas["ig-ast.schema.json"]!, { $schema: "ig-ast/v1", authority: "full", provisional: [], resources: [] })).toBe(false);
   });
 
-  test("a manifest that does not say it is a cache is refused", () => {
+  test("refusesNonCacheManifest", () => {
     const dir = ast([libA()], [], { authority: "full" });
     expect(() => readAst(dir)).toThrow(/authority/);
   });
 
-  test("JSON-LD: a resource is its canonical URL, a canonical-less one a urn, an edge a link", () => {
+  test("jsonLdIdentities", () => {
     const dir = ast([libA(), pat], [[X + "Library/A|1.0.0", "relatedArtifact", X + "Library/B", "1.1.0"]]);
     const doc = astJsonLd(readAst(dir)) as { "@context": object; "@graph": Array<Record<string, unknown>>; authority: string };
     expect(doc["@context"]).toBeDefined();
@@ -374,7 +394,7 @@ describe("the formats, declared once — JSON Schema and JSON-LD for downstream 
     expect(doc["@graph"].find((n) => n.key === "Patient/p1")!["@id"]).toBe("urn:fhir:Patient/p1");
   });
 
-  test("the committed JSON Schemas and context are what the Zod generates", () => {
+  test("committedSchemasGenerated", () => {
     for (const [name, text] of Object.entries(igAstSchemaFiles())) {
       expect(readFileSync(join(import.meta.dir, "..", "schemas", name), "utf-8")).toBe(text);
     }
@@ -384,12 +404,12 @@ describe("the formats, declared once — JSON Schema and JSON-LD for downstream 
 describe("build kind — a release is cut from a full build (phase P4, bean h3tx)", () => {
   const m = (extra: Record<string, unknown>) => ({ manifest: { resources: [], ...extra } }) as unknown as Parameters<typeof buildKind>[0];
 
-  test("one ordinary run is full, and may be released", () => {
+  test("ordinaryRunFull", () => {
     expect(buildKind(m({}))).toBe("full");
     expect(refuseIncremental(m({}))).toBeUndefined();
   });
 
-  test("a merged AST is incremental, and the guard says why it is refused", () => {
+  test("mergedIsIncremental", () => {
     const inc = m({ mixed: true, incremental: { base: "aaaaaaaa1", head: "bbbbbbbb2", rebuilt: 84, kept: 664 } });
     expect(buildKind(inc)).toBe("incremental");
     const why = refuseIncremental(inc)!;
@@ -397,7 +417,7 @@ describe("build kind — a release is cut from a full build (phase P4, bean h3tx
     expect(why).toContain("full build");
   });
 
-  test("the CLI's --require-full exits 1 on an incremental AST, 0 on a full one", () => {
+  test("cliRequireFull", () => {
     const d = mkdtempSync(join(tmpdir(), "igast-kind-"));
     const write = (dir: string, extra: Record<string, unknown>) => {
       mkdirSync(dir, { recursive: true });

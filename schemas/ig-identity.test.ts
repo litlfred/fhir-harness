@@ -22,13 +22,13 @@ const one: IgIdentity = {
 };
 
 describe("statusOf", () => {
-  it("states the status for the IG the identity names", () => {
+  it("statesStatusForNamedIg", () => {
     expect(statusOf(one, "example.ig.one")).toBe("draft");
   });
-  it("refuses another IG's identity — a mis-filed copy paints no watermark", () => {
+  it("refusesOtherIgIdentity", () => {
     expect(statusOf(one, "example.ig.two")).toBeUndefined();
   });
-  it("no identity, or no package to compare, states nothing", () => {
+  it("noIdentityOrPackageStatesNothing", () => {
     expect(statusOf(undefined, "example.ig.one")).toBeUndefined();
     expect(statusOf(one, undefined)).toBeUndefined();
   });
@@ -45,13 +45,13 @@ describe("identities read from an instance", () => {
   });
   afterAll(() => rmSync(repo, { recursive: true, force: true }));
 
-  it("an IG's own identity validates and names its own package", () => {
+  it("ownIdentityValidates", () => {
     const id = readIgIdentity(join(repo, "ips", "fhir-artifact-index"));
     expect(id).toBeDefined();
     expect(IgIdentitySchema.safeParse(id).success).toBe(true);
     expect(id!.id).toBe(IPS.packageId);
   });
-  it("an IG with none states no status (the third state)", () => {
+  it("noIdentityStatesNoStatus", () => {
     expect(readIgIdentity(join(repo, "ipa", "fhir-artifact-index"))).toBeUndefined();
   });
 });

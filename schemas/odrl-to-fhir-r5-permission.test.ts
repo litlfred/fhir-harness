@@ -144,7 +144,7 @@ const PHW_DSA_42_V3_AGREEMENT = {
 } as const;
 
 describe("One-way ODRL 2.2 Agreement → FHIR R5 Permission renderer (bean jfbm)", () => {
-  test("1. Done-when #1: worked DSA examples (DSA-042 v1 and PHW DSA 42 v3) render to valid FHIR R5 Permissions and compile with SUSHI (0 errors)", () => {
+  test("workedExamplesRenderValidPermissions", () => {
     // 1a. DSA-042 v1 + DCAT 3 record
     const res042 = odrlAgreementToFhirR5Permission(DSA_042_V1_AGREEMENT, {
       id: "Permission-DSA-042-v1",
@@ -450,7 +450,7 @@ describe("One-way ODRL 2.2 Agreement → FHIR R5 Permission renderer (bean jfbm)
     }
   });
 
-  test("2. Done-when #2: every ODRL / DCAT / SPDX term with no exact Permission home is listed in dropped", () => {
+  test("listsDroppedTerms", () => {
     // Verify dropped list on PHW DSA 42 v3
     const resPhw = odrlAgreementToFhirR5Permission(PHW_DSA_42_V3_AGREEMENT, {
       dcat: DSA_042_V1_DCAT,
@@ -547,7 +547,7 @@ describe("One-way ODRL 2.2 Agreement → FHIR R5 Permission renderer (bean jfbm)
     );
   });
 
-  test("3. Done-when #3: FhirR5PermissionSchema is built from hl7.fhir.r5.core#5.0.0 StructureDefinition-Permission.json and refuses any invented field", () => {
+  test("schemaFromR5CoreRefusesInvented", () => {
     expect([...PERMISSION_STATUS_CODES]).toEqual([
       "active",
       "entered-in-error",

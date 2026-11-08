@@ -1,4 +1,5 @@
-From the IG repository's root, with the layers mounted:
+From the IG repository's root. On a fresh clone the first command mounts the
+layers before it runs ([what you need installed](#prerequisites) says how):
 
 ```bash
 # 1. Build the AST (one Publisher run; minutes to tens of minutes)
@@ -11,7 +12,9 @@ bun run cat stage:local --repo . --plan
 bun run cat stage:local --repo . --dry-run
 ```
 
-`bun run cat <name>` runs a script that any mounted layer declares.
+`bun run cat <name>` runs a script that any mounted layer declares. The IG's
+`cat` script is `bun .github/cat.ts`, which mounts the layers when they are
+missing and then hands over to `cat-harness-tools/scripts/run-script.ts`.
 `prepare:fhir-harness` is `bash fhir-harness/scripts/ig-ast-build.sh --ig-root .`,
 and `stage:local` is `cat-harness-tools/scripts/stage-local.ts`.
 

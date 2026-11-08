@@ -105,7 +105,7 @@ afterAll(() => {
 });
 
 describe("graph construction", () => {
-  test("every declaration and every CQL library is a node; the external include is not", () => {
+  test("everyDeclarationIsNode", () => {
     const names = [...g.nodes.keys()].sort();
     expect(names).toEqual(
       [
@@ -120,7 +120,7 @@ describe("graph construction", () => {
     expect(g.canonical).toBe("http://example.org/tank");
   });
 
-  test("each edge form is recognised, and points from the user to the used", () => {
+  test("edgeFormsPointUserToUsed", () => {
     const deps = (n: string) => [...g.nodes.get(n)!.deps].sort();
     expect(deps("PersonB")).toEqual(["PersonA"]); // Parent:
     expect(deps("PersonA")).toEqual(["GenderVS", "inv-1", "inv-2"]); // from, obeys a, b — not Patient
@@ -147,28 +147,28 @@ describe("graph construction", () => {
 });
 
 describe("cones", () => {
-  test("forward cone of the code system reaches everything bound through it, transitively", () => {
+  test("codeSystemForwardCone", () => {
     // LocalCS ← GenderVS ← PersonA ← PersonB ← ExPerson ← Act1 ← PlanX ; and ExPerson directly
     expect([...forwardCone(g, "LocalCS")].sort()).toEqual(["Act1", "ExPerson", "GenderVS", "PersonA", "PersonB", "PlanX"]);
   });
 
-  test("a shared CQL library is the hub: its cone crosses from CQL into FHIR artefacts", () => {
+  test("sharedCqlHubCone", () => {
     expect([...forwardCone(g, "cql:Common")].sort()).toEqual(["LibX", "LibY", "PlanX", "cql:LibX", "cql:LibY"]);
   });
 
-  test("a RuleSet change invalidates its users (SUSHI expands it at compile time)", () => {
+  test("ruleSetInvalidatesUsers", () => {
     // PlanY is in here only because of the expanded parameter: CommonMeta ←
     // LibXLogic ← PlanY, and that last hop exists only once
     // `Canonical({library}Logic)` has been resolved against the call site.
     expect([...forwardCone(g, "CommonMeta")].sort()).toEqual(["LibXLogic", "LibY", "PlanX", "PlanY"]);
   });
 
-  test("leaves have empty forward cones and the root is excluded from its own cone", () => {
+  test("leafEmptyRootExcluded", () => {
     expect(forwardCone(g, "PlanX").size).toBe(0);
     expect(forwardCone(g, "LocalCS").has("LocalCS")).toBe(false);
   });
 
-  test("backward cone is the restricted checkout, measured in files", () => {
+  test("backwardConeInFiles", () => {
     const b = backwardCone(g, "ExPerson");
     expect([...b].sort()).toEqual(["GenderVS", "LocalCS", "PersonA", "PersonB", "inv-1", "inv-2"]);
     const files = filesOf(g, ["ExPerson", ...b]);
@@ -184,7 +184,7 @@ describe("cones", () => {
     expect(coneSizes(g).backwardFiles.get("ExPerson")).toBe(6);
   });
 
-  test("the cone sizes table agrees with the individual cones", () => {
+  test("coneSizesAgree", () => {
     const s = coneSizes(g);
     expect(s.forward.get("LocalCS")).toBe(6);
     expect(s.backward.get("ExPerson")).toBe(6);
@@ -194,7 +194,7 @@ describe("cones", () => {
 });
 
 describe("change impact — the incremental-build question", () => {
-  test("editing the value set names what to rebuild and what to check out", () => {
+  test("editingValueSetImpact", () => {
     const impact = changeImpact(g, ["input/fsh/valuesets/GenderVS.fsh"]);
     expect([...impact.changed]).toEqual(["GenderVS"]);
     expect([...impact.rebuild].sort()).toEqual(["Act1", "ExPerson", "GenderVS", "PersonA", "PersonB", "PlanX"]);
@@ -215,12 +215,12 @@ describe("change impact — the incremental-build question", () => {
     ]);
   });
 
-  test("editing a leaf rebuilds only itself", () => {
+  test("editingLeafRebuildsItself", () => {
     const impact = changeImpact(g, [join(ROOT, "input/fsh/plandefinitions/PlanX.fsh")]);
     expect([...impact.rebuild]).toEqual(["PlanX"]);
   });
 
-  test("a file that declares nothing changes nothing", () => {
+  test("declaringNothingChangesNothing", () => {
     const impact = changeImpact(g, ["input/fsh/aliases.fsh"]);
     expect(impact.changed.size).toBe(0);
     expect(impact.rebuild.size).toBe(0);
@@ -228,7 +228,7 @@ describe("change impact — the incremental-build question", () => {
 });
 
 describe("reports", () => {
-  test("the text report carries the headline figures and the CSV has one row per node", () => {
+  test("reportHeadlinesAndCsv", () => {
     const r = report(g, 3);
     // two invariants share one file, so 20 nodes live in 18 files
     expect(r).toContain("nodes: 20 in 18 source files (15 .fsh, 4 .cql)");
@@ -247,7 +247,7 @@ describe("reports", () => {
     expect(csv.length).toBe(1 + g.nodes.size);
   });
 
-  test("replaying the git history scores each commit by its rebuild cone", () => {
+  test("historyScoresCommits", () => {
     // Runs last: it turns the fixture into a git repository and edits a file. The
     // graph `g` was built before and is not affected.
     const git = (args: string) => execSync(`git -c user.name=t -c user.email=t@example.org ${args}`, { cwd: ROOT, stdio: "ignore" });
@@ -275,7 +275,7 @@ describe("reports", () => {
     expect(text).toContain("zero-rebuild commits");
   });
 
-  test("an empty tank is a determined empty, not a crash", () => {
+  test("emptyTankDeterminedEmpty", () => {
     const empty = mkdtempSync(join(tmpdir(), "fsh-cone-empty-"));
     try {
       const eg = buildFshGraph(empty);
@@ -288,7 +288,7 @@ describe("reports", () => {
 });
 
 describe("file-level users, for the IG AST's incremental plan (bean a9tx)", () => {
-  test("a RuleSet-only file names every file that inserts from it, and not itself", () => {
+  test("ruleSetFileNamesUsers", () => {
     const u = fileUsers(g);
     expect(u["input/fsh/rulesets/CommonMeta.fsh"]).toEqual([
       "input/fsh/libraries/LibXLogic.fsh",
@@ -299,13 +299,13 @@ describe("file-level users, for the IG AST's incremental plan (bean a9tx)", () =
     expect(u["input/fsh/rulesets/PlanDefMeta.fsh"]).toEqual(["input/fsh/plandefinitions/PlanY.fsh"]);
   });
 
-  test("a file nothing depends on has no entry, rather than an empty one", () => {
+  test("unusedFileHasNoEntry", () => {
     expect(fileUsers(g)["input/fsh/plandefinitions/PlanY.fsh"]).toBeUndefined();
     // ...and a reference counts as use: Act1 names ExPerson.
     expect(fileUsers(g)["input/fsh/examples/ExPerson.fsh"]).toEqual(["input/fsh/activitydefinitions/Act1.fsh"]);
   });
 
-  test("an Alias-only file names the files that use its aliases, including code uses that make no edge", () => {
+  test("aliasFileNamesUsers", () => {
     // aliases.fsh declares $SCT (used by GenderVS in a code) and $LOCAL (used by ExPerson).
     expect(fileUsers(g)["input/fsh/aliases.fsh"]).toEqual([
       "input/fsh/examples/ExPerson.fsh",
@@ -347,7 +347,7 @@ describe("Title and Description are prose, not rules (bean c65n)", () => {
   });
   afterAll(() => rmSync(T, { recursive: true, force: true }));
 
-  test("the schedule's forward cone does not reach a value set that only names it in prose", () => {
+  test("proseIsNotARule", () => {
     expect([...forwardCone(pg, ["Sched"])]).toEqual([]);
     expect([...pg.nodes.get("SchedVS")!.deps]).toEqual(["OtherVS"]);
     expect([...pg.nodes.get("OneLineVS")!.deps]).toEqual([]);

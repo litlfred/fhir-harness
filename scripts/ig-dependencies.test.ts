@@ -10,7 +10,7 @@ const pkg = (cache: string, id: string, v: string, m: Record<string, unknown>) =
 };
 
 describe("the IG's package dependencies (dependency-table.xhtml, bean 4475)", () => {
-  test("declared from the ImplementationGuide, or from sushi-config's map in both of its shapes", () => {
+  test("declaredFromIgOrSushi", () => {
     expect(fromImplementationGuide({ dependsOn: [{ packageId: "a.b", version: "1.0.0", uri: "http://a/ImplementationGuide/a.b" }, { uri: "x" }] }))
       .toEqual([{ packageId: "a.b", version: "1.0.0", canonical: "http://a" }]);
     expect(fromSushiConfig({ dependencies: { "a.b": "1.0.0", "c.d": { id: "cd", version: "2.0.0", uri: "http://c/ImplementationGuide/c.d" } } }))
@@ -18,7 +18,7 @@ describe("the IG's package dependencies (dependency-table.xhtml, bean 4475)", ()
     expect(fromSushiConfig({})).toEqual([]);
   });
 
-  test("nested from the package cache; a package the cache lacks is SAID, a repeat is not expanded twice, core is a leaf", () => {
+  test("nestedFromPackageCache", () => {
     const cache = mkdtempSync(join(tmpdir(), "fhir-cache-"));
     pkg(cache, "a.b", "1.0.0", { title: "A B", canonical: "http://a", fhirVersions: ["4.0.1"], dependencies: { "hl7.fhir.r4.core": "4.0.1", "e.f": "3.0.0" } });
     pkg(cache, "hl7.fhir.r4.core", "4.0.1", { fhirVersions: ["4.0.1"], dependencies: { "never.shown": "1" } });
@@ -35,7 +35,7 @@ describe("the IG's package dependencies (dependency-table.xhtml, bean 4475)", ()
     rmSync(cache, { recursive: true, force: true });
   });
 
-  test("the template renders all three forms, and says when there is nothing", async () => {
+  test("templateRendersThreeForms", async () => {
     const { Liquid } = await import("liquidjs");
     const t = readFileSync(join(import.meta.dir, "templates", "ig-site", "dependency-table.liquid"), "utf-8");
     expect(t.startsWith("{%- comment -%}")).toBe(true);

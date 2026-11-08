@@ -7,7 +7,7 @@ import { globalsFromImplementationGuide, globalsFromSushiConfig } from "./ig-glo
 import { GLOBALS_TABLE_TEMPLATE_PATH, describeStage, stageIgSite } from "./build-ig-site";
 
 describe("the IG's global profiles (globals-table.xhtml)", () => {
-  test("read from an ImplementationGuide's global, sorted by type, malformed entries dropped", () => {
+  test("fromIgSortedDropsMalformed", () => {
     expect(globalsFromImplementationGuide({ global: [
       { type: "Patient", profile: "http://acme.org/StructureDefinition/p" },
       { type: "Encounter", profile: "http://acme.org/StructureDefinition/e" },
@@ -19,7 +19,7 @@ describe("the IG's global profiles (globals-table.xhtml)", () => {
     expect(globalsFromImplementationGuide({})).toEqual([]);
   });
 
-  test("read from sushi-config's global map, one profile or several per type", () => {
+  test("fromSushiOneOrSeveral", () => {
     expect(globalsFromSushiConfig({ global: { Patient: "http://acme.org/p", Observation: ["http://acme.org/o2", "http://acme.org/o1"] } })).toEqual([
       { type: "Observation", profile: "http://acme.org/o1" },
       { type: "Observation", profile: "http://acme.org/o2" },
@@ -28,7 +28,7 @@ describe("the IG's global profiles (globals-table.xhtml)", () => {
     expect(globalsFromSushiConfig({})).toEqual([]);
   });
 
-  test("the template lays out the rows, and says so when there are none", async () => {
+  test("templateRowsOrNone", async () => {
     const liquid = new Liquid();
     const tpl = readFileSync(GLOBALS_TABLE_TEMPLATE_PATH, "utf-8");
     const some = await liquid.parseAndRender(tpl, { site: { data: { fhir: { globals: [{ type: "Patient", profile: "http://acme.org/p" }] } } } });
@@ -38,7 +38,7 @@ describe("the IG's global profiles (globals-table.xhtml)", () => {
     expect(none).toContain("There are no Global profiles defined.");
   });
 
-  test("a page that includes the fragment gets the table, and the stage says where its rows came from", () => {
+  test("includingPageGetsTable", () => {
     const d = mkdtempSync(join(tmpdir(), "ig-glob-"));
     try {
       const src = join(d, "src");

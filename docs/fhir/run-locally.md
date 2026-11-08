@@ -77,23 +77,29 @@ terminology server (default `http://tx.fhir.org`) and Maven Central. If
 `packages.fhir.org` is refused, see the `fhir-validation` skill, §"When a
 package host refuses you".
 
-The layers come from the IG's `index.lock.json`. From the IG repository's
-root, mount them the way the publish workflow does:
+The layers come from the IG's `index.lock.json`, and you do not mount them by
+hand. The IG's `cat` script is `bun .github/cat.ts`: on a fresh clone, the
+first `bun run cat …` mounts every layer the lock pins, then runs the command.
+It fetches the mounter at the commit the lock pins and checks each layer's
+hash before keeping it. Later runs find the layers on disk and go straight to
+the command.
 
-```bash
-ref=$(python3 -c "import json;print(next(m['ref'] for m in json.load(open('index.lock.json'))['mounts'] if m['harness']=='cat-harness-tools'))")
-M=$(mktemp -d) && git -C "$M" init -q
-git -C "$M" fetch -q --depth 1 https://github.com/litlfred/cat-harness-tools.git "$ref"
-git -C "$M" checkout -q FETCH_HEAD
-bun run "$M/scripts/mount-from-lock.ts" --root .
-```
+After a re-pin, or to mount without running anything, run
+`bash .github/mount-from-lock.sh` from the IG's root. It replaces a stale
+mount and reports an intact one as `current`.
+
+An IG set up before this has `"cat": "bun cat-harness-tools/scripts/run-script.ts"`
+and no `.github/cat.ts`. Copy `cat.ts` and `mount-from-lock.sh` from
+[`cat-harness-tools/templates/root-bootstrap/`](https://github.com/litlfred/cat-harness-tools/tree/main/templates/root-bootstrap)
+into its `.github/` and set `"cat": "bun .github/cat.ts"`.
 
 ## The one command
 {: #the-one-command data-fa-label="sec:run-locally-the-one-command" }
 
 [✎ Edit](https://github.com/litlfred/fhir-harness/edit/main/docs/source/fhir-run-locally/the-one-command.md){: .fa-node-edit title="Edit docs/source/fhir-run-locally/the-one-command.md" data-fa-link="edit" data-src="docs/source/fhir-run-locally/the-one-command.md" data-repo="litlfred/fhir-harness" } <span class="fa-qa-badges"><button type="button" class="fa-qa-badge fa-qa-pending fa-qa-fam-block" lang="en" dir="ltr" data-qa-family="block" data-qa-key="the-one-command.block" data-qa-label="Content QA" data-qa-noun="block" data-qa-src="{{ '/assets/qa/fhir-harness/fhir-run-locally/the-one-command.block.json' | relative_url }}" data-qa-index="{{ '/assets/qa/fhir-harness/fhir-run-locally/qa-index.json' | relative_url }}" aria-expanded="false" aria-busy="true" title="Content QA: loading the verdict…" aria-label="Content QA: loading the verdict…"><span class="fa-qa-tag">QA</span><span class="fa-qa-glyph" aria-hidden="true">…</span></button> <button type="button" class="fa-qa-badge fa-qa-pending fa-qa-fam-translation" lang="en" dir="ltr" data-qa-family="translation" data-qa-key="the-one-command.translation" data-qa-label="Translation QA" data-qa-noun="block" data-qa-src="{{ '/assets/qa/fhir-harness/fhir-run-locally/the-one-command.translation.json' | relative_url }}" data-qa-index="{{ '/assets/qa/fhir-harness/fhir-run-locally/qa-index.json' | relative_url }}" aria-expanded="false" aria-busy="true" title="Translation QA: loading the verdict…" aria-label="Translation QA: loading the verdict…"><span class="fa-qa-tag">TR</span><span class="fa-qa-glyph" aria-hidden="true">…</span></button></span>
 
-From the IG repository's root, with the layers mounted:
+From the IG repository's root. On a fresh clone the first command mounts the
+layers before it runs ([what you need installed](#prerequisites) says how):
 
 ```bash
 # 1. Build the AST (one Publisher run; minutes to tens of minutes)
@@ -106,7 +112,9 @@ bun run cat stage:local --repo . --plan
 bun run cat stage:local --repo . --dry-run
 ```
 
-`bun run cat <name>` runs a script that any mounted layer declares.
+`bun run cat <name>` runs a script that any mounted layer declares. The IG's
+`cat` script is `bun .github/cat.ts`, which mounts the layers when they are
+missing and then hands over to `cat-harness-tools/scripts/run-script.ts`.
 `prepare:fhir-harness` is `bash fhir-harness/scripts/ig-ast-build.sh --ig-root .`,
 and `stage:local` is `cat-harness-tools/scripts/stage-local.ts`.
 
@@ -179,6 +187,7 @@ bash fhir-harness/scripts/ig-cache.sh seed --ig-root . --push
 
 | Message or symptom | Cause | What to do |
 |---|---|---|
+| `cat: mounting failed` | the mounter could not fetch a layer, or a layer's bytes did not match the lock | run `bash .github/mount-from-lock.sh` to see which layer and why |
 | the AST is stale, cannot-tell, or missing | no AST matches your commit's inputs | run `bun run cat prepare:fhir-harness`, or the `ig-ast-refresh` workflow |
 | `index.config.json` has no `site.landing` | the IG is harnessed but does not say which layer's chrome it wears | add `"site": { "landing": "<layer>" }` |
 | a prerequisite is missing | `docker`, `python3 -m venv`, `bash` or `curl` was not found | install it; the plan names which one |

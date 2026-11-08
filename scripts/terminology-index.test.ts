@@ -54,7 +54,7 @@ function fixture(): { expansions: string; txcache: string } {
 }
 
 describe("the Publisher's txcache", () => {
-  test("validations give codes; errors and unparseable entries are skipped; expansions give value sets", () => {
+  test("txcacheCodesAndValueSets", () => {
     const t = parseTxCache(CACHE + "\n####\nv: {not json\n");
     expect(t.codes).toEqual([[L, "1000-1", "Body weight"]]);
     expect(t.valueSets.map((v) => v.url)).toEqual(["http://example.org/ig/ValueSet/yn"]);
@@ -62,7 +62,7 @@ describe("the Publisher's txcache", () => {
 });
 
 describe("buildIndex", () => {
-  test("codes from both sources, once each; value sets by url and url|version", () => {
+  test("buildIndexCodesAndValueSets", () => {
     const i = buildIndex(fixture());
     expect(i.codes).toContainEqual([L, "1000-1", "Body weight"]);
     expect(i.codes).toContainEqual([L, "2000-2", "Heart rate"]);
@@ -74,13 +74,13 @@ describe("buildIndex", () => {
     expect(i.valueSets["http://example.org/ig/ValueSet/yn"]).toHaveLength(2);
     expect(i.sources).toMatchObject({ valueSets: 2, txcacheFiles: 1 });
   });
-  test("no cache at all: an empty index, not an error", () => {
+  test("noCacheEmptyIndex", () => {
     expect(buildIndex({ txcache: join(tmp(), "absent") }).codes).toEqual([]);
   });
 });
 
 describe("writeIndex", () => {
-  test("small: plain JSON, with no machine path in it", () => {
+  test("smallIndexPlainJson", () => {
     const out = tmp();
     const w = writeIndex(buildIndex(fixture()), out);
     expect(w.file).toBe("index.json");
@@ -88,7 +88,7 @@ describe("writeIndex", () => {
     expect(back.sources.expansions).toBe("expansions.json");
     expect(JSON.stringify(back)).not.toContain(tmpdir());
   });
-  test("large: gzipped", () => {
+  test("largeIndexGzipped", () => {
     const out = tmp();
     const big = { $schema: "fhir-harness-terminology-index/v1" as const, sources: { valueSets: 0, txcacheFiles: 0 }, codes: Array.from({ length: GZIP_OVER / 20 }, (_, n): [string, string, string] => [L, `${n}-0`, "x".repeat(10)]), valueSets: {} };
     const w = writeIndex(big, out);
@@ -97,7 +97,7 @@ describe("writeIndex", () => {
   });
 });
 
-test("the full UCUM list from the vendored definitions", () => {
+test("fullUcumList", () => {
   const rows = ucumRows(JSON.parse(readFileSync(join(import.meta.dir, "assets/vendor/ucum-lhc/8.0.0/ucumDefs.min.json"), "utf-8")));
   expect(rows.length).toBeGreaterThan(700);
   expect(rows.find((r) => r[0] === "g")!.slice(0, 2)).toEqual(["g", "gram"]);
@@ -115,7 +115,7 @@ describe("preExpand: the rendered copy only", () => {
       { linkId: "4", type: "choice", answerValueSet: "http://example.org/ig/ValueSet/sex", answerOption: [{ valueString: "kept" }] },
     ],
   };
-  test("held value sets become answerOption; others are listed; the source is unchanged", () => {
+  test("preExpandRenderedCopy", () => {
     const before = JSON.stringify(q);
     const r = preExpand(q, expansionsOf(EXPANSIONS));
     expect(r.expanded).toEqual(["1", "3"]);

@@ -7,22 +7,22 @@ const self = siteBuild("my-ig", "aaaaaaaaaaaa", { GITHUB_REPOSITORY: "o/my-ig", 
 const other = (commit: string) => ({ ...self, instance: "other", platform: { commit } });
 
 describe("site-build-stamp", () => {
-  it("rebuilds a dependency with the workflow the IG repository template installs", () => {
+  it("rebuildWorkflowInstalled", () => {
     expect(WORKFLOW).toBe("site-publish.yml");
     expect(existsSync(join(import.meta.dir, "..", "templates", "ig-repo-site", WORKFLOW))).toBe(true);
   });
-  it("stamps the platform commit and the source it was built from", () => {
+  it("stampsPlatformAndSource", () => {
     expect(self.platform.commit).toBe("aaaaaaaaaaaa");
     expect(self.source).toEqual({ repo: "o/my-ig", ref: "main", commit: "s1" });
     expect(parseBuild(JSON.stringify(self))).toEqual(self);
   });
 
-  it("refuses anything that is not a stamp, as a reason rather than a build", () => {
+  it("refusesNonStamp", () => {
     expect(parseBuild("<html>")).toContain("not JSON");
     expect(parseBuild("{}")).toContain("not a folio-site-build/v1");
   });
 
-  it("reports a different platform as drift, and an unreadable stamp as not checked — never as matching", () => {
+  it("driftAndNotChecked", () => {
     const sibs = [
       compare(self, "https://x/a", other("aaaaaaaaaaaa")),
       compare(self, "https://x/b", other("bbbbbbbbbbbb")),
@@ -37,11 +37,11 @@ describe("site-build-stamp", () => {
     expect(r).not.toContain("Every sibling");
   });
 
-  it("says when no sibling is configured, rather than reporting a clean comparison", () => {
+  it("noSiblingSaysSo", () => {
     expect(driftReport(self, [])).toContain("nothing was compared");
   });
 
-  it("parses a dependency as owner/repo with an optional ref", () => {
+  it("parsesRepoWithRef", () => {
     expect(parseRepo("acme/base-ig@claude/seed")).toEqual({ repo: "acme/base-ig", ref: "claude/seed" });
     expect(parseRepo("o/r")).toEqual({ repo: "o/r", ref: "main" });
     expect(parseRepo("nonsense")).toBeUndefined();

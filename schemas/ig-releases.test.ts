@@ -17,7 +17,7 @@ const gh = (over: Partial<GitHubRelease>): GitHubRelease => ({
 });
 
 describe("ig-releases/v1", () => {
-  test("a GitHub release becomes pointers: name, url, size and digest, never bytes", () => {
+  test("releaseBecomesPointers", () => {
     const r = releasesFromGitHub("o/r", "2026-10-02", [gh({})]);
     expect(r.releases[0].assets[0]).toEqual({
       name: "package.tgz",
@@ -28,12 +28,12 @@ describe("ig-releases/v1", () => {
     });
   });
 
-  test("drafts and unpublished releases are not recorded", () => {
+  test("skipsDraftsAndUnpublished", () => {
     const r = releasesFromGitHub("o/r", "2026-10-02", [gh({ draft: true }), gh({ tag_name: "v2", published_at: null }), gh({ tag_name: "v3" })]);
     expect(r.releases.map((x) => x.tag)).toEqual(["v3"]);
   });
 
-  test("an asset with no digest keeps no digest field, and a malformed digest is refused", () => {
+  test("noDigestOmittedMalformedRefused", () => {
     const a = gh({}).assets[0];
     expect(releasesFromGitHub("o/r", "2026-10-02", [gh({ assets: [{ ...a, digest: null }] })]).releases[0].assets[0].digest).toBeUndefined();
     expect(() => releasesFromGitHub("o/r", "2026-10-02", [gh({ assets: [{ ...a, digest: "md5:x" }] })])).toThrow();
@@ -45,7 +45,7 @@ describe("ig-releases/v1", () => {
   // above it. Whether a REAL IG's committed `releases.json` validates is a
   // fact about that IG, and is tested by the instance that holds it -- an
   // instance above this layer, which this file does not name.
-  test("a record written to releases.json and read back validates; one carrying anything but pointers is refused", async () => {
+  test("roundTripValidatesPointersOnly", async () => {
     const dir = mkdtempSync(join(tmpdir(), "ig-releases-"));
     try {
       const f = join(dir, "releases.json");
@@ -63,13 +63,13 @@ describe("ig-releases/v1", () => {
 });
 
 describe("releasesAsOf (bean fwtz: the record moves with the pin, not the clock)", () => {
-  test("keeps releases published by the pinned time and stamps that date", () => {
+  test("keepsReleasesByPinnedTime", () => {
     const r = releasesAsOf("o/r", "2026-03-24T00:00:00+02:00", [gh({}), gh({ tag_name: "v2", published_at: "2026-03-24T09:00:00Z" })]);
     expect(r.readAt).toBe("2026-03-23");
     expect(r.releases.map((x) => x.tag)).toEqual(["v1"]);
   });
 
-  test("refuses a time it cannot read", () => {
+  test("refusesUnreadableTime", () => {
     expect(() => releasesAsOf("o/r", "yesterday", [])).toThrow();
   });
 });

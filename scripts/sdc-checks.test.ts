@@ -55,18 +55,18 @@ function ast(qs: object[]): string {
 const byCheck = (r: SdcResult, c: string): SdcCheck => r.checks.find((x) => x.check === c)!;
 
 describe("assemble", () => {
-  test("a root whose sub-forms are in this IG assembles, and --out writes it", async () => {
+  test("assembleRootWritesOut", async () => {
     const out = tmp("sdc-out-");
     const [r] = await sdcChecks(ast([root(X + "child"), child]), { ids: ["root"], out });
     expect(byCheck(r!, "assemble")).toMatchObject({ status: "pass", severity: "error" });
     expect(existsSync(join(out, "Questionnaire-root.assembled.json"))).toBe(true);
   });
-  test("a sub-form this IG does not hold fails, and fails the run", async () => {
+  test("missingSubformFails", async () => {
     const rs = await sdcChecks(ast([root(X + "absent")]));
     expect(byCheck(rs[0]!, "assemble").status).toBe("fail");
     expect(exitCode(rs)).toBe(1);
   });
-  test("a Questionnaire that is not a root is not-applicable, never a pass", async () => {
+  test("nonRootNotApplicable", async () => {
     const [r] = await sdcChecks(ast([child]));
     expect(byCheck(r!, "assemble").status).toBe("not-applicable");
   });
@@ -79,12 +79,12 @@ describe("template extraction and population, against the IG's fixtures", () => 
   put(fixtures, "obs/populate-context.json", { patient: { resourceType: "Patient", id: "p", name: [{ given: ["Ada"] }] } });
   put(fixtures, "obs/populate-expected.json", { resourceType: "QuestionnaireResponse", item: [{ linkId: "name", answer: [{ valueString: "Ada" }] }] });
 
-  test("both pass when the libraries produce what the fixtures expect", async () => {
+  test("extractPopulatePass", async () => {
     const [r] = await sdcChecks(ast([obs]), { fixtures });
     expect(byCheck(r!, "template-extract").status).toBe("pass");
     expect(byCheck(r!, "populate").status).toBe("pass");
   });
-  test("an expectation the libraries do not meet is a failure that names it", async () => {
+  test("unmetExpectationNamed", async () => {
     const fx = tmp("sdc-fx-");
     put(fx, "obs/response.json", { resourceType: "QuestionnaireResponse", status: "completed", item: [{ linkId: "weight", answer: [{ valueDecimal: 70 }] }] });
     put(fx, "obs/extract-expected.json", [{ resourceType: "Condition" }]);
@@ -94,7 +94,7 @@ describe("template extraction and population, against the IG's fixtures", () => 
     expect(byCheck(r!, "template-extract")).toMatchObject({ status: "fail", findings: [expect.stringContaining("expected Condition not extracted")] });
     expect(byCheck(r!, "populate").findings[0]).toContain('item "name"');
   });
-  test("no fixture is said, never passed", async () => {
+  test("noFixtureSaid", async () => {
     const [r] = await sdcChecks(ast([obs]));
     expect(byCheck(r!, "template-extract").status).toBe("no-fixture");
     expect(byCheck(r!, "populate").status).toBe("no-fixture");
@@ -102,10 +102,10 @@ describe("template extraction and population, against the IG's fixtures", () => 
 });
 
 describe("behavioural tests are warn-only", () => {
-  test("no test file: no-fixture, a warning", () => {
+  test("noTestFileWarns", () => {
     expect(checkBehaviour(undefined)).toMatchObject({ status: "no-fixture", severity: "warning" });
   });
-  test("a failing behavioural test never fails the run", async () => {
+  test("failingBehaviourNeverFails", async () => {
     const fx = tmp("sdc-fx-");
     put(fx, "child/behaviour.test.tsx", "test('x', () => {})");
     const [r] = await sdcChecks(ast([child]), { fixtures: fx });
@@ -114,7 +114,7 @@ describe("behavioural tests are warn-only", () => {
     expect(b).toMatchObject({ status: "could-not-determine", severity: "warning" });
     expect(exitCode([{ questionnaire: "x", checks: [b] }])).toBe(0);
   });
-  test("with the toolkit installed, the IG's test is run with auto-install off; a failure is a warning", () => {
+  test("toolkitRunNoInstall", () => {
     const fx = tmp("sdc-fx-");
     put(fx, "node_modules/@aehrc/questionnaire-test-toolkit/package.json", { name: "@aehrc/questionnaire-test-toolkit" });
     put(fx, "q/behaviour.test.tsx", "test('x', () => {})");
@@ -129,7 +129,7 @@ describe("behavioural tests are warn-only", () => {
   });
 });
 
-test("contains: objects by key, arrays by any element", () => {
+test("containsAndCanonicalBundle", () => {
   expect(contains({ a: 1, b: [{ c: 2 }, { d: 3 }] }, { b: [{ d: 3 }] })).toBe(true);
   expect(contains({ a: 1 }, { a: 2 })).toBe(false);
   expect(canonicalBundle(new Map([["k", { url: "u", version: "1" }]]), "u&version=2").entry).toEqual([]);

@@ -14,7 +14,11 @@ description: >
 > `fhir-harness`
 >
 > An instance of the general compiled-artefact-cache pattern; the shared
-> contract is cat-harness's `compiled-artefact-cache` skill.
+> contract is cat-harness's `compiled-artefact-cache` skill. The AST's cache
+> is declared once, as the `cache/1.0.0` node
+> [`caches/fhir-ast.cache.json`](../../caches/fhir-ast.cache.json): its
+> verify is `validity` below, and its staleness is computed by `caches:viz`
+> (see [`ig-build-pipeline`](ig-build-pipeline.md) §"The AST cache lifecycle").
 
 An **IG AST** is a per-resource dump of what one IG Publisher build held in
 memory. It is written by the `ast-export` library, which is built **on top

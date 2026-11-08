@@ -13,13 +13,18 @@ terminology server (default `http://tx.fhir.org`) and Maven Central. If
 `packages.fhir.org` is refused, see the `fhir-validation` skill, §"When a
 package host refuses you".
 
-The layers come from the IG's `index.lock.json`. From the IG repository's
-root, mount them the way the publish workflow does:
+The layers come from the IG's `index.lock.json`, and you do not mount them by
+hand. The IG's `cat` script is `bun .github/cat.ts`: on a fresh clone, the
+first `bun run cat …` mounts every layer the lock pins, then runs the command.
+It fetches the mounter at the commit the lock pins and checks each layer's
+hash before keeping it. Later runs find the layers on disk and go straight to
+the command.
 
-```bash
-ref=$(python3 -c "import json;print(next(m['ref'] for m in json.load(open('index.lock.json'))['mounts'] if m['harness']=='cat-harness-tools'))")
-M=$(mktemp -d) && git -C "$M" init -q
-git -C "$M" fetch -q --depth 1 https://github.com/litlfred/cat-harness-tools.git "$ref"
-git -C "$M" checkout -q FETCH_HEAD
-bun run "$M/scripts/mount-from-lock.ts" --root .
-```
+After a re-pin, or to mount without running anything, run
+`bash .github/mount-from-lock.sh` from the IG's root. It replaces a stale
+mount and reports an intact one as `current`.
+
+An IG set up before this has `"cat": "bun cat-harness-tools/scripts/run-script.ts"`
+and no `.github/cat.ts`. Copy `cat.ts` and `mount-from-lock.sh` from
+[`cat-harness-tools/templates/root-bootstrap/`](https://github.com/litlfred/cat-harness-tools/tree/main/templates/root-bootstrap)
+into its `.github/` and set `"cat": "bun .github/cat.ts"`.

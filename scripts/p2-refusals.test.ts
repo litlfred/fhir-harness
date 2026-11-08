@@ -19,18 +19,18 @@ const ix = {
 describe("P2 refusal record", () => {
   const r = refusals(ix, "fhir-harness/scripts/p2-refusals.ts");
 
-  it("refuses every published XML and Turtle representation, citing the ruling", () => {
+  it("refusesXmlTtlCitingRuling", () => {
     expect(r.families.xml!.count).toBe(3);
     expect(r.families.ttl!.count).toBe(2);
     expect(r.total).toBe(5);
     expect((r.families.xml!.entries[0] as { reason: string }).reason).toContain("P2");
   });
 
-  it("keeps an unpublished representation apart from a refused one", () => {
+  it("unpublishedKeptApart", () => {
     expect(r.families["not-published"]!.entries).toEqual([{ artifact: "StructureDefinition/m", missing: ["ttl"] }]);
   });
 
-  it("names the Publisher's view page: .profile for StructureDefinitions, none for the IG", () => {
+  it("publisherViewPageNames", () => {
     expect(publisherViewPage({ resourceType: "ValueSet", id: "a" }, "xml")).toBe("ValueSet-a.xml.html");
     expect(publisherViewPage({ resourceType: "StructureDefinition", id: "m" }, "xml")).toBe("StructureDefinition-m.profile.xml.html");
     expect(publisherViewPage({ resourceType: "ImplementationGuide", id: "x" }, "ttl")).toBeUndefined();
@@ -42,13 +42,13 @@ describe("P2 combined view across IGs (bean ntyj)", () => {
   const other = { id: "y", packageId: "other.ig", artifacts: [{ key: "CodeSystem/c", resourceType: "CodeSystem", id: "c", published: { json: { url: "https://q/CodeSystem-c.json" } } }] } as unknown as FhirArtifactIndex;
   const c = combinedRefusals([{ ig: "example.ig", record: refusals(ix, script) }, { ig: "other.ig", record: refusals(other, script) }], script);
 
-  it("tags every refusal with its IG and sums them", () => {
+  it("combinedTagsAndSums", () => {
     expect(c.total).toBe(5);
     expect(c.families.xml!.entries.every((e) => (e as { ig: string }).ig === "example.ig")).toBe(true);
     expect(c.subject).toEqual({ kind: "fhir-ig-set", id: "example.ig+other.ig" });
   });
 
-  it("states each IG's counts, so an IG that refuses nothing is visible, not absorbed", () => {
+  it("combinedStatesEachIg", () => {
     expect(c.families["by-ig"]!.entries).toEqual([
       { ig: "example.ig", xml: 3, ttl: 2, notPublished: 1 },
       { ig: "other.ig", xml: 0, ttl: 0, notPublished: 1 },
@@ -56,7 +56,7 @@ describe("P2 combined view across IGs (bean ntyj)", () => {
     expect(c.families["not-published"]!.entries).toContainEqual({ ig: "other.ig", artifact: "CodeSystem/c", missing: ["xml", "ttl"] });
   });
 
-  it("refuses fewer than two IGs, or one IG twice", () => {
+  it("refusesFewerOrTwice", () => {
     expect(() => combinedRefusals([{ ig: "example.ig", record: refusals(ix, script) }], script)).toThrow("at least two");
     expect(() => combinedRefusals([{ ig: "a", record: refusals(ix, script) }, { ig: "a", record: refusals(ix, script) }], script)).toThrow("twice");
   });

@@ -26,7 +26,8 @@ sushi-config.yaml   ┘  →  IG Publisher (JVM, Docker)  →  output/  →  pag
 | publish an IG, or see what is published | [Publishing an IG](fhir/publishing.html) |
 | choose where to deploy (GitHub Pages, Cloudflare) | [Deployment targets](fhir/publishing.html#deployment-targets) |
 
-The two commands, from an IG repository whose layers are mounted:
+The two commands, from an IG repository's root. On a fresh clone the first
+`bun run cat` mounts the layers `index.lock.json` pins, then runs:
 
 ```bash
 bun run cat prepare:fhir-harness        # build the AST (the one IG Publisher run)
