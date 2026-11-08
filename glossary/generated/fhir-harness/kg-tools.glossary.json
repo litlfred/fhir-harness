@@ -9,15 +9,23 @@
     {
       "id": "build-ig-site",
       "prefLabel": "Stage one IG as its own just-the-docs Jekyll site",
-      "definition": "Turn an IG source repository into ONE Jekyll source for just-the-docs, as the IG Publisher builds one IG per site: `input/pagecontent` pages with title, parent and order from `sushi-config.yaml` `pages:`, the files the Publisher's include tags resolve against, images, `_data/fhir.json` from `ig-site-data`, and a `_config.yml`. The pages render unchanged, including their references to the IG's site data (bean `bamf`, owner's choice of one site per IG). With the IG's menu, the layout is the one every IG site wears (bean `mftp`): the IG's own top bar, the IG's TOC declared as the folio-assistant navbar's section (added by `rail-standalone-pages`), no sidebar of its own, an edit link per page, and per heading a source-line link and a pre-filled feedback issue.",
+      "definition": "Turn an IG source repository into ONE Jekyll source for just-the-docs, as the IG Publisher builds one IG per site: `input/pagecontent` pages with title, parent and order from `sushi-config.yaml` `pages:`, the files the Publisher's include tags resolve against, images, `_data/fhir.json` from `ig-site-data`, and a `_config.yml`. The pages render unchanged, including their references to the IG's site data. With the IG's menu, the layout is the one every IG site wears: the IG's own top bar, the IG's TOC declared as the folio-assistant navbar's section (added by `rail-standalone-pages`), no sidebar of its own, an edit link per page, and per heading a source-line link and a pre-filled feedback issue.",
       "notation": "build-ig-site",
       "source": "fhir-harness/tools/build-ig-site/build-ig-site.ts#build-ig-site",
       "status": "candidate"
     },
     {
+      "id": "check-translation-supplements",
+      "prefLabel": "Compile and check an IG's translation CodeSystem supplements",
+      "definition": "Compile the IG's CodeSystems with every `input/fsh/translations/<locale>.fsh` CodeSystem supplement in a throw-away FSHOnly SUSHI project, require 0 SUSHI errors, and check that each supplement's base CodeSystem is the IG's own, its codes are a subset of the base's, its language is the file's locale, and every CodeSystem id is unique. SUSHI is the version `ig-toolchain.env` pins, installed from `scripts/sushi/package-lock.json` with install scripts off; the FHIR core package is pinned by sha512; SUSHI runs with no network.",
+      "notation": "check-translation-supplements",
+      "source": "fhir-harness/tools/check-translation-supplements/check-translation-supplements.ts#check-translation-supplements",
+      "status": "candidate"
+    },
+    {
       "id": "check-wireframe-questionnaire",
       "prefLabel": "Check a Questionnaire field for field against the wireframe it was derived from",
-      "definition": "Compare the `data-element` fields of a mid-fidelity wireframe (per `data-layout`, in document order) with the answerable items of a BUILT Questionnaire (depth first, named by `definition` or `code`). Reports a field with no item, an item with no field, an item naming no data element, a data element twice in one layout, and the first place the order differs. Fidelity, not design. Moved down from the WHO layer on the owner's ruling of 2026-10-14: nothing in it is WHO's.",
+      "definition": "Compare the `data-element` fields of a mid-fidelity wireframe (per `data-layout`, in document order) with the answerable items of a BUILT Questionnaire (depth first, named by `definition` or `code`). Reports a field with no item, an item with no field, an item naming no data element, a data element twice in one layout, and the first place the order differs. Fidelity, not design.",
       "notation": "check-wireframe-questionnaire",
       "source": "fhir-harness/tools/check-wireframe-questionnaire/check-wireframe-questionnaire.ts#check-wireframe-questionnaire",
       "status": "candidate"
@@ -25,7 +33,7 @@
     {
       "id": "fhir-cache-seed-npm",
       "prefLabel": "Seed the FHIR package cache from trusted sources (exact versions)",
-      "definition": "Fill `~/.fhir/packages` (or `--cache`) for an environment that cannot reach packages.fhir.org, from trust anchors only: npm account `grahamegrieve` (owner-trusted), publishers' own published-site repositories (the seeder's list, each fetch verified against the tarball's own package.json), template repos found through FHIR/ig-registry's templates.json read live each run, and an owner `--mirror`. Exact versions only (a patch wildcard resolves as the Publisher resolves it, recorded); every tarball verified; nothing computed once and kept; provenance recorded; missing versions listed, never substituted.",
+      "definition": "Fill `~/.fhir/packages` (or `--cache`) for an environment that cannot reach packages.fhir.org, from trust anchors only: npm account `grahamegrieve`, publishers' own published-site repositories (the seeder's list, each fetch verified against the tarball's own package.json), template repos found through FHIR/ig-registry's templates.json read live each run, and a `--mirror`. Exact versions only (a patch wildcard resolves as the Publisher resolves it, recorded); every tarball verified; nothing computed once and kept; provenance recorded; missing versions listed, never substituted.",
       "notation": "fhir-cache-seed-npm",
       "source": "fhir-harness/tools/fhir-cache-seed-npm/fhir-cache-seed-npm.ts#fhir-cache-seed-npm",
       "status": "candidate"
@@ -41,7 +49,7 @@
     {
       "id": "fsh-cone",
       "prefLabel": "FSH dependency cone",
-      "definition": "Compute the dependency cone over an IG's FSH graph, and the blast radius of a set of changed files. What makes an incremental IG build possible: without it, any edit rebuilds everything.",
+      "definition": "Compute the dependency cone over an IG's FSH graph, and the blast radius of a set of changed files. It is what lets an incremental IG build rebuild less than everything.",
       "notation": "fsh-cone",
       "source": "fhir-harness/tools/fsh-cone/fsh-cone.ts#fsh-cone",
       "status": "candidate"
@@ -49,7 +57,7 @@
     {
       "id": "ig-artifact-jsonld",
       "prefLabel": "Write one JSON-LD node per IG artefact, and check a built site's nodes",
-      "definition": "`write` turns an artefact index into `artifact/<Type>-<id>.jsonld` (and a `.json` twin) under a docs root: one `folio-ig-artifact-jsonld/v1` node per artefact, in borrowed vocabularies only (the FHIR RDF class, dcterms, schema.org, PROV), naming the artefact's canonical URL, its representations and, for a compiled copy, what built it. `check` is the kind's QA: over a BUILT site, every artefact has its node and no node is an orphan, each node is its own file's, its twin matches, and every local resource it names is on the site. It also writes and checks the index node, `artifact/index.jsonld` (`folio-ig-artifact-index-jsonld/v1`): every artefact once, each entry naming its node. WHO-free; the assets the thin pages render (owner, 2026-10-11, option A; thin by default since 2026-10-12).",
+      "definition": "`write` turns an artefact index into `artifact/<Type>-<id>.jsonld` (and a `.json` twin) under a docs root: one `folio-ig-artifact-jsonld/v1` node per artefact, in borrowed vocabularies only (the FHIR RDF class, dcterms, schema.org, PROV), naming the artefact's canonical URL, its representations and, for a compiled copy, what built it. `check` is the kind's QA: over a BUILT site, every artefact has its node and no node is an orphan, each node is its own file's, its twin matches, and every local resource it names is on the site. It also writes and checks the index node, `artifact/index.jsonld` (`folio-ig-artifact-index-jsonld/v1`): every artefact once, each entry naming its node. These are the assets the thin pages render.",
       "notation": "ig-artifact-jsonld",
       "source": "fhir-harness/tools/ig-artifact-jsonld/ig-artifact-jsonld.ts#ig-artifact-jsonld",
       "status": "candidate"
@@ -81,7 +89,7 @@
     {
       "id": "ig-ast-jsonld",
       "prefLabel": "Export an IG AST as JSON-LD",
-      "definition": "Write an AST as linked data against `fhir-harness/schemas/ig-ast.context.jsonld`: each resource a node identified by its canonical URL (`urn:fhir:<Type>/<id>` when it has none) and typed by its FHIR resource type, each dependency edge a link to its target, and the manifest's `authority: cache` and `provisional` list carried on the graph. The AST is validated against the Zod declaration the JSON Schemas are generated from before it is exported (bean `l0lq`).",
+      "definition": "Write an AST as linked data against `fhir-harness/schemas/ig-ast.context.jsonld`: each resource a node identified by its canonical URL (`urn:fhir:<Type>/<id>` when it has none) and typed by its FHIR resource type, each dependency edge a link to its target, and the manifest's `authority: cache` and `provisional` list carried on the graph. The AST is validated against the Zod declaration the JSON Schemas are generated from before it is exported.",
       "notation": "ig-ast-jsonld",
       "source": "fhir-harness/tools/ig-ast-jsonld/ig-ast-jsonld.ts#ig-ast-jsonld",
       "status": "candidate"
@@ -97,7 +105,7 @@
     {
       "id": "ig-ast-measure-real-igs",
       "prefLabel": "Measure the AST export on real IGs",
-      "definition": "Build the WHO SMART Trust and Immunizations IGs through `ig-ast-export` and print the W1/W2 measurements: counts, whether FSH sources sit where the plan expects, and logic-layer edge coverage per resource type against 458 of 458. `--byte-identical` adds a stock build and an `output/` diff.",
+      "definition": "Build the WHO SMART Trust and Immunizations IGs through `ig-ast-export` and print the fork's measurements: counts, whether FSH sources sit where the plan expects, and logic-layer edge coverage per resource type. `--byte-identical` adds a stock build and an `output/` diff.",
       "notation": "ig-ast-measure-real-igs",
       "source": "fhir-harness/tools/ig-ast-measure-real-igs/ig-ast-measure-real-igs.ts#ig-ast-measure-real-igs",
       "status": "candidate"
@@ -105,7 +113,7 @@
     {
       "id": "ig-ast-pages",
       "prefLabel": "Write the IG AST viewer: a page per instance holding `ig-ast` directories, and a hub",
-      "definition": "For every visualiser an instance declares `renderedBy: ig-ast-pages`, write the hub at `<locale>/<harness>/<id>/` and, with `subgraphs: \"instance\"`, one page per instance that declares an `ig-ast` directory, at `…/<instance>/`. Each lists the ASTs the directory holds: the IG's package id, resources in total and by type, dependency edges (resolved inside the IG, by origin, by kind), the rebuild plan when one is recorded, and what stays provisional. A declared directory not on disk — a branch-family member not restored, which is the normal case — is reported UNKNOWN with the family it would be restored from, never as zero ASTs. Not `ig-ast-list` extended: that Tool summarises ONE AST it is handed, and a site build has no AST path to hand it.",
+      "definition": "For every visualiser an instance declares `renderedBy: ig-ast-pages`, write the hub at `<locale>/<harness>/<id>/` and, with `subgraphs: \"instance\"`, one page per instance that declares an `ig-ast` directory, at `…/<instance>/`. Each lists the ASTs the directory holds: the IG's package id, resources in total and by type, dependency edges (resolved inside the IG, by origin, by kind), the rebuild plan when one is recorded, and what stays provisional. A declared directory not on disk — a branch-family member not restored, which is the normal case — is reported UNKNOWN with the family it would be restored from, never as zero ASTs. `ig-ast-list` summarises one AST it is handed; this Tool needs no AST path.",
       "notation": "ig-ast-pages",
       "source": "fhir-harness/tools/ig-ast-pages/ig-ast-pages.ts#ig-ast-pages",
       "status": "candidate"
@@ -159,9 +167,17 @@
       "status": "candidate"
     },
     {
+      "id": "ig-index-build",
+      "prefLabel": "Build each IG instance's artefact index from the IG's cached AST",
+      "definition": "Write each IG instance's `fhir-artifact-index/` at publish, so no IG instance commits one. Indexes each instance that needs this layer and whose `repository` has an AST cache branch; others are skipped and named. Per instance: `index.json` from the AST `ig-cache.sh restore` lays down from the IG repository's cache branch (`authority: \"cache\"`), `menu.json` from the IG's `sushi-config.yaml` at the commit cloned (recording the `source.of` and `source.ref` that `stage-ig-sites` clones from), `releases.json` from the repository's GitHub releases (a failed read writes nothing, never an empty list), `package.tgz` from the AST's resources, and the JSON-LD contexts the IG publishes. The first step of process `ig-docs-site-compose`.",
+      "notation": "ig-index-build",
+      "source": "fhir-harness/tools/ig-index-build/ig-index-build.ts#ig-index-build",
+      "status": "candidate"
+    },
+    {
       "id": "ig-pages",
       "prefLabel": "Generate an IG instance's reader-facing pages from its artefact index",
-      "definition": "Write `<instance>/docs/` — an index page, one page per artefact, a page per over-large category and per menu group — from `fhir-artifact-index/index.json` (and `menu.json` when ingested), styled by the template chrome an owning instance ingested. Moved down to this layer because nothing in it was one IG's own (#1767); with `--summary` it writes an instance's landing page, opening with that instance's harness section. For an instance whose docs declare `igSite` (bean `mftp`) it writes no index, menu or category pages — the IG site's own replace them — and only a front-matter `artifacts.md` naming the Tool that drew it. Where an instance declares a visualiser `renderedBy: ig-pages`, it also writes that visualiser's route page, `<base>/<instance>/<id>/`, which opens the artefact index; with `--site <dir>` it writes only those route pages, under that site. For an IG whose SOURCE is at hand, `build-ig-site` renders the IG's own pages instead; this is for an IG known only by what it published.",
+      "definition": "Write `<instance>/docs/` — an index page, one page per artefact, a page per over-large category and per menu group — from `fhir-artifact-index/index.json` (and `menu.json` when ingested), styled by the template chrome an owning instance ingested. For an instance whose docs declare `igSite` it writes no index, menu or category pages — the IG site's own replace them — and only a front-matter `artifacts.md` naming the Tool that drew it. `build-ig-site` renders an IG's narrative pages from source; this Tool writes the artefact pages for every IG instance (`stage-ig-sites` copies them in).",
       "notation": "ig-pages",
       "source": "fhir-harness/tools/ig-pages/ig-pages.ts#ig-pages",
       "status": "candidate"
@@ -169,7 +185,7 @@
     {
       "id": "ig-repo-site",
       "prefLabel": "Build an IG repository's own site from its cached AST, with no instance declaration",
-      "definition": "The three checkout scripts the platform's site build runs for a repository that holds an IG and only mounts layers (`index.config.json`): `ig-site:ast` restores the AST from the IG's cache branch (`ig-cache.sh restore`) and judges it, refusing a stale, cannot-tell or absent one (a stale one is accepted for a preview with `SITE_ACCEPT_STALE_AST=1`); `ig-site:compose` derives the artefact index from the AST (binding any IG API sidecars a layer above left in `$SITE_WORK/ig-api/`), writes the thin artefact pages, stages the IG's `input/` and `sushi-config.yaml` (menu read at build time, palette from the webpage theme of the top layer the repository mounts, edit links from its origin) and composes it at the ROOT of the host site source; `ig-site:publisher-pages` serves the AST's resources (`ast-data/` and `<Type>-<id>.json`), the artefact index and the sidecars, refuses a page wearing the IG Publisher's chrome, repairs repeated element ids and stamps `folio-build.json`. Never runs the Publisher and never reads its output. Compose lists the pages it puts in the site in `FOLIO_SITE_UPSTREAM_PAGES`, so the site build reports the IG's own dead links rather than refusing the publish over them.",
+      "definition": "The three checkout scripts the platform's site build runs for a repository that holds an IG and only mounts layers (`index.config.json`): `ig-site:ast` restores the AST from the IG's cache branch (`ig-cache.sh restore`) and judges it, refusing a stale, cannot-tell or absent one (a stale one is accepted for a preview by default, refused with `SITE_ACCEPT_STALE_AST=0`, and never accepted for the root); `ig-site:compose` derives the artefact index from the AST (binding any IG API sidecars a layer above left in `$SITE_WORK/ig-api/`), writes the thin artefact pages, stages the IG's `input/` and `sushi-config.yaml` (menu read at build time, palette from the webpage theme of the top layer the repository mounts, edit links from its origin) and composes it at the ROOT of the host site source; `ig-site:publisher-pages` serves the AST's resources (`ast-data/` and `<Type>-<id>.json`), the artefact index and the sidecars, refuses a page wearing the IG Publisher's chrome, repairs repeated element ids and stamps `folio-build.json`. Never runs the Publisher and never reads its output. Compose lists the pages it puts in the site in `FOLIO_SITE_UPSTREAM_PAGES`, so the site build reports the IG's own dead links rather than refusing the publish over them.",
       "notation": "ig-repo-site",
       "source": "fhir-harness/tools/ig-repo-site/ig-repo-site.ts#ig-repo-site",
       "status": "candidate"
@@ -177,7 +193,7 @@
     {
       "id": "ig-site-data",
       "prefLabel": "Populate site.data.fhir for a just-the-docs IG render",
-      "definition": "Write the IG Publisher's Jekyll variables (`site.data.fhir.ig.*`, `packageId`, `canonical`) for ONE implementation guide, from `sushi-config.yaml` or a published IG's `fhir-artifact-index`, so pages written for the Publisher render on just-the-docs unchanged. fhir-harness declares `site.data` as a pass-through Liquid prefix; this is what Jekyll then reads (bean `bamf`).",
+      "definition": "Write the IG Publisher's Jekyll variables (`site.data.fhir.ig.*`, `packageId`, `canonical`) for ONE implementation guide, from `sushi-config.yaml` or a published IG's `fhir-artifact-index`, so pages written for the Publisher render on just-the-docs unchanged. fhir-harness declares `site.data` as a pass-through Liquid prefix; this is what Jekyll then reads.",
       "notation": "ig-site-data",
       "source": "fhir-harness/tools/ig-site-data/ig-site-data.ts#ig-site-data",
       "status": "candidate"
@@ -193,7 +209,7 @@
     {
       "id": "ingest-ig-releases",
       "prefLabel": "Record an IG's GitHub releases as pointers to their binary assets",
-      "definition": "Read an IG repository's GitHub releases and write `fhir-artifact-index/releases.json` (`ig-releases/v1`): each asset's name, size, SHA-256 digest and download URL, never its bytes. The IG site's generated `releases` page lists them (bean `b8ip`).",
+      "definition": "Read an IG repository's GitHub releases and write `fhir-artifact-index/releases.json` (`ig-releases/v1`): each asset's name, size, SHA-256 digest and download URL, never its bytes. The IG site's generated `releases` page lists them.",
       "notation": "ingest-ig-releases",
       "source": "fhir-harness/tools/ingest-ig-releases/ingest-ig-releases.ts#ingest-ig-releases",
       "status": "candidate"
@@ -201,7 +217,7 @@
     {
       "id": "jsonld-vocabularies",
       "prefLabel": "ValueSet expansions → JSON-LD",
-      "definition": "JSON-LD vocabularies built from the ValueSet expansions in the published output.",
+      "definition": "JSON-LD vocabularies built from the ValueSet expansions in the IG's AST (`expansions.json`).",
       "notation": "jsonld-vocabularies",
       "source": "fhir-harness/tools/jsonld-vocabularies/jsonld-vocabularies.ts#jsonld-vocabularies",
       "status": "candidate"
@@ -209,7 +225,7 @@
     {
       "id": "logical-model-schemas",
       "prefLabel": "Logical models → JSON Schema",
-      "definition": "A JSON Schema per logical model, from the published FHIR resources.",
+      "definition": "A JSON Schema per logical model, from the logical models in the IG's AST.",
       "notation": "logical-model-schemas",
       "source": "fhir-harness/tools/logical-model-schemas/logical-model-schemas.ts#logical-model-schemas",
       "status": "candidate"
@@ -217,7 +233,7 @@
     {
       "id": "pin-ig-terminology",
       "prefLabel": "Snapshot a published IG's terminology at its pinned version",
-      "definition": "Read every CodeSystem concept out of a FHIR IG clone checked out at its pinned tag and write a `folio-pinned-terminology/v1` snapshot: the offline, version-fixed answer `check:term-mapping` resolves its `fhir` target against. Which IG, which pin record and which snapshot path are the caller's (`--pin`, `--out`, `--source`); this layer names none (#1767, stage B′).",
+      "definition": "Read every CodeSystem concept out of a FHIR IG clone checked out at its pinned tag and write a `folio-pinned-terminology/v1` snapshot: the offline, version-fixed answer `check:term-mapping` resolves its `fhir` target against. Which IG, which pin record and which snapshot path are the caller's (`--pin`, `--out`, `--source`); this layer names none.",
       "notation": "pin-ig-terminology",
       "source": "fhir-harness/tools/pin-ig-terminology/pin-ig-terminology.ts#pin-ig-terminology",
       "status": "candidate"
@@ -225,7 +241,7 @@
     {
       "id": "sdc-checks",
       "prefLabel": "Check an IG's built Questionnaires with CSIRO's SDC libraries",
-      "definition": "Build-time Structured Data Capture checks, one result per Questionnaire (`sdcChecks[]` of `fhir-questionnaire-wireframe`): `assemble` (`@aehrc/sdc-assemble` 2.0.3: an assemble-root's sub-forms resolve in this IG, and `--out` writes the assembled Questionnaire), `template-extract` (`@aehrc/sdc-template-extract` 1.0.16: extraction from the IG's fixture response yields the expected resources), `populate` (`@aehrc/sdc-populate` 4.7.2: FHIRPath pre-population from a fixture context gives the expected answers) and `behaviour` (`@aehrc/questionnaire-test-toolkit` 0.1.0: the IG's own behavioural test, warn-only). Owner, 2026-10-14: checks, not UI.",
+      "definition": "Build-time Structured Data Capture checks, one result per Questionnaire (`sdcChecks[]` of `fhir-questionnaire-wireframe`): `assemble` (`@aehrc/sdc-assemble` 2.0.3: an assemble-root's sub-forms resolve in this IG, and `--out` writes the assembled Questionnaire), `template-extract` (`@aehrc/sdc-template-extract` 1.0.16: extraction from the IG's fixture response yields the expected resources), `populate` (`@aehrc/sdc-populate` 4.7.2: FHIRPath pre-population from a fixture context gives the expected answers) and `behaviour` (`@aehrc/questionnaire-test-toolkit` 0.1.0: the IG's own behavioural test, warn-only). Checks only, no UI.",
       "notation": "sdc-checks",
       "source": "fhir-harness/tools/sdc-checks/sdc-checks.ts#sdc-checks",
       "status": "candidate"
@@ -233,7 +249,7 @@
     {
       "id": "stage-ig-sites",
       "prefLabel": "Stage every IG whose instance records its source, one Jekyll site each",
-      "definition": "For every instance holding `fhir-artifact-index/menu.json` with a sushi-config source, clone the IG at the recorded commit and stage it with `build-ig-site`: the instance's webpage theme (inherited along `needs` when it declares none), its artefact pages and `artifacts` page, its post-processing fills, and an edit link to the IG's default branch. An instance whose docs directory declares `igSite` is staged to be served AT `/<instance>/` with its artefact pages copied in (a collision is refused); otherwise beside it at `/<instance>/ig/`. Prints one `<instance> <jekyll source> <at>` line per IG for the caller's `jekyll build` (beans `bamf`, `mftp`).",
+      "definition": "Clone each IG whose instance records a sushi-config source in `fhir-artifact-index/menu.json`, at the recorded commit, and stage it with `build-ig-site` (theme, artefact pages, post-processing fills, edit links to the IG's default branch). Served at `/<instance>/` when its docs declare `igSite` (its artefact pages copied in; a collision is refused), else `/<instance>/ig/`. Prints one `<instance> <jekyll source> <at>` line per IG for the caller's `jekyll build`.",
       "notation": "stage-ig-sites",
       "source": "fhir-harness/tools/stage-ig-sites/stage-ig-sites.ts#stage-ig-sites",
       "status": "candidate"
@@ -257,7 +273,7 @@
     {
       "id": "terminology-index",
       "prefLabel": "Write an IG site's static terminology index from the IG's own cache",
-      "definition": "Read the IG Publisher's `expansions.json` and `txcache/`, as `ig-cache.sh restore` leaves them, and write `index.json` (gzipped as `index.json.gz` over 1 MB): every code with its system and display, and each value set's codes. The IG site's service worker answers the self-hosted Form Builder's LOINC search from it, and its UCUM search from the vendored full UCUM list, so the site makes no cross-site call (owner, 2026-10-14: \"cache + ucum. this is gh-pages so no XSS\"). `build-ig-site` runs it for every IG with a Questionnaire.",
+      "definition": "Read the IG Publisher's `expansions.json` and `txcache/`, as `ig-cache.sh restore` leaves them, and write `index.json` (gzipped as `index.json.gz` over 1 MB): every code with its system and display, and each value set's codes. The IG site's service worker answers the self-hosted Form Builder's LOINC search from it, and its UCUM search from the vendored full UCUM list, so the site makes no cross-site call. `build-ig-site` runs it for every IG with a Questionnaire.",
       "notation": "terminology-index",
       "source": "fhir-harness/tools/terminology-index/terminology-index.ts#terminology-index",
       "status": "candidate"

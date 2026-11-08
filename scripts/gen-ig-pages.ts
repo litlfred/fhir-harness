@@ -265,7 +265,23 @@ const IG_SITE =
  * the instance's own route in the main site, or the IG site's root, whose
  * `baseurl` already ends in `/<instance>`.
  */
-const SITE_PREFIX = IG_SITE ? "" : `/${INSTANCE_NAME}`;
+const SITE_PREFIX = IG_SITE ? "" : sitePrefixArg() ?? `/${INSTANCE_NAME}`;
+/**
+ * `--site-prefix <path>`: where the caller publishes this docs root, when it
+ * is not `/<instance>/`. The staging workflow copies an IG's AST-built pages
+ * to `/<instance>/ast/`, so their links to the shared `assets/` must say so,
+ * or every page links a stylesheet and footer loader that are not there.
+ * Site-absolute, one leading slash, no trailing one.
+ */
+function sitePrefixArg(): string | undefined {
+  const v = arg("--site-prefix");
+  if (v === undefined) return undefined;
+  if (!/^\/[A-Za-z0-9._~/-]*[A-Za-z0-9._~-]$/.test(v) || v.includes("//") || v.split("/").includes("..")) {
+    console.error(`gen-ig-pages: --site-prefix ${JSON.stringify(v)}: expected a site-absolute path like /<instance>/ast`);
+    process.exit(2);
+  }
+  return v;
+}
 /**
  * Where an artefact page's "all artefacts" link goes: the IG site's own
  * Artifact Index (`artifacts.html`, written by `build-ig-site`) when the pages
@@ -634,9 +650,9 @@ const CSS = `
 .st-stat{flex:1 1 8rem;border:1px solid rgba(128,128,128,.35);border-radius:6px;padding:.5rem .7rem}
 .st-stat b{display:block;font-size:1.25rem;line-height:1.2}
 .st-stat span{font-size:.75rem;opacity:.75}
-#ig-footer{margin-top:2.5rem;font-size:.85rem}
-#ig-footer p{margin:.4rem 0}
-#ig-footer .ig-footer-band{background:var(--footer-container-bg-color,var(--footer-bg-color,transparent));color:var(--footer-text-color,inherit);padding:.5rem 1rem;border-top:1px solid rgba(128,128,128,.35)}
+#ig-footer{margin-top:1.5rem;font-size:.8rem}
+#ig-footer p{margin:.1rem 0}
+#ig-footer .ig-footer-band{background:var(--footer-container-bg-color,var(--footer-bg-color,transparent));color:var(--footer-text-color,inherit);padding:.3rem 1rem;border-top:1px solid rgba(128,128,128,.35)}
 #ig-footer .ig-footer-band a{color:var(--footer-hyperlink-text-color,inherit)}
 #ig-footer .ig-footer-band code{background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.28);color:inherit}
 #ig-footer a[rel~=external]::after{content:" \\2197"}

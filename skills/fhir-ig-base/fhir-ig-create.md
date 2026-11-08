@@ -147,7 +147,10 @@ From there the IG grows in place, and leaves only through
    first push; a repository forked from an upstream IG is the usual case.
 5. **Copy the site templates, unchanged.** `templates/ig-repo-site/`
    holds `ig-ast-refresh.yml` and `site-publish.yml`; copy both into
-   `.github/workflows/`, as they are. An IG repository's site is built from
+   `.github/workflows/`, as they are. When the IG has translations in
+   `input/fsh/translations/`, copy `translation-supplements.yml` too: it
+   compiles them on every pull request ([`ig-build-pipeline`](ig-build-pipeline.md)
+   §"Translation supplements"). An IG repository's site is built from
    the AST cache (§"The AST cache lifecycle" of
    [`ig-build-pipeline`](ig-build-pipeline.md)), and `ig-ast-refresh.yml`
    is its one writer. Without it the repository has no site, and

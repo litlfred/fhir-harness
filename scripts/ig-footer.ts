@@ -27,7 +27,7 @@
  * | publisherUrl | the IG's first `contact` url | `package.json` `maintainers[0].url` |
  * | packageId, version | `package.json` `name`, `version` | the artefact index |
  * | fhirVersion | `ImplementationGuide.fhirVersion[0]` | `package.json` `fhirVersions[0]`, then the index |
- * | generated | `package.json` `date` (the build stamp) | the index's `builtAt` |
+ * | generated | `package.json` `date` (the build stamp) | the index's `builtAt`; on an IG site, the AST's `generatedAt` (`astFooterData`) |
  * | license | `ImplementationGuide.license` | `package.json` `license` |
  *
  * A value no source carries is ABSENT from the result, and the footer leaves
@@ -159,6 +159,24 @@ export function sushiFooterData(sushi: Json): IgFooterData {
   return Object.fromEntries(Object.entries(out).filter(([, v]) => v !== undefined)) as IgFooterData;
 }
 
+/**
+ * What the IG's AST says about its own build: the day its Publisher run
+ * generated it (`manifest.json` `generatedAt`), the Publisher's "Generated"
+ * date for a site built from that AST and no package. Absent when the
+ * manifest carries none.
+ */
+export function astFooterData(manifest: Json | undefined): IgFooterData {
+  const generated = dayOf(str(manifest?.generatedAt));
+  return generated ? { generated } : {};
+}
+
+/**
+ * The page the footer's "QA Report" link goes to: the Publisher's own name for
+ * its QA page, which an IG site holds as the harness's combined QA report
+ * (`ig-qa-page.ts`: the FHIR QA and the knowledge graph's).
+ */
+export const IG_QA_PAGE = "qa.html";
+
 /** One link of the footer's "Links:" row. `external` marks a link off this site. */
 export interface IgFooterLink {
   label: string;
@@ -191,9 +209,10 @@ export function igSiteFooter(
   styling: { scope?: string; stylesheets?: string[] } = {},
 ): IgSiteFooter {
   const links: IgFooterLink[] = [];
-  // The Publisher's own pages, in its order. `qa.html` and `history.html` are
-  // Publisher outputs this build does not write; they appear once it does.
-  for (const [label, href] of [["Table of Contents", "toc.html"], ["QA Report", "qa.html"], ["Version History", "history.html"]] as const) {
+  // The Publisher's own pages, in its order. `qa.html` is the harness's QA
+  // report where the site holds one (`ig-qa-page.ts`); `history.html` is a
+  // Publisher output this build does not write, and appears once it does.
+  for (const [label, href] of [["Table of Contents", "toc.html"], ["QA Report", IG_QA_PAGE], ["Version History", "history.html"]] as const) {
     if (held(href)) links.push({ label, href });
   }
   if (facts.licenseUrl) links.push({ label: "License", href: facts.licenseUrl, external: true });
