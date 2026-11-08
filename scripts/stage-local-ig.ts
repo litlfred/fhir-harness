@@ -73,7 +73,7 @@ import { siteFileFor } from "@litlfred/cat-harness-tools/schemas/kg/cat-harness.
 import { resolveLandingInstance } from "@litlfred/cat-harness-tools/schemas/kg/harness-config.ts";
 import { findDeclarationFile } from "@litlfred/cat-harness-tools/schemas/kg/instance-roots.ts";
 import { scriptTable } from "@litlfred/cat-harness-tools/schemas/sdlc/script-table.ts";
-import { buildInstanceSite, keepPinned, lockedMountPaths, recipeRead, siteFields, stagingDir } from "../../cat-harness-tools/scripts/build-instance-site.ts";
+import { buildInstanceSite, keepPinned, lockedMountPaths, recipeRead, siteFields, siteScopeOf, stagingDir } from "../../cat-harness-tools/scripts/build-instance-site.ts";
 import { igOpenapiGraph } from "../../cat-harness-tools/openapi/scripts/ig-site-openapi.ts";
 import { igPreviewData, openPrFor, proseRenderer } from "./ig-review-data.ts";
 import { NAVBAR_ROW_ID } from "../../cat-harness-tools/scripts/lib/harness-rail.ts";
@@ -1168,9 +1168,16 @@ async function stageIgFolio(a: PublisherRun, b: IgBuilt, site: IgFolioSite, h: P
   if (staging) log(pr ? `· open PR for ${branch}: #${pr.number}` : `· no open PR found for ${branch}`);
   const previewData = (built: string): void =>
     igPreviewData(built, { ig: repo, render: render!, branch, sha, base: a.defaultBranch ?? "main", ownerRepo, runUrl: a.runUrl, pr }, log);
+  // The pages the site writes (owner, 2026-11-08, Q-SZ-2 "B"): the IG's and its
+  // landing layer's; every other layer's pages are linked on that layer's site.
+  const igDecl = findDeclarationFile(repo);
+  const igName = igDecl === undefined ? undefined : siteFields(readFileSync(join(repo, igDecl), "utf-8"), join(repo, igDecl))?.name;
+  const scope = igName === undefined ? undefined : siteScopeOf(repo, igName);
+  log(`· scope: ${scope ? `${scope.join(", ")}; the other layers' pages are linked on their own sites` : "every instance the checkout mounts"}`);
   const r = await buildInstanceSite({
     root: repo,
     instance: site.scope,
+    ...(scope ? { scope } : {}),
     identity: { title: site.title, ...(site.description ? { description: site.description } : {}) },
     linkRoot: "https://litlfred.github.io/folio-assistant",
     out,
