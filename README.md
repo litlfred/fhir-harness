@@ -25,7 +25,8 @@ implementation guide instantiates.
 
 ## Render and publish an IG
 
-From an IG repository whose layers are mounted:
+From an IG repository's root. On a fresh clone the first `bun run cat`
+mounts the layers `index.lock.json` pins, then runs:
 
 ```bash
 bun run cat prepare:fhir-harness             # build the AST (the one IG Publisher run)
