@@ -92,10 +92,6 @@ html:not([data-fa-scheme="light"]) .ig-topbar-group li a{color:#cfe0f7}
 html:not([data-fa-scheme="light"]) .ig-topbar-group li a:hover{background:#3a3943}
 .ig-main{max-width:none;padding:1rem 1.5rem 3rem}
 .ig-edit{margin-top:2rem;font-size:.85rem}
-.ig-src{font-size:.7em;text-decoration:none;opacity:.45;margin-left:.25em}
-.ig-src:hover{opacity:1}
-.ig-feedback{font-size:.7em;text-decoration:none;opacity:.55;margin-left:.15em}
-.ig-feedback:hover{opacity:1}
 /* The IG's search box in the header (ig-search.ts IG_SEARCH_CSS, kept identical by its test). */
 .ig-search{position:relative;z-index:1000;margin-left:auto;flex:0 1 18rem;min-width:10rem}
 .ig-search-label{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
