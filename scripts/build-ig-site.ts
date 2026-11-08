@@ -515,10 +515,6 @@ html:not([data-fa-scheme="light"]) .ig-topbar-group li a{color:#cfe0f7}
 html:not([data-fa-scheme="light"]) .ig-topbar-group li a:hover{background:#3a3943}
 .ig-main{max-width:none;padding:1rem 1.5rem 3rem}
 .ig-edit{margin-top:2rem;font-size:.85rem}
-.ig-src{font-size:.7em;text-decoration:none;opacity:.45;margin-left:.25em}
-.ig-src:hover{opacity:1}
-.ig-feedback{font-size:.7em;text-decoration:none;opacity:.55;margin-left:.15em}
-.ig-feedback:hover{opacity:1}
 ${IG_SEARCH_CSS.trim()}
 `;
 
@@ -644,35 +640,17 @@ export function includeSource(igSrc: string): (name: string) => { md: string; pa
 }
 
 /**
- * The layout's per-section links: each heading in the page body that matches
- * a source heading (by its visible text, in order) gets a small link to that
- * line on GitHub, and EVERY heading gets a feedback link — a new issue on the
- * IG's repository, pre-filled with the page, the section and its source line
- * (owner, 2026-10-05: "add [shoutout] Feedback icon that opens a github issue
- * next to the section as well w/ preopopulted github issue content"). Script, because Jekyll has rendered the headings by
- * the time a template could see them; matched by text, because an include can
- * add headings the page's own source does not hold.
- *
- * A line carrying `b` is in an included file, and ✎ goes to THAT file's line
- * (bean `x78e`). The issue title names the section first and the page apart
- * from it, and the page only when it is not the section itself: an IG's
- * landing page is titled after its menu entry, e.g. "Summary", which
- * is also its first section's name, and "Feedback: Summary — About this
- * implementation guide" read as one heading paired with another's link.
+ * The per-section links are no longer drawn here. The page carries each
+ * heading's source line (`<script id="ig-source-lines">`), and the platform's
+ * one edit-links runtime (cat-harness-tools `src/core/edit-links.ts`) puts a
+ * box after each heading in the right gutter, as on every other document: 📣
+ * opens the panel with ✎ to that heading's own line (an included file's, bean
+ * `x78e`) and a feedback issue on the IG's repository, titled after the
+ * section with the page apart. Owner, 2026-11-08: "edit feedback on IGs like
+ * rest of documents should be on right grill not touching section title ...
+ * consolidate infrastructure". The old inline ✎ 📣 after each heading's text
+ * (bean `mftp`) went with it.
  */
-export const SOURCE_LINKS_JS = `(function(){var d=document.getElementById("ig-source-lines");if(!d)return;var m;try{m=JSON.parse(d.textContent)}catch(e){return}
-var repo=(m.blob.match(/^https:\\/\\/github\\.com\\/[^/]+\\/[^/]+/)||[])[0];
-var n=function(s){return s.toLowerCase().replace(/[^a-z0-9]+/g," ").trim()};var used={};
-var link=function(h,cls,href,title,glyph){var a=document.createElement("a");a.className=cls;a.href=href;a.title=title;a.textContent=glyph;a.rel="noopener";a.target="_blank";h.appendChild(document.createTextNode(" "));h.appendChild(a)};
-document.querySelectorAll("#main-content h1,#main-content h2,#main-content h3,#main-content h4,#main-content h5,#main-content h6").forEach(function(h){
-var text=h.textContent.trim(),k=n(text),line,file;for(var i=0;i<m.lines.length;i++){if(!used[i]&&n(m.lines[i].t)===k){used[i]=1;line=m.lines[i].l;file=m.lines[i].b;break}}
-var src=line?(file||m.blob)+"#L"+line:m.blob;
-if(line)link(h,"ig-src",src,"This section's source, line "+line+", on GitHub","\\u270E");
-if(repo){var here=location.href.split("#")[0]+(h.id?"#"+h.id:"");
-var pt=document.title.split(" | ")[0].trim();
-var body="**Page:** "+here+"\\n**Section:** "+text+(h.id?" (#"+h.id+")":"")+"\\n**Source:** "+src+"\\n\\n**Feedback:**\\n\\n";
-link(h,"ig-feedback",repo+"/issues/new?title="+encodeURIComponent("Feedback on \\u201C"+text+"\\u201D"+(pt&&n(pt)!==k?" (page: "+pt+")":""))+"&body="+encodeURIComponent(body),"Give feedback on this section (opens a GitHub issue)","\\uD83D\\uDCE3")}})})();`;
-
 /**
  * The IG's chrome that goes INTO a page when the IG is built inside a host
  * site (`composeIgSite`): the IG's own top bar at the top, and at the bottom
@@ -686,9 +664,8 @@ link(h,"ig-feedback",repo+"/issues/new?title="+encodeURIComponent("Feedback on \
  * The edit link and the per-section source and feedback links, as Liquid, for
  * both layouts. The page's edit link comes from the platform's one recipe,
  * edit-links (bean v433), and keeps its plain href for readers without
- * JavaScript. The per-section links are `SOURCE_LINKS_JS`'s own: a heading
- * can live in an included file (bean `x78e`), and its issue is titled after
- * the section, with the page apart, which the block recipe does not do.
+ * JavaScript. The per-section links come from the same runtime, which reads
+ * the page's `ig-source-lines` (see above).
  */
 /**
  * A script's source, inlined into a Liquid include, kept out of Liquid's reach.
@@ -710,12 +687,12 @@ function igEditLines(scriptSrc?: string): string[] {
   return [
     '{% if page.ig_edit_url %}<p class="ig-edit"><a data-fa-link="edit" data-src="{{ page.ig_source_path }}" data-repo="{{ page.ig_source_repo }}" href="{{ page.ig_edit_url }}">Edit this page on GitHub</a></p>{% endif %}',
     '{% if page.ig_source_lines %}<script type="application/json" id="ig-source-lines">{"blob": {{ page.ig_source_blob | jsonify }}, "repo": {{ page.ig_source_repo | jsonify }}, "branch": {{ page.ig_source_branch | jsonify }}, "path": {{ page.ig_source_path | jsonify }}, "lines": {{ page.ig_source_lines | jsonify }}}</script>',
-    // Thin: the two runtimes are ONE linked file (`IG_SOURCE_LINKS_FILE`), not inlined into every page.
-    `${scriptSrc ? `<script src="${scriptSrc}"></script>` : `<script>${liquidInertScript(EDIT_LINKS_RUNTIME)}</script><script>${liquidInertScript(SOURCE_LINKS_JS)}</script>`}{% endif %}`,
+    // Thin: the runtime is a linked file (`IG_SOURCE_LINKS_FILE`), not inlined into every page.
+    `${scriptSrc ? `<script src="${scriptSrc}"></script>` : `<script>${liquidInertScript(EDIT_LINKS_RUNTIME)}</script>`}{% endif %}`,
   ];
 }
 
-/** The edit-link and source-link runtimes as one file, linked by a thin page's bottom. */
+/** The edit-links runtime as one file, linked by a thin page's bottom. The name stays: published pages link it. */
 export const IG_SOURCE_LINKS_FILE = "assets/ig-source-links.js";
 /** The IG's top bar as the staged layout holds it, on a line of its own: what `composeIgSite` lifts out. */
 export const IG_TOPBAR_RE = /<div class="ig-topbar[ "][\s\S]*?<\/div>(?=\n|$)/;
@@ -934,7 +911,7 @@ export function composeIgSite(
     for (const [rel, src] of [[PAGE_LAYOUT_CSS_FILE, PAGE_LAYOUT_CSS_SOURCE], [PAGE_LAYOUT_JS_FILE, PAGE_LAYOUT_JS_SOURCE], [IG_THIN_CSS_FILE, IG_THIN_CSS_SOURCE]] as const) {
       if (!existsSync(join(staged, rel))) put(join(dest, rel), readFileSync(src));
     }
-    put(join(dest, IG_SOURCE_LINKS_FILE), `${EDIT_LINKS_RUNTIME}\n${SOURCE_LINKS_JS}\n`);
+    put(join(dest, IG_SOURCE_LINKS_FILE), `${EDIT_LINKS_RUNTIME}\n`);
   }
   let pages = 0;
   let count = 0;
