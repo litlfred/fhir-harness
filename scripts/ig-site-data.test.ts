@@ -54,7 +54,7 @@ describe("from sushi-config.yaml (what the IG Publisher reads)", () => {
 });
 
 describe("from published IGs' artifact indexes", () => {
-  // Two IGs, one with its own ig-identity.json. The committed WHO instances
+  // Two IGs, one with its own ig-identity.json. The committed WHO layers
   // are checked in `smart-base/scripts/ig-pages-committed.test.ts`.
   const repo = scratchRepo({
     ipa: { index: artifactIndex(IPA, "ipa") },

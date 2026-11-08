@@ -9,7 +9,7 @@
  * has to. The pinned commit's `manifest.json` is read to record the IG commit
  * the AST was compiled from, and the log says when that is not the IG's own
  * pin in `index.lock.json`. `--check` validates the lock against
- * `index.lock.json` with no network: each pin names a mounted instance, in the
+ * `index.lock.json` with no network: each pin names a mounted layer, in the
  * repository it is mounted from.
  *
  * @covers fhir-artifact-index
@@ -47,7 +47,7 @@ export function checkAstLock(root: string): string[] {
   return out;
 }
 
-/** `lock` with `pin` put in its instance's place, sorted by instance. */
+/** `lock` with `pin` put in its layer's place, sorted by layer. */
 export function withPin(pins: Iterable<IgAstPin>, pin: IgAstPin): { $schema: typeof IG_AST_LOCK_TAG; pins: IgAstPin[] } {
   const by = new Map([...pins].map((p) => [p.instance, p]));
   by.set(pin.instance, pin);

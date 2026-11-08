@@ -26,7 +26,7 @@
  *
  * ## The KG QA, from the harness
  *
- * cat-harness-tools `kg-qa-report.ts`: each instance's `qa-results/v1`
+ * cat-harness-tools `kg-qa-report.ts`: each layer's `qa-results/v1`
  * records and the harness's own view of the `qa` graph on this site. This
  * page lays it out and knows nothing of what any record is about.
  *

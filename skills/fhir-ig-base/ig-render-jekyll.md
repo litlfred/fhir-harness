@@ -12,7 +12,7 @@ description: >
 
 # ig-render-jekyll
 
-> Skill id: `ig-render-jekyll` · Package: `fhir-ig-base` · Instance:
+> Skill id: `ig-render-jekyll` · Package: `fhir-ig-base` · Layer:
 > `fhir-harness`
 
 Render an IG's pages as **folio pages** — markdown with front matter, through

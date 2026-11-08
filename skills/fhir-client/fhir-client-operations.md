@@ -11,7 +11,7 @@ description: >
 
 # fhir-client-operations
 
-> Skill id: `fhir-client-operations` · Package: `fhir-client` · Instance:
+> Skill id: `fhir-client-operations` · Package: `fhir-client` · Layer:
 > `fhir-harness`
 
 ## Provenance — read this first

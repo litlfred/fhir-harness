@@ -1,9 +1,9 @@
 /**
- * `build-ig-indexes.ts`: which instances get an artefact index built at
+ * `build-ig-indexes.ts`: which layers get an artefact index built at
  * publish. The build itself clones and restores over the network, so it is
  * measured by running it, not here; what is decided before any clone is.
  *
- * Instances are made up for the test: `ig` needs fhir-harness directly,
+ * Layers are made up for the test: `ig` needs fhir-harness directly,
  * `overlay-ig` through `overlay`, `bare` has no repository, `lone` needs
  * nothing, and `seedless` has no AST branch family.
  *
@@ -99,8 +99,8 @@ describe("rebaseOnMount", () => {
 describe("instancesIn", () => {
   it("readsDeclarationBySelfName", () => {
     // CI checks an IG repository out at `fa/`: `fa/fa.json` is absent, and the
-    // IG's declaration is `ig-x.json`. Read as `<directory>.json`, the IG was an
-    // instance named `fa` needing nothing, so no index was built for it.
+    // IG's declaration is `ig-x.json`. Read as `<directory>.json`, the IG was a
+    // layer named `fa` needing nothing, so no index was built for it.
     const dir = join(mkdtempSync(join(tmpdir(), "ig-index-root-")), "fa");
     mkdirSync(dir, { recursive: true });
     try {

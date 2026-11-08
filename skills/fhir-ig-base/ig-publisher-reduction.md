@@ -9,7 +9,7 @@ description: >
 
 # ig-publisher-reduction
 
-> Skill id: `ig-publisher-reduction` · Package: `fhir-ig-base` · Instance:
+> Skill id: `ig-publisher-reduction` · Package: `fhir-ig-base` · Layer:
 > `fhir-harness`
 
 Get to the point where the IG Publisher is needed **only** to produce an AST

@@ -1,23 +1,23 @@
 #!/usr/bin/env bun
 /**
- * The `ig-ast` viewer: one page per instance that declares an `ig-ast`
+ * The `ig-ast` viewer: one page per layer that declares an `ig-ast`
  * directory, listing the IG ASTs it holds, and a hub at the visualiser's route.
  *
  * @module fhir-harness/scripts/gen-ig-ast-pages
- * @covers ig-ast — every directory of that kind any instance in the checkout declares
+ * @covers ig-ast — every directory of that kind any layer in the checkout declares
  *
  * ## Where the pages go, and who says so
  *
  * The HARNESS declares the visualiser (`visualisers` in `fhir-harness.json`,
  * `renderedBy: ig-ast-pages`, `subgraphs: "instance"`), and the route is
  * `visualiserRoute` of it: `<locale>/fhir-harness/<id>/` for the hub and
- * `<locale>/fhir-harness/<id>/<instance>/` per instance. Nothing here chooses
+ * `<locale>/fhir-harness/<id>/<instance>/` per layer. Nothing here chooses
  * a URL. With `--site <dir>` (a site being built, `visualiser-writers.ts` in
  * cat-harness-tools) the pages are written under that site; without it, under
  * the checkout's site directory (`siteOwnerDir`). The route belongs to this
  * writer alone (`check:visualiser-routes`), so a run replaces it wholesale.
  *
- * ## What an instance page says, and what it refuses to say
+ * ## What a layer page says, and what it refuses to say
  *
  * Per AST: the IG's package id (read from the AST's own ImplementationGuide
  * resource, else the branch-family key it sits under), resources in total and
@@ -38,12 +38,12 @@
  * An IG repository needs no `ig-ast` declaration of its own: it builds on this
  * layer through `needs`, and its site is built from the AST on its own
  * repository's branch family (`ig-build-pipeline`, "The IG repository's site
- * route"). So the viewer does not wait for one. Every instance in the checkout
+ * route"). So the viewer does not wait for one. Every layer in the checkout
  * that needs this layer, directly or through a layer above it, and declares a
  * `repository` is asked for the families in {@link AST_FAMILY_PREFIXES}
  * (`git ls-remote`, as `stage-ast-sites.ts` asks). Each family it carries
- * becomes an INHERITED directory on that instance's page, listed by key and
- * shown as unknown in this build, like any unrestored family. An instance that
+ * becomes an INHERITED directory on that layer's page, listed by key and
+ * shown as unknown in this build, like any unrestored family. A layer that
  * declares an `ig-ast` directory itself is shown as declared and not asked. A
  * lookup that fails is said on the page, never read as "no AST".
  *
@@ -75,7 +75,7 @@ import { listAst, readAst, type AstListing } from "./ig-ast.ts";
  */
 export const AST_FAMILY_PREFIXES = ["cat/fhir-harness/fhir-ast/"] as const;
 
-/** The layer whose `needs` makes an instance an IG this viewer asks about. */
+/** The layer whose `needs` makes a layer an IG this viewer asks about. */
 export const LAYER = "fhir-harness";
 
 /** The Tool that draws these pages — the `renderedBy` a harness declares. */
@@ -115,7 +115,7 @@ export interface AstSummary {
   error?: string;
 }
 
-/** One declared `ig-ast` directory of an instance. */
+/** One declared `ig-ast` directory of a layer. */
 export interface AstDirectory {
   id: string;
   path: string;
@@ -124,17 +124,17 @@ export interface AstDirectory {
   /** `null`: the directory is not on disk, so what it holds is unknown. */
   asts: AstSummary[] | null;
   /**
-   * Set when the instance does not declare this directory: it was found on the
-   * instance's repository because the instance needs this layer. `keys` are the
+   * Set when the layer does not declare this directory: it was found on the
+   * layer's repository because the layer needs this layer. `keys` are the
    * family's branch keys (package ids); `error` says the lookup failed.
    */
   inherited?: { keys: string[]; error?: string };
 }
 
-/** One instance holding `ig-ast` directories: the page's subject. */
+/** One layer holding `ig-ast` directories: the page's subject. */
 export interface AstSubject {
   name: string;
-  /** The instance's declared `repository`, for the family's branch links. */
+  /** The layer's declared `repository`, for the family's branch links. */
   repository?: string;
   directories: AstDirectory[];
 }
@@ -145,7 +145,7 @@ function readJson(p: string): unknown {
   return JSON.parse(readFileSync(p, "utf-8"));
 }
 
-/** An instance's declaration read raw: a page must not fail on a field a newer schema refuses. */
+/** A layer's declaration read raw: a page must not fail on a field a newer schema refuses. */
 function rawDeclaration(instanceRoot: string): Record<string, unknown> | undefined {
   try {
     const p = declarationPathIn(instanceRoot);
@@ -227,7 +227,7 @@ interface DirLike {
   storage?: unknown;
 }
 
-/** The instances holding a directory of `kinds`, one subject each, sorted by name. */
+/** The layers holding a directory of `kinds`, one subject each, sorted by name. */
 export function astSubjects(dirs: readonly DirLike[], kinds: readonly string[], repositoryOf: (instance: string) => string | undefined = () => undefined): AstSubject[] {
   const out = new Map<string, AstSubject>();
   for (const d of dirs) {
@@ -264,14 +264,14 @@ export const lsRemote: BranchLister = (repository) => {
   };
 };
 
-/** One instance of the checkout as the inheritance needs it. */
+/** One layer of the checkout as the inheritance needs it. */
 export interface InstanceFacts {
   name: string;
   repository?: string;
   needs: string[];
 }
 
-/** The instances that need `layer`, directly or through any instance they need. */
+/** The layers that need `layer`, directly or through any layer they need. */
 export function needing(instances: readonly InstanceFacts[], layer: string): Set<string> {
   const byName = new Map(instances.map((i) => [i.name, i]));
   const memo = new Map<string, boolean>();
@@ -288,7 +288,7 @@ export function needing(instances: readonly InstanceFacts[], layer: string): Set
 }
 
 /**
- * The inherited subjects: every instance that needs {@link LAYER}, declares a
+ * The inherited subjects: every layer that needs {@link LAYER}, declares a
  * `repository`, has no declared `ig-ast` directory, and whose repository
  * carries a family (or whose lookup failed, which is said, not dropped).
  */
@@ -350,7 +350,7 @@ function familyHref(storage: FamilyStorage, repository: string | undefined, key?
     : `https://github.com/${repo}/tree/${storage.branchPrefix.split("/").map(encodeURIComponent).join("/")}${encodeURIComponent(key)}`;
 }
 
-/** One line for the hub and the instance list: what a directory holds, or that it is unknown. */
+/** One line for the hub and the layer list: what a directory holds, or that it is unknown. */
 export function directoryVerdict(d: AstDirectory): string {
   if (d.inherited?.error !== undefined) return "inherited — lookup failed, unknown";
   if (d.inherited !== undefined) return `inherited — ${d.inherited.keys.length} branch(es) on the repository, not in this build`;
@@ -442,7 +442,7 @@ function directorySection(d: AstDirectory, repository: string | undefined): stri
 
 const MARK = `<p class="iga-mark">An IG AST is a <strong>cache, never an authority</strong>: each manifest lists what stays provisional until a full IG Publisher run, and these counts are what the cache holds, not what the IG publishes.</p>`;
 
-/** `<route>/<instance>/`: one instance's ASTs. */
+/** `<route>/<instance>/`: one layer's ASTs. */
 export function subjectPage(v: Pick<DeclaredVisualiser, "id" | "title">, s: AstSubject, all: readonly AstSubject[]): string {
   const title = `${v.title ?? "IG ASTs"} — ${s.name}`;
   const others = all.map((o) => (o.name === s.name ? `<li><strong>${esc(o.name)}</strong></li>` : `<li><a href="../${esc(o.name)}/">${esc(o.name)}</a></li>`)).join("");
@@ -453,7 +453,7 @@ export function subjectPage(v: Pick<DeclaredVisualiser, "id" | "title">, s: AstS
   );
 }
 
-/** `<route>/`: every instance holding an `ig-ast` directory, with what each holds. */
+/** `<route>/`: every layer holding an `ig-ast` directory, with what each holds. */
 export function hubPage(v: Pick<DeclaredVisualiser, "id" | "title">, all: readonly AstSubject[]): string {
   const title = v.title ?? "IG ASTs";
   const rows = all

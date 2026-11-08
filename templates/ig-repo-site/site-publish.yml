@@ -18,7 +18,7 @@
 #                       `fhirbuild.yml` beside one): the IG build recipe the
 #                       publish mirrors.
 #
-# No instance declaration (`<repo>.json`), no `package.json`, no committed
+# No layer declaration (`<repo>.json`), no `package.json`, no committed
 # menu: the menu is read from sushi-config.yaml at build time.
 #
 # What a run does — the agent's own command, `stage-local.ts`, on a runner:

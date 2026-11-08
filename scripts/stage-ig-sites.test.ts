@@ -1,5 +1,5 @@
 /**
- * Which IGs get their own site is DATA: an instance's menu.json records the
+ * Which IGs get their own site is DATA: a layer's menu.json records the
  * repository and commit its menu was read from (bean `bamf`).
  */
 
@@ -23,7 +23,7 @@ beforeAll(() => {
     writeFileSync(join(repo, name, "fhir-artifact-index", "menu.json"), m);
     writeDeclaration(join(repo, name), { name, directories: [] });
   }
-  // An instance that declares its source in its instance declaration (bean `bamf`)
+  // A layer that declares its source in its layer declaration (bean `bamf`)
   mkdirSync(join(repo, "declared-source", "fhir-artifact-index"), { recursive: true });
   writeFileSync(join(repo, "declared-source", "fhir-artifact-index", "menu.json"), menu());
   writeDeclaration(join(repo, "declared-source"), {
@@ -107,7 +107,7 @@ test("igAtSubdirReservesNothing", () => {
 
 // folio-assistant#2738: smart-immunizations declares no docs, so nothing else
 // answers /<instance>/. Its IG was staged under an `/ig` base but composed at
-// the instance root, and every menu link was dead.
+// the layer root, and every menu link was dead.
 test("noPagesIgAtRoot", () => {
   const root = join(repo, "served-no-docs");
   mkdirSync(root, { recursive: true });

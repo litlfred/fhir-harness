@@ -12,7 +12,7 @@ description: >
 
 # ig-site-links
 
-> Skill id: `ig-site-links` · Package: `fhir-ig-base` · Instance:
+> Skill id: `ig-site-links` · Package: `fhir-ig-base` · Layer:
 > `fhir-harness`
 
 An IG's pages are written for the IG Publisher's output directory: a flat
@@ -83,7 +83,7 @@ page are the PLATFORM's chrome, so none of the rows above covers them. On an
 IG repository's own site they come from the platform's `_data/harness.json`,
 which `compose-docs --shell --instance <ig>` scopes to that IG: its own paths
 resolve under its baseurl, the platform's graphs link to the platform's site,
-and no other instance's state graph or count is shown: a tile counts the IG
+and no other layer's state graph or count is shown: a tile counts the IG
 repository's own graphs, not the platform's. The rule, and why an undeclared
 graph shows no number rather than zero, is in
 [`harness-tiles`](../../../cat-harness/skills/ui/ui-core/harness-tiles.md)

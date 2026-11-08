@@ -14,7 +14,7 @@ afterEach(() => {
   for (const d of made.splice(0)) rmSync(d, { recursive: true, force: true });
 });
 
-/** An IG instance with `annexes/` declared ig-annex and a sibling `tables/` holding `t.json`. */
+/** An IG layer with `annexes/` declared ig-annex and a sibling `tables/` holding `t.json`. */
 function ig(opts: { pages?: boolean; declareAbsent?: boolean } = {}): string {
   const root = mkdtempSync(join(tmpdir(), "ig-annex-judge-"));
   made.push(root);

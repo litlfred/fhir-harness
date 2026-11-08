@@ -1,5 +1,5 @@
 {
-  "_comment": "The grants of the system actor this instance declares in scenarios/actors/ (ig-publisher-service), as a W3C ODRL 2.2 Set. Moved here from the harness's default policy with the actor itself (placement PR4, bean 4fv8): an actor's grants live beside the actor, so the harness's policy names no actor it does not declare. The @context and profile are the harness's, so the actions mean what its folio ODRL profile says. The harness's scenario overlay reads this directory with its own policies (checkoutPolicies / neededPolicies).",
+  "_comment": "The grants of the system actor this layer declares in scenarios/actors/ (ig-publisher-service), as a W3C ODRL 2.2 Set. Moved here from the harness's default policy with the actor itself (placement PR4, bean 4fv8): an actor's grants live beside the actor, so the harness's policy names no actor it does not declare. The @context and profile are the harness's, so the actions mean what its folio ODRL profile says. The harness's scenario overlay reads this directory with its own policies (checkoutPolicies / neededPolicies).",
   "@context": {
     "@vocab": "http://www.w3.org/ns/odrl/2/",
     "odrl": "http://www.w3.org/ns/odrl/2/",

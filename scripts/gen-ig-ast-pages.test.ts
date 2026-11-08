@@ -1,7 +1,7 @@
 /**
  * `gen-ig-ast-pages.ts`: the `ig-ast` viewer's pages, written into a site.
  *
- * A scratch checkout of three instances: `harness` declares the visualiser
+ * A scratch checkout of three layers: `harness` declares the visualiser
  * (`renderedBy: ig-ast-pages`, `subgraphs: "instance"`), `held` declares an
  * `ig-ast` directory with an AST on disk, and `remote` declares one on a
  * branch family that is not restored — the normal case, which the page must
@@ -183,7 +183,7 @@ describe("fhir-harness declares the viewer it draws", () => {
   };
   // Not `builtAtPublish`: the pages are written under the SITE OWNER's site
   // directory (`siteOwnerDir`, cat-harness's in an index checkout), never
-  // under this instance, so an entry here names a directory that stays empty
+  // under this layer, so an entry here names a directory that stays empty
   // and `derive:publish` refuses it ("built nothing there"). The site build
   // runs the writer as a declared visualiser's (`visualiser-writers.ts`).
   it("declaresViewer", () => {

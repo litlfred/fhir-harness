@@ -10,7 +10,7 @@ description: >
 
 # ig-ast-delta
 
-> Skill id: `ig-ast-delta` · Package: `fhir-ig-base` · Instance:
+> Skill id: `ig-ast-delta` · Package: `fhir-ig-base` · Layer:
 > `fhir-harness`
 >
 > An instance of the general compiled-artefact-cache pattern; the shared

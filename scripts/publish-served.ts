@@ -1,10 +1,10 @@
 #!/usr/bin/env bun
 /**
- * Publish an IG instance's SERVED directories into its own built site.
+ * Publish an IG layer's SERVED directories into its own built site.
  *
  * On the main site `mount-instance-docs.ts` publishes every `served: true`
  * directory at `/<instance>/<path>`. An IG repository's OWN site
- * (`templates/ig-repo-site/folio-site.yml`, since replaced by `site-publish.yml`) is that instance alone, at the
+ * (`templates/ig-repo-site/folio-site.yml`, since replaced by `site-publish.yml`) is that layer alone, at the
  * site root, and copied exactly one served directory by hand —
  * `fhir-artifact-index`. Every other one was missing, and the first casualty
  * was the `openapi` graph: the WHO SMART Trust IG's pages link `openapi/index.html`
@@ -38,7 +38,7 @@ export interface ServedPlan {
 
 /**
  * Which of `served` belong to `instance`, and where each lands in a site whose
- * root IS that instance: the route without its `<instance>/` prefix.
+ * root IS that layer: the route without its `<instance>/` prefix.
  */
 export function planServed(served: Served[], instance: string, site: string, exists: (p: string) => boolean = existsSync): ServedPlan {
   const plan: ServedPlan = { copy: [], refused: [] };

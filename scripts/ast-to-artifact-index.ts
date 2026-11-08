@@ -164,7 +164,7 @@ function publishedFor(base: string | undefined, type: string, id: string, hasPag
 const nonEmpty = (s: unknown): string | undefined => (typeof s === "string" && s.trim() ? s : undefined);
 
 export interface AstIndexOptions {
-  /** The index's `id`: the instance directory name. */
+  /** The index's `id`: the layer directory name. */
   instanceId: string;
   /** Where the IG is PUBLISHED (not its canonical base). Optional: absent means no `published` URL is claimed. */
   publishedBase?: string;

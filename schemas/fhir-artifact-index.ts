@@ -382,7 +382,7 @@ export const FhirArtifactIndexSchema = z
      * this field was `dakApiHub` until then).
      *
      * No page reads a `localPath` fragment any more: that path was retired once
-     * no IG instance committed its index (#124). Built at publish
+     * no IG layer committed its index (#124). Built at publish
      * (`build-ig-indexes`, bean `h7ap`) it holds no copy, no
      * `localPath`: the hub is drawn from the index's own bound sidecars
      * (`ig-api-hub.ts`), and `url` is the IG's hub page. `label` is what the

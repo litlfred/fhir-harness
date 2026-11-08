@@ -1,5 +1,5 @@
 {
-  "_comment": "User stories told as the roles this instance owns: what a reader acting in the role is trying to do. Each story points at its role (`role`); the role names none of them (#1168). Moved here with their role from the harness's scenarios/stories.json (placement PR4, bean 4fv8). Schema: the harness's schemas/user-story.ts.",
+  "_comment": "User stories told as the roles this layer owns: what a reader acting in the role is trying to do. Each story points at its role (`role`); the role names none of them (#1168). Moved here with their role from the harness's scenarios/stories.json (placement PR4, bean 4fv8). Schema: the harness's schemas/user-story.ts.",
   "name": "fhir-harness",
   "stories": [
     {

@@ -126,7 +126,7 @@ export const IG_AST_VOCAB = ownNamespace("fhir-harness-ig-ast");
  * a slash namespace since cat-harness-tools#1378, so two levels up), so it
  * stays ours by the same record.
  *
- * It was the vocabulary's address itself (`…/ns/ig-ast/`) until this instance
+ * It was the vocabulary's address itself (`…/ns/ig-ast/`) until this layer
  * declared an `iriBase`; from then `check:node-iris` requires a node's own
  * identifier to name the path its file sits at, and no file sits under
  * `ns/ig-ast/` (bean folio-assistant-63q4).

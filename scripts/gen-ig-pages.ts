@@ -1,6 +1,6 @@
 #!/usr/bin/env bun
 /**
- * Render ANY FHIR IG instance's reader-facing pages from its artefact index.
+ * Render ANY FHIR IG layer's reader-facing pages from its artefact index.
  *
  * @module fhir-harness/scripts/gen-ig-pages
  * @covers fhir-artifact-index, ig-pages — it reads the index and its `--check` grades every page it writes
@@ -8,25 +8,25 @@
  * ## Why it lives in fhir-harness
  *
  * This was the WHO SMART Trust IG's `scripts/gen-smart-trust-pages.ts`. Nothing in it was
- * about the WHO SMART Trust IG except the instance directory, a display label and the
- * instance that owns the template chrome: it reads `fhir-artifact-index/`
+ * about the WHO SMART Trust IG except the layer directory, a display label and the
+ * layer that owns the template chrome: it reads `fhir-artifact-index/`
  * (`index.json`, optionally `menu.json`), which every ingested IG holds in the
  * same shape. Owner, 2026-10-01 (#1767): *"push generic stuff as much as
  * possible into fhir-harness first"* — so the second IG to want pages
  * (the WHO SMART Base IG, for its own landing page) reuses this rather than
  * copying it, and the generator travels with the layer that owns the index's
- * pipeline when the smart-* instances leave for their own repositories.
+ * pipeline when the smart-* layers leave for their own repositories.
  *
  * ## Why this exists
  *
- * `fhir-artifact-index` is registered `renderable: false`, so an instance
+ * `fhir-artifact-index` is registered `renderable: false`, so a layer
  * whose only declared graph of that kind is the index publishes its artefacts
  * at no URL. The owner found it by asking where the WHO SMART Trust IG's page was. Only two
  * of this repository's graph typologies are renderable (`docs` and `folio`); this
- * generator writes an instance's `docs/` from its index.
+ * generator writes a layer's `docs/` from its index.
  *
  * **The URL the owner expected is the right one.** `withRoutes` in
- * `cat-harness/scripts/mount-instance-docs.ts` publishes an instance at
+ * `cat-harness/scripts/mount-instance-docs.ts` publishes a layer at
  * `/<kind>/<instance>/` for every renderable kind AND once at `/<instance>/`,
  * its themed root.
  *
@@ -35,7 +35,7 @@
  * Every artefact, count, canonical URL and link on these pages is read out of
  * `<instance>/fhir-artifact-index/index.json`. Hand-writing them would produce
  * pages that agree with the index exactly once. `--check` keeps that from
- * happening quietly, and it is wired into the gate set per instance.
+ * happening quietly, and it is wired into the gate set per layer.
  *
  * ## What the pages say, and what they refuse to imply
  *
@@ -70,7 +70,7 @@
  * `--site <dir>` is a site being built (`visualiser-writers.ts`, cat-harness-tools):
  * the run writes ONLY the route pages of the visualisers declared `renderedBy:
  * ig-pages` — `<locale>/<harness>/<id>/` and, for a `subgraphs: "instance"`
- * view, `…/<instance>/` — under that directory, and nothing in the instance or
+ * view, `…/<instance>/` — under that directory, and nothing in the layer or
  * its `docs/`. Each page opens the IG's artefact index where the site carries
  * it, and is that index (every artefact, linked upstream) where it does not.
  *
@@ -104,10 +104,10 @@
  * removing it is a separate decision. `--thin` is still accepted and changes
  * nothing; the two together are refused.
  *
- * `--summary` puts the instance's own declaration — its description and every
+ * `--summary` puts the layer's own declaration — its description and every
  * declared graph with its viewer — above the artefact index, via the
  * `harness_details.html` include (with `instance=`), which reads `site.data.harness` at build
- * time. It is how an instance that holds MORE than an IG's artefacts (the WHO SMART Base IG:
+ * time. It is how a layer that holds MORE than an IG's artefacts (the WHO SMART Base IG:
  * a library, methodologies, voices) gets a landing page that says so without a
  * word of it being typed here.
  */
@@ -166,7 +166,7 @@ if (!INSTANCE_ARG) {
 }
 const INSTANCE = resolve(process.cwd(), INSTANCE_ARG);
 /**
- * The instance's IDENTITY: the `name` its declaration gives, and only
+ * The layer's IDENTITY: the `name` its declaration gives, and only
  * without one the directory's name. The two differ in a separated IG
  * repository, where every IG keeps its data under the DAK layer's directory name (owner,
  * 2026-10-02, choosing the plan's layout) but must still publish under its
@@ -177,9 +177,9 @@ const INSTANCE = resolve(process.cwd(), INSTANCE_ARG);
  */
 const INSTANCE_NAME = readDeclaration(INSTANCE)?.name ?? basename(INSTANCE);
 /**
- * `--index` renders from an index OTHER than the instance's committed one,
+ * `--index` renders from an index OTHER than the layer's committed one,
  * e.g. one derived from a restored IG Publisher AST by
- * `ast-to-artifact-index.ts`. The instance still supplies the menu and the
+ * `ast-to-artifact-index.ts`. The layer still supplies the menu and the
  * chrome; only the artefact list comes from the named file.
  */
 const INDEX_ARG = arg("--index");
@@ -235,14 +235,14 @@ const PUBLISHER_DATA = arg("--publisher-data")?.replace(/\/+$/, "");
 const THIN_RENDERER = join(import.meta.dir, "templates", "ig-pages", "ig-artifact.js");
 const THIN_STYLE = join(import.meta.dir, "templates", "ig-pages", "ig-artifact.css");
 
-/** `--out` writes the pages somewhere other than the instance's committed `docs/`. */
+/** `--out` writes the pages somewhere other than the layer's committed `docs/`. */
 const OUT_ARG = arg("--out");
 const OUT = OUT_ARG ? resolve(process.cwd(), OUT_ARG) : join(INSTANCE, "docs");
 /**
  * `--site <dir>`: a site being built (`visualiser-writers.ts`, which reads the
  * flag off this Tool's `site` input). The run writes ONLY the declared route
  * pages, at `<locale>/<harness>/<id>/` under that directory — never `docs/`,
- * never anything in the instance, which in a repository's own site build is a
+ * never anything in the layer, which in a repository's own site build is a
  * pinned mount. See {@link declaredRoutePages}.
  */
 const SITE = siteArg();
@@ -251,7 +251,7 @@ if (SITE !== undefined && OUT_ARG !== undefined) {
   process.exit(2);
 }
 /**
- * Whether these pages build INTO the instance's own IG site, served at
+ * Whether these pages build INTO the layer's own IG site, served at
  * `/<instance>/` (`igSite` on the docs directory, bean `mftp`), rather than
  * composed into the main site. Read off the declaration, never inferred.
  */
@@ -261,8 +261,8 @@ const IG_SITE =
   process.argv.includes("--ig-site") ||
   readDeclaration(INSTANCE)?.directories?.find((d) => resolve(INSTANCE, d.path).replace(/\/+$/, "") === OUT.replace(/\/+$/, ""))?.igSite === true;
 /**
- * The site-absolute path of this instance's docs root, for `relative_url`:
- * the instance's own route in the main site, or the IG site's root, whose
+ * The site-absolute path of this layer's docs root, for `relative_url`:
+ * the layer's own route in the main site, or the IG site's root, whose
  * `baseurl` already ends in `/<instance>`.
  */
 const SITE_PREFIX = IG_SITE ? "" : sitePrefixArg() ?? `/${INSTANCE_NAME}`;
@@ -289,7 +289,7 @@ function sitePrefixArg(): string | undefined {
  */
 const ALL_ARTEFACTS_HREF = IG_SITE ? "../artifacts.html" : "../";
 /**
- * The front-matter-only page an `igSite` instance commits so its artefact
+ * The front-matter-only page an `igSite` layer commits so its artefact
  * index keeps a viewer declaration; its body is the IG site's own generated
  * `artifacts` page (`FRONT_MATTER_ONLY` in `stage-ig-sites.ts`).
  */
@@ -332,14 +332,14 @@ const IG_API_OPENAPI_LOADER = join(import.meta.dir, "templates", "ig-pages", "ig
 const IG_API_OPENAPI_SCRIPT = "assets/ig-api-openapi.js";
 
 /**
- * The instance that OWNS the template chrome, or none.
+ * The layer that OWNS the template chrome, or none.
  *
  * Named rather than walked to, and `schemas/ig-chrome.ts` §`chromeFileFor`
  * carries why: the generator is generic, so the caller names the owner rather
  * than a walk picking one (the `needs` gap that first motivated this has closed;
  * the IG page sets now declare `derivedFrom: smart-base-themes`, bean `nama`).
  * A FLAG rather than a constant: fhir-harness has no business naming a WHO
- * instance.
+ * layer.
  */
 const CHROME_OWNER = arg("--chrome-owner");
 
@@ -350,7 +350,7 @@ const CHROME_OWNER = arg("--chrome-owner");
  */
 const LABEL_ARG = arg("--label");
 
-/** Whether the index page opens with the instance's own declaration. */
+/** Whether the index page opens with the layer's own declaration. */
 const SUMMARY = process.argv.includes("--summary");
 
 /**
@@ -385,7 +385,7 @@ const SIDECAR_LABEL = arg("--sidecar-label") ?? "IG API";
 // placeholder, `build-ig-indexes`), else the generic default.
 const hubPage = (ix: FhirArtifactIndex): string => basename(ix.igApiHub ? new URL(ix.igApiHub.url).pathname : IG_API_HUB_DEFAULT_PAGE).replace(/\.html$/, "");
 
-/** The declaration's `name`, or `undefined` when a directory is not an instance. */
+/** The declaration's `name`, or `undefined` when a directory is not a layer. */
 function declaredName(root: string): string | undefined {
   const decl = declarationPathIn(root);
   if (decl === undefined) return undefined;
@@ -728,7 +728,7 @@ type NavRole =
  */
 let LABEL = LABEL_ARG ?? INSTANCE_NAME;
 /**
- * With `--summary` the index page IS the instance's landing page, so it carries
+ * With `--summary` the index page IS the layer's landing page, so it carries
  * the IG's name alone; without it, it is the artefact index and says so.
  */
 const titleFor = (label: string): string => (SUMMARY ? label : `${label} — artefact index`);
@@ -765,7 +765,7 @@ type ChromeChoice = "fixture" | "removed";
 const FOOTER_TAG = `<footer id="ig-footer"`;
 /**
  * The front-matter flag an IG site's layout draws its footer for (`ig_footer`
- * in `build-ig-site.ts`). On an `igSite` instance's pages it replaces the
+ * in `build-ig-site.ts`). On an `igSite` layer's pages it replaces the
  * `<footer>` + loader pair, so an artefact page and an IG site page are drawn
  * by ONE template from ONE `site.data.fhir.footer` (#1901 follow-up).
  */
@@ -793,7 +793,7 @@ function shell(
   ].join("\n");
   // The remaining styling — the handful of rules just-the-docs has no opinion
   // about, and the mirrored chrome — is LINKED, from one stylesheet each
-  // under the instance's `assets/` (bean `680p`). It was inlined into every
+  // under the layer's `assets/` (bean `680p`). It was inlined into every
   // page: 3.1 KB x 2,153 pages = 6.7 MB of the WHO SMART Trust IG's 12.2 MB of generated
   // pages (measured 2026-10-01), the same bytes 2,153 times. `relative_url`
   // keeps the link right under any baseurl, staging previews included.
@@ -801,7 +801,7 @@ function shell(
   // page renders as an ordinary folio page: a mirror nobody could build is
   // reported by the build, never faked with a hand-typed palette.
   const wearsChrome = chrome === "fixture" && CHROME !== undefined;
-  // An igSite instance's pages all sit one level down (`artifact/`), and are
+  // An igSite layer's pages all sit one level down (`artifact/`), and are
   // built either inside the host site at `/<instance>/` or as the IG's own
   // site at its root (bean `mftp`); a RELATIVE href is right in both, where a
   // site-absolute one is right in only one.
@@ -1024,7 +1024,7 @@ function indexPage(ix: FhirArtifactIndex): string {
     ``,
   ].join("\n");
 
-  // The instance's own declaration, ABOVE the index, when asked for. A Liquid
+  // The layer's own declaration, ABOVE the index, when asked for. A Liquid
   // include rather than text written here: the description and the viewer
   // links are harness-tiles' answer (`site.data.harness`), and a second copy
   // of them in this page would be a second answer free to drift.
@@ -1173,7 +1173,7 @@ const BUILD_REVISION_ID = "build-revision";
  * redid every artefact page for a one-resource change. An artefact built at
  * a DIFFERENT revision than the index records still names its own, as does
  * every page when the index page carrying the note is not the one written
- * here (an `igSite` instance, whose index body is the IG site's own page).
+ * here (an `igSite` layer, whose index body is the IG site's own page).
  */
 function buildRevisionCell(ix: FhirArtifactIndex, revision: string): string {
   return !IG_SITE && ix.source.kind === "output" && ix.source.revision === revision
@@ -1360,7 +1360,7 @@ if (LABEL_ARG === undefined && ix.packageId) {
 }
 
 // `--site`: THE ROUTE PAGES AND NOTHING ELSE. Before a single docs page is
-// built, so nothing below can reach the instance or a committed docs tree.
+// built, so nothing below can reach the layer or a committed docs tree.
 if (SITE !== undefined) {
   const routes = declaredRoutePages(SITE);
   if (CHECK) {
@@ -1393,7 +1393,7 @@ if (CHROME !== undefined) pages.set(CHROME_CSS, `${chromeStyles(CHROME).trim()}\
 // PROVENANCE ONLY. Until 2026-10-09 the index page said which directory it
 // rendered (`renders:`), and that was how a tile found it. The owner then
 // ruled that the HARNESS declares each visualiser (`visualisers` in the
-// instance's declaration, `renderedBy: ig-pages`) at
+// layer's declaration, `renderedBy: ig-pages`) at
 // `<base>/<harness>/<visualiser>/`, so a page claims nothing and names only
 // the Tool that drew it.
 pages.set("index.md", withRenderedByFrontMatter(pages.get("index.md")!, "ig-pages"));
@@ -1705,7 +1705,7 @@ for (const [label, list] of byCategory(ix.artifacts)) {
   }
 }
 
-// AN IG-SITE INSTANCE'S OWN NAVIGATION IS THE IG'S (bean `mftp`). Its index,
+// AN IG-SITE LAYER'S OWN NAVIGATION IS THE IG'S (bean `mftp`). Its index,
 // toc and artifacts pages, its menu sections and its IG API hub page are written
 // by `build-ig-site` from the IG's source and menu, so the copies above would
 // be a second index, a second menu and a second hub at the same URLs. Built
@@ -1720,7 +1720,7 @@ if (IG_SITE) {
   // the IG's own `artifacts` page, which `build-ig-site` writes from data and
   // nothing commits. This writes its front matter only — title and
   // `rendered-by` — and `stage-ig-sites` lays it onto that generated page
-  // (`copyDocsInto`). It no longer says what it renders: the instance's
+  // (`copyDocsInto`). It no longer says what it renders: the layer's
   // declared `visualisers` do (owner, 2026-10-09).
   // Thin, the IG site's `artifacts.html` is a finished page with no front
   // matter to lay this on; it carries `rendered-by` itself (`build-ig-site`).
@@ -1789,11 +1789,11 @@ function docsDirectoryId(): string | undefined {
 }
 
 // THE DECLARED ROUTE (owner, 2026-10-09: "<base URL>/<harness>/<visualizer>").
-// An instance that declares a visualiser `renderedBy: ig-pages` gets a page at
+// A layer that declares a visualiser `renderedBy: ig-pages` gets a page at
 // that route — `<site>/<instance>/<id>/` in the site's docs layer, from
 // `visualiserRoute` and nothing else — which sends a reader to the artefact
 // index this generator (or, for an IG site, the Publisher) draws: the IG's own
-// `artifacts.html`, or this instance's index. The index stays where the IG
+// `artifacts.html`, or this layer's index. The index stays where the IG
 // puts it; the route is where the declaration says it is, and it always works.
 const ROUTE_REPO = checkoutRootFor(INSTANCE);
 const routePages = declaredRoutePages();
@@ -1834,11 +1834,11 @@ function declaredRoutePages(site?: string): { abs: string; html: string }[] {
   for (const v of declaredVisualisers(repo).filter((d) => d.renderedBy === "ig-pages")) {
     const parts = { harness: v.harness, visualiser: v.id };
     // Its own harness: the full view at `<base>/<harness>/<id>/` opens this
-    // instance's artefact index.
+    // layer's artefact index.
     if (v.harness === INSTANCE_NAME) out.push(place(parts));
-    // A harness covering the KIND per instance (`subgraphs: "instance"`):
-    // this instance's sub-graph view, `<base>/<harness>/<id>/<instance>/`.
-    // An IG instance declares no `fhir-artifact-index` directory since #124:
+    // A harness covering the KIND per layer (`subgraphs: "instance"`):
+    // this layer's sub-graph view, `<base>/<harness>/<id>/<instance>/`.
+    // An IG layer declares no `fhir-artifact-index` directory since #124:
     // its index is built at publish (`ig-index:build`), so the index on disk
     // counts as well as a declared directory. The coverage gate counts it too,
     // and without this the site was refused for the missing page

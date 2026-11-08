@@ -2,7 +2,7 @@
 /**
  * An IG repository's OWN site, from its checkout and its cached AST alone:
  * the three steps the platform's site build runs for a repository that holds
- * an implementation guide and no instance declaration of its own.
+ * an implementation guide and no layer declaration of its own.
  *
  * @module fhir-harness/scripts/ig-repo-site
  * @covers none — a build step: it composes an IG into a site and judges no declared graph
@@ -50,7 +50,7 @@
  * shell around the layer's content, and the layer's page at that path
  * replaces it.
  *
- * ## Why there is no instance here
+ * ## Why there is no layer here
  *
  * Owner, 2026-10-14: an IG repository "doesn't need its own harness. It can
  * just define index.config.json and reference [its base harness] as a
@@ -64,7 +64,7 @@
  *   was read from;
  * - the **palette** from the webpage theme of the layer the repository mounts
  *   at the top of its `index.config.json` closure ({@link topMounts}): the
- *   instances it lists that no other listed instance `needs`. That is the
+ *   layers it lists that no other listed layer `needs`. That is the
  *   `needs` the repository would have declared;
  * - the **edit links** from the checkout's own `origin`.
  *
@@ -193,14 +193,14 @@ export function builtPage(sourcePath: string): string | undefined {
   return m ? `${m[1]}.html` : undefined;
 }
 
-/** The thin pages' stylesheet, beside the generator that writes it for an instance's artefact pages. */
+/** The thin pages' stylesheet, beside the generator that writes it for a layer's artefact pages. */
 const THIN_CSS_SOURCE = join(import.meta.dir, "templates", "ig-pages", "ig-artifact.css");
 
 /** The checkout scripts this module provides, by the names the platform asks for. */
 export const IG_SITE_SCRIPTS = { ast: "ig-site:ast", compose: "ig-site:compose", publisherPages: "ig-site:publisher-pages", bar: "ig-site:bar" } as const;
 
 /**
- * The instances a repository mounts that nothing else it mounts needs: the
+ * The layers a repository mounts that nothing else it mounts needs: the
  * top of its `index.config.json` closure. Pure over the listed names and each
  * one's `needs`.
  */
@@ -209,7 +209,7 @@ export function topMounts(listed: readonly string[], needs: (name: string) => re
   return listed.filter((n) => !needed.has(n));
 }
 
-/** The instance names `index.config.json` lists, in its order; empty without one. */
+/** The layer names `index.config.json` lists, in its order; empty without one. */
 export function listedInstances(root: string): string[] {
   const f = join(root, "index.config.json");
   if (!existsSync(f)) return [];
@@ -220,7 +220,7 @@ export function listedInstances(root: string): string[] {
 /**
  * The palette the IG's site wears: the one webpage theme the top mounts
  * declare, each inheriting along its own `needs`. Two tops with a theme each
- * is refused, as two themes in one instance are: nothing says which.
+ * is refused, as two themes in one layer are: nothing says which.
  */
 export function topMountPalette(root: string): { palette?: SitePalette; note: string } {
   const tops = topMounts(listedInstances(root), (n) => instanceNeeds(root, n));
@@ -439,7 +439,7 @@ export function stateFromOutput(indexFile: string, output: string): number {
  * one (the AST stops before the Publisher assigns categories), with the IG API
  * sidecars bound when a layer above left any. Then `gen-ig-pages.ts` writes one
  * thin page and one JSON-LD node per artefact plus the index node the site's
- * thin `artifacts.html` and `toc.html` draw. Returns the instance directory the
+ * thin `artifacts.html` and `toc.html` draw. Returns the layer directory the
  * pages and the index are in.
  */
 export function astArtefactPages(o: { ig: string; ast: string; work: string; name: string; label: string; igApi?: IgApi; log: (s: string) => void }): string {
@@ -595,7 +595,7 @@ export function compose(o: { docs: string; ig: string; baseurl: string; ast?: st
     listUpstream(filesUnder(resolve(o.docs)).filter((f) => !before.has(f)).map(builtPage).filter((p): p is string => p !== undefined));
     log(`${name}: composed at the site root — ${c.pages} page(s), ${c.files - c.pages} other file(s), ${c.includes} include(s)`);
     // The thin layout links the shared thin-page stylesheet, which the artefact
-    // page generator writes when an instance has one; here nothing else does.
+    // page generator writes when a layer has one; here nothing else does.
     const thinCss = join(resolve(o.docs), IG_THIN_CSS_FILE);
     if (!existsSync(thinCss)) {
       mkdirSync(join(thinCss, ".."), { recursive: true });
@@ -934,7 +934,7 @@ export function publisherPages(o: { site: string; ast: string; work?: string; ig
  * `ig-site:bar`, a FINAL step of the site build (cat-harness-tools
  * `build-instance-site.ts` `finalSteps`): the language picker's block and the
  * IG's slim bar ({@link stampIgBar}) on the pages the platform writes AFTER
- * `publisher-pages` — the identifier lookup page and the mounted instance
+ * `publisher-pages` — the identifier lookup page and the mounted layer
  * docs. Owner, 2026-10-15: those pages get the search box too. Both stamps
  * leave a page that already carries them as it was, so the pages
  * `publisher-pages` stamped are untouched.

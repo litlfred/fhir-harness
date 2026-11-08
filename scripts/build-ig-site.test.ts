@@ -446,15 +446,15 @@ describe("copyDocsInto: a front-matter-only page declares something ABOUT a gene
   });
 });
 
-// Synthetic instances in a temp "repository", so this layer tests the
-// mechanism without naming an instance above it: `plain` and `mid` are the
-// instances that hold no IG site, which is all "an instance with no IG has no
+// Synthetic layers in a temp "repository", so this layer tests the
+// mechanism without naming a layer above it: `plain` and `mid` are the
+// layers that hold no IG site, which is all "a layer with no IG has no
 // IG docs" asserts. The same two properties over REAL IGs are facts about
-// those IGs, and are tested by the instances that hold them -- above this
+// those IGs, and are tested by the layers that hold them -- above this
 // layer, so never here, and never named here.
 //
 // `leaf` → `mid` → `base`: two hops, the middle one declaring no theme, so
-// the palette is found THROUGH an instance that has none.
+// the palette is found THROUGH a layer that has none.
 const THEME_TS = join(import.meta.dir, "..", "..", "cat-harness-tools", "schemas", "ui", "theme.ts");
 const BASE_THEME = `import { ResolvedThemeSchema } from ${JSON.stringify(THEME_TS)};
 export const INSTANCE_THEMES = [ResolvedThemeSchema.parse({
@@ -498,7 +498,7 @@ describe("igSiteDocs", () => {
     expect(igSiteDocs(join(fixtureRoot, "base"))).toBe(join(fixtureRoot, "base", "docs/"));
     // A docs directory that does not declare igSite is not one.
     expect(igSiteDocs(join(fixtureRoot, "plain"))).toBeUndefined();
-    // Nor is an instance with no docs directory at all.
+    // Nor is a layer with no docs directory at all.
     expect(igSiteDocs(join(fixtureRoot, "mid"))).toBeUndefined();
   });
 });
@@ -1024,7 +1024,7 @@ describe("composeIgSite: a staged IG moved into a host Jekyll source", () => {
     rmSync(d, { recursive: true, force: true });
   });
 
-  // folio-assistant#2738: an IG at its instance's root, with no artefact pages
+  // folio-assistant#2738: an IG at its layer's root, with no artefact pages
   // to bring `ig-artifact.css`, still gets the stylesheet its layout links.
   test("composedAtInstanceCarriesStylesheet", () => {
     const d = mkdtempSync(join(tmpdir(), "ig-compose-at-"));

@@ -254,7 +254,7 @@ export const CHROME_FILENAME = "chrome.json";
 export const CHROME_GRAPHS = ["themes", "fhir-artifact-index"] as const;
 
 /**
- * Where a named instance's ingested chrome sits — **asked, not composed.**
+ * Where a named layer's ingested chrome sits — **asked, not composed.**
  *
  * Resolved through the declaration (`directoriesForGraph`) rather than by
  * joining a path literal, which is the `ylj7` lesson from four days ago: a
@@ -262,7 +262,7 @@ export const CHROME_GRAPHS = ["themes", "fhir-artifact-index"] as const;
  * and `check:declared-paths` refused it. A directory that moves must move for
  * every reader at once.
  *
- * ## Why the instance is NAMED rather than walked to
+ * ## Why the layer is NAMED rather than walked to
  *
  * The owner placed the chrome at the WHO SMART Base IG so every WHO SMART IG (through
  * `smart-ig`) inherits it instead of each re-copying it. The obvious
@@ -273,8 +273,8 @@ export const CHROME_GRAPHS = ["themes", "fhir-artifact-index"] as const;
  * **That gap has since closed** — `smart-ig` now needs the WHO SMART Base IG, so
  * smart-trust → smart-ig → smart-base resolves, and `check:derived-from`
  * resolves each IG page set's `derivedFrom: smart-base-themes` across it (bean
- * `nama`, measured 2026-10-04). The instance is still NAMED, for the other
- * reason: the generator is generic, and walking to "the nearest instance with
+ * `nama`, measured 2026-10-04). The layer is still NAMED, for the other
+ * reason: the generator is generic, and walking to "the nearest layer with
  * a chrome" would let the layout of a WHO stack decide what a non-WHO IG wears.
  * The caller names the owner; the declaration says which graph it reads.
  */
@@ -289,7 +289,7 @@ export function chromeFileFor(
     join: (...parts: string[]) => string;
   },
 ): string | undefined {
-  // A PATH names the owning instance's root directly, relative to the repository
+  // A PATH names the owning layer's root directly, relative to the repository
   // root (n3ni stage E). In a fork the platform is a submodule, so the chrome owner sits
   // at `folio-assistant/<instance>`: two levels down, where `instanceRootsIn`
   // (one level, by design) cannot see it. Naming it by path keeps the choice
@@ -300,7 +300,7 @@ export function chromeFileFor(
   for (const root of roots) {
     // The chrome is the TEMPLATE's styling, so it ships with the harness that
     // carries the template's theme (plan Q4; rehearsed on the WHO SMART Base IG's repository,
-    // bean `rbz3`): a `themes` directory first, then, for an instance that
+    // bean `rbz3`): a `themes` directory first, then, for a layer that
     // keeps it beside its artefact index, `fhir-artifact-index`.
     for (const dir of CHROME_GRAPHS.flatMap((g) => deps.directoriesForGraph(root, g))) {
       const p = deps.join(dir, CHROME_FILENAME);

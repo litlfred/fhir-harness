@@ -1,14 +1,14 @@
 #!/usr/bin/env bun
 /**
  * Validate every committed FHIR IG artefact index against its schema, and
- * judge every `ig-annex` declaration an instance holds.
+ * judge every `ig-annex` declaration a layer holds.
  *
  * @module folio-assistant-core/scripts/check-artifact-index
  * @covers fhir-artifact-index, ig-annex
  *
  * ## Why this exists beside the retired `ingest:ig:check`
  *
- * `ingest:ig:check` was removed once IG instances stopped committing their
+ * `ingest:ig:check` was removed once IG layers stopped committing their
  * index (#124); `ig-index:build` writes it at publish. The history below is
  * kept because it explains what this check does and does not cover.
  *
@@ -32,7 +32,7 @@
  *
  * ## Three outcomes
  *
- * An index the instance declares `builtAtPublish` (#124) and that this
+ * An index the layer declares `builtAtPublish` (#124) and that this
  * checkout has not built is said as such and not judged: a consumer that
  * mounts an IG layer (a document folio mounting the DAK layer) never builds it.
  *
@@ -50,9 +50,9 @@
  * folio-assistant#2681), so this gate, which already reads the declarations
  * for the index beside them, judges them too ({@link judgeIgAnnexDir}): the
  * declaration is there and is `ig-annexes/v1`, every file it names is held
- * inside its instance, nothing is declared or shown twice, and each page is
- * an `input/pagecontent/` page where the instance holds one (said, not
- * counted, where it does not). No instance declaring an `ig-annex` directory
+ * inside its layer, nothing is declared or shown twice, and each page is
+ * an `input/pagecontent/` page where the layer holds one (said, not
+ * counted, where it does not). No layer declaring an `ig-annex` directory
  * is an absence of subjects, said as such — not a pass.
  */
 import { existsSync, readFileSync } from "node:fs";
@@ -66,25 +66,25 @@ import { judgeInstanceAnnexes } from "./ig-annex-judge.ts";
 const ROOT = repoRootFor(join(import.meta.dir, ".."));
 
 /**
- * Every `fhir-artifact-index/index.json` under an instance.
+ * Every `fhir-artifact-index/index.json` under a layer.
  *
  * Found by walking the repository's top level for a `harness.json` that
  * declares a directory holding the `fhir-artifact-index` graph — resolved from
- * the DECLARATION, never from a hardcoded path, so relocating an instance does
+ * the DECLARATION, never from a hardcoded path, so relocating a layer does
  * not silently take it out of the scan.
  *
  * The top level is ASKED OF GIT (`gitTopLevelDirs`), not walked: a bare
  * directory listing of the root here was the repository's one scan seeded at a root
  * constant without git awareness, found once `root-scan-census` covered this
- * instance (bean `tqv4`). A gitignored directory holding a stray declaration
+ * layer (bean `tqv4`). A gitignored directory holding a stray declaration
  * would otherwise be checked as though it were committed.
  */
 function declaredIndexes(): { path: string; builtAtPublish: boolean }[] {
   const out: { path: string; builtAtPublish: boolean }[] = [];
   for (const entry of declaringInstances()) {
-    // RESOLVED, never composed: since #695 an instance declares itself in
+    // RESOLVED, never composed: since #695 a layer declares itself in
     // `<name>.config.json`, so there is no single filename to join. Composing
-    // one is how a reader stops seeing every instance the moment the
+    // one is how a reader stops seeing every layer the moment the
     // convention moves — which is exactly what this scan must not do.
     const decl = declarationPathIn(join(ROOT, entry))!;
     let parsed: { directories?: Array<{ path?: string; graphTypologies?: string[] }>; builtAtPublish?: Array<{ path?: string }> };
@@ -95,7 +95,7 @@ function declaredIndexes(): { path: string; builtAtPublish: boolean }[] {
       process.exitCode = 1;
       continue;
     }
-    // An index the instance declares `builtAtPublish` (#124: `ig-index:build`
+    // An index the layer declares `builtAtPublish` (#124: `ig-index:build`
     // writes it from the IG's AST at publish) is absent from every checkout
     // that has not built it, a consumer's included: that is "not built here",
     // never "missing".
@@ -109,12 +109,12 @@ function declaredIndexes(): { path: string; builtAtPublish: boolean }[] {
   return out;
 }
 
-/** The repository's top-level directories (asked of git) that hold an instance declaration. */
+/** The repository's top-level directories (asked of git) that hold a layer declaration. */
 function declaringInstances(): string[] {
   return gitTopLevelDirs(ROOT).names.filter((entry) => declarationPathIn(join(ROOT, entry)) !== undefined);
 }
 
-/** Judge every `ig-annex` directory every instance declares; the number of declarations with a finding. */
+/** Judge every `ig-annex` directory every layer declares; the number of declarations with a finding. */
 function checkAnnexes(): number {
   let bad = 0;
   let judged = 0;

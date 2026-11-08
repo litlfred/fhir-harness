@@ -17,7 +17,7 @@ description: >
 
 # fhir-ig-create
 
-> Skill id: `fhir-ig-create` · Package: `fhir-ig-base` · Instance: `fhir-harness`
+> Skill id: `fhir-ig-create` · Package: `fhir-ig-base` · Layer: `fhir-harness`
 
 A request to create a FHIR IG can be met in two ways: in a new repository, or
 inside the folio of a repository that is already harnessed. Work out which
@@ -43,7 +43,7 @@ no such harness, on purpose: the bare FHIR layer knows nothing above it.
 
 | fact | how | values |
 |---|---|---|
-| `inHarness` | a `<name>.json` instance declaration at the working directory's root (`describeRepository` membership `harness`) | yes / no |
+| `inHarness` | a `<name>.json` layer declaration at the working directory's root (`describeRepository` membership `harness`) | yes / no |
 | `hasIg` | an IG source already present: a `sushi-config.yaml` or an `ig.ini` at the root | yes / no |
 | `statedWhere` | what the user **said** about where it goes | `new-repo`, `in-repo`, `existing-ig`, `unstated` |
 
@@ -110,7 +110,7 @@ IG.
    costs nothing, and retrofitting one later means rerouting every import.
 3. **Get the IG source**, one of:
    - **authored here**: `sushi-config.yaml` and `input/` under the
-     instance, authored with [`l3-fhir-authoring`](../content/fhir-ig-authoring/l3-fhir-authoring.md);
+     layer, authored with [`l3-fhir-authoring`](../content/fhir-ig-authoring/l3-fhir-authoring.md);
    - **an IG already published elsewhere**: mount or fork its source
      repository. Its artefact index and navigation are not ingested or
      committed: `bun run cat ig-index:build` writes them at publish from the
@@ -133,7 +133,7 @@ From there the IG grows in place, and leaves only through
    [`agent-handoff`](../../../cat-harness/sdlc/skills/sdlc-core/agent-handoff.md).
 2. **Mount, don't declare.** The repository gets an `index.config.json`
    naming the layer it builds on (this one, or an overlay above it such as
-   the WHO SMART Base IG) as a remote instance with consent, and the `index.lock.json`
+   the WHO SMART Base IG) as a remote layer with consent, and the `index.lock.json`
    `remote-mount.ts` writes. No `<repo>.json` and no submodule: an IG
    repository needs no harness of its own. The same `index.config.json`
    declares the repository an IG source with `contentTypes.ig` and its
@@ -262,7 +262,7 @@ publishes nothing until run.
 On yes:
 
 1. **Mount, don't declare**, as `new-repo` step 2: `index.config.json` names
-   the layer as a remote instance, with `"site": {"landing": "<that
+   the layer as a remote layer, with `"site": {"landing": "<that
    layer>"}` (without it the route refuses rather than guess among the
    mounted layers) and `contentTypes.ig`.
 2. **Keep one workflow that calls the upstream IG build workflow** (the route

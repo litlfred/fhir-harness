@@ -17,7 +17,7 @@
  * once said which overlay publishes these sidecars today — which, in a layer
  * whose one rule is that it knows nothing of the layers above it, put one
  * overlay's name on a surface any IG may publish. What is an overlay's is now
- * configuration its instances pass: the label (`--sidecar-label`), the hub
+ * configuration its layers pass: the label (`--sidecar-label`), the hub
  * page's name and markers (ingest flags), and the source placeholder
  * (recorded on the index's `igApiHub.placeholder`). Rendering is still driven entirely by
  * `a.sidecars` being present, so an IG that publishes none gets none of it.
@@ -62,7 +62,7 @@ export interface IgApiViewData {
   script: string;
 }
 
-/** Where the generator publishes the loader, under the instance's docs root; pages sit one level down in `artifact/`. */
+/** Where the generator publishes the loader, under the layer's docs root; pages sit one level down in `artifact/`. */
 export const IG_API_VIEW_SCRIPT = "assets/ig-api-view.js";
 
 /**
@@ -71,7 +71,7 @@ export const IG_API_VIEW_SCRIPT = "assets/ig-api-view.js";
  * active. No XML or TTL (owner, 2026-10-09).
  */
 /**
- * @param servedFrom the page's path to the instance root's served data — `../`
+ * @param servedFrom the page's path to the layer root's served data — `../`
  *   from `artifact/`, so a `localPath` of `fhir-artifact-index/sidecars/X` is fetched
  *   at `../fhir-artifact-index/sidecars/X`.
  */
@@ -102,15 +102,15 @@ export function igApiViewData(a: FhirArtifact, view: IgApiView, servedFrom = "..
 }
 
 /**
- * Whether an instance's sidecar files are on the site for a page to fetch: its
+ * Whether a layer's sidecar files are on the site for a page to fetch: its
  * artefact-index directory is declared `served`, and its docs directory is
- * the composed instance root — so a page one level down reaches the served
+ * the composed layer root — so a page one level down reaches the served
  * data as `../<path>` (bean `680p`).
  */
 export function igApiServed(instanceRoot: string): { ok: true } | { ok: false; why: string } {
   // Found as the file whose stem equals its own `name`, never as
   // `<directory>.json`: in a separated IG repository the directory may be named
-  // for another instance while the declaration keeps its own name (bean `rbz3`).
+  // for another layer while the declaration keeps its own name (bean `rbz3`).
   const at = declarationPathIn(instanceRoot);
   if (at === undefined) return { ok: false, why: `${basename(instanceRoot)}/ holds no instance declaration` };
   let d: { directories?: { path?: string; graphTypologies?: string[]; served?: boolean; instanceRoot?: boolean; composed?: boolean; igSite?: boolean }[] };
@@ -121,11 +121,11 @@ export function igApiServed(instanceRoot: string): { ok: true } | { ok: false; w
   }
   const dirs = d.directories ?? [];
   const index = dirs.find((x) => x.graphTypologies?.includes("fhir-artifact-index"));
-  // declared-path-literal: matches an entry in the STAGED instance's own declaration by its path; no folio-assistant directory is read
+  // declared-path-literal: matches an entry in the STAGED layer's own declaration by its path; no folio-assistant directory is read
   const docs = dirs.find((x) => x.path === "docs/");
   if (!index?.served) return { ok: false, why: "its fhir-artifact-index directory is not declared `served`" };
   // Composed into the main site or built into the IG's own (bean `mftp`): either way the
-  // pages sit at the instance root, where `../` from `artifact/` reaches the served data.
+  // pages sit at the layer root, where `../` from `artifact/` reaches the served data.
   if (!(docs?.instanceRoot && (docs.composed || docs.igSite))) return { ok: false, why: "its docs/ is not the instance root (composed or igSite), so `../` does not reach the served data" };
   return { ok: true };
 }
@@ -141,12 +141,12 @@ export const IG_API_PLACEHOLDER = "<!-- IG_API_CONTENT -->";
  * The fill that makes the IG site's own hub page what the Publisher
  * published: its source holds only the placeholder, and the IG's
  * post-processing writes the hub there. Undefined, with nothing
- * filled, when the instance holds no hub or does not serve its graph.
+ * filled, when the layer holds no hub or does not serve its graph.
  */
 /**
- * `prefix` is where the instance root is from the IG site's root: `"../"` for
+ * `prefix` is where the layer root is from the IG site's root: `"../"` for
  * a site at `/<instance>/ig/`, `""` for one served AT `/<instance>/` (an
- * `igSite` instance, bean `mftp`).
+ * `igSite` layer, bean `mftp`).
  */
 export function igApiHubFill(instanceRoot: string, prefix = "../"): { marker: string; body: string; data: Record<string, unknown> } | undefined {
   let ix: FhirArtifactIndex;
