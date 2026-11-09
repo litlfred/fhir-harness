@@ -16,6 +16,7 @@ import {
   acceptStaleFromEnv,
   astGate,
   builtPage,
+  cqlSourceOf,
   IG_API_DESCRIPTOR,
   IG_API_SITE,
   IG_API_WORK,
@@ -23,6 +24,7 @@ import {
   igSiteStamp,
   INDEX_WORK,
   isPreviewBase,
+  libraryByUrl,
   platformCommit,
   listedInstances,
   notSource,
@@ -414,5 +416,45 @@ describe("the IG's TOC on its thin pages (owner, 2026-11-02: artifacts.html had 
     const site = mkdtempSync(join(dir, "toc-none-"));
     writeFileSync(join(site, "artifacts.html"), thin("ig-index-page"));
     expect(stampIgTocNav(site).pages).toBe(0);
+  });
+});
+
+describe("libraryByUrl", () => {
+  const lib = {
+    resourceType: "Library",
+    id: "IMMZLogic",
+    name: "IMMZLogic",
+    content: [
+      { contentType: "text/cql", data: "bGlicmFyeQ==" },
+      { contentType: "application/elm+xml", data: "PGxpYi8+" },
+      { contentType: "application/elm+json", data: "e30=" },
+    ],
+  };
+
+  test("cqlByUrlNoElm", () => {
+    const cqlDir = join(dir, "cql-a");
+    mkdirSync(cqlDir, { recursive: true });
+    writeFileSync(join(cqlDir, "IMMZLogic.cql"), "library IMMZLogic");
+    const out = libraryByUrl(lib, { dir: cqlDir, url: (f) => `https://kg.example/cql/${f}` }) as { content: unknown[] };
+    expect(out.content).toEqual([{ contentType: "text/cql", url: "https://kg.example/cql/IMMZLogic.cql" }]);
+  });
+
+  test("cqlKeptWithoutSource", () => {
+    const out = libraryByUrl(lib, { dir: join(dir, "no-cql"), url: (f) => f }) as { content: unknown[] };
+    expect(out.content).toEqual([{ contentType: "text/cql", data: "bGlicmFyeQ==" }]);
+  });
+
+  test("otherResourcesUntouched", () => {
+    expect(libraryByUrl({ resourceType: "ValueSet", id: "x" }, { dir, url: (f) => f })).toBeUndefined();
+    expect(libraryByUrl({ resourceType: "Library", id: "y", content: [{ contentType: "text/cql", url: "u" }] }, { dir, url: (f) => f })).toBeUndefined();
+  });
+
+  test("urlFromRepositoryAndCommit", () => {
+    const ig = join(dir, "ig-cql");
+    mkdirSync(join(ig, "input/cql"), { recursive: true });
+    const c = cqlSourceOf(ig, { SITE_REPOSITORY: "litlfred/smart-immunizations", SITE_COMMIT: "14517c8b" })!;
+    expect(c.url("A B.cql")).toBe("https://raw.githubusercontent.com/litlfred/smart-immunizations/14517c8b/input/cql/A%20B.cql");
+    expect(cqlSourceOf(ig, { SITE_REPOSITORY: "litlfred/smart-immunizations" })).toBeUndefined();
+    expect(cqlSourceOf(join(dir, "no-ig"), { SITE_REPOSITORY: "a/b", SITE_COMMIT: "abcdef1" })).toBeUndefined();
   });
 });
