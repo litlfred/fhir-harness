@@ -56,7 +56,7 @@ declared `ig-annex` directory) are hand-authored source.
 | `input/pagecontent/**/*.md`, `input/includes/**`, `input/translations/**/*.po`, and declared `ig-annex` directories (`annexes.json`) | Rendered HTML in `output/`, composed thin pages in `$SITE_WORK/` / `docs/`, and copied `assets/annex/*` | [`ig-render-jekyll`](ig-render-jekyll.md) §"Thin pages, the default"; §"The IG repository's site route" below |
 | `input/images-source/*.plantuml` | `input/images/*.svg` written by the Publisher when a same-stem `.plantuml` exists in `input/images-source/` (hand-placed static assets under `input/images/` with no `.plantuml` stem are source) | [`ig-ast-delta`](ig-ast-delta.md) §"`validity`" |
 | `input/**` + `sushi-config.yaml` + `ig.ini` | `output-ast/` and the AST cache branch `cat/fhir-harness/fhir-ast/<package id>` (`manifest.json` with `"authority": "cache"`, `dependencies.json`, `fsh-index.json`, `expansions.json`, `txcache/`), written only by `ig-ast-refresh.yml` | §"The AST cache lifecycle", [`ig-ast-delta`](ig-ast-delta.md) |
-| The AST + `sushi-config.yaml` | `fhir-artifact-index/` (`index.json`, `menu.json`, `ig-identity.json`, `releases.json`, `sidecars/`), `ast-data/`, `artifact/<Type>-<id>.{html,jsonld,json}`, `assets/ig-search.json`, `folio-build.json`, and the published site on `gh-pages` (root and `branches/<branch>/`) | §"The IG repository's site route" |
+| The AST + `sushi-config.yaml` | `fhir-artifact-index/` (`index.json`, `menu.json`, `ig-identity.json`, `releases.json`, `sidecars/`), `<Type>-<id>.json`, `artifact/<Type>-<id>.{html,jsonld,json}`, `assets/ig-search.json`, `folio-build.json`, and the published site on `gh-pages` (root and `branches/<branch>/`) | §"The IG repository's site route" |
 
 An overlay using `pre-export` or `ig-site:sidecars` documents its own
 authority table in its own skill. This layer puts back everything
@@ -352,9 +352,10 @@ names, never naming a layer:
   and the layer's page at the same path replaces it. No other page is
   replaced.
 
-**What the site serves from the AST**: each resource under `ast-data/` (the
-thin pages' data, `gen-ig-pages --compiled-data ast-data`) and under the
-Publisher's name `<Type>-<id>.json` at the root (the narrative's links), the
+**What the site serves from the AST**: each resource once, under the
+Publisher's name `<Type>-<id>.json` at the root (the thin pages' data,
+`gen-ig-pages --compiled-data .`, and the narrative's links; no `ast-data/`
+mirror, owner 2026-11-08), the
 artefact index at `fhir-artifact-index/index.json`, and the AST as
 `site.data` for the IG's own pages. The grouping of the IG's committed
 `fhir-artifact-index/index.json` is kept when it holds one, since the AST

@@ -13,10 +13,10 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import {
-  AST_DATA,
   acceptStaleFromEnv,
   astGate,
   builtPage,
+  cqlSourceOf,
   IG_API_DESCRIPTOR,
   IG_API_SITE,
   IG_API_WORK,
@@ -24,6 +24,7 @@ import {
   igSiteStamp,
   INDEX_WORK,
   isPreviewBase,
+  libraryByUrl,
   platformCommit,
   listedInstances,
   notSource,
@@ -161,8 +162,8 @@ describe("publisher pages: the AST's data, never the Publisher's HTML", () => {
     mkdirSync(sidecars);
     writeFileSync(join(sidecars, "ValueSet-x.schema.json"), "{}");
     const r = serveAstData({ site, ast, index, igApi: { sidecars, files: 1 } });
-    expect(r).toEqual({ resources: 2, named: 1, kept: 1, sidecars: 1, siteFiles: 0, siteKept: [], siteFilled: [], index: true });
-    expect(existsSync(join(site, AST_DATA, "resources", "ValueSet", "x--0000.json"))).toBe(true);
+    expect(r).toEqual({ named: 1, kept: 1, sidecars: 1, siteFiles: 0, siteKept: [], siteFilled: [], index: true });
+    expect(existsSync(join(site, "ast-data"))).toBe(false);
     expect(JSON.parse(readFileSync(join(site, "ValueSet-x.json"), "utf-8")).id).toBe("x");
     expect(readFileSync(join(site, "CodeSystem-y.json"), "utf-8")).toBe("site");
     expect(existsSync(join(site, "fhir-artifact-index", "index.json"))).toBe(true);
@@ -184,7 +185,7 @@ describe("publisher pages: the AST's data, never the Publisher's HTML", () => {
     const site = join(root, "_site");
     mkdirSync(site, { recursive: true });
     const said: string[] = [];
-    expect(publisherPages({ site, ast, work, log: (s) => said.push(s) })).toEqual({ resources: 1, named: 1, kept: 0, sidecars: 1, siteFiles: 0, siteKept: [], siteFilled: [], index: true });
+    expect(publisherPages({ site, ast, work, log: (s) => said.push(s) })).toEqual({ named: 1, kept: 0, sidecars: 1, siteFiles: 0, siteKept: [], siteFilled: [], index: true });
     expect(said.join("\n")).toContain("The Publisher's HTML is not taken");
   });
 });
@@ -415,5 +416,45 @@ describe("the IG's TOC on its thin pages (owner, 2026-11-02: artifacts.html had 
     const site = mkdtempSync(join(dir, "toc-none-"));
     writeFileSync(join(site, "artifacts.html"), thin("ig-index-page"));
     expect(stampIgTocNav(site).pages).toBe(0);
+  });
+});
+
+describe("libraryByUrl", () => {
+  const lib = {
+    resourceType: "Library",
+    id: "IMMZLogic",
+    name: "IMMZLogic",
+    content: [
+      { contentType: "text/cql", data: "bGlicmFyeQ==" },
+      { contentType: "application/elm+xml", data: "PGxpYi8+" },
+      { contentType: "application/elm+json", data: "e30=" },
+    ],
+  };
+
+  test("cqlByUrlNoElm", () => {
+    const cqlDir = join(dir, "cql-a");
+    mkdirSync(cqlDir, { recursive: true });
+    writeFileSync(join(cqlDir, "IMMZLogic.cql"), "library IMMZLogic");
+    const out = libraryByUrl(lib, { dir: cqlDir, url: (f) => `https://kg.example/cql/${f}` }) as { content: unknown[] };
+    expect(out.content).toEqual([{ contentType: "text/cql", url: "https://kg.example/cql/IMMZLogic.cql" }]);
+  });
+
+  test("cqlKeptWithoutSource", () => {
+    const out = libraryByUrl(lib, { dir: join(dir, "no-cql"), url: (f) => f }) as { content: unknown[] };
+    expect(out.content).toEqual([{ contentType: "text/cql", data: "bGlicmFyeQ==" }]);
+  });
+
+  test("otherResourcesUntouched", () => {
+    expect(libraryByUrl({ resourceType: "ValueSet", id: "x" }, { dir, url: (f) => f })).toBeUndefined();
+    expect(libraryByUrl({ resourceType: "Library", id: "y", content: [{ contentType: "text/cql", url: "u" }] }, { dir, url: (f) => f })).toBeUndefined();
+  });
+
+  test("urlFromRepositoryAndCommit", () => {
+    const ig = join(dir, "ig-cql");
+    mkdirSync(join(ig, "input/cql"), { recursive: true });
+    const c = cqlSourceOf(ig, { SITE_REPOSITORY: "litlfred/smart-immunizations", SITE_COMMIT: "14517c8b" })!;
+    expect(c.url("A B.cql")).toBe("https://raw.githubusercontent.com/litlfred/smart-immunizations/14517c8b/input/cql/A%20B.cql");
+    expect(cqlSourceOf(ig, { SITE_REPOSITORY: "litlfred/smart-immunizations" })).toBeUndefined();
+    expect(cqlSourceOf(join(dir, "no-ig"), { SITE_REPOSITORY: "a/b", SITE_COMMIT: "abcdef1" })).toBeUndefined();
   });
 });

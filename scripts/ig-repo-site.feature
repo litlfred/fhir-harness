@@ -60,11 +60,11 @@ Feature: Building an IG repository's own site from its AST
     Then reading the IG API throws about the label
 
   @test:scripts/ig-repo-site.test.ts::publisher_pages:_the_AST's_data,_never_the_Publisher's_HTML::servesAstDataAndIndex
-  Scenario: serves each resource under ast-data/ and by the Publisher's name, the index and the sidecars; never replaces a site file
+  Scenario: serves each resource once, by the Publisher's name, the index and the sidecars; no ast-data mirror; never replaces a site file
     Given an AST of a ValueSet and a CodeSystem, a site that already has the CodeSystem's JSON, an index and a sidecar
     When the AST data is served
-    Then 2 resources are served, 1 by the Publisher's name, 1 kept, 1 sidecar and the index
-    And the resources are under ast-data, the ValueSet is served by its Publisher name, and the site's CodeSystem file is kept
+    Then 1 resource is served by the Publisher's name, 1 kept, 1 sidecar and the index
+    And no ast-data directory is written, the ValueSet is served by its Publisher name, and the site's CodeSystem file is kept
     And the index and the sidecar are served
 
   @test:scripts/ig-repo-site.test.ts::publisher_pages:_the_AST's_data,_never_the_Publisher's_HTML::noAstRefusedNamingStep
@@ -175,3 +175,22 @@ Feature: Building an IG repository's own site from its AST
   Scenario: no page declares the TOC: nothing to copy, nothing stamped
     Given a site where no page declares the TOC
     Then nothing is stamped
+
+  @test:scripts/ig-repo-site.test.ts::libraryByUrl::cqlByUrlNoElm
+  Scenario: a Library in the docs site links its CQL in the KG and carries no ELM
+    Given a Library with CQL and ELM content and the IG holding its CQL file
+    Then the Library's CQL is a URL to that file and the ELM is left out
+
+  @test:scripts/ig-repo-site.test.ts::libraryByUrl::cqlKeptWithoutSource
+  Scenario: CQL whose source the IG does not hold is kept inline
+    Given a Library whose CQL file the IG does not hold
+    Then its CQL stays inline and only the ELM is left out
+
+  @test:scripts/ig-repo-site.test.ts::libraryByUrl::otherResourcesUntouched
+  Scenario: other resources, and a Library already by URL, are served as they are
+    Then nothing is changed
+
+  @test:scripts/ig-repo-site.test.ts::libraryByUrl::urlFromRepositoryAndCommit
+  Scenario: the CQL URL names the repository and commit the site is built from
+    Given SITE_REPOSITORY and SITE_COMMIT
+    Then each CQL file is linked at that commit, and with either missing nothing is linked

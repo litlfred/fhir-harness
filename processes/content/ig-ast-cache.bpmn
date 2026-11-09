@@ -67,7 +67,7 @@ A valid AST is a cache, not a release: every page drawn from it carries the prov
       <bpmn:outgoing>Flow_4</bpmn:outgoing>
     </bpmn:exclusiveGateway>
     <bpmn:serviceTask id="Task_BuildSite" name="Build and publish the site from the AST">
-      <bpmn:documentation>Runs the site route's steps via `stage-local.ts` → `build-instance-site.ts`: `ig-site:sidecars` (IG API sidecars, if the landing layer has the step), `ig-site:compose` (artefact index and thin pages from the AST, the IG composed at the root), `ig-site:openapi` (if the IG holds OpenAPI pages), `ig-site:publisher-pages` (the AST's resources as `ast-data/`, the build stamp), and last `ig-site:bar` (the IG's slim bar on pages written after `publisher-pages`). Published at the root from the default branch, as a preview otherwise.</bpmn:documentation>
+      <bpmn:documentation>Runs the site route's steps via `stage-local.ts` → `build-instance-site.ts`: `ig-site:sidecars` (IG API sidecars, if the landing layer has the step), `ig-site:compose` (artefact index and thin pages from the AST, the IG composed at the root), `ig-site:openapi` (if the IG holds OpenAPI pages), `ig-site:publisher-pages` (the AST's resources as `&lt;Type&gt;-&lt;id&gt;.json` at the root, the build stamp), and last `ig-site:bar` (the IG's slim bar on pages written after `publisher-pages`). Published at the root from the default branch, as a preview otherwise.</bpmn:documentation>
       <bpmn:extensionElements>
         <bootstrap.processes:skill ref="ig-render-jekyll"/>
         <bootstrap.processes:skill ref="ig-build-pipeline"/>
