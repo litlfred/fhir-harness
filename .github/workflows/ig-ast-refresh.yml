@@ -60,6 +60,10 @@ on:
         description: "Rebuild in full even when the cache is valid for the ref (a release: never incremental)"
         type: boolean
         default: false
+      release:
+        description: "Keep the release's files as this run's `ig-release` artifact: the Publisher's package.tgz (and R4/R4B variants) and the AST. Set by fhir-harness's ig-release.yml, with force"
+        type: boolean
+        default: false
       ast-export-ref:
         description: "litlfred/fhir-ig-publisher commit carrying ast-export (AstExportCli)"
         type: string
@@ -478,3 +482,18 @@ jobs:
           name: output-ast
           path: output-ast
           if-no-files-found: ignore
+
+      # A release run (`ig-release.yml`, skill ig-binary-artefacts "Releasing"):
+      # the files the release carries, from this full build. `ig-release.ts
+      # assets` refuses the set when package.tgz is missing.
+      - name: Keep the release's files
+        if: inputs.release && steps.build.outcome == 'success'
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: ig-release
+          path: |
+            output/package.tgz
+            output/package.r4.tgz
+            output/package.r4b.tgz
+            output-ast
+          if-no-files-found: error
