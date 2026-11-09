@@ -858,7 +858,6 @@ function repLinks(a: FhirArtifact): string {
   // schema / JSON-LD sidecars from the served index. The upstream file is
   // linked only when nothing here holds it, and it says so.
   const out: string[] = [];
-  const m = a.materialization;
   const local = localResourceHref(a, COMPILED_DATA);
   if (local) out.push(`<a href="${esc(local)}">json</a>`);
   else if (a.published.json) out.push(`<a href="${esc(a.published.json.url)}" rel="external">json (upstream)</a>`);
