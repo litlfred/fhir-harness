@@ -160,6 +160,7 @@ import { astValidity, type AstValidity, buildKind, readAst } from "./ig-ast.ts";
 import { composeIgSite, dedupeSiteIds, describeStage, IG_THIN_CSS_FILE, stageIgSite, type SitePalette } from "./build-ig-site";
 import { artifactSearchEntries, IG_SEARCH_INDEX_FILE, IG_SEARCH_SCRIPT_FILE, IG_SEARCH_SCRIPT_SOURCE, igSearchIndex, pageSearchEntries, withIgBar } from "./ig-search.ts";
 import { translationMetaBlock, withTranslationMeta } from "../../cat-harness-tools/scripts/lib/translation-meta.ts";
+import { declaredEntries, type ResolvedEntry, type Served, servedDirectories } from "../../cat-harness-tools/scripts/mount-instance-docs.ts";
 import { igOpenapiGraph, OPENAPI_DIR } from "../../cat-harness-tools/openapi/scripts/ig-site-openapi.ts";
 import type { FhirArtifactIndex } from "../schemas/fhir-artifact-index.js";
 import { buildMenu } from "./ingest-ig-menu.ts";
@@ -1093,12 +1094,52 @@ export function publisherPages(o: { site: string; ast: string; work?: string; ig
  * `publisher-pages` — the identifier lookup page and the mounted layer
  * docs. Owner, 2026-10-15: those pages get the search box too. Both stamps
  * leave a page that already carries them as it was, so the pages
- * `publisher-pages` stamped are untouched.
+ * `publisher-pages` stamped are untouched. The step also leaves out the other
+ * IG layers' artefact indexes the mount of served directories copied in
+ * ({@link dropForeignIndexes}).
  */
 export function lateBar(site: string, ig: string): { lang: number; pages: number } {
   const lang = stampTranslationMeta(site, ig);
   const { pages } = stampIgBar(site, igTitle(ig) ?? basename(resolve(ig)));
   return { lang, pages };
+}
+
+/**
+ * The served artefact indexes of OTHER IG layers that the platform's mount of
+ * served directories (cat-harness-tools `mount-instance-docs.ts`) copies into
+ * this IG's site: every directory a layer other than the checkout's own
+ * declares `served` with the `fhir-artifact-index` kind, with the route it was
+ * copied to. Pure over `entries` (`declaredEntries` of the checkout).
+ *
+ * Owner, 2026-11-10: another layer's content is not copied into an IG's site,
+ * only cross-referenced. That index (the base IG's `index.json`, `package.tgz`
+ * and IG API sidecars, 2.9 MB on one IG) is built at publish for the
+ * build-time readers of the mounted layer (its artefact-index visualiser,
+ * which links that IG's own published pages), and nothing on this site
+ * fetches it: this site's pages read their own index at
+ * `fhir-artifact-index/`. That IG publishes the index on its own site.
+ */
+export function foreignArtefactIndexes(root: string, entries: readonly ResolvedEntry[]): Served[] {
+  const own = resolve(root);
+  return servedDirectories(entries.filter((e) => e.entry.served === true && resolve(e.instanceDir) !== own && (e.entry.graphTypologies ?? []).includes(INDEX_SERVED)));
+}
+
+/**
+ * Remove from the built site the other IG layers' artefact indexes the mount
+ * of served directories copied there ({@link foreignArtefactIndexes}). Run by
+ * the final step `ig-site:bar`, after that mount. Returns each route removed
+ * and its size.
+ */
+export function dropForeignIndexes(site: string, root: string, entries: readonly ResolvedEntry[] = declaredEntries(resolve(root))): { route: string; bytes: number }[] {
+  const out: { route: string; bytes: number }[] = [];
+  for (const sv of foreignArtefactIndexes(root, entries)) {
+    const at = join(site, sv.route);
+    if (!existsSync(at)) continue;
+    const size = (p: string): number => (statSync(p).isDirectory() ? readdirSync(p).reduce((n, f) => n + size(join(p, f)), 0) : statSync(p).size);
+    out.push({ route: sv.route, bytes: size(at) });
+    rmSync(at, { recursive: true, force: true });
+  }
+  return out;
 }
 
 if (import.meta.main) {
@@ -1124,6 +1165,8 @@ if (import.meta.main) {
     } else if (cmd === "bar" && target) {
       const r = lateBar(resolve(target), ig);
       console.log(`bar: the language picker's block on ${r.lang} and the IG's slim bar on ${r.pages} page(s) the platform wrote after publisher-pages`);
+      const dropped = dropForeignIndexes(resolve(target), ig);
+      for (const d of dropped) console.log(`bar: ${d.route}/ left out (${(d.bytes / 1e6).toFixed(2)} MB), another IG layer's artefact index: that IG publishes it on its own site, and no page here reads it`);
     } else {
       console.error(
         "usage: ig-repo-site.ts ast [--ig <checkout>] [--work <dir>]\n" +

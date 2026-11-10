@@ -331,7 +331,7 @@ names, never naming a layer:
 | `ig-site:compose` | source, required | this layer | the artefact index from the AST, the thin pages, the IG composed at the root |
 | `ig-site:openapi` | site, when the IG holds `openapi/cat-openapi.config.json` | cat-harness-tools | a page and an IRI for each OpenAPI operation, at `openapi/` |
 | `ig-site:publisher-pages` | site, required | this layer | the AST's data served, the Publisher-chrome guard, the build stamp |
-| `ig-site:bar` | final | this layer | the language picker and the IG's slim bar on the pages the platform wrote after `publisher-pages` (`ig-repo-site.ts bar`) |
+| `ig-site:bar` | final | this layer | the language picker and the IG's slim bar on the pages the platform wrote after `publisher-pages` (`ig-repo-site.ts bar`); and it leaves out another IG layer's served artefact index that the platform's mount copied in (`dropForeignIndexes`; owner, 2026-11-10: another layer's content is cross-referenced, not copied — that IG publishes its index on its own site) |
 
 **The handshake with a layer above** (`ig-repo-site.ts`):
 

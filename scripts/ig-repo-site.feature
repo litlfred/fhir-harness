@@ -231,3 +231,14 @@ Feature: Building an IG repository's own site from its AST
   @test:scripts/ig-repo-site.test.ts::redirectStubsLeftBare
   Scenario: a view's redirect stub gets no IG bar and no language block
     Then an immediate meta refresh is a redirect stub, and a delayed refresh or a plain page is not
+
+  @test:scripts/ig-repo-site.test.ts::another_IG_layer's_artefact_index_is_not_copied_into_this_IG's_site_(owner,_2026-11-10)::foreignIndexesAreTheOtherLayersServedIndexes
+  Scenario: the other IG layers' served artefact indexes are found by their kind
+    Given a base IG layer serving its artefact index and an OpenAPI graph, a layer that does not serve its index, and the checkout's own index
+    Then only the base IG layer's served index is another layer's artefact index
+
+  @test:scripts/ig-repo-site.test.ts::another_IG_layer's_artefact_index_is_not_copied_into_this_IG's_site_(owner,_2026-11-10)::dropForeignIndexesRemovesOnlyThoseRoutes
+  Scenario: the final step leaves another IG layer's artefact index out of the built site
+    Given a built site holding the base IG's served index, another directory of that layer, and the site's own index
+    When the final step runs
+    Then the base IG's index is removed with its size reported, the rest stays, and a second run removes nothing
