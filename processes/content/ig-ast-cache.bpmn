@@ -30,11 +30,12 @@ A valid AST is a cache, not a release: every page drawn from it carries the prov
         <bpmn:flowNodeRef>Task_Dispatch</bpmn:flowNodeRef>
       </bpmn:lane>
       <bpmn:lane id="Lane_Site" name="Site build (agent, stage-local)">
-        <bpmn:documentation>Restores and judges the AST, then builds and publishes the site. A stale, cannot-tell or missing AST ends the publish.</bpmn:documentation>
+        <bpmn:documentation>Restores and judges the AST, builds and publishes the site, then reviews its size against the published one. A stale, cannot-tell or missing AST ends the publish; the size review warns and never refuses.</bpmn:documentation>
         <bpmn:extensionElements><bootstrap.processes:role ref="build-pipeline"/></bpmn:extensionElements>
         <bpmn:flowNodeRef>Task_Restore</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>GW_Valid</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>Task_BuildSite</bpmn:flowNodeRef>
+        <bpmn:flowNodeRef>Task_SizeReview</bpmn:flowNodeRef>
         <bpmn:flowNodeRef>End_Published</bpmn:flowNodeRef>
       </bpmn:lane>
       <bpmn:lane id="Lane_Runner" name="AST refresh (GitHub runner: IG Publisher with the AST exporter)">
@@ -67,7 +68,7 @@ A valid AST is a cache, not a release: every page drawn from it carries the prov
       <bpmn:outgoing>Flow_4</bpmn:outgoing>
     </bpmn:exclusiveGateway>
     <bpmn:serviceTask id="Task_BuildSite" name="Build and publish the site from the AST">
-      <bpmn:documentation>Runs the site route's steps via `stage-local.ts` → `build-instance-site.ts`: `ig-site:sidecars` (IG API sidecars, if the landing layer has the step), `ig-site:compose` (artefact index and thin pages from the AST, the IG composed at the root), `ig-site:openapi` (if the IG holds OpenAPI pages), `ig-site:publisher-pages` (the AST's resources as `&lt;Type&gt;-&lt;id&gt;.json` at the root, the build stamp), and last `ig-site:bar` (the IG's slim bar on pages written after `publisher-pages`). Published at the root from the default branch, as a preview otherwise.</bpmn:documentation>
+      <bpmn:documentation>Runs the site route's steps via `stage-local.ts` → `build-instance-site.ts`: `ig-site:sidecars` (IG API sidecars, if the landing layer has the step), `ig-site:compose` (artefact index and thin pages from the AST, the IG composed at the root), `ig-site:openapi` (if the IG holds OpenAPI pages), `ig-site:publisher-pages` (the AST's resources as `&lt;Type&gt;-&lt;id&gt;.json` at the root, the build stamp), and last `ig-site:bar` (the IG's slim bar on pages written after `publisher-pages`). Published at the root from the default branch, as a preview otherwise. When the restore recorded the cache commit, the site reads the AST from that commit by raw URL rather than copying it: the artefact pages draw each full resource there, the IG API sidecars are read from its `ig-api/` (fhir-harness#344), and the artefact index from its `fhir-artifact-index/index.json`, which the site points at with `fhir-artifact-index/index.ref.json` instead of serving (#358). The root `&lt;Type&gt;-&lt;id&gt;.json` copies are then reduced (minified, no narrative, no ELM data; #359), and the JSON-LD graph (`artifact/*.jsonld`) names each root file first and the cache copy as its mirror. The full resources are the cache commit's and the release's `package.tgz`.</bpmn:documentation>
       <bpmn:extensionElements>
         <bootstrap.processes:skill ref="ig-render-jekyll"/>
         <bootstrap.processes:skill ref="ig-build-pipeline"/>
@@ -75,9 +76,17 @@ A valid AST is a cache, not a release: every page drawn from it carries the prov
       <bpmn:incoming>Flow_3</bpmn:incoming>
       <bpmn:outgoing>Flow_5</bpmn:outgoing>
     </bpmn:serviceTask>
+    <bpmn:task id="Task_SizeReview" name="Review the site's size">
+      <bpmn:documentation>Read the size report the build printed before its push, and fix what it shows, or raise a decision card with the owner when no known fix applies (skill `ig-publication` §"Size review"). The report is cat-harness-tools `site-size.ts` (`bun run cat site:size`), written as `site-size.json` beside the build, never into the site. It gives the total against the published `gh-pages` root, the top directories, the size by extension, the biggest files, byte-identical duplicates, source maps, the directories named after another layer of `index.lock.json`, and the directories the shared-assets host could serve. Growth over the budget (10% or 10 MB) is a warning. The review is advisory and never refuses a publish.</bpmn:documentation>
+      <bpmn:extensionElements>
+        <bootstrap.processes:skill ref="ig-publication"/>
+      </bpmn:extensionElements>
+      <bpmn:incoming>Flow_5</bpmn:incoming>
+      <bpmn:outgoing>Flow_11</bpmn:outgoing>
+    </bpmn:task>
     <bpmn:endEvent id="End_Published" name="Site published&#10;from the AST">
       <bpmn:documentation>The site says what built it (`folio-build.json`), and every artefact page carries the AST's provisional mark.</bpmn:documentation>
-      <bpmn:incoming>Flow_5</bpmn:incoming>
+      <bpmn:incoming>Flow_11</bpmn:incoming>
     </bpmn:endEvent>
     <bpmn:userTask id="Task_Dispatch" name="Dispatch AST refresh">
       <bpmn:documentation>Actions → "IG AST refresh (by hand)" → Run workflow on the default branch, inputs `ref` = the default branch, `force` = false. Set `force` = true only to rebuild a cache that is valid but suspected wrong.</bpmn:documentation>
@@ -102,7 +111,7 @@ A valid AST is a cache, not a release: every page drawn from it carries the prov
       <bpmn:outgoing>Flow_10</bpmn:outgoing>
     </bpmn:exclusiveGateway>
     <bpmn:serviceTask id="Task_Seed" name="Seed the cache branch">
-      <bpmn:documentation>`ig-cache.sh seed --ig-root . --push`: one commit holding the AST, the Publisher's expansions and `txcache/`, its subject recording the package, counts, Publisher version and source commit. Refused when the candidate is under 90% of the incumbent's resources or edges (the no-shrink gate).</bpmn:documentation>
+      <bpmn:documentation>`ig-cache.sh seed --ig-root . --push`: one commit holding the AST, the Publisher's expansions and `txcache/`, the IG API generated over that AST (`ig-api/`, `ig-api-cache.ts`) and the artefact index built from that tree (`fhir-artifact-index/index.json`, `ig-index-cache.ts`), which the site reads by raw URL; its subject recording the package, counts, Publisher version and source commit. Refused when the candidate is under 90% of the incumbent's resources or edges (the no-shrink gate).</bpmn:documentation>
       <bpmn:extensionElements>
         <bootstrap.processes:skill ref="compiled-artefact-cache"/>
       </bpmn:extensionElements>
@@ -117,7 +126,8 @@ A valid AST is a cache, not a release: every page drawn from it carries the prov
     <bpmn:sequenceFlow id="Flow_2" sourceRef="Task_Restore" targetRef="GW_Valid"/>
     <bpmn:sequenceFlow id="Flow_3" sourceRef="GW_Valid" targetRef="Task_BuildSite" name="yes"/>
     <bpmn:sequenceFlow id="Flow_4" sourceRef="GW_Valid" targetRef="Task_Dispatch" name="no — refused:&#10;stale, cannot tell, miss"/>
-    <bpmn:sequenceFlow id="Flow_5" sourceRef="Task_BuildSite" targetRef="End_Published"/>
+    <bpmn:sequenceFlow id="Flow_5" sourceRef="Task_BuildSite" targetRef="Task_SizeReview"/>
+    <bpmn:sequenceFlow id="Flow_11" sourceRef="Task_SizeReview" targetRef="End_Published"/>
     <bpmn:sequenceFlow id="Flow_6" sourceRef="Task_Dispatch" targetRef="Task_Export"/>
     <bpmn:sequenceFlow id="Flow_7" sourceRef="Task_Export" targetRef="GW_Seedable"/>
     <bpmn:sequenceFlow id="Flow_8" sourceRef="GW_Seedable" targetRef="Task_Seed" name="yes"/>
@@ -150,8 +160,11 @@ A valid AST is a cache, not a release: every page drawn from it carries the prov
       <bpmndi:BPMNShape id="Shape_Task_BuildSite" bpmnElement="Task_BuildSite">
         <dc:Bounds x="580" y="270" width="120" height="120" />
       </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Shape_Task_SizeReview" bpmnElement="Task_SizeReview">
+        <dc:Bounds x="770" y="270" width="120" height="120" />
+      </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Shape_End_Published" bpmnElement="End_Published">
-        <dc:Bounds x="782" y="312" width="36" height="36" />
+        <dc:Bounds x="962" y="312" width="36" height="36" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Shape_Task_Dispatch" bpmnElement="Task_Dispatch">
         <dc:Bounds x="375" y="110" width="160" height="80" />
@@ -189,7 +202,11 @@ A valid AST is a cache, not a release: every page drawn from it carries the prov
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Edge_Flow_5" bpmnElement="Flow_5">
         <di:waypoint x="700" y="330" />
-        <di:waypoint x="782" y="330" />
+        <di:waypoint x="770" y="330" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_Flow_11" bpmnElement="Flow_11">
+        <di:waypoint x="890" y="330" />
+        <di:waypoint x="962" y="330" />
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="Edge_Flow_6" bpmnElement="Flow_6">
         <di:waypoint x="535" y="150" />

@@ -298,7 +298,7 @@
       <bpmn:incoming>F24</bpmn:incoming>
     </bpmn:endEvent>
     <bpmn:serviceTask id="Task_Deploy" name="Deploy the site">
-      <bpmn:documentation>Deploy the site built from main or a release. Deploying is release-management, after a human authorised the release — an agent never records that authorisation. Report the published URL only once it answers: a returned deploy is not a serving site.</bpmn:documentation>
+      <bpmn:documentation>Deploy the site built from main or a release. Deploying is release-management, after a human authorised the release — an agent never records that authorisation. A release's files are not deployed to the site: a `v*` tag makes a GitHub draft release carrying them (`ig-release.yml`; skill `ig-binary-artefacts` §"Releasing"), which the owner publishes. Report the published URL only once it answers: a returned deploy is not a serving site.</bpmn:documentation>
       <bpmn:extensionElements>
         <cat-harness.processes:fulfilment kinds="person system" reason="deploying the built site is mechanical; the lane records who is accountable for what is live, and its name “Publication manager — deploy and seed” says so. A publication manager may also deploy by hand." />
         <bootstrap.processes:skill ref="content-publish" />

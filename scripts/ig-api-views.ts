@@ -24,7 +24,7 @@
  */
 import { readFileSync } from "node:fs";
 import { hasJsonView } from "./resource-views.ts";
-import { hasIgApi, igApiHubNodeFill } from "./ig-api-hub.ts";
+import { hasIgApi, igApiHubNodeFill, sidecarHref } from "./ig-api-hub.ts";
 import { basename, join } from "node:path";
 import { artifactPageName, type FhirArtifact, type FhirArtifactIndex } from "../schemas/fhir-artifact-index.js";
 import { declarationPathIn } from "@litlfred/cat-harness-tools/schemas/kg/cat-harness.js";
@@ -74,8 +74,10 @@ export const IG_API_VIEW_SCRIPT = "assets/ig-api-view.js";
  * @param servedFrom the page's path to the layer root's served data — `../`
  *   from `artifact/`, so a `localPath` of `fhir-artifact-index/sidecars/X` is fetched
  *   at `../fhir-artifact-index/sidecars/X`.
+ * @param sidecarBase the index's `sidecarBase`: with it the file is fetched
+ *   there (the AST cache commit), not from the site.
  */
-export function igApiViewData(a: FhirArtifact, view: IgApiView, servedFrom = "../", jsonViews = false): IgApiViewData {
+export function igApiViewData(a: FhirArtifact, view: IgApiView, servedFrom = "../", jsonViews = false, sidecarBase?: string): IgApiViewData {
   const page = `${artifactPageName(a)}.html`;
   // JSON is this site's own view where the Publisher writes one
   // (`resource-views.ts`). No XML or Turtle tab: the site links JSON, JSON-LD,
@@ -90,7 +92,7 @@ export function igApiViewData(a: FhirArtifact, view: IgApiView, servedFrom = "..
   return {
     label: view.label,
     file: view.file,
-    src: `${servedFrom}${view.localPath}`,
+    src: sidecarHref(sidecarBase ? { sidecarBase } : {}, view, servedFrom)!,
     artifact: { title: a.title ?? a.name ?? a.id, page },
     tabs: [
       { label: "Narrative Content", href: page, active: false },

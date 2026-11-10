@@ -811,6 +811,29 @@ describe("a link into a subdirectory of input/images stays on the site", () => {
   });
 });
 
+describe("an SVG in input/images is published minified", () => {
+  test("svgPublishedMinified", () => {
+    const d = mkdtempSync(join(tmpdir(), "ig-svg-"));
+    const src = join(d, "src");
+    mkdirSync(join(src, "input", "pagecontent"), { recursive: true });
+    mkdirSync(join(src, "input", "images", "demo"), { recursive: true });
+    writeFileSync(join(src, "sushi-config.yaml"), "id: x.ig\ntitle: X IG\n");
+    writeFileSync(join(src, "input", "pagecontent", "concepts.md"), '<img src="flow.svg">\n');
+    const saved = '<?xml version="1.0" encoding="UTF-8"?>\n<svg xmlns="http://www.w3.org/2000/svg" xmlns:v="http://schemas.microsoft.com/visio/2003/SVGExtensions/">\n\t<v:userDefs><v:ud v:nameU="x"/></v:userDefs>\n\t<rect width="1" height="1" v:mID="1"/>\n</svg>\n';
+    writeFileSync(join(src, "input", "images", "flow.svg"), saved);
+    writeFileSync(join(src, "input", "images", "demo", "flow.svg"), saved);
+    const r = stageIgSite(src, join(d, "out"), {});
+    const small = '<?xml version="1.0" encoding="UTF-8"?><svg xmlns="http://www.w3.org/2000/svg"><rect width="1" height="1"/></svg>';
+    expect(readFileSync(join(d, "out", "flow.svg"), "utf-8")).toBe(small);
+    expect(readFileSync(join(d, "out", "demo", "flow.svg"), "utf-8")).toBe(small);
+    // The include copy, which Jekyll does not publish, is the IG's file as given.
+    expect(readFileSync(join(d, "out", "_includes", "flow.svg"), "utf-8")).toBe(saved);
+    expect(r.svgMinified).toEqual({ files: 2, saved: 2 * (saved.length - small.length) });
+    expect(describeStage(r)).toContain("SVGs published minified: 2");
+    rmSync(d, { recursive: true, force: true });
+  });
+});
+
 describe("edit links to the IG's own source (bean `mftp`)", () => {
   test("pagecontentHasEditUrl", () => {
     const d = mkdtempSync(join(tmpdir(), "ig-edit-"));
@@ -1583,5 +1606,22 @@ describe("relinkPublisherTemplateAssets — staged input/images HTML pages point
     } finally {
       rmSync(d, { recursive: true, force: true });
     }
+  });
+});
+
+describe("the Contents card on an IG's narrative pages (owner, 2026-11-10)", () => {
+  test("bothLayoutsCarryTheCard", async () => {
+    const m = await import("./build-ig-site.ts");
+    const thin = m.thinIgLayout("/x/");
+    const full = m.harnessLayout("", "");
+    for (const l of [thin, full]) expect(l).toContain(`<script>{% raw %}${m.IG_CONTENTS_JS}{% endraw %}</script>\n</main>`);
+    // The standalone layout links no ig-artifact.css, so it carries the card's style itself.
+    expect(full).toContain(".igi-contents{");
+    expect(full).toContain("float:right");
+  });
+  test("cardNeedsTwoHeadings", async () => {
+    const { IG_CONTENTS_JS } = await import("./build-ig-site.ts");
+    expect(IG_CONTENTS_JS).toContain("hs.length<2");
+    expect(IG_CONTENTS_JS).not.toMatch(/\{\{|\{%/);
   });
 });

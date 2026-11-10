@@ -136,10 +136,17 @@
   }
 
   /* The description is the IG's markdown: paragraphs and [text](url) links, nothing else is interpreted. */
+  /* An HTML line break written into a markdown description (`<br>`, `<br/>`,
+     or the malformed `</br>` some IGs carry) starts a new paragraph: the
+     renderer writes text, never HTML, so the tag would otherwise show as text. */
+  function breaks(text) {
+    return String(text || "").replace(/\s*<\/?br\s*\/?>\s*/gi, "\n\n");
+  }
+
   function description(text, root) {
     if (root === undefined) root = "../";
     var frag = document.createDocumentFragment();
-    text.split(/\n\s*\n/).forEach(function (para) {
+    breaks(text).split(/\n\s*\n/).forEach(function (para) {
       var p = el("p", "iga-desc");
       var re = /\[([^\]]+)\]\(([^)\s]+)\)/g;
       var last = 0;
@@ -188,9 +195,11 @@
     (node["schema:encoding"] || []).forEach(function (e, i) {
       var url = e["schema:contentUrl"] && e["schema:contentUrl"]["@id"];
       var fmt = String(e["schema:encodingFormat"] || "").replace(/^application\/fhir\+/, "");
-      var local = e["dcterms:source"] === "local";
+      var source = e["dcterms:source"];
+      var local = source === "local";
       if (i) reps.append(" · ");
-      reps.append(link(local ? fetchable(url, node["@id"], nodeUrl) : url, local ? fmt : fmt + " (upstream)", !local));
+      // `local` is the site's reduced root copy, `mirror` the AST cache's full one.
+      reps.append(link(local ? fetchable(url, node["@id"], nodeUrl) : url, local ? fmt : source === "mirror" ? fmt + " (full, AST cache)" : fmt + " (upstream)", !local));
     });
     reps.append(" · ", link(nodeUrl, "JSON-LD"));
     row(t, "Representations", reps);
@@ -909,7 +918,7 @@
   }
   /* The first paragraph of a description, as a list row shows it. */
   function firstPara(text) {
-    return String(text || "").split(/\n\s*\n/)[0];
+    return breaks(text).split(/\n\s*\n/)[0];
   }
   /* A canonical without its |version. */
   function bare(url) {
@@ -1021,32 +1030,21 @@
     p.append(link(pageOf(guide), guide["dcterms:title"]), " ");
     p.append(el("span", "igi-key", guide["dcterms:identifier"]));
     sec.append(p);
-    if (guide["dcterms:description"]) sec.append(description(firstPara(guide["dcterms:description"]), cfg.root || ""));
+    if (guide["dcterms:description"]) sec.append(description(guide["dcterms:description"], cfg.root || ""));
     return sec;
   }
 
   function drawArtifacts(gs, total, guide, byCanonical) {
     var frag = document.createDocumentFragment();
-    if (guide) frag.append(drawGuide(guide));
+    // The guide and the Contents card side by side at the top, the tables
+    // full width below (owner, 2026-11-10: "more akin to how IGs have TOC on
+    // RHS", a card, not the Publisher's yellow; layout C).
+    var contents = drawContents(gs, guide);
+    var head = el("div", "igi-head");
+    if (guide) head.append(drawGuide(guide));
+    head.append(contents.card);
+    frag.append(head);
     frag.append(el("p", "igi-count", total + " artefact(s) in " + gs.length + " categor" + (gs.length === 1 ? "y" : "ies") + (guide ? ", and the guide itself." : ".")));
-    var jump = el("nav", "igi-jump");
-    jump.setAttribute("aria-label", "Categories");
-    if (guide) jump.append(link("#artifacts-this-guide", "This guide"));
-    gs.forEach(function (g, i) {
-      if (i || guide) jump.append(" · ");
-      jump.append(link("#" + g.anchor, g.name));
-      if (g.types.length < 2) {
-        jump.append(" (" + g.parts.length + ")");
-        return;
-      }
-      jump.append(" (" + g.parts.length + ": ");
-      g.types.forEach(function (t, j) {
-        if (j) jump.append(", ");
-        jump.append(link("#" + t.anchor, t.name), " " + t.parts.length);
-      });
-      jump.append(")");
-    });
-    frag.append(jump);
     var filter = el("input", "igi-filter");
     filter.type = "search";
     filter.placeholder = "Filter artefacts by name, key, profile, code or description";
@@ -1086,8 +1084,42 @@
         });
         sec.hidden = shown === 0;
       });
+      contents.sync();
     });
     return frag;
+  }
+
+  /*
+   * The Contents card: "This guide" and one entry per category with its
+   * count. An entry the filter has emptied is hidden with its category.
+   */
+  function drawContents(gs, guide) {
+    var card = el("nav", "igi-contents");
+    card.setAttribute("aria-label", "Contents");
+    card.append(el("p", "igi-contents-title", "Contents"));
+    var list = el("ul");
+    var entries = [];
+    function entry(anchor, name, count) {
+      var li = el("li");
+      li.append(link("#" + anchor, name));
+      if (count !== undefined) li.append(el("span", "igi-n", String(count)));
+      list.append(li);
+      entries.push({ li: li, anchor: anchor });
+    }
+    if (guide) entry("artifacts-this-guide", "This guide");
+    gs.forEach(function (g) {
+      entry(g.anchor, g.name, g.parts.length);
+    });
+    card.append(list);
+    return {
+      card: card,
+      sync: function () {
+        entries.forEach(function (e) {
+          var target = document.getElementById(e.anchor);
+          e.li.hidden = !!(target && target.hidden);
+        });
+      },
+    };
   }
 
   function drawToc(gs, total, guide) {
@@ -1189,9 +1221,16 @@
       return r.json();
     })
     .then(function (node) {
-      var local = (node["schema:encoding"] || []).filter(function (e) {
-        return e["dcterms:source"] === "local";
-      })[0];
+      // The full copy first (the AST cache's `mirror`): the site's root copy
+      // (`local`) is reduced, without the narrative or the ELM.
+      var encs = node["schema:encoding"] || [];
+      var local =
+        encs.filter(function (e) {
+          return e["dcterms:source"] === "mirror";
+        })[0] ||
+        encs.filter(function (e) {
+          return e["dcterms:source"] === "local";
+        })[0];
       // The resource: the node's local copy, else the copy the page says this
       // site serves (the Publisher's own JSON, carried as data).
       var src = local ? fetchable(local["schema:contentUrl"]["@id"], node["@id"], nodeUrl) : cfg.resource ? new URL(cfg.resource, location.href).href : null;

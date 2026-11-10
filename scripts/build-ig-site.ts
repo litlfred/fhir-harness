@@ -16,7 +16,7 @@
  * |---|---|---|
  * | `input/pagecontent/*.md` | `<page>.md` with front matter | the pages; title, parent and order from `sushi-config.yaml` `pages:` |
  * | `input/includes/*`, `input/pagecontent/*`, `input/images/*.svg` | `_includes/` | the Publisher resolves `{% include %}` against all three, so pages include each other and inline SVGs |
- * | `input/images/**` | the site root, subdirectories kept | the Publisher publishes them there, so pages say `<img src="x.png">` or `<script src="demo/app.js">` — except a `.json`/`.jsonld` that does not parse, which is left out and reported: publishing a broken data file under our site blocks the deploy, and whose file it is cannot be told from a file no parser can read |
+ * | `input/images/**` | the site root, subdirectories kept | the Publisher publishes them there, so pages say `<img src="x.png">` or `<script src="demo/app.js">`; an `.svg` is published minified losslessly (`svg-minify.ts`) — except a `.json`/`.jsonld` that does not parse, which is left out and reported: publishing a broken data file under our site blocks the deploy, and whose file it is cannot be told from a file no parser can read |
  * | `input/images-source/*.plantuml` | `_includes/<name>.svg` | the Publisher RENDERS these; rendered here with `--plantuml-jar`, otherwise a visible "not rendered" marker, reported |
  * | the artefact index (`--artifacts`) | `_includes/list-(simple-)?<types>.xhtml` | the Publisher GENERATES these lists of an IG's artefacts of one type; written here as Liquid over `site.data.fhir.artifact_lists`, so any IG with an index gets them (bean `9hfi`) |
  * | `ig-site-data` over the source | `_data/fhir.json` | `site.data.fhir.*`, only what is sourced |
@@ -50,6 +50,7 @@ import { defaultPackageCache, DEPENDENCY_FRAGMENTS, dependencyRows, fromImplemen
 import { readAst } from "./ig-ast.ts";
 import { copyDeclared, igReadScope, onlyDeclared } from "./ig-read-scope.ts";
 import { questionnaireFormPages, type FormPage } from "./questionnaire-form.ts";
+import { minifySvgBytes } from "./svg-minify.ts";
 import { GLOBALS_FRAGMENT, globalsFromImplementationGuide, globalsFromSushiConfig } from "./ig-globals.ts";
 import { artifactPageName } from "../schemas/fhir-artifact-index.js";
 import { wrapRaw } from "../../cat-harness-tools/scripts/lib/liquid-raw.ts";
@@ -175,6 +176,8 @@ export interface StageResult {
   menuMissing: string[];
   includes: number;
   images: number;
+  /** `input/images` SVGs published minified (`svg-minify.ts`): how many, and the bytes that saved. */
+  svgMinified?: { files: number; saved: number };
   /** Diagrams rendered from `input/images-source/*.plantuml`. */
   rendered: string[];
   /** The Publisher's artefact lists (`list-(simple-)?<types>.xhtml`) a page includes, written from the artefact index (bean `9hfi`). */
@@ -498,7 +501,7 @@ export function igTopBar(menu: IgMenu, baseurl: string, title: string, search?: 
  * it reserves the row at every width.
  */
 export const IG_TOPBAR_CSS = `
-.ig-topbar{display:flex;flex-wrap:wrap;align-items:center;gap:.25rem 1rem;padding:.5rem 1.5rem;background:var(--ig-topbar-bg,#1c4b7c);color:#fff;font-size:.95rem}
+.ig-topbar{display:flex;flex-wrap:wrap;align-items:center;gap:.25rem 1rem;padding:.5rem 1.5rem;background:var(--ig-topbar-bg,#2d4271);color:#fff;font-size:.95rem}
 .ig-topbar a{color:#fff;text-decoration:none}
 .ig-topbar-home{flex:0 0 100%;font-weight:600}
 body:has(> .fa-glass-handle) .ig-topbar.fa-page-bar{padding-top:2.25rem}
@@ -506,7 +509,7 @@ body:has(> .fa-glass-handle) .ig-topbar.fa-page-bar{padding-top:2.25rem}
 .ig-topbar-group summary{cursor:pointer;list-style:none}
 .ig-topbar-group summary::after{content:" \\25BE"}
 .ig-topbar-group ul{position:absolute;z-index:20;margin:.25rem 0 0;padding:.25rem 0;min-width:16rem;list-style:none;background:#fff;border:1px solid #ccc;box-shadow:0 2px 6px rgba(0,0,0,.15)}
-.ig-topbar-group li a{display:block;padding:.25rem .75rem;color:#1c4b7c}
+.ig-topbar-group li a{display:block;padding:.25rem .75rem;color:#2d4271}
 .ig-topbar-group li a:hover{background:#eef3f8}
 .ig-topbar .ig-topbar-group ul > li{margin:0;padding:0}
 .ig-topbar .ig-topbar-group ul > li::before{content:none;display:none}
@@ -517,6 +520,41 @@ html:not([data-fa-scheme="light"]) .ig-topbar-group li a:hover{background:#3a394
 .ig-edit{margin-top:2rem;font-size:.85rem}
 ${IG_SEARCH_CSS.trim()}
 `;
+
+/**
+ * The Contents card on an IG's narrative pages (owner, 2026-11-10: "make this
+ * more akin to how IGs have TOC on RHS ... not yellow, but more like a card",
+ * then "adopt that for other IG pages as well"). The Publisher draws a yellow
+ * "Contents:" box at the top right of a page; this is the same box as a
+ * neutral card, built in the browser from the page's own `<h2>` headings, so
+ * it needs nothing from the IG's source. A page with fewer than two `<h2>`, or
+ * one that already draws a card (`artifacts.html`), gets none.
+ */
+export const IG_CONTENTS_JS = `(function(){
+var main=document.getElementById("main-content");
+if(!main||main.querySelector(".igi-contents"))return;
+var hs=Array.prototype.filter.call(main.querySelectorAll("h2"),function(h){return !h.closest(".igi-contents,#ig-footer,.ig-edit")&&h.textContent.trim();});
+if(hs.length<2)return;
+var used={};
+function slug(t){var b=t.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"")||"section",s=b,i=1;while(used[s]||document.getElementById(s))s=b+"-"+(++i);used[s]=1;return s;}
+var nav=document.createElement("nav");nav.className="igi-contents";nav.setAttribute("aria-label","Contents");
+var t=document.createElement("p");t.className="igi-contents-title";t.textContent="Contents";nav.appendChild(t);
+var ul=document.createElement("ul");
+hs.forEach(function(h){if(!h.id)h.id=slug(h.textContent);var li=document.createElement("li"),a=document.createElement("a");a.href="#"+h.id;
+var c=h.cloneNode(true);Array.prototype.forEach.call(c.querySelectorAll(".anchor-heading,.fa-sec-box,svg,button"),function(n){n.remove();});
+a.textContent=c.textContent.replace(/\\s+/g," ").trim();li.appendChild(a);ul.appendChild(li);});
+nav.appendChild(ul);
+var h1=main.querySelector("h1");
+if(h1&&h1.parentNode===main)h1.insertAdjacentElement("afterend",nav);else main.insertBefore(nav,main.firstChild);
+})();`;
+
+/** The card's style, read from the thin stylesheet between its markers, for the standalone layout that does not link that sheet. */
+export const IG_CONTENTS_CSS = (() => {
+  const css = readFileSync(join(import.meta.dir, "templates", "ig-pages", "ig-artifact.css"), "utf-8");
+  const m = css.match(/\/\* IG-CONTENTS-CARD[\s\S]*?\*\/\n([\s\S]*?)\/\* \/IG-CONTENTS-CARD \*\//);
+  if (!m) throw new Error("ig-artifact.css lost its IG-CONTENTS-CARD block");
+  return m[1]!;
+})();
 
 /**
  * The page-level opt-in that tells `docs-ui.js` an IG page's raster images
@@ -546,7 +584,7 @@ export function harnessLayout(topBar: string, tocNav: string, sectionLabel?: str
     '<meta name="viewport" content="width=device-width, initial-scale=1">',
     "<title>{% if page.title and page.title != site.title %}{{ page.title }} | {% endif %}{{ site.title }}</title>",
     "<link rel=\"stylesheet\" href=\"{{ '/assets/css/just-the-docs-default.css' | relative_url }}\">",
-    `<style>${IG_TOPBAR_CSS.trim()}</style>`,
+    `<style>${IG_TOPBAR_CSS.trim()}\n${IG_CONTENTS_CSS.trim()}</style>`,
     // The navbar section is named after the IG (owner, 2026-10-05).
     ...(sectionLabel ? [`<meta name="fa-visualiser-label" content="${escHtml(sectionLabel)}">`] : []),
     "</head>",
@@ -557,6 +595,7 @@ export function harnessLayout(topBar: string, tocNav: string, sectionLabel?: str
     IG_FIGURE_IMAGES_STAMP,
     "{{ content }}",
     ...igEditLines(),
+    `<script>${liquidInertScript(IG_CONTENTS_JS)}</script>`,
     "</main>",
     // Last on the page, as on the Publisher's. Only on pages that flag it
     // (`ig_footer`): the pages this build wrote, and the artefact pages
@@ -759,6 +798,7 @@ export function thinIgLayout(assetsAt: string, tocNav = "", sectionLabel?: strin
     ...(topBar ? [topBar] : []),
     `<main class="ig-main main-content ${PAGE_MAIN_CLASS}" id="main-content">`,
     "{{ content }}",
+    `<script>${liquidInertScript(IG_CONTENTS_JS)}</script>`,
     "</main>",
     // The IG's footer after the column, as `harnessLayout` places it.
     ...(footerInclude ? [`{% if page.ig_footer %}{% include ${footerInclude} %}{% endif %}`] : []),
@@ -1290,6 +1330,12 @@ export interface StageOptions {
   qaPage?: string;
   /** The IG's FHIR AST; default `<src>/output-ast`. Its resources become `site.data` (see {@link astResourceData}). */
   ast?: string;
+  /**
+   * The AST cache commit's tree by URL (`astRawBase`), when the site reads
+   * the AST from there: the Questionnaire form pages then fetch each
+   * unexpanded Questionnaire from it rather than from a copy in the site.
+   */
+  astRaw?: string;
   /** The FHIR package cache the dependency table reads; default `FHIR_PACKAGE_CACHE` or `~/.fhir/packages`. */
   packageCache?: string;
   /**
@@ -2013,6 +2059,7 @@ function stageDeclaredSource(igSrc: string, out: string, opts: StageOptions): St
   let images = 0;
   const unparseable: string[] = [];
   const reserved: string[] = [];
+  const svgMinified = { files: 0, saved: 0 };
   for (const f of filesDeep(imagesDir)) {
     const owner = opts.reservedPaths?.find((p) => (p.prefix.endsWith("/") ? f.startsWith(p.prefix) : f === p.prefix));
     if (owner) {
@@ -2034,6 +2081,16 @@ function stageDeclaredSource(igSrc: string, out: string, opts: StageOptions): St
       const r = relinkPublisherTemplateAssets(readFileSync(join(imagesDir, f), "utf-8"), canonical);
       relinked += r.count;
       writeFileSync(join(out, f), r.text);
+    } else if (f.endsWith(".svg")) {
+      // Published without the drawing editor's own records and the whitespace
+      // between tags (`svg-minify.ts`): the same picture in fewer bytes.
+      const bytes = readFileSync(join(imagesDir, f));
+      const small = minifySvgBytes(bytes);
+      writeFileSync(join(out, f), small);
+      if (small.length < bytes.length) {
+        svgMinified.files++;
+        svgMinified.saved += bytes.length - small.length;
+      }
     } else {
       copyFileSync(join(imagesDir, f), join(out, f));
     }
@@ -2194,6 +2251,7 @@ function stageDeclaredSource(igSrc: string, out: string, opts: StageOptions): St
         slug: typeof sushi.id === "string" ? sushi.id : undefined,
         // The Publisher's terminology cache, where `ig-cache.sh restore` puts it.
         txcache: join(src, "input-cache", "txcache"),
+        ...(opts.astRaw ? { astRaw: opts.astRaw } : {}),
       });
     } catch (e) {
       forms = { why: (e as Error).message };
@@ -2251,7 +2309,7 @@ function stageDeclaredSource(igSrc: string, out: string, opts: StageOptions): St
     ].join("\n"),
   );
   const fillsResult = opts.fills?.length ? { filled, unused: opts.fills.map((x) => x.marker).filter((m) => !usedMarkers.has(m)) } : undefined;
-  return { annexed, unplaced, templateIncludes: templateIncludesResult, pages: pages.sort(), generated, fills: fillsResult, variables: lifted ? { artifacts: Object.keys(lifted.vars.artifacts).length, notSourced: lifted.notSourced } : undefined, unlisted: unlisted.sort(), menuMissing, includes, images, rendered, listed, notRendered, refusedIncludes, unparseable, reserved, relinked, deadLinks: [...dead].sort(), footer, ...(qa ? { qa } : {}), scheme, siteData, data, astData, ...(forms ? { forms } : {}), dependencyTables, dependencies, globals };
+  return { annexed, unplaced, templateIncludes: templateIncludesResult, pages: pages.sort(), generated, fills: fillsResult, variables: lifted ? { artifacts: Object.keys(lifted.vars.artifacts).length, notSourced: lifted.notSourced } : undefined, unlisted: unlisted.sort(), menuMissing, includes, images, rendered, listed, notRendered, refusedIncludes, unparseable, reserved, relinked, deadLinks: [...dead].sort(), footer, ...(svgMinified.files ? { svgMinified } : {}), ...(qa ? { qa } : {}), scheme, siteData, data, astData, ...(forms ? { forms } : {}), dependencyTables, dependencies, globals };
 }
 
 /**
@@ -2299,6 +2357,7 @@ export function dedupeSiteIds(site: string): Map<string, string[]> {
 export function describeStage(r: StageResult): string {
   return [
     `pages: ${r.pages.length}; includes: ${r.includes}; images: ${r.images}; diagrams rendered: ${r.rendered.length}`,
+    ...(r.svgMinified ? [`SVGs published minified: ${r.svgMinified.files}, ${(r.svgMinified.saved / 1e6).toFixed(2)} MB saved`] : []),
     ...(r.templateIncludes ? [`local template includes (ig.ini): ${r.templateIncludes.files} from ${r.templateIncludes.dir}`] : []),
     ...(r.generated.length ? [`generated from data this build holds (the Publisher generates these): ${r.generated.join(", ")}`] : []),
     ...(r.fills?.filled.length ? [`post-processing filled: ${r.fills.filled.join(", ")}`] : []),

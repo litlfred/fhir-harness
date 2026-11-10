@@ -222,12 +222,87 @@ Feature: Building an IG repository's own site from its AST
     When the artefact pages are built
     Then they name the raw URL at that commit, as publisher-pages does
 
-  @test:scripts/ig-repo-site.test.ts::the_AST's_resources_by_raw_URL_at_the_cache_commit_(fhir-harness#325)::byUrlServesNoRootCopy
-  Scenario: publisher pages copies no resource to the root when the pages read them by URL
+  @test:scripts/ig-repo-site.test.ts::the_AST's_resources_by_raw_URL_at_the_cache_commit_(fhir-harness#325)::byUrlServesReducedRootCopy
+  Scenario: publisher pages serves each resource at the root, reduced, when the pages read them by URL
     Given a work directory where ast recorded the cache commit
     When publisher pages runs
-    Then no <Type>-<id>.json is written, the index is still served, and the log names the raw base
+    Then each resource is at the root as <Type>-<id>.json, minified and without its narrative, the index is still served, and the log names the raw base
+
+  @test:scripts/ig-repo-site.test.ts::the_AST's_resources_by_raw_URL_at_the_cache_commit_(fhir-harness#325)::rootResourcesOffServesNoRootCopy
+  Scenario: SITE_ROOT_RESOURCES=0 serves no root copy when the pages read by URL
+    Given the switch set to 0
+    Then no <Type>-<id>.json is written when the pages read by URL
+    And without a cache commit the root copy is still served whole, as the pages' own
+
+  @test:scripts/ig-repo-site.test.ts::the_AST's_resources_by_raw_URL_at_the_cache_commit_(fhir-harness#325)::rootNameFromTheResourceNotTheFile
+  Scenario: the root name is read from the resource, not the cache's file name
+    Given an AST whose resource file is not named for its id
+    Then the root file is named from the resource's resourceType and id
+
+  @test:scripts/ig-repo-site.test.ts::the_AST's_resources_by_raw_URL_at_the_cache_commit_(fhir-harness#325)::caseOnlyCollisionWarned
+  Scenario: two root names that differ only by case are warned about
+    Given two resources whose ids differ only by case
+    Then both are served and the clash is reported
+
+  @test:scripts/ig-repo-site.test.ts::the_AST's_resources_by_raw_URL_at_the_cache_commit_(fhir-harness#325)::reducedLibraryKeepsCqlPointsElmAtFullCopy
+  Scenario: a reduced Library keeps its CQL and points its ELM at the full copy
+    Given a Library with a narrative, a contained resource, CQL and two ELM attachments
+    When it is reduced with the AST cache's URL of its full copy
+    Then the narratives are gone, the CQL is kept, and each ELM attachment keeps its entry with that URL instead of its data
 
   @test:scripts/ig-repo-site.test.ts::redirectStubsLeftBare
   Scenario: a view's redirect stub gets no IG bar and no language block
     Then an immediate meta refresh is a redirect stub, and a delayed refresh or a plain page is not
+
+  @test:scripts/ig-repo-site.test.ts::another_IG_layer's_artefact_index_is_not_copied_into_this_IG's_site_(owner,_2026-11-10)::foreignIndexesAreTheOtherLayersServedIndexes
+  Scenario: the other IG layers' served artefact indexes are found by their kind
+    Given a base IG layer serving its artefact index and an OpenAPI graph, a layer that does not serve its index, and the checkout's own index
+    Then only the base IG layer's served index is another layer's artefact index
+
+  @test:scripts/ig-repo-site.test.ts::another_IG_layer's_artefact_index_is_not_copied_into_this_IG's_site_(owner,_2026-11-10)::dropForeignIndexesRemovesOnlyThoseRoutes
+  Scenario: the final step leaves another IG layer's artefact index out of the built site
+    Given a built site holding the base IG's served index, another directory of that layer, and the site's own index
+    When the final step runs
+    Then the base IG's index is removed with its size reported, the rest stays, and a second run removes nothing
+
+  @test:scripts/ig-repo-site.test.ts::the_IG_API_read_from_the_AST_cache_commit_(owner,_2026-11-10,_card_"A")::cachedIgApiReadByRawUrl
+  Scenario: the IG API the AST cache commit holds is bound and read by raw URL
+    Given a work directory where ast recorded the cache commit, and an AST whose cache holds an IG API
+    Then the site binds that IG API, with its raw URL at the commit
+
+  @test:scripts/ig-repo-site.test.ts::the_IG_API_read_from_the_AST_cache_commit_(owner,_2026-11-10,_card_"A")::olderCacheFallsBackToTheStepsOutput
+  Scenario: an older cache, or by-URL turned off, falls back to the step's own output
+    Given a cache commit that holds no IG API
+    Then the site binds the IG API the layer above left in the work directory
+    And with SITE_AST_BY_URL=0 no raw base is used
+
+  @test:scripts/ig-repo-site.test.ts::the_IG_API_read_from_the_AST_cache_commit_(owner,_2026-11-10,_card_"A")::byUrlServesNoSidecarAndRebasesSwagger
+  Scenario: publisher pages copies no sidecar or document when the IG API is read by URL
+    Given the cached IG API with its raw base
+    When the AST's data is served
+    Then no sidecar and no enumeration document is in the site, and the Swagger page lists each spec at its raw URL
+
+  @test:scripts/ig-repo-site.test.ts::the_IG_API_read_from_the_AST_cache_commit_(owner,_2026-11-10,_card_"A")::localSwaggerSpecsPointAtTheServedSidecars
+  Scenario: the Swagger page's specs point at where the sidecars are served
+    Given a Swagger page listing its specs as ../<file> from openapi/
+    Then each spec that is a served sidecar is listed at fhir-artifact-index/sidecars/, and any other name is left as it was
+
+  @test:scripts/ig-repo-site.test.ts::the_artefact_index_read_from_the_AST_cache_commit_(owner,_2026-11-10,_card_"A")::cachedIndexNotServedPointerIs
+  Scenario: with a pointer to the cache commit's index, the index is not served and the pointer is
+    Given the index the site built and a pointer at the cache commit
+    When the AST's data is served
+    Then fhir-artifact-index/index.json is not in the site, and index.ref.json names the raw index, its base, the repository and the commit
+
+  @test:scripts/ig-repo-site.test.ts::the_artefact_index_read_from_the_AST_cache_commit_(owner,_2026-11-10,_card_"A")::olderCacheServesTheIndexAndPointsAtIt
+  Scenario: a cache with no index: the site serves its own, and the pointer names it
+    Then fhir-artifact-index/index.json is served, and index.ref.json points at index.json beside it
+
+  @test:scripts/ig-repo-site.test.ts::the_artefact_index_read_from_the_AST_cache_commit_(owner,_2026-11-10,_card_"A")::publisherPagesReadsTheCacheCopy
+  Scenario: publisher pages reads the index from the cache commit when the restored AST holds one
+    Given a recorded cache commit and a restored AST holding fhir-artifact-index/index.json
+    When publisher pages runs
+    Then the index is not served, and the log names its raw URL
+
+  @test:scripts/ig-repo-site.test.ts::the_artefact_index_read_from_the_AST_cache_commit_(owner,_2026-11-10,_card_"A")::locateFollowsThePointerElseTheOldPath
+  Scenario: a reader locates an IG's index from its site
+    Then the pointer's index is followed, resolved against the pointer, and with no pointer the old path is used

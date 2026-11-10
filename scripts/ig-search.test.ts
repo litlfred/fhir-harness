@@ -17,6 +17,7 @@ import {
   artifactSearchEntries,
   IG_LOCALE_SLOT,
   IG_SEARCH_CSS,
+  IG_SEARCH_ARTIFACTS_NODE,
   IG_SEARCH_FORMAT,
   IG_SEARCH_INDEX_FILE,
   IG_SEARCH_SCRIPT_FILE,
@@ -29,6 +30,7 @@ import {
 } from "./ig-search.ts";
 import { THIN_PAGE_STYLE, thinArtifactView, thinIndexPage } from "./ig-thin-pages.ts";
 import { stampIgBar, stampTranslationMeta, writeSearch } from "./ig-repo-site.ts";
+import { artifactIndexJsonLd } from "./ig-artifact-jsonld.ts";
 import type { FhirArtifact, FhirArtifactIndex } from "../schemas/fhir-artifact-index.js";
 
 const tmp = (p: string) => mkdtempSync(join(tmpdir(), p));
@@ -200,10 +202,15 @@ describe("the index", () => {
     const ix = igSearchIndex([{ t: "Home", h: "index.html", k: "page" }], [{ t: "A", h: "artifact/X-a.html", k: "X" }]);
     expect(ix).toEqual({ format: IG_SEARCH_FORMAT, base: "../", entries: [{ t: "Home", h: "index.html", k: "page" }, { t: "A", h: "artifact/X-a.html", k: "X" }] });
   });
+
+  test("indexNamesNodeInsteadOfCopy", () => {
+    const ix = igSearchIndex([{ t: "Home", h: "index.html", k: "page" }], IG_SEARCH_ARTIFACTS_NODE);
+    expect(ix).toEqual({ format: IG_SEARCH_FORMAT, base: "../", artifacts: "../artifact/index.jsonld", entries: [{ t: "Home", h: "index.html", k: "page" }] });
+  });
 });
 
 /** The client's scorer, run as a browser would load it, with no page to bind to. */
-function client(): { search: (entries: unknown[], q: string) => { e: { t: string; href: string } }[]; prep: (e: unknown, base: URL) => unknown } {
+function client(): { search: (entries: unknown[], q: string) => { e: { t: string; href: string } }[]; prep: (e: unknown, base: URL) => unknown; fromNode: (node: unknown) => unknown[] } {
   const window: Record<string, unknown> = {};
   const document = { readyState: "complete", querySelectorAll: () => [], addEventListener: () => {} };
   runInNewContext(readFileSync(IG_SEARCH_SCRIPT_SOURCE, "utf-8"), { window, document, URL, console });
@@ -239,6 +246,48 @@ describe("the client searches the index", () => {
   });
 });
 
+describe("the client reads the artefacts from the index node", () => {
+  const c = client();
+  const artifacts = [
+    { key: "ValueSet/acme-vs", resourceType: "ValueSet", id: "acme-vs", name: "AcmeVS", title: "ACME Codes", canonical: "http://acme.org/ValueSet/acme-vs", description: "The **codes**\nACME uses, see [the list](list.html)." },
+    { key: "StructureDefinition/acme-patient", resourceType: "StructureDefinition", id: "acme-patient", name: "AcmePatient", canonical: "http://acme.org/StructureDefinition/acme-patient", description: "x".repeat(200) },
+    { key: "Patient/p1", resourceType: "Patient", id: "p1" },
+  ] as unknown as FhirArtifact[];
+  const node = artifactIndexJsonLd({ artifacts } as unknown as FhirArtifactIndex);
+  // The order of the node's rows (the Publisher's, by category), for comparison.
+  const byKey = (es: { i?: string }[]) => [...es].sort((a, b) => String(a.i).localeCompare(String(b.i)));
+
+  test("sameEntriesAsTheCopy", () => {
+    // What v1 copied into ig-search.json, with each href beside the node rather
+    // than the docs root, and no name among the identifiers when the title is
+    // that name: the title finds it, and outranks an identifier.
+    const copy = artifactSearchEntries(artifacts).map((e) => ({ ...e, h: e.h.replace(/^artifact\//, ""), i: e.i!.split(" ").filter((w, n) => n === 0 || w !== e.t).join(" ") }));
+    expect(byKey(c.fromNode(JSON.parse(JSON.stringify(node))) as { i?: string }[])).toEqual(byKey(copy));
+  });
+
+  test("nameOnlyWhenTitleDoesNotSayIt", () => {
+    const rows = node["schema:hasPart"];
+    expect(rows.find((r) => r["dcterms:identifier"] === "ValueSet/acme-vs")!["schema:name"]).toBe("AcmeVS");
+    // Its title is its name: the row repeats nothing.
+    expect(rows.find((r) => r["dcterms:identifier"] === "StructureDefinition/acme-patient")!["schema:name"]).toBeUndefined();
+  });
+
+  test("foundByNameAndLinkedBesideNode", () => {
+    const at = new URL("https://o.github.io/acme/artifact/index.jsonld");
+    const es = (c.fromNode(JSON.parse(JSON.stringify(node))) as unknown[]).map((e) => c.prep(e, at));
+    const hits = c.search(es, "acmevs");
+    expect(hits.map((h) => h.e.t)).toEqual(["ACME Codes"]);
+    expect(hits[0]!.e.href).toBe("https://o.github.io/acme/artifact/ValueSet-acme-vs.html");
+  });
+
+  test("absoluteNodeIdsStillLinkThisSite", () => {
+    const abs = artifactIndexJsonLd({ artifacts } as unknown as FhirArtifactIndex, { base: "https://published.example/ig/" });
+    const at = new URL("https://o.github.io/acme/branches/x/artifact/index.jsonld");
+    const es = (c.fromNode(JSON.parse(JSON.stringify(abs))) as unknown[]).map((e) => c.prep(e, at));
+    expect(c.search(es, "p1")[0]!.e.href).toBe("https://o.github.io/acme/branches/x/artifact/Patient-p1.html");
+  });
+});
+
 describe("compose writes the search; publisher-pages writes the language picker's block", () => {
   test("writeSearchRefusesExisting", () => {
     const docs = tmp("ig-search-write-");
@@ -251,6 +300,18 @@ describe("compose writes the search; publisher-pages writes the language picker'
     expect(ix.entries.map((e: { h: string }) => e.h)).toEqual(["index.html", "artifact/X-a.html"]);
     expect(readFileSync(join(docs, IG_SEARCH_SCRIPT_FILE), "utf-8")).toBe(readFileSync(IG_SEARCH_SCRIPT_SOURCE, "utf-8"));
     expect(() => writeSearch(docs, staged, { artifacts: [] })).toThrow(/already holds/);
+  });
+
+  test("writeSearchReadsArtefactsFromNode", () => {
+    const docs = tmp("ig-search-node-");
+    const staged = tmp("ig-search-staged3-");
+    put(staged, "index.md", "---\ntitle: Home\n---\nHello\n");
+    put(staged, "artifact/index.jsonld", "{}\n");
+    const r = writeSearch(docs, staged, { artifacts: [{ key: "X/a", resourceType: "X", id: "a" } as FhirArtifact] });
+    expect(r).toMatchObject({ pages: 1, artifacts: 1, fromNode: true });
+    const ix = JSON.parse(readFileSync(join(docs, IG_SEARCH_INDEX_FILE), "utf-8"));
+    expect(ix.artifacts).toBe("../artifact/index.jsonld");
+    expect(ix.entries.map((e: { h: string }) => e.h)).toEqual(["index.html"]);
   });
 
   test("stampsTranslationMeta", () => {

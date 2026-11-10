@@ -47,13 +47,13 @@ Feature: Thin artefact pages and their JSON-LD nodes
 
   @test:scripts/ig-thin-pages.test.ts::ig-artifact-jsonld_check:_the_kind's_QA,_beyond_shape::checkFailsCopiedNode
   Scenario: fails on a node copied to another artefact's name
-    When one artefact's node and JSON are copied over another's
+    When one artefact's node is copied over another's
     Then the check says the node names one artefact but the file is the other's
 
-  @test:scripts/ig-thin-pages.test.ts::ig-artifact-jsonld_check:_the_kind's_QA,_beyond_shape::checkFailsJsonTwinDiffers
-  Scenario: fails when the .json twin differs
-    When a node's .json twin is replaced
-    Then the check says the twin is missing or differs
+  @test:scripts/ig-thin-pages.test.ts::ig-artifact-jsonld_check:_the_kind's_QA,_beyond_shape::checkFailsJsonTwinServed
+  Scenario: fails when a .json twin is served beside a node
+    When a node and the index node each get a byte-identical .json copy
+    Then the check says a .json twin is served beside each, a second copy no reader fetches
 
   @test:scripts/ig-thin-pages.test.ts::ig-artifact-jsonld_check:_the_kind's_QA,_beyond_shape::checkFailsResourceMissing
   Scenario: fails when the resource the page will draw is not on the site
@@ -272,3 +272,26 @@ Feature: Thin artefact pages and their JSON-LD nodes
     And with full pages it names no index node
     When the index node is written
     Then the artefacts name "artifact/index.jsonld"
+
+  @test:scripts/ig-thin-pages.test.ts::the_resource_files_at_the_site_root,_named_by_the_JSON-LD_graph_(fhir-harness#359)::rootCopyFirstMirrorSecond
+  Scenario: a node lists the site's root copy first and the AST cache's full copy as its mirror
+    Given an artefact the AST holds, on a site that serves its resources at the root
+    When its node is written with the AST cache's raw base
+    Then its encodings are the root <Type>-<id>.json (local), the raw URL (mirror), then the upstream file
+    And a referenced artefact names no root file, and a root copy that is the compiled copy is listed once
+
+  @test:scripts/ig-thin-pages.test.ts::the_resource_files_at_the_site_root,_named_by_the_JSON-LD_graph_(fhir-harness#359)::indexEntryNamesRootFile
+  Scenario: the index node names each root file on its entry
+    When the index node is written for a site that serves its resources at the root
+    Then the entry of an artefact the AST holds has the root file as its schema:contentUrl, and a referenced one has none
+
+  @test:scripts/ig-thin-pages.test.ts::the_resource_files_at_the_site_root,_named_by_the_JSON-LD_graph_(fhir-harness#359)::everyLocalEncodingIsOnTheBuiltSite
+  Scenario: every local encoding a node names is a file of the built site
+    Given a site whose root resources publisher pages served from an AST, and the nodes written beside its pages
+    Then every node's local encoding resolves to a file on the site, and check finds nothing
+    And the root copy is minified and carries no narrative
+
+  @test:scripts/ig-thin-pages.test.ts::the_resource_files_at_the_site_root,_named_by_the_JSON-LD_graph_(fhir-harness#359)::checkFailsRootFileMissing
+  Scenario: check names a root file the graph points at and the site lacks
+    Given that site with one root file removed
+    Then check reports the node's resource and the index entry's file as not on the site

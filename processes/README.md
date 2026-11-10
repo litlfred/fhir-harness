@@ -4,7 +4,7 @@
 
 # fhir-harness-processes
 
-The BPMN this layer OWNS, grouped by concern as the harness groups its own (`processes/<group>/`): in `content/`, the FHIR IG pipeline (`l3-fhir-pipeline.bpmn`), its incremental build (`ig-incremental-build.bpmn`), the IG AST cache and delta review (`ig-ast-cache.bpmn`, `ig-ast-delta-review.bpmn`) and the Questionnaire wireframe review (`questionnaire-wireframe-review.bpmn`), beside the IG skills they bind.
+The BPMN this layer OWNS, grouped by concern as the harness groups its own (`processes/<group>/`): in `content/`, the FHIR IG pipeline (`l3-fhir-pipeline.bpmn`), its incremental build (`ig-incremental-build.bpmn`), the IG AST cache and delta review (`ig-ast-cache.bpmn`, `ig-ast-delta-review.bpmn`), the IG release, its owner's tag and its catch-up (`ig-release.bpmn`) and the Questionnaire wireframe review (`questionnaire-wireframe-review.bpmn`), beside the IG skills they bind.
 
 Part of [FHIR IG Harness](../README.md) 0.1.0, declared as `fhir-harness-processes`, holding `processes`.
 

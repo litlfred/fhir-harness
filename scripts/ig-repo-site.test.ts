@@ -13,6 +13,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { isRemoteData, localResourceHref } from "./ig-artifact-jsonld.ts";
 import type { FhirArtifact } from "../schemas/fhir-artifact-index.js";
+import type { ResolvedEntry } from "../../cat-harness-tools/scripts/mount-instance-docs.ts";
 
 import {
   acceptStaleFromEnv,
@@ -22,6 +23,16 @@ import {
   astRawBase,
   builtPage,
   cqlSourceOf,
+  INDEX_CACHED,
+  INDEX_REF_FILE,
+  indexRef,
+  locateArtefactIndex,
+  readIgApiDir,
+  rebaseSwaggerSpecs,
+  siteIgApi,
+  SWAGGER_PAGE,
+  dropForeignIndexes,
+  foreignArtefactIndexes,
   IG_API_DESCRIPTOR,
   IG_API_SITE,
   IG_API_WORK,
@@ -31,6 +42,8 @@ import {
   isPreviewBase,
   isRedirectStub,
   libraryByUrl,
+  reduceForSite,
+  rootResourcesFromEnv,
   platformCommit,
   listedInstances,
   notSource,
@@ -560,9 +573,10 @@ describe("the AST's resources by raw URL at the cache commit (fhir-harness#325)"
     expect(node).toContain(`https://raw.githubusercontent.com/a/b/${sha}/resources/ValueSet/x--0000.json`);
   });
 
-  test("byUrlServesNoRootCopy", () => {
+  test("byUrlServesReducedRootCopy", () => {
     const root = join(dir, "serve-by-url");
     const ast = fakeAst(root, [{ resourceType: "ValueSet", id: "x" }]);
+    writeFileSync(join(ast, "resources/ValueSet/x--0000.json"), JSON.stringify({ resourceType: "ValueSet", id: "x", text: { status: "generated", div: "<div>x</div>" }, url: "http://ex/ValueSet/x" }, null, 2));
     const work = recorded("serve-by-url-work", { commit: sha, remote: "https://github.com/a/b" });
     mkdirSync(join(work, INDEX_WORK), { recursive: true });
     writeFileSync(join(work, INDEX_WORK, "index.json"), "{}");
@@ -570,10 +584,81 @@ describe("the AST's resources by raw URL at the cache commit (fhir-harness#325)"
     mkdirSync(site, { recursive: true });
     const said: string[] = [];
     const r = publisherPages({ site, ast, work, log: (s) => said.push(s) });
-    expect(r.named).toBe(0);
+    expect(r.named).toBe(1);
+    expect(r.reduced).toBe(true);
     expect(r.index).toBe(true);
-    expect(existsSync(join(site, "ValueSet-x.json"))).toBe(false);
+    // FHIR's convention, the Publisher's name, at the root: minified and without the narrative.
+    expect(readFileSync(join(site, "ValueSet-x.json"), "utf-8")).toBe('{"resourceType":"ValueSet","id":"x","url":"http://ex/ValueSet/x"}');
     expect(said.join("\n")).toContain(`raw.githubusercontent.com/a/b/${sha}`);
+    expect(said.join("\n")).toContain("1 reduced resource(s) as <Type>-<id>.json at the root");
+  });
+
+  test("rootResourcesOffServesNoRootCopy", () => {
+    expect(rootResourcesFromEnv({})).toBe(true);
+    expect(rootResourcesFromEnv({ SITE_ROOT_RESOURCES: "1" })).toBe(true);
+    expect(rootResourcesFromEnv({ SITE_ROOT_RESOURCES: "0" })).toBe(false);
+    const root = join(dir, "serve-root-off");
+    const ast = fakeAst(root, [{ resourceType: "ValueSet", id: "x" }]);
+    const site = join(root, "_site");
+    mkdirSync(site, { recursive: true });
+    expect(serveAstData({ site, ast, byUrl: true, rootResources: false }).named).toBe(0);
+    expect(existsSync(join(site, "ValueSet-x.json"))).toBe(false);
+    // Without a cache commit to read by URL, the root copy is the pages' own: served whole, whatever the switch says.
+    expect(serveAstData({ site, ast, rootResources: false }).named).toBe(1);
+    expect(readFileSync(join(site, "ValueSet-x.json"), "utf-8")).toBe(JSON.stringify({ resourceType: "ValueSet", id: "x" }));
+  });
+
+  test("rootNameFromTheResourceNotTheFile", () => {
+    const root = join(dir, "serve-root-name");
+    const ast = join(root, "output-ast");
+    mkdirSync(join(ast, "resources", "ValueSet"), { recursive: true });
+    // The cache file name may change (fhir-ig-publisher#13): `<id>.json`, or a hash; the resource says what it is.
+    writeFileSync(join(ast, "resources/ValueSet/whatever.json"), JSON.stringify({ resourceType: "ValueSet", id: "Real-Id" }));
+    writeFileSync(join(ast, "manifest.json"), JSON.stringify({ resources: [{ file: "resources/ValueSet/whatever.json" }] }));
+    const site = join(root, "_site");
+    mkdirSync(site, { recursive: true });
+    expect(serveAstData({ site, ast, byUrl: true }).named).toBe(1);
+    expect(existsSync(join(site, "ValueSet-Real-Id.json"))).toBe(true);
+  });
+
+  test("caseOnlyCollisionWarned", () => {
+    const root = join(dir, "serve-root-case");
+    const ast = fakeAst(root, [{ resourceType: "ValueSet", id: "abc" }, { resourceType: "ValueSet", id: "ABC" }]);
+    const site = join(root, "_site");
+    mkdirSync(site, { recursive: true });
+    const said: string[] = [];
+    const r = serveAstData({ site, ast, byUrl: true, warn: (s) => said.push(s) });
+    expect(r.caseCollisions).toEqual(["ValueSet-abc.json / ValueSet-ABC.json"]);
+    expect(said.join("\n")).toContain("differ only by case");
+  });
+
+  test("reducedLibraryKeepsCqlPointsElmAtFullCopy", () => {
+    const full = `https://raw.githubusercontent.com/a/b/${sha}/resources/Library/L--1.json`;
+    const lib = {
+      resourceType: "Library",
+      id: "L",
+      text: { status: "generated", div: "<div/>" },
+      contained: [{ resourceType: "Parameters", id: "p", text: { status: "generated", div: "<div/>" } }],
+      content: [
+        { contentType: "text/cql", data: "Y3Fs" },
+        { contentType: "application/elm+xml", data: "eG1s" },
+        { contentType: "application/elm+json", data: "anNvbg==" },
+      ],
+    };
+    expect(reduceForSite(lib, full)).toEqual({
+      resourceType: "Library",
+      id: "L",
+      contained: [{ resourceType: "Parameters", id: "p" }],
+      content: [
+        { contentType: "text/cql", data: "Y3Fs" },
+        { contentType: "application/elm+xml", url: full },
+        { contentType: "application/elm+json", url: full },
+      ],
+    });
+    // No full copy to point at: the ELM's data is still left out, the entry kept.
+    expect((reduceForSite(lib) as { content: unknown[] }).content[1]).toEqual({ contentType: "application/elm+xml" });
+    // The input is not changed.
+    expect(lib.content[1]!.data).toBe("eG1s");
   });
 });
 
@@ -581,4 +666,161 @@ test("redirectStubsLeftBare", () => {
   expect(isRedirectStub('<head><meta http-equiv="refresh" content="0; url=X.html?view=json"></head>')).toBe(true);
   expect(isRedirectStub('<head><meta http-equiv="refresh" content="30"></head><body>x</body>')).toBe(false);
   expect(isRedirectStub("<html><body>page</body></html>")).toBe(false);
+});
+
+describe("another IG layer's artefact index is not copied into this IG's site (owner, 2026-11-10)", () => {
+  const entry = (name: string, instanceDir: string, path: string, extra: Record<string, unknown> = {}) =>
+    ({ name, instanceDir, entry: { path, ...extra }, abs: join(instanceDir, path) }) as unknown as ResolvedEntry;
+
+  test("foreignIndexesAreTheOtherLayersServedIndexes", () => {
+    const root = join(dir, "foreign-ix");
+    const entries = [
+      entry("base-ig", join(root, "base-ig"), "fhir-artifact-index/", { served: true, graphTypologies: ["fhir-artifact-index"] }),
+      entry("base-ig", join(root, "base-ig"), "openapi/", { served: true, graphTypologies: ["openapi"] }),
+      entry("other-ig", join(root, "other-ig"), "fhir-artifact-index/", { graphTypologies: ["fhir-artifact-index"] }),
+      entry("this-ig", root, "fhir-artifact-index/", { served: true, graphTypologies: ["fhir-artifact-index"] }),
+    ];
+    expect(foreignArtefactIndexes(root, entries).map((s) => s.route)).toEqual(["base-ig/fhir-artifact-index"]);
+  });
+
+  test("dropForeignIndexesRemovesOnlyThoseRoutes", () => {
+    const root = join(dir, "foreign-drop");
+    const site = join(root, "_site");
+    mkdirSync(join(site, "base-ig", "fhir-artifact-index", "sidecars"), { recursive: true });
+    writeFileSync(join(site, "base-ig", "fhir-artifact-index", "index.json"), "{}");
+    writeFileSync(join(site, "base-ig", "fhir-artifact-index", "sidecars", "a.schema.json"), "{\"x\":1}");
+    mkdirSync(join(site, "base-ig", "l1-extraction"), { recursive: true });
+    mkdirSync(join(site, "fhir-artifact-index"), { recursive: true });
+    writeFileSync(join(site, "fhir-artifact-index", "index.json"), "{}");
+    const entries = [entry("base-ig", join(root, "base-ig"), "fhir-artifact-index/", { served: true, graphTypologies: ["fhir-artifact-index"] })];
+    expect(dropForeignIndexes(site, root, entries)).toEqual([{ route: "base-ig/fhir-artifact-index", bytes: 9 }]);
+    expect(existsSync(join(site, "base-ig", "fhir-artifact-index"))).toBe(false);
+    expect(existsSync(join(site, "base-ig", "l1-extraction"))).toBe(true);
+    expect(existsSync(join(site, "fhir-artifact-index", "index.json"))).toBe(true);
+    expect(dropForeignIndexes(site, root, entries)).toEqual([]);
+  });
+});
+
+describe("the IG API read from the AST cache commit (owner, 2026-11-10, card \"A\")", () => {
+  const sha = "0123456789abcdef0123456789abcdef01234567";
+  const raw = `https://raw.githubusercontent.com/o/ig/${sha}`;
+  /** A work directory where `ast` recorded the cache commit, an AST whose cache holds an IG API, and the step's own output. */
+  const setup = (name: string, cached: boolean) => {
+    const root = join(dir, name);
+    const ast = fakeAst(root, [{ resourceType: "ValueSet", id: "x" }]);
+    const work = join(root, "work");
+    mkdirSync(join(work, IG_API_WORK, "sidecars"), { recursive: true });
+    writeFileSync(join(work, AST_SOURCE_FILE), JSON.stringify({ commit: sha, remote: "https://github.com/o/ig.git" }));
+    writeFileSync(join(work, IG_API_WORK, "sidecars", "ValueSet-x.schema.json"), "{}");
+    if (cached) {
+      const c = join(ast, IG_API_WORK);
+      mkdirSync(join(c, "sidecars"), { recursive: true });
+      mkdirSync(join(c, IG_API_SITE, "openapi"), { recursive: true });
+      writeFileSync(join(c, "sidecars", "ValueSet-x.schema.json"), "{}");
+      writeFileSync(join(c, "sidecars", "ValueSet-x.openapi.json"), "{}");
+      writeFileSync(join(c, IG_API_SITE, "ValueSets.schema.json"), "{}");
+      writeFileSync(join(c, IG_API_SITE, SWAGGER_PAGE), `<script>var swaggerUrls = [{"url": "../ValueSet-x.openapi.json"}]; url: "../ValueSet-x.openapi.json"</script>`);
+      writeFileSync(join(c, IG_API_DESCRIPTOR), JSON.stringify({ label: "My API" }));
+    }
+    return { root, ast, work };
+  };
+
+  test("cachedIgApiReadByRawUrl", () => {
+    const { ast, work } = setup("api-cached", true);
+    expect(siteIgApi(work, ast, {})).toEqual({ sidecars: join(ast, IG_API_WORK, "sidecars"), files: 2, label: "My API", site: join(ast, IG_API_WORK, IG_API_SITE), rawBase: `${raw}/${IG_API_WORK}` });
+  });
+
+  test("olderCacheFallsBackToTheStepsOutput", () => {
+    const { ast, work } = setup("api-old-cache", false);
+    expect(siteIgApi(work, ast, {})).toEqual({ sidecars: join(work, IG_API_WORK, "sidecars"), files: 1 });
+    // No recorded commit (or by-URL off): the step's output, even when the cache holds one.
+    const c = setup("api-off", true);
+    expect(siteIgApi(c.work, c.ast, { SITE_AST_BY_URL: "0" })?.rawBase).toBeUndefined();
+  });
+
+  test("byUrlServesNoSidecarAndRebasesSwagger", () => {
+    const { root, ast } = setup("api-serve", true);
+    const site = join(root, "_site");
+    mkdirSync(site, { recursive: true });
+    const igApi = { ...readIgApiDir(join(ast, IG_API_WORK))!, rawBase: `${raw}/${IG_API_WORK}` };
+    const r = serveAstData({ site, ast, igApi, byUrl: true });
+    expect(r.sidecars).toBe(0);
+    expect(r.siteFiles).toBe(1);
+    expect(existsSync(join(site, SIDECARS_SERVED))).toBe(false);
+    expect(existsSync(join(site, "ValueSets.schema.json"))).toBe(false);
+    const page = readFileSync(join(site, SWAGGER_PAGE), "utf-8");
+    expect(page).toContain(`"url": "${raw}/ig-api/sidecars/ValueSet-x.openapi.json"`);
+    expect(page).not.toContain('"../ValueSet-x.openapi.json"');
+  });
+
+  test("localSwaggerSpecsPointAtTheServedSidecars", () => {
+    const html = `{"url": "../A.openapi.json"}, {"url": "../B.openapi.json"}, url: "../A.openapi.json"`;
+    expect(rebaseSwaggerSpecs(html, new Set(["A.openapi.json"]), (f) => `../${SIDECARS_SERVED}/${f}`)).toBe(
+      `{"url": "../fhir-artifact-index/sidecars/A.openapi.json"}, {"url": "../B.openapi.json"}, url: "../fhir-artifact-index/sidecars/A.openapi.json"`,
+    );
+  });
+});
+
+describe("the artefact index read from the AST cache commit (owner, 2026-11-10, card \"A\")", () => {
+  const sha = "0123456789abcdef0123456789abcdef01234567";
+  const raw = `https://raw.githubusercontent.com/o/ig/${sha}`;
+
+  test("cachedIndexNotServedPointerIs", () => {
+    const root = join(dir, "index-cached");
+    const ast = fakeAst(root, [{ resourceType: "ValueSet", id: "x" }]);
+    const site = join(root, "_site");
+    mkdirSync(site, { recursive: true });
+    const index = join(root, "index.json");
+    writeFileSync(index, "{}");
+    const r = serveAstData({ site, ast, index, byUrl: true, indexRef: indexRef({ raw, repository: "o/ig", commit: sha }) });
+    expect(r.index).toBe(false);
+    expect(existsSync(join(site, INDEX_CACHED))).toBe(false);
+    expect(JSON.parse(readFileSync(join(site, "fhir-artifact-index", INDEX_REF_FILE), "utf-8"))).toEqual({
+      $schema: "fhir-artifact-index-ref/v1",
+      index: `${raw}/fhir-artifact-index/index.json`,
+      base: `${raw}/`,
+      repository: "o/ig",
+      commit: sha,
+    });
+  });
+
+  test("olderCacheServesTheIndexAndPointsAtIt", () => {
+    const root = join(dir, "index-local");
+    const ast = fakeAst(root, [{ resourceType: "ValueSet", id: "x" }]);
+    const site = join(root, "_site");
+    mkdirSync(site, { recursive: true });
+    const index = join(root, "index.json");
+    writeFileSync(index, "{}");
+    expect(serveAstData({ site, ast, index, indexRef: indexRef({}) }).index).toBe(true);
+    expect(existsSync(join(site, INDEX_CACHED))).toBe(true);
+    expect(JSON.parse(readFileSync(join(site, "fhir-artifact-index", INDEX_REF_FILE), "utf-8")).index).toBe("index.json");
+  });
+
+  test("publisherPagesReadsTheCacheCopy", () => {
+    const root = join(dir, "index-pages");
+    const ast = fakeAst(root, [{ resourceType: "ValueSet", id: "x" }]);
+    mkdirSync(join(ast, "fhir-artifact-index"), { recursive: true });
+    writeFileSync(join(ast, INDEX_CACHED), "{}");
+    const work = join(root, "work");
+    mkdirSync(join(work, INDEX_WORK), { recursive: true });
+    writeFileSync(join(work, INDEX_WORK, "index.json"), "{}");
+    writeFileSync(join(work, AST_SOURCE_FILE), JSON.stringify({ commit: sha, remote: "https://github.com/o/ig.git" }));
+    const site = join(root, "_site");
+    mkdirSync(site, { recursive: true });
+    const said: string[] = [];
+    expect(publisherPages({ site, ast, work, log: (s) => said.push(s) }).index).toBe(false);
+    expect(existsSync(join(site, INDEX_CACHED))).toBe(false);
+    expect(said.join("\n")).toContain(`${raw}/fhir-artifact-index/index.json`);
+  });
+
+  test("locateFollowsThePointerElseTheOldPath", async () => {
+    const site = "https://o.github.io/ig";
+    expect(await locateArtefactIndex(site, async () => ({ $schema: "fhir-artifact-index-ref/v1", index: `${raw}/fhir-artifact-index/index.json` }))).toBe(`${raw}/fhir-artifact-index/index.json`);
+    expect(await locateArtefactIndex(`${site}/`, async () => ({ $schema: "fhir-artifact-index-ref/v1", index: "index.json" }))).toBe(`${site}/fhir-artifact-index/index.json`);
+    expect(
+      await locateArtefactIndex(site, async () => {
+        throw new Error("404");
+      }),
+    ).toBe(`${site}/fhir-artifact-index/index.json`);
+  });
 });

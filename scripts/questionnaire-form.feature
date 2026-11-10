@@ -15,6 +15,19 @@ Feature: A live form page for each Questionnaire in an IG
     Then a missing AST writes no pages
     And an AST with no Questionnaire writes no pages and no assets
 
+  @test:scripts/questionnaire-form.test.ts::questionnaireFormPages::sourceReadFromAstCacheCommit
+  Scenario: the unexpanded Questionnaire is read from the AST cache commit when the site reads the AST by URL
+    Given an AST holding a Questionnaire
+    When the form pages are written without an AST commit
+    Then the unexpanded copy is written into the site and the page reads it there
+    When the form pages are written with the AST cache commit's raw base
+    Then the page reads the manifest's file at that commit
+    And no unexpanded copy is written into the site
+
+  @test:scripts/questionnaire-form.test.ts::questionnaireFormPages::astFileUrlEncodesSegments
+  Scenario: an AST file's URL encodes each path segment
+    Then a file name with a space and a hash is encoded under the raw base
+
   @test:scripts/questionnaire-form.test.ts::answerValueSetExpandedInCopy
   Scenario: answerValueSet is expanded from the IG's expansions in the rendered copy only
     Given a Questionnaire with one item bound to an expanded value set and one bound to a value set with no expansion
