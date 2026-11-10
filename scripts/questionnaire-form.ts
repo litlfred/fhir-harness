@@ -24,9 +24,14 @@
  *                                            platform chrome's, which an IG
  *                                            repository's site composes at the
  *                                            same root (see QFORM_EDIT_LINKS)
- *   assets/formbuilder/<version>/            the self-hosted NLM Form Builder, its
+ *   assets/formbuilder/<version>/            the self-hosted NLM Form Builder's
  *                                            index.html rewritten, and the service
  *                                            worker that answers its cross-site calls
+ *                                            and serves the bundle below
+ *   assets/formbuilder-bundle/<version>/     the builder's vendored bundle, unchanged,
+ *                                            so a shared host can serve it once for
+ *                                            every IG (owner, 2026-11-10: "share it on
+ *                                            smart-html-jtd like LHC-Forms")
  *   assets/jquery/<version>/                 the jQuery its index.html loads
  *   assets/terminology/                      the IG's terminology index and UCUM
  *
@@ -73,6 +78,10 @@ const SW_SCRIPT = join(HERE, "terminology-sw.js");
 const SW_MAP = join(HERE, "terminology-map.js");
 /** The Form Builder's directory on the site, and the worker's scope. */
 export const BUILDER_AT = `assets/formbuilder/${FORMBUILDER_VERSION}/`;
+/** The builder's vendored bundle on the site: the same bytes for every IG, so it can be shared. */
+export const BUNDLE_AT = `assets/formbuilder-bundle/${FORMBUILDER_VERSION}/`;
+/** The files the builder's directory keeps itself: the pages and the worker. Every other file is the bundle's. */
+export const BUILDER_OWN = ["index.html", "window-open.html", "fa-terminology-sw.js", "fa-terminology-map.js"] as const;
 
 /**
  * The Questionnaire mode as a ✍ suggest runtime profile
@@ -212,14 +221,17 @@ export function builderIndexHtml(original: string, swUrl: string): string {
 
 /** The service worker's URL relative to the builder's directory, its configuration in the query. */
 export function swUrl(indexFile: string): string {
-  const q = new URLSearchParams({ index: `../../terminology/${indexFile}`, ucum: "../../terminology/ucum.json", lhc: `../../lhc-forms/${LHC_FORMS_VERSION}/`, v: LHC_FORMS_VERSION });
+  const q = new URLSearchParams({ index: `../../terminology/${indexFile}`, ucum: "../../terminology/ucum.json", lhc: `../../lhc-forms/${LHC_FORMS_VERSION}/`, v: LHC_FORMS_VERSION, bundle: `../../formbuilder-bundle/${FORMBUILDER_VERSION}/` });
   return `fa-terminology-sw.js?${q}`;
 }
 
 /** The self-hosted builder, its worker, jQuery and the terminology, under `out`. */
 export function stageBuilder(out: string, o: Pick<FormPageOptions, "expansions" | "txcache">): { builder: string; sw: { url: string; scope: string }; codes: number } {
   const dir = join(out, BUILDER_AT);
-  cpSync(FORMBUILDER_DIR, dir, { recursive: true });
+  // The bundle goes beside the builder, unchanged; the worker serves it under
+  // the builder's directory, so the app's relative paths are not rewritten.
+  cpSync(FORMBUILDER_DIR, join(out, BUNDLE_AT), { recursive: true, filter: (f) => !/[\\/]index\.html$/.test(f) });
+  mkdirSync(dir, { recursive: true });
   cpSync(JQUERY_DIR, join(out, "assets", "jquery", JQUERY_VERSION), { recursive: true });
   const index = buildIndex({ expansions: o.expansions, txcache: o.txcache });
   const w = writeIndex(index, join(out, "assets", "terminology"));
