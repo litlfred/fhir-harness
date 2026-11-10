@@ -207,6 +207,13 @@ const MENU = join(INSTANCE, "fhir-artifact-index", "menu.json");
  * at them.
  */
 const COMPILED_DATA = arg("--compiled-data")?.replace(/\/+$/, "");
+/**
+ * `--root-resources`: the site serves each compiled resource at its root as
+ * `<Type>-<id>.json`, a reduced copy (`ig-repo-site.ts` `reduceForSite`), so
+ * each JSON-LD node lists that file first and the `--compiled-data` copy as
+ * its mirror (fhir-harness#359). The pages still draw the `--compiled-data` copy.
+ */
+const ROOT_RESOURCES = process.argv.includes("--root-resources");
 const AST_LOADER = join(import.meta.dir, "templates", "ig-pages", "ast-resource.js");
 /** Thin unless `--full-pages` (see the module doc). `--thin`, the old opt-in, is accepted and is the default. */
 const FULL_PAGES = process.argv.includes("--full-pages");
@@ -1712,7 +1719,7 @@ if (existsSync(MENU)) {
       pages.set(join("assets", "ast-resource.js"), readFileSync(AST_LOADER, "utf8"));
       pages.set(join("assets", "ast-pages.json"), `${JSON.stringify([...new Set(astPages)].sort())}\n`);
     }
-    for (const [rel, text] of artifactJsonLdFiles(ix, { ...(JSONLD_BASE ? { base: JSONLD_BASE } : {}), ...(COMPILED_DATA ? { compiledData: COMPILED_DATA } : {}), title: LABEL })) {
+    for (const [rel, text] of artifactJsonLdFiles(ix, { ...(JSONLD_BASE ? { base: JSONLD_BASE } : {}), ...(COMPILED_DATA ? { compiledData: COMPILED_DATA } : {}), ...(ROOT_RESOURCES ? { rootResources: true } : {}), title: LABEL })) {
       pages.set(rel, text);
     }
     pages.set(THIN_PAGE_SCRIPT, readFileSync(THIN_RENDERER, "utf8"));

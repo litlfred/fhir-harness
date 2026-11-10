@@ -27,6 +27,17 @@
  * `gen-ig-pages.ts --thin` writes them with the pages; this CLI writes them
  * alone, and checks a built site.
  *
+ * ## The resource files the nodes name
+ *
+ * With `rootResources` (the IG site's default; owner, 2026-11-10, card "C";
+ * fhir-harness#359), each node's first encoding is the resource at the site
+ * root, `<Type>-<id>.json`, as the IG Publisher names it and FHIR readers
+ * expect (`dcterms:source` `local`), and its second the full copy in the AST
+ * cache by raw URL at the cache commit (`mirror`). The root copy is reduced
+ * (no narrative, no ELM data: `ig-repo-site.ts` `reduceForSite`); the page
+ * draws the mirror. The index node names each root file on its entry
+ * (`schema:contentUrl`), so the whole set is found from one document.
+ *
  * No `.json` twin. Each node used to have a byte-identical `<Type>-<id>.json`
  * beside it, and the index node an `index.json`, on the reasoning that GitHub
  * Pages serves no JSON-LD media type. Every reader fetches the `.jsonld` (the
@@ -89,6 +100,31 @@ export interface JsonLdOptions {
   compiledData?: string;
   /** The IG's display name, for the index node's `dcterms:title`. */
   title?: string;
+  /**
+   * Whether the site serves each compiled resource at its ROOT as
+   * `<Type>-<id>.json`, the IG Publisher's name and FHIR's convention (owner,
+   * 2026-11-10, card "C"; fhir-harness#359). Each node then lists that file
+   * first (`local`) and the AST cache's full copy second (`mirror`), and the
+   * index node names it on each entry (`schema:contentUrl`). The root copy is
+   * reduced (`ig-repo-site.ts` `reduceForSite`); the mirror is the full one.
+   */
+  rootResources?: boolean;
+}
+
+/** The name a resource is served under at the site root: `<Type>-<id>.json`, as the IG Publisher writes it. */
+export function rootResourceName(a: { resourceType: string; id: string }): string {
+  return `${a.resourceType}-${a.id}.json`;
+}
+
+/**
+ * The root copy of an artefact, relative to `artifact/<file>`, when the site
+ * serves one ({@link JsonLdOptions.rootResources}) and the AST holds the
+ * resource (a compiled, materialized artefact); else undefined.
+ */
+export function rootResourceHref(a: FhirArtifact, o: Pick<JsonLdOptions, "rootResources">): string | undefined {
+  const m = a.materialization;
+  if (!o.rootResources || m.state !== "materialized" || m.purpose !== "compiled" || !m.localPath) return undefined;
+  return `../${rootResourceName(a)}`;
 }
 
 /**
@@ -162,9 +198,14 @@ export function statedFacts(a: FhirArtifact): Pick<IgArtifactJsonLd, "dcterms:co
 export function artifactJsonLd(ix: FhirArtifactIndex, a: FhirArtifact, o: JsonLdOptions = {}): IgArtifactJsonLd {
   const file = `${artifactPageName(a)}.jsonld`;
   const encodings: IgArtifactEncoding[] = [];
+  // The site's root copy first (reduced), then the compiled copy the pages
+  // read: the AST cache's full copy by raw URL (`mirror`), or a copy this site
+  // serves (`local`) when it is not the root one already listed.
+  const root = rootResourceHref(a, o);
+  if (root) encodings.push({ "@type": "schema:MediaObject", "schema:contentUrl": { "@id": iriFor(root, o.base) }, "schema:encodingFormat": FHIR_JSON, "dcterms:source": "local" });
   const local = localResourceHref(a, o.compiledData);
-  if (local) {
-    encodings.push({ "@type": "schema:MediaObject", "schema:contentUrl": { "@id": iriFor(local, o.base) }, "schema:encodingFormat": FHIR_JSON, "dcterms:source": "local" });
+  if (local && local !== root) {
+    encodings.push({ "@type": "schema:MediaObject", "schema:contentUrl": { "@id": iriFor(local, o.base) }, "schema:encodingFormat": FHIR_JSON, "dcterms:source": isRemoteData(o.compiledData) ? "mirror" : "local" });
   }
   // The upstream JSON, where the IG publishes it. The html is the Publisher's
   // page, which this node does not point at: the page that renders this node
@@ -207,18 +248,22 @@ export function artifactJsonLd(ix: FhirArtifactIndex, a: FhirArtifact, o: JsonLd
  * its node and carrying what a list row shows. Deterministic.
  */
 export function artifactIndexJsonLd(ix: FhirArtifactIndex, o: JsonLdOptions = {}): IgArtifactIndexJsonLd {
-  const parts = [...byCategory(ix.artifacts).values()].flat().map((a) => ({
-    "@id": iriFor(`${artifactPageName(a)}.jsonld`, o.base),
-    "@type": `fhir:${a.resourceType}`,
-    "dcterms:identifier": a.key,
-    "dcterms:title": a.title ?? a.name ?? a.id,
-    // The computer name, for the IG's search, when neither the title nor the id says it.
-    ...(a.name && a.name !== (a.title ?? a.name) && a.name !== a.id ? { "schema:name": a.name } : {}),
-    ...(a.description ? { "dcterms:description": a.description } : {}),
-    ...(a.category ? { "dcterms:type": a.category } : {}),
-    ...(a.canonical ? { "schema:sameAs": { "@id": a.canonical } } : {}),
-    ...statedFacts(a),
-  }));
+  const parts = [...byCategory(ix.artifacts).values()].flat().map((a) => {
+    const root = rootResourceHref(a, o);
+    return {
+      "@id": iriFor(`${artifactPageName(a)}.jsonld`, o.base),
+      "@type": `fhir:${a.resourceType}`,
+      "dcterms:identifier": a.key,
+      "dcterms:title": a.title ?? a.name ?? a.id,
+      // The computer name, for the IG's search, when neither the title nor the id says it.
+      ...(a.name && a.name !== (a.title ?? a.name) && a.name !== a.id ? { "schema:name": a.name } : {}),
+      ...(a.description ? { "dcterms:description": a.description } : {}),
+      ...(a.category ? { "dcterms:type": a.category } : {}),
+      ...(a.canonical ? { "schema:sameAs": { "@id": a.canonical } } : {}),
+      ...statedFacts(a),
+      ...(root ? { "schema:contentUrl": { "@id": iriFor(root, o.base) } } : {}),
+    };
+  });
   return {
     "@context": { ...IG_ARTIFACT_JSONLD_CONTEXT },
     $schema: IG_ARTIFACT_INDEX_JSONLD_SCHEMA_TAG,
@@ -308,6 +353,13 @@ export function checkArtifactIndexJsonLd(ix: FhirArtifactIndex, docsRoot: string
           findings.push(`${at}: the entry for ${key} says ${term} ${JSON.stringify(e[term] ?? null)}, its node ${JSON.stringify(node[term] ?? null)}`);
         }
       }
+      // The root file the entry names is the node's first local copy, and is on the site.
+      const first = (node["schema:encoding"] as IgArtifactEncoding[] | undefined)?.find((x) => x["dcterms:source"] === "local")?.["schema:contentUrl"]["@id"];
+      const named = e["schema:contentUrl"]?.["@id"];
+      if (named !== undefined) {
+        if (named !== first) findings.push(`${at}: the entry for ${key} names ${named}, its node's local copy is ${first ?? "none"}`);
+        else if (!existsSync(resolve(dir, decodeURI(relFrom(n["@id"], named))))) findings.push(`${at}: the entry for ${key} names ${named}, which is not on the site`);
+      }
       // Stated only when the title does not say it, so held equal only when stated.
       if (e["schema:name"] !== undefined && e["schema:name"] !== node["schema:name"]) {
         findings.push(`${at}: the entry for ${key} says schema:name ${JSON.stringify(e["schema:name"])}, its node ${JSON.stringify(node["schema:name"] ?? null)}`);
@@ -329,8 +381,9 @@ export function checkArtifactIndexJsonLd(ix: FhirArtifactIndex, docsRoot: string
  *   wrong name would render another artefact's page);
  * - no `.json` twin is served beside it (a second copy no reader fetches);
  * - every LOCAL `schema:contentUrl` resolves to a file under the site — the
- *   resource the page will draw. An upstream URL is not fetched: this check
- *   runs without the network, and says so.
+ *   root `<Type>-<id>.json` a harvester reads, or the copy the page draws. A
+ *   mirror or upstream URL is not fetched: this check runs without the
+ *   network, and says so.
  *
  * Returns the findings; empty is a pass.
  */

@@ -61,6 +61,17 @@ of these, because each copy is under the limit.
    knowledge graph**, never from a pages branch. The resource JSON views
    fetch the `package.tgz` that `ig-index:build` writes into
    `fhir-artifact-index/` at publish.
+7. **Each resource is at the site root as `<Type>-<id>.json`, reduced.**
+   FHIR readers expect the Publisher's names beside the pages, so the site
+   serves every resource of the AST there (fhir-harness#359), but not
+   whole: minified, with no `text` narrative, and each Library ELM
+   attachment (contentType naming `elm`) without its `data`, pointing by
+   `url` at the full resource in the AST cache. The CQL stays. On one
+   measured IG that is 13 MB instead of 47 MB. The full resources
+   are the AST cache commit's (by raw URL, which the pages read) and the
+   release's `package.tgz` and `ast-data.zip`. `SITE_ROOT_RESOURCES=0`
+   turns the root copies off ([`ig-build-pipeline`](ig-build-pipeline.md)
+   §"What the site serves from the AST").
 
 ## Releasing
 
@@ -82,8 +93,8 @@ person.
    - `ast-data.zip`, the IG's AST, whose Library resources keep their ELM;
    - `SHA256SUMS`.
 
-   The Pages site serves neither the AST nor the ELM: a Library entry points
-   at its CQL source and the ELM ships here. A build with no `package.tgz`
+   The Pages site serves neither the AST nor the ELM: its root
+   `<Type>-<id>.json` copies are reduced (rule 7), and the ELM ships here. A build with no `package.tgz`
    is refused.
 4. **It is made as a GitHub draft.** `ig-release.ts draft` makes the draft
    and uploads the files. If the tag already has a draft, its files are

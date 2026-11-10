@@ -579,3 +579,74 @@ describe("the IG site, thin by default: stageIgSite, composeIgSite and artifacts
     expect(artifactsFor(root, "artifact/")!.index).toBe("artifact/index.jsonld");
   });
 });
+
+describe("the resource files at the site root, named by the JSON-LD graph (fhir-harness#359)", () => {
+  const RAW = `https://raw.githubusercontent.com/o/ig/${"0".repeat(40)}`;
+  const ROOT_FILE = "../StructureDefinition-Composition-uv-ips.json";
+  const sites: string[] = [];
+  afterAll(() => sites.forEach((s) => rmSync(s, { recursive: true, force: true })));
+
+  it("rootCopyFirstMirrorSecond", () => {
+    const n = artifactJsonLd(IX, COMPOSITION, { compiledData: RAW, rootResources: true });
+    expect(IgArtifactJsonLdSchema.safeParse(n).success).toBe(true);
+    expect(n["schema:encoding"].map((e) => [e["dcterms:source"], e["schema:contentUrl"]["@id"]])).toEqual([
+      ["local", ROOT_FILE],
+      ["mirror", `${RAW}/resources/StructureDefinition/Composition-uv-ips--7ae5e8a1.json`],
+      ["upstream", `${IPS.published}/StructureDefinition-Composition-uv-ips.json`],
+    ]);
+    // A referenced artefact has no copy in the AST, so none at the root either.
+    expect(artifactJsonLd(IX, PATIENT, { compiledData: RAW, rootResources: true })["schema:encoding"].every((e) => e["dcterms:source"] === "upstream")).toBe(true);
+    // The site's root copy already IS the compiled copy (`--compiled-data .`): listed once.
+    expect(artifactJsonLd(IX, COMPOSITION, { compiledData: ".", rootResources: true })["schema:encoding"].filter((e) => e["dcterms:source"] === "local").length).toBe(1);
+  });
+
+  it("indexEntryNamesRootFile", () => {
+    const ix = artifactIndexJsonLd(IX, { compiledData: RAW, rootResources: true });
+    expect(IgArtifactIndexJsonLdSchema.safeParse(ix).success).toBe(true);
+    const by = new Map(ix["schema:hasPart"].map((e) => [e["dcterms:identifier"], e]));
+    expect(by.get(COMPOSITION.key)!["schema:contentUrl"]).toEqual({ "@id": ROOT_FILE });
+    expect(by.get(PATIENT.key)!["schema:contentUrl"]).toBeUndefined();
+  });
+
+  /** A built site: the AST's resources served by publisher-pages, the nodes written beside them as the IG site writes them. */
+  async function siteWithRootResources(): Promise<string> {
+    const { serveAstData } = await import("./ig-repo-site.ts");
+    const root = mkdtempSync(join(tmpdir(), "fhir-harness-root-res-"));
+    sites.push(root);
+    const ast = join(root, "output-ast");
+    const file = RESOURCE.replace(/^[^/]+\//, "");
+    mkdirSync(dirname(join(ast, file)), { recursive: true });
+    writeFileSync(join(ast, file), JSON.stringify({ resourceType: "StructureDefinition", id: "Composition-uv-ips", text: { status: "generated", div: "<div/>" } }));
+    writeFileSync(join(ast, "manifest.json"), JSON.stringify({ resources: [{ resourceType: "StructureDefinition", id: "Composition-uv-ips", file }] }));
+    const site = join(root, "_site");
+    mkdirSync(site, { recursive: true });
+    expect(serveAstData({ site, ast, byUrl: true, rawBase: RAW }).named).toBe(1);
+    for (const [rel, text] of artifactJsonLdFiles(IX, { compiledData: RAW, rootResources: true })) {
+      mkdirSync(dirname(join(site, rel)), { recursive: true });
+      writeFileSync(join(site, rel), text);
+    }
+    return site;
+  }
+
+  it("everyLocalEncodingIsOnTheBuiltSite", async () => {
+    const site = await siteWithRootResources();
+    for (const f of readdirSync(join(site, "artifact")).filter((f) => f.endsWith(".jsonld") && f !== "index.jsonld")) {
+      const n = JSON.parse(readFileSync(join(site, "artifact", f), "utf8")) as Json;
+      for (const e of n["schema:encoding"].filter((e: Json) => e["dcterms:source"] === "local")) {
+        expect(existsSync(resolve(site, "artifact", e["schema:contentUrl"]["@id"]))).toBe(true);
+      }
+    }
+    expect(checkArtifactJsonLd(IX, site)).toEqual([]);
+    // The reduced copy: minified, no narrative.
+    const served = readFileSync(join(site, "StructureDefinition-Composition-uv-ips.json"), "utf8");
+    expect(served).toBe('{"resourceType":"StructureDefinition","id":"Composition-uv-ips"}');
+  });
+
+  it("checkFailsRootFileMissing", async () => {
+    const site = await siteWithRootResources();
+    unlinkSync(join(site, "StructureDefinition-Composition-uv-ips.json"));
+    const out = checkArtifactJsonLd(IX, site).join("\n");
+    expect(out).toContain(`StructureDefinition-Composition-uv-ips.jsonld: its resource ${ROOT_FILE} is not on the site`);
+    expect(out).toContain(`the entry for ${COMPOSITION.key} names ${ROOT_FILE}, which is not on the site`);
+  });
+});

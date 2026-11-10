@@ -68,7 +68,7 @@ A valid AST is a cache, not a release: every page drawn from it carries the prov
       <bpmn:outgoing>Flow_4</bpmn:outgoing>
     </bpmn:exclusiveGateway>
     <bpmn:serviceTask id="Task_BuildSite" name="Build and publish the site from the AST">
-      <bpmn:documentation>Runs the site route's steps via `stage-local.ts` → `build-instance-site.ts`: `ig-site:sidecars` (IG API sidecars, if the landing layer has the step), `ig-site:compose` (artefact index and thin pages from the AST, the IG composed at the root), `ig-site:openapi` (if the IG holds OpenAPI pages), `ig-site:publisher-pages` (the AST's resources as `&lt;Type&gt;-&lt;id&gt;.json` at the root, the build stamp), and last `ig-site:bar` (the IG's slim bar on pages written after `publisher-pages`). Published at the root from the default branch, as a preview otherwise.</bpmn:documentation>
+      <bpmn:documentation>Runs the site route's steps via `stage-local.ts` → `build-instance-site.ts`: `ig-site:sidecars` (IG API sidecars, if the landing layer has the step), `ig-site:compose` (artefact index and thin pages from the AST, the IG composed at the root), `ig-site:openapi` (if the IG holds OpenAPI pages), `ig-site:publisher-pages` (the AST's resources as `&lt;Type&gt;-&lt;id&gt;.json` at the root, the build stamp), and last `ig-site:bar` (the IG's slim bar on pages written after `publisher-pages`). Published at the root from the default branch, as a preview otherwise. When the restore recorded the cache commit, the site reads the AST from that commit by raw URL rather than copying it: the artefact pages draw each full resource there, the IG API sidecars are read from its `ig-api/` (fhir-harness#344), and the artefact index from its `fhir-artifact-index/index.json`, which the site points at with `fhir-artifact-index/index.ref.json` instead of serving (#358). The root `&lt;Type&gt;-&lt;id&gt;.json` copies are then reduced (minified, no narrative, no ELM data; #359), and the JSON-LD graph (`artifact/*.jsonld`) names each root file first and the cache copy as its mirror. The full resources are the cache commit's and the release's `package.tgz`.</bpmn:documentation>
       <bpmn:extensionElements>
         <bootstrap.processes:skill ref="ig-render-jekyll"/>
         <bootstrap.processes:skill ref="ig-build-pipeline"/>
@@ -111,7 +111,7 @@ A valid AST is a cache, not a release: every page drawn from it carries the prov
       <bpmn:outgoing>Flow_10</bpmn:outgoing>
     </bpmn:exclusiveGateway>
     <bpmn:serviceTask id="Task_Seed" name="Seed the cache branch">
-      <bpmn:documentation>`ig-cache.sh seed --ig-root . --push`: one commit holding the AST, the Publisher's expansions and `txcache/`, its subject recording the package, counts, Publisher version and source commit. Refused when the candidate is under 90% of the incumbent's resources or edges (the no-shrink gate).</bpmn:documentation>
+      <bpmn:documentation>`ig-cache.sh seed --ig-root . --push`: one commit holding the AST, the Publisher's expansions and `txcache/`, the IG API generated over that AST (`ig-api/`, `ig-api-cache.ts`) and the artefact index built from that tree (`fhir-artifact-index/index.json`, `ig-index-cache.ts`), which the site reads by raw URL; its subject recording the package, counts, Publisher version and source commit. Refused when the candidate is under 90% of the incumbent's resources or edges (the no-shrink gate).</bpmn:documentation>
       <bpmn:extensionElements>
         <bootstrap.processes:skill ref="compiled-artefact-cache"/>
       </bpmn:extensionElements>

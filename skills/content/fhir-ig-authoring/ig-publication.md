@@ -103,6 +103,19 @@ cut only from the **full publisher build** in that same diagram, in the JVM
 services lane. Never publish from restored state: the site looks right and was
 never built by the publisher the release claims produced it.
 
+## Cutting a release
+
+A release starts from a `v*` tag, never from a site deploy. Pushing the tag
+runs the IG's `ig-release.yml` (template
+`templates/ig-repo-site/ig-release.yml`): a full AST build, then
+`ig-release.ts` makes a GitHub **draft** release carrying `package.tgz` (and
+its R4/R4B variants), `ast-data.zip` and `SHA256SUMS`. Publishing the draft
+is the owner's `Task_AuthorizeRelease`; a workflow never changes a published
+release. The files, the pre-release rule and the order are
+[`ig-binary-artefacts`](../../fhir-ig-base/ig-binary-artefacts.md)
+§"Releasing". The site itself is published from the AST cache
+(`ig-ast-cache.bpmn`) and carries none of these files.
+
 ## Report the URL only once it answers
 
 `publishedUrl` is a measurement. A deploy that has returned is not a site that
@@ -178,7 +191,7 @@ build's parity guard). Otherwise it compares with the local `origin/gh-pages`
 |---|---|
 | vendored libraries (form renderers, the Form Builder, WebAssembly builds, editor bundles, harness images) | serve them once from the shared-assets host the IG names in `index.config.json` `site.sharedAssets` (cat-harness-tools `lib/shared-assets.ts`); a directory the host does not serve yet stays local, and the build says so |
 | another layer's pages, index or assets | link that layer's own site rather than copy it (the scoped site's relinking; `ig-site:bar` leaves out another IG layer's artefact index); the owner's ruling is that another layer's content is cross-referenced, not copied |
-| AST resources and sidecars mirrored onto the site | point at the raw URL of the file at the AST cache commit (§"The AST cache lifecycle" of [`ig-build-pipeline`](../../fhir-ig-base/ig-build-pipeline.md)); each resource is served once, as `<Type>-<id>.json` |
+| AST resources, sidecars or the artefact index mirrored onto the site | point at the raw URL of the file at the AST cache commit (§"The AST cache lifecycle" of [`ig-build-pipeline`](../../fhir-ig-base/ig-build-pipeline.md)): the pages read each full resource there, the sidecars from its `ig-api/`, the index through `fhir-artifact-index/index.ref.json`. Each resource is served once at the root as a REDUCED `<Type>-<id>.json` (no narrative, no ELM data: 13 MB instead of 47 MB on one measured IG); `SITE_ROOT_RESOURCES=0` drops them |
 | source maps | not published: strip `.map` files and their `sourceMappingURL` comments at build |
 | several indexes of the same artefacts (`index.json`, `index.jsonld`, a search index, a menu) | one index, from which the others are derived in the browser or left out |
 | Publisher binaries (`full-ig.zip`, `package.tgz` variants, validator packs) | release assets, not pages-branch files ([`ig-binary-artefacts`](../../fhir-ig-base/ig-binary-artefacts.md)) |

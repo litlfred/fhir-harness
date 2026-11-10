@@ -388,11 +388,27 @@ names, never naming a layer:
   where no sidecar is served.
 
 **What the site serves from the AST**: each resource once, under the
-Publisher's name `<Type>-<id>.json` at the root (the thin pages' data,
-`gen-ig-pages --compiled-data .`, and the narrative's links; no `ast-data/`
-mirror, owner 2026-11-08), the
-artefact index at `fhir-artifact-index/index.json`, and the AST as
-`site.data` for the IG's own pages. The grouping of the IG's committed
+Publisher's name `<Type>-<id>.json` at the root, as FHIR's convention and
+the IG Publisher have it (owner, 2026-11-10, card "C"; fhir-harness#359; no
+`ast-data/` mirror, owner 2026-11-08); the artefact index, or the pointer to
+the cache's copy (above); and the AST as `site.data` for the IG's own pages.
+When `ast` recorded the cache commit, the pages read each resource IN FULL by
+raw URL at that commit, and the root copy is **reduced**
+(`ig-repo-site.ts` `reduceForSite`): minified, without `text` (the pages
+render the narrative from the full copy), and each Library attachment whose
+contentType names `elm` without its `data`, its `url` set to the full
+resource in the cache; the CQL stays. Measured on one IG of 756 resources: 47 MB
+verbatim, 13 MB reduced. The JSON-LD graph names the root file first (each
+node's `local` encoding, each `artifact/index.jsonld` entry's
+`schema:contentUrl`) and the cache copy second (`mirror`); `ig-artifact-jsonld.ts
+check` holds every local file to the built site. The full copy is the cache
+commit's and the release's `package.tgz` ([`ig-binary-artefacts`](ig-binary-artefacts.md)).
+The root name is read from the resource (`resourceType`, `id`), not the
+cache file's name; two names that differ only by case are warned about, as
+they clash on a case-insensitive disk for the Publisher too.
+`SITE_ROOT_RESOURCES=0` serves no root copy when the pages read by URL;
+without a cache commit (or with `SITE_AST_BY_URL=0`) the root copy is the
+pages' own and is served whole. The grouping of the IG's committed
 `fhir-artifact-index/index.json` is kept when it holds one, since the AST
 stops before the Publisher assigns categories.
 

@@ -188,9 +188,11 @@
     (node["schema:encoding"] || []).forEach(function (e, i) {
       var url = e["schema:contentUrl"] && e["schema:contentUrl"]["@id"];
       var fmt = String(e["schema:encodingFormat"] || "").replace(/^application\/fhir\+/, "");
-      var local = e["dcterms:source"] === "local";
+      var source = e["dcterms:source"];
+      var local = source === "local";
       if (i) reps.append(" · ");
-      reps.append(link(local ? fetchable(url, node["@id"], nodeUrl) : url, local ? fmt : fmt + " (upstream)", !local));
+      // `local` is the site's reduced root copy, `mirror` the AST cache's full one.
+      reps.append(link(local ? fetchable(url, node["@id"], nodeUrl) : url, local ? fmt : source === "mirror" ? fmt + " (full, AST cache)" : fmt + " (upstream)", !local));
     });
     reps.append(" · ", link(nodeUrl, "JSON-LD"));
     row(t, "Representations", reps);
@@ -1189,9 +1191,16 @@
       return r.json();
     })
     .then(function (node) {
-      var local = (node["schema:encoding"] || []).filter(function (e) {
-        return e["dcterms:source"] === "local";
-      })[0];
+      // The full copy first (the AST cache's `mirror`): the site's root copy
+      // (`local`) is reduced, without the narrative or the ELM.
+      var encs = node["schema:encoding"] || [];
+      var local =
+        encs.filter(function (e) {
+          return e["dcterms:source"] === "mirror";
+        })[0] ||
+        encs.filter(function (e) {
+          return e["dcterms:source"] === "local";
+        })[0];
       // The resource: the node's local copy, else the copy the page says this
       // site serves (the Publisher's own JSON, carried as data).
       var src = local ? fetchable(local["schema:contentUrl"]["@id"], node["@id"], nodeUrl) : cfg.resource ? new URL(cfg.resource, location.href).href : null;
