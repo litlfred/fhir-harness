@@ -523,6 +523,15 @@ describe("the AST's resources by raw URL at the cache commit (fhir-harness#325)"
     expect(r.status).toBe(0);
     expect(JSON.parse(readFileSync(record, "utf-8"))).toEqual({ commit, remote });
     expect(existsSync(join(ig, "output-ast", "manifest.json"))).toBe(true);
+    // An AST already present that is the tip's is recorded too; a changed one is not.
+    rmSync(record);
+    const again = () => spawnSync("bash", [join(import.meta.dir, "ig-cache.sh"), "restore", "--ig-root", ig, "--record", record], { cwd: ig, encoding: "utf-8" });
+    expect(again().status).toBe(0);
+    expect(JSON.parse(readFileSync(record, "utf-8"))).toEqual({ commit, remote });
+    rmSync(record);
+    writeFileSync(join(ig, "output-ast", "manifest.json"), "{}");
+    expect(again().status).toBe(0);
+    expect(existsSync(record)).toBe(false);
   });
 
   test("byUrlServesNoRootCopy", () => {

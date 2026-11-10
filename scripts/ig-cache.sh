@@ -203,6 +203,29 @@ cmd_status() {
   return 0
 }
 
+# `restore --record` with an AST already in the checkout: the cache commit it
+# came from, when that is knowable without downloading the AST again. The
+# commit named (`--commit`, or the branch's tip) is fetched without its files
+# (`--filter=blob:none`) and recorded when its manifest.json is byte for byte
+# the one present. Otherwise nothing is recorded, and the site copies the
+# resources as before (fhir-harness#327).
+record_present() {
+  local out="$1" ref="$2" here want sha url
+  here=$(git hash-object "$out/manifest.json" 2>/dev/null) || return 0
+  igit update-ref -d "$PRIVATE_REF" 2>/dev/null || true
+  igit fetch -q --depth=1 --filter=blob:none "$REMOTE" "+$ref:$PRIVATE_REF" >/dev/null 2>&1 || { info "could not read $ref to record the AST already present"; return 0; }
+  want=$(igit rev-parse "$PRIVATE_REF:manifest.json" 2>/dev/null) || want=""
+  sha=$(igit rev-parse "$PRIVATE_REF" 2>/dev/null) || sha=""
+  igit update-ref -d "$PRIVATE_REF" 2>/dev/null || true
+  if [ -n "$sha" ] && [ "$here" = "$want" ]; then
+    url=$(igit remote get-url "$REMOTE" 2>/dev/null | sed -E 's#//[^/@]*@#//#') || url=""
+    printf '{"commit":"%s","remote":"%s"}\n' "$sha" "$url" > "$RECORD"
+    info "the AST present is ${sha:0:12}'s: recorded"
+  else
+    info "the AST present is not $ref's tip: no commit recorded"
+  fi
+}
+
 cmd_restore() {
   local root; root=$(resolve_ig_root)
   local pkg; pkg=$(resolve_package "$root") || die "could not resolve package id from $root/sushi-config.yaml"
@@ -221,6 +244,7 @@ cmd_restore() {
   if [ -d "$out" ] && [ "$(count_resources "$out")" -gt 0 ]; then
     local n; n=$(count_resources "$out")
     printf 'cache already present (%s resources) — nothing to do.\n' "$n"
+    [ -n "$RECORD" ] && record_present "$out" "$br"
     return 0
   fi
   

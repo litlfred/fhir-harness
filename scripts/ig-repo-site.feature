@@ -214,6 +214,7 @@ Feature: Building an IG repository's own site from its AST
     Given a remote holding the IG's cache branch
     When the AST is restored with --record
     Then the record names the branch's commit and the remote, and the AST is laid down
+    And with that AST already present the commit is recorded again, and with a changed manifest nothing is recorded
 
   @test:scripts/ig-repo-site.test.ts::the_AST's_resources_by_raw_URL_at_the_cache_commit_(fhir-harness#325)::byUrlServesNoRootCopy
   Scenario: publisher pages copies no resource to the root when the pages read them by URL
