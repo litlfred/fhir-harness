@@ -522,6 +522,41 @@ ${IG_SEARCH_CSS.trim()}
 `;
 
 /**
+ * The Contents card on an IG's narrative pages (owner, 2026-11-10: "make this
+ * more akin to how IGs have TOC on RHS ... not yellow, but more like a card",
+ * then "adopt that for other IG pages as well"). The Publisher draws a yellow
+ * "Contents:" box at the top right of a page; this is the same box as a
+ * neutral card, built in the browser from the page's own `<h2>` headings, so
+ * it needs nothing from the IG's source. A page with fewer than two `<h2>`, or
+ * one that already draws a card (`artifacts.html`), gets none.
+ */
+export const IG_CONTENTS_JS = `(function(){
+var main=document.getElementById("main-content");
+if(!main||main.querySelector(".igi-contents"))return;
+var hs=Array.prototype.filter.call(main.querySelectorAll("h2"),function(h){return !h.closest(".igi-contents,#ig-footer,.ig-edit")&&h.textContent.trim();});
+if(hs.length<2)return;
+var used={};
+function slug(t){var b=t.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"")||"section",s=b,i=1;while(used[s]||document.getElementById(s))s=b+"-"+(++i);used[s]=1;return s;}
+var nav=document.createElement("nav");nav.className="igi-contents";nav.setAttribute("aria-label","Contents");
+var t=document.createElement("p");t.className="igi-contents-title";t.textContent="Contents";nav.appendChild(t);
+var ul=document.createElement("ul");
+hs.forEach(function(h){if(!h.id)h.id=slug(h.textContent);var li=document.createElement("li"),a=document.createElement("a");a.href="#"+h.id;
+var c=h.cloneNode(true);Array.prototype.forEach.call(c.querySelectorAll(".anchor-heading,.fa-sec-box,svg,button"),function(n){n.remove();});
+a.textContent=c.textContent.replace(/\\s+/g," ").trim();li.appendChild(a);ul.appendChild(li);});
+nav.appendChild(ul);
+var h1=main.querySelector("h1");
+if(h1&&h1.parentNode===main)h1.insertAdjacentElement("afterend",nav);else main.insertBefore(nav,main.firstChild);
+})();`;
+
+/** The card's style, read from the thin stylesheet between its markers, for the standalone layout that does not link that sheet. */
+export const IG_CONTENTS_CSS = (() => {
+  const css = readFileSync(join(import.meta.dir, "templates", "ig-pages", "ig-artifact.css"), "utf-8");
+  const m = css.match(/\/\* IG-CONTENTS-CARD[\s\S]*?\*\/\n([\s\S]*?)\/\* \/IG-CONTENTS-CARD \*\//);
+  if (!m) throw new Error("ig-artifact.css lost its IG-CONTENTS-CARD block");
+  return m[1]!;
+})();
+
+/**
  * The page-level opt-in that tells `docs-ui.js` an IG page's raster images
  * are figures too (bean `n7f8`). The shared figure viewer (`mountFigures`)
  * already takes every `<svg>`, `<img src="*.svg">` and `<object data="*.svg">`
@@ -549,7 +584,7 @@ export function harnessLayout(topBar: string, tocNav: string, sectionLabel?: str
     '<meta name="viewport" content="width=device-width, initial-scale=1">',
     "<title>{% if page.title and page.title != site.title %}{{ page.title }} | {% endif %}{{ site.title }}</title>",
     "<link rel=\"stylesheet\" href=\"{{ '/assets/css/just-the-docs-default.css' | relative_url }}\">",
-    `<style>${IG_TOPBAR_CSS.trim()}</style>`,
+    `<style>${IG_TOPBAR_CSS.trim()}\n${IG_CONTENTS_CSS.trim()}</style>`,
     // The navbar section is named after the IG (owner, 2026-10-05).
     ...(sectionLabel ? [`<meta name="fa-visualiser-label" content="${escHtml(sectionLabel)}">`] : []),
     "</head>",
@@ -560,6 +595,7 @@ export function harnessLayout(topBar: string, tocNav: string, sectionLabel?: str
     IG_FIGURE_IMAGES_STAMP,
     "{{ content }}",
     ...igEditLines(),
+    `<script>${liquidInertScript(IG_CONTENTS_JS)}</script>`,
     "</main>",
     // Last on the page, as on the Publisher's. Only on pages that flag it
     // (`ig_footer`): the pages this build wrote, and the artefact pages
@@ -762,6 +798,7 @@ export function thinIgLayout(assetsAt: string, tocNav = "", sectionLabel?: strin
     ...(topBar ? [topBar] : []),
     `<main class="ig-main main-content ${PAGE_MAIN_CLASS}" id="main-content">`,
     "{{ content }}",
+    `<script>${liquidInertScript(IG_CONTENTS_JS)}</script>`,
     "</main>",
     // The IG's footer after the column, as `harnessLayout` places it.
     ...(footerInclude ? [`{% if page.ig_footer %}{% include ${footerInclude} %}{% endif %}`] : []),

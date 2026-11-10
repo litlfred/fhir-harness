@@ -50,7 +50,27 @@ body>#ig-footer{margin-top:0}
 @media (max-width:40rem){.iga-identity,.iga-identity tbody,.iga-identity tr,.iga-identity th,.iga-identity td{display:block;width:auto}.iga-identity th{border-bottom:0}.iga-grid{grid-template-columns:repeat(auto-fill,minmax(9.5rem,1fr))}#ig-footer{padding:1rem .75rem}}
 /* The IG's list pages (artifacts.html, toc.html). */
 .igi-count{color:var(--iga-muted)}
-.igi-jump{margin:.5rem 0 1rem;line-height:1.9}
+/* artifacts.html: the guide and a Contents card on its right, a neutral card (owner, 2026-11-10, layout C); the tables run full width below. */
+.igi-head{display:grid;grid-template-columns:minmax(0,1fr) 18rem;gap:1.5rem;align-items:start;margin:1rem 0}
+.igi-head>.igi-guide{margin:0}
+.igi-head>.igi-contents{grid-column:-2}
+/* IG-CONTENTS-CARD: the Contents card, shared by artifacts.html and the narrative pages (`IG_CONTENTS_CSS` in build-ig-site.ts reads these lines for the standalone layout). */
+.igi-contents{border:1px solid var(--iga-line,#d1d9e0);border-radius:8px;background:var(--iga-bg,transparent);box-shadow:0 1px 3px rgba(0,0,0,.08);padding:.75rem 1rem;font-size:.9rem;box-sizing:border-box}
+.igi-contents-title{margin:0 0 .5rem;font-weight:600;font-size:.78rem;text-transform:uppercase;letter-spacing:.04em;color:var(--iga-muted,#59636e)}
+.igi-contents ul{list-style:none;margin:0;padding:0}
+.igi-contents li{display:flex;align-items:baseline;gap:.5rem;margin:.2rem 0;padding:0}
+.igi-contents li::before{content:none;display:none}
+.igi-contents li[hidden]{display:none}
+.igi-contents li>a{flex:1;min-width:0;text-decoration:none;color:var(--iga-link,#0b5cad);overflow-wrap:anywhere}
+.igi-contents li>a:hover{text-decoration:underline}
+.igi-n{color:var(--iga-muted,#59636e);font-size:.78rem;font-variant-numeric:tabular-nums;background:var(--iga-soft,#f6f8fa);border-radius:1em;padding:0 .45em}
+/* A narrative page: the card floats at the top right, as the Publisher's "Contents:" box does; a heading's rule stops short of it. */
+.ig-main>.igi-contents,.fa-page-main>.igi-contents{float:right;width:18rem;margin:0 0 1rem 1.5rem}
+.ig-main>.igi-contents~h2,.fa-page-main>.igi-contents~h2{display:flow-root}
+@media (max-width:50rem){.ig-main>.igi-contents,.fa-page-main>.igi-contents{float:none;width:auto;margin:1rem 0}}
+/* /IG-CONTENTS-CARD */
+@media (max-width:50rem){.igi-head{display:block}.igi-head>.igi-guide{margin:0 0 1rem}}
+@media print{.igi-contents{box-shadow:none}}
 .igi-filter{width:100%;max-width:30rem;box-sizing:border-box;padding:.4rem .6rem;margin:0 0 .5rem;font:inherit;color:var(--iga-fg);background:var(--iga-bg);border:1px solid var(--iga-line);border-radius:6px}
 .igi-table td:first-child{width:35%}
 .igi-table thead th{white-space:nowrap;overflow-wrap:normal}
