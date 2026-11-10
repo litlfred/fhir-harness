@@ -493,6 +493,17 @@ describe("the shared renderer draws both page families", () => {
     expect(src).toMatch(/if \(cols\.description\) hr\.append/);
     expect(src).toMatch(/el\("h3", null, t\.name/);
   });
+  it("rendererContentsCardBesideGuide", () => {
+    // Owner, 2026-11-10 (layout C): a Contents card beside "This guide", not the dotted jump line.
+    expect(src).toMatch(/function drawContents\(gs, guide\)/);
+    expect(src).toContain('el("div", "igi-head")');
+    expect(src).not.toContain("igi-jump");
+  });
+  it("rendererHtmlBreaksAreParagraphs", () => {
+    // A description's `</br>` was drawn as literal text.
+    expect(src).toMatch(/function breaks\(text\)/);
+    expect(src).toMatch(/breaks\(text\)\.split/);
+  });
   it("rendererCategoriesOpen", () => {
     expect(src).not.toMatch(/createElement\("details"\)|el\("details"/);
   });

@@ -1608,3 +1608,20 @@ describe("relinkPublisherTemplateAssets — staged input/images HTML pages point
     }
   });
 });
+
+describe("the Contents card on an IG's narrative pages (owner, 2026-11-10)", () => {
+  test("bothLayoutsCarryTheCard", async () => {
+    const m = await import("./build-ig-site.ts");
+    const thin = m.thinIgLayout("/x/");
+    const full = m.harnessLayout("", "");
+    for (const l of [thin, full]) expect(l).toContain(`<script>{% raw %}${m.IG_CONTENTS_JS}{% endraw %}</script>\n</main>`);
+    // The standalone layout links no ig-artifact.css, so it carries the card's style itself.
+    expect(full).toContain(".igi-contents{");
+    expect(full).toContain("float:right");
+  });
+  test("cardNeedsTwoHeadings", async () => {
+    const { IG_CONTENTS_JS } = await import("./build-ig-site.ts");
+    expect(IG_CONTENTS_JS).toContain("hs.length<2");
+    expect(IG_CONTENTS_JS).not.toMatch(/\{\{|\{%/);
+  });
+});
