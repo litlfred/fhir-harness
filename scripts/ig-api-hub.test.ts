@@ -8,7 +8,7 @@ import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "nod
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
-import { hasIgApi, hubEntries, IG_API_HUB_DEFAULT_PAGE, IG_API_HUB_NODE, igApiHubBody, igApiHubNode, igApiHubPageOf, writeIgApiHubSite } from "./ig-api-hub.ts";
+import { hasIgApi, hubEntries, sidecarHref, IG_API_HUB_DEFAULT_PAGE, IG_API_HUB_NODE, igApiHubBody, igApiHubNode, igApiHubPageOf, writeIgApiHubSite } from "./ig-api-hub.ts";
 import type { FhirArtifactIndex } from "../schemas/fhir-artifact-index.js";
 
 const ix = {
@@ -37,6 +37,20 @@ describe("hubEntries", () => {
     expect(e.find((x) => x.label === "OpenAPI")!.view).toBeUndefined();
     expect(hasIgApi(ix)).toBe(true);
     expect(hasIgApi({ artifacts: [] } as unknown as Pick<FhirArtifactIndex, "artifacts">)).toBe(false);
+  });
+});
+
+describe("sidecarHref: read from the AST cache commit when the index says so", () => {
+  it("sidecarHrefFromBaseOrLocalPath", () => {
+    const r = { localPath: "fhir-artifact-index/sidecars/ValueSet-vs-a.schema.json" };
+    expect(sidecarHref({}, r, "../")).toBe("../fhir-artifact-index/sidecars/ValueSet-vs-a.schema.json");
+    expect(sidecarHref({ sidecarBase: "https://raw.githubusercontent.com/o/ig/abc/ig-api/sidecars" }, r, "../")).toBe("https://raw.githubusercontent.com/o/ig/abc/ig-api/sidecars/ValueSet-vs-a.schema.json");
+    expect(sidecarHref({}, { }, "../")).toBeUndefined();
+    const e = hubEntries({ ...ix, sidecarBase: "https://raw.example/ig-api/sidecars" });
+    expect(e.find((x) => x.label === "JSON Schema")!.href).toBe("https://raw.example/ig-api/sidecars/ValueSet-vs-a.schema.json");
+    expect(e.find((x) => x.label === "JSON Schema")!.view).toBe("artifact/ValueSet-vs-a.schema.json.html");
+    const n = igApiHubNode({ label: "API", entries: [], documents: ["https://raw.example/ig-api/site/ValueSets.schema.json"] }) as { "schema:workExample": { "schema:name": string; "schema:contentUrl": string }[] };
+    expect(n["schema:workExample"][0]).toMatchObject({ "schema:name": "ValueSets.schema.json", "schema:contentUrl": "https://raw.example/ig-api/site/ValueSets.schema.json" });
   });
 });
 

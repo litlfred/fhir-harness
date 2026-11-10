@@ -242,3 +242,25 @@ Feature: Building an IG repository's own site from its AST
     Given a built site holding the base IG's served index, another directory of that layer, and the site's own index
     When the final step runs
     Then the base IG's index is removed with its size reported, the rest stays, and a second run removes nothing
+
+  @test:scripts/ig-repo-site.test.ts::the_IG_API_read_from_the_AST_cache_commit_(owner,_2026-11-10,_card_"A")::cachedIgApiReadByRawUrl
+  Scenario: the IG API the AST cache commit holds is bound and read by raw URL
+    Given a work directory where ast recorded the cache commit, and an AST whose cache holds an IG API
+    Then the site binds that IG API, with its raw URL at the commit
+
+  @test:scripts/ig-repo-site.test.ts::the_IG_API_read_from_the_AST_cache_commit_(owner,_2026-11-10,_card_"A")::olderCacheFallsBackToTheStepsOutput
+  Scenario: an older cache, or by-URL turned off, falls back to the step's own output
+    Given a cache commit that holds no IG API
+    Then the site binds the IG API the layer above left in the work directory
+    And with SITE_AST_BY_URL=0 no raw base is used
+
+  @test:scripts/ig-repo-site.test.ts::the_IG_API_read_from_the_AST_cache_commit_(owner,_2026-11-10,_card_"A")::byUrlServesNoSidecarAndRebasesSwagger
+  Scenario: publisher pages copies no sidecar or document when the IG API is read by URL
+    Given the cached IG API with its raw base
+    When the AST's data is served
+    Then no sidecar and no enumeration document is in the site, and the Swagger page lists each spec at its raw URL
+
+  @test:scripts/ig-repo-site.test.ts::the_IG_API_read_from_the_AST_cache_commit_(owner,_2026-11-10,_card_"A")::localSwaggerSpecsPointAtTheServedSidecars
+  Scenario: the Swagger page's specs point at where the sidecars are served
+    Given a Swagger page listing its specs as ../<file> from openapi/
+    Then each spec that is a served sidecar is listed at fhir-artifact-index/sidecars/, and any other name is left as it was

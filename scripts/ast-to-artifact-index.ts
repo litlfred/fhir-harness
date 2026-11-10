@@ -374,6 +374,12 @@ export interface SidecarAttachOptions {
   localPrefix: string;
   /** Where the IG is published; with it, each sidecar's `url` is its published address too. */
   publishedBase?: string;
+  /**
+   * Where the site reads the sidecars from instead of holding them: an
+   * absolute base (the IG API in the AST cache commit). Recorded as the
+   * index's `sidecarBase`, only when something binds.
+   */
+  servedBase?: string;
 }
 
 export interface SidecarAttachResult {
@@ -424,6 +430,7 @@ export function attachSidecars(index: FhirArtifactIndex, dir: string, opts: Side
     attached++;
   }
   if (attached) index.sidecarApi = "present";
+  if (attached && opts.servedBase) index.sidecarBase = opts.servedBase.replace(/\/+$/, "");
   if (unbound.length) index.sidecarsUnbound = unbound;
   return { attached, unbound };
 }
@@ -526,7 +533,7 @@ if (import.meta.main) {
     console.error(
       "usage: ast-to-artifact-index.ts --ast <output-ast dir> --instance-id <id> " +
         "[--published-base <url>] [--out <index.json>] [--compare <published index.json>] [--report <json>] " +
-        "[--sidecars <dir> [--sidecars-local <instance-relative dir>]] [--keep-published-grouping]",
+        "[--sidecars <dir> [--sidecars-local <instance-relative dir>] [--sidecars-base <url>]] [--keep-published-grouping]",
     );
     process.exit(2);
   }
@@ -551,6 +558,7 @@ if (import.meta.main) {
     const r = attachSidecars(index, resolve(sidecarDir), {
       localPrefix: arg("--sidecars-local") ?? "fhir-artifact-index/sidecars",
       publishedBase: arg("--published-base"),
+      ...(arg("--sidecars-base") ? { servedBase: arg("--sidecars-base")! } : {}),
     });
     FhirArtifactIndexSchema.parse(index);
     console.log(`sidecars: ${r.attached} bound from ${sidecarDir}; ${r.unbound.length} bound to nothing (recorded in sidecarsUnbound)`);

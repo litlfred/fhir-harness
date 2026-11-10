@@ -146,3 +146,10 @@ Feature: Building the FHIR artifact index from an IG AST
     Given an AST holding a Basic resource with a profile and a code
     When the index is built
     Then the artefact carries that profile and that code
+
+  @test:scripts/ast-to-artifact-index.test.ts::attachSidecars::servedBaseRecordedAsSidecarBase
+  Scenario: a served base is recorded as the index's sidecarBase when something binds
+    Given the index and a directory of sidecars
+    When the sidecars are attached with a served base under the AST cache commit
+    Then the index records the base without its trailing slash, and each sidecar keeps its local path
+    And an index to which nothing binds records no base
