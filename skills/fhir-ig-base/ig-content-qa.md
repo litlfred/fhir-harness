@@ -29,10 +29,10 @@ gate"*.
 
 A **pattern hit** is refused whatever the review says: the rules
 (`INJECTION_RULES` in `scripts/ig-content-qa.ts`) are the floor, and a review
-cannot clear one. Fix the text. A **missing or stale** review refuses the
-root publish; a preview accepts it by default and says so on its QA page
-(`IG_CONTENT_QA_ACCEPT_UNREVIEWED=0` makes a preview refuse it too; `=1`
-accepts it for a local build), as a preview accepts a stale AST.
+cannot clear one. Fix the text. A **missing or stale** review refuses every
+publish, previews included (owner, 2026-11-10, card Q-INJ-1 "B: previews
+refuse too"). `IG_CONTENT_QA_ACCEPT_UNREVIEWED=1` accepts one for a local
+build only, and its QA page says so.
 
 ## What is read
 

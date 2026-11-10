@@ -562,17 +562,15 @@ export function copyIgSource(ig: string, src: string, scope: IgReadScope = igRea
 }
 
 /**
- * The injection gate for one compose (`ig-content-qa.ts`). A preview accepts
- * a missing or stale review by default, as it accepts a stale AST (owner,
- * 2026-11-05: "preview/staging (non release) builds can be on stale cache"),
- * and says so on its QA page; `IG_CONTENT_QA_ACCEPT_UNREVIEWED=0` makes it
- * refuse. The root refuses one; `=1` accepts it anywhere, for a local build
- * (`stage-local-ig`), and the QA page says so. Nothing accepts a pattern hit
- * or an open finding. Throws on a refusal, naming each text.
+ * The injection gate for one compose (`ig-content-qa.ts`). A missing or stale
+ * review refuses every publish, previews included (owner, 2026-11-10, card
+ * Q-INJ-1 "B: previews refuse too"). `IG_CONTENT_QA_ACCEPT_UNREVIEWED=1`
+ * accepts one for a local build only (`stage-local-ig`), and the QA page says
+ * so. Nothing accepts a pattern hit or an open finding. Throws on a refusal,
+ * naming each text.
  */
-export function contentQaGate(o: { ig: string; ast: string; scope: IgReadScope; baseurl: string; work?: string; env?: Record<string, string | undefined>; log: (s: string) => void }): ContentQaVerdict {
-  const asked = (o.env ?? process.env)[ACCEPT_UNREVIEWED_ENV];
-  const accept = asked === "1" || (isPreviewBase(o.baseurl) && asked !== "0");
+export function contentQaGate(o: { ig: string; ast: string; scope: IgReadScope; work?: string; env?: Record<string, string | undefined>; log: (s: string) => void }): ContentQaVerdict {
+  const accept = (o.env ?? process.env)[ACCEPT_UNREVIEWED_ENV] === "1";
   return runGate({ ig: o.ig, ast: o.ast, scope: o.scope, acceptUnreviewed: accept, ...(o.work ? { work: o.work } : {}), log: o.log });
 }
 
@@ -610,7 +608,7 @@ export function compose(o: { docs: string; ig: string; baseurl: string; ast?: st
     const ast = resolve(o.ast ?? join(ig, AST_DIR));
     // The injection gate (fhir-harness#330), before anything is staged: a
     // pattern hit, an open finding, or a missing or stale agent review refuses.
-    const content = contentQaGate({ ig, ast, scope, baseurl: o.baseurl, ...(o.work ? { work: o.work } : {}), log });
+    const content = contentQaGate({ ig, ast, scope, ...(o.work ? { work: o.work } : {}), log });
     const inst = astArtefactPages({ ig, ast, work, ...(o.work ? { siteWork: o.work } : {}), name, label, ...(igApi ? { igApi } : {}), log });
     if (o.work) {
       // For `publisher-pages`, which serves the index the pages were drawn from.

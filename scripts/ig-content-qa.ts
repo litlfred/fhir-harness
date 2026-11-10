@@ -24,10 +24,10 @@
  *    when it holds an open finding, or when the pattern scan
  *    ({@link scanText}) finds anything. A pattern hit is refused whatever the
  *    sidecar says: it is the deterministic floor, never cleared by a review.
- *    A preview accepts a missing or stale review by default, as it accepts a
- *    stale AST, and says so (`IG_CONTENT_QA_ACCEPT_UNREVIEWED=0` refuses;
- *    `=1` accepts one anywhere, for a local build). The root publish refuses
- *    one, and nothing accepts a pattern hit or an open finding.
+ *    A missing or stale review refuses every publish, previews included
+ *    (owner, card Q-INJ-1 "B"); `IG_CONTENT_QA_ACCEPT_UNREVIEWED=1` accepts
+ *    one for a local build, and its QA page says so. Nothing accepts a
+ *    pattern hit or an open finding.
  * 3. **The browser** (`templates/ig-pages/ast-resource.js`) scans a fetched
  *    narrative with the same rules ({@link INJECTION_RULES}; a test holds the
  *    two lists equal) and shows a flagged one as text with a warning, never
@@ -58,7 +58,7 @@ import { dirname, join, resolve } from "node:path";
 export const CONTENT_QA_SIDECAR = "qa/ig-content-qa.json";
 /** The sidecar's format tag. */
 export const CONTENT_QA_TAG = "ig-content-qa/v1";
-/** `0` makes a preview refuse a missing or stale review too; `1` accepts one anywhere, for a local build (`ig-repo-site.ts` `contentQaGate`). */
+/** `1` accepts a missing or stale review for a local build; every publish, previews included, refuses one (`ig-repo-site.ts` `contentQaGate`). */
 export const ACCEPT_UNREVIEWED_ENV = "IG_CONTENT_QA_ACCEPT_UNREVIEWED";
 /** Where the gate's verdict is published under the site root, beside the Publisher's QA summary. */
 export const CONTENT_QA_PUBLISHED = "assets/fhir-qa/ig-content-qa.json";
@@ -330,7 +330,7 @@ export interface ContentQaVerdict {
   ok: boolean;
   /** `reviewed`, `missing`, `stale`, `unusable`, `open-findings` or `pattern-hits`: the first reason it refused, or `reviewed`. */
   state: "reviewed" | "missing" | "stale" | "unusable" | "open-findings" | "pattern-hits";
-  /** The review was missing or stale and a preview accepted it. */
+  /** The review was missing or stale and a local build accepted it. */
   accepted?: boolean;
   items: number;
   contentDigest: string;
@@ -344,7 +344,7 @@ export interface ContentQaVerdict {
 
 /**
  * Judge the texts against the review. `sidecar` is the parsed file, or
- * `undefined` when there is none. `acceptUnreviewed` (a preview's) lets a
+ * `undefined` when there is none. `acceptUnreviewed` (a local build's) lets a
  * missing or stale review through, said; it never lets a pattern hit or an
  * open finding through.
  */

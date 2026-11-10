@@ -154,7 +154,7 @@ export function fhirQaMarkdown(q: FhirQa, o: { up?: string } = {}): string[] {
       "",
       "| field | value |",
       "|---|---|",
-      `| state | ${state[c.state]}${c.accepted ? " — accepted for this build (a preview, or a local build that asked); a root publish refuses it" : ""} |`,
+      `| state | ${state[c.state]}${c.accepted ? " — accepted for this local build only; a publish refuses it" : ""} |`,
       `| content | ${code(c.contentDigest)} |`,
       `| reviewed | ${c.reviewedDigest ? code(c.reviewedDigest) : "—"} by ${by} |`,
       "",
