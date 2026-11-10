@@ -34,7 +34,7 @@ stale, cannot tell, miss» → `Task_Dispatch` (Dispatch AST refresh)
 - Skill: `ig-render-jekyll`, `ig-build-pipeline`.
 - What: Runs the site route's steps via `stage-local.ts` → `build-instance-site.ts`: `ig-site:sidecars` (IG API sidecars, if the landing layer has the step), `ig-site:compose` (artefact index and thin pages from the AST, the IG composed at the root), `ig-site:openapi` (if the IG holds OpenAPI pages), `ig-si
 - Record it: `workflow_complete` with `node: "Task_BuildSite"`.
-- next: → `End_Published` (Site published from the AST)
+- next: → `Task_SizeReview` (Review the site's size)
 
 ### 3. Dispatch AST refresh (`Task_Dispatch`)
 
@@ -44,17 +44,25 @@ stale, cannot tell, miss» → `Task_Dispatch` (Dispatch AST refresh)
 - Record it: `workflow_complete` with `node: "Task_Dispatch"`.
 - next: → `Task_Export` (Build the IG with the AST exporter)
 
-## Done — Site published from the AST (`End_Published`)
+### 4. Review the site's size (`Task_SizeReview`)
 
-- The instance completes here: The site says what built it (`folio-build.json`), and every artefact page carries the AST's provisional mark. `workflow_next` then reports nothing enabled — that, not this line, is the record of completion.
+- Who: the `Site build (agent, stage-local)` lane (role `build-pipeline`).
+- Skill: `ig-publication`.
+- What: Read the size report the build printed before its push, and fix what it shows, or raise a decision card with the owner when no known fix applies (skill `ig-publication` §"Size review").
+- Record it: `workflow_complete` with `node: "Task_SizeReview"`.
+- next: → `End_Published` (Site published from the AST)
 
-### 4. Build the IG with the AST exporter (`Task_Export`)
+### 5. Build the IG with the AST exporter (`Task_Export`)
 
 - Who: the `AST refresh (GitHub runner: IG Publisher with the AST exporter)` lane (role `ig-publisher-service`).
 - Skill: `ig-publisher-fork`.
 - What: The runner mounts the layers the IG repository's `index.lock.json` pins, then restores and judges the cache itself.
 - Record it: `workflow_complete` with `node: "Task_Export"`.
 - next: → `GW_Seedable` (On the default branch, with its inputs?)
+
+## Done — Site published from the AST (`End_Published`)
+
+- The instance completes here: The site says what built it (`folio-build.json`), and every artefact page carries the AST's provisional mark. `workflow_next` then reports nothing enabled — that, not this line, is the record of completion.
 
 ### Decide — On the default branch, with its inputs? (`GW_Seedable`)
 
@@ -63,7 +71,7 @@ stale, cannot tell, miss» → `Task_Dispatch` (Dispatch AST refresh)
   - «yes» → `Task_Seed` (Seed the cache branch)
   - «no» → `End_NotSeeded` (AST kept as a run artifact; cache unchanged)
 
-### 5. Seed the cache branch (`Task_Seed`)
+### 6. Seed the cache branch (`Task_Seed`)
 
 - Who: the `AST refresh (GitHub runner: IG Publisher with the AST exporter)` lane (role `ig-publisher-service`).
 - Skill: `compiled-artefact-cache`.
