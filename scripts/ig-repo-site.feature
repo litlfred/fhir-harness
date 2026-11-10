@@ -227,3 +227,7 @@ Feature: Building an IG repository's own site from its AST
     Given a work directory where ast recorded the cache commit
     When publisher pages runs
     Then no <Type>-<id>.json is written, the index is still served, and the log names the raw base
+
+  @test:scripts/ig-repo-site.test.ts::redirectStubsLeftBare
+  Scenario: a view's redirect stub gets no IG bar and no language block
+    Then an immediate meta refresh is a redirect stub, and a delayed refresh or a plain page is not

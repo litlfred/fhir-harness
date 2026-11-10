@@ -120,7 +120,7 @@ import { IG_CHROME_SCOPE, igFooterData } from "./ig-footer.ts";
 import { JSON_VIEW_SCRIPT, VIEW_PAGE, examplesPage, hasJsonView, historyPage, jsonViewData, mappingsPage, mdText, packageEntries, rebaseDescriptionLinks, profileJsonViewData, resourceFacts, resourceTabs, testingPage, type TabPageData } from "./resource-views.ts";
 import { isDirectoryReadme } from "@litlfred/cat-harness-tools/schemas/kg/kg-node.js";
 import { ARTIFACT_INDEX_FILE, artifactJsonLdFiles, localResourceHref } from "./ig-artifact-jsonld.ts";
-import { THIN_PAGE_SCRIPT, THIN_PAGE_STYLE, artifactTabs, thinArtifactPath, thinArtifactView } from "./ig-thin-pages.ts";
+import { THIN_PAGE_SCRIPT, THIN_PAGE_STYLE, artifactTabs, thinArtifactPath, thinArtifactView, thinViewRedirect, type SidecarView } from "./ig-thin-pages.ts";
 import { PAGE_LAYOUT_CSS_FILE, PAGE_LAYOUT_CSS_SOURCE, PAGE_LAYOUT_JS_FILE, PAGE_LAYOUT_JS_SOURCE } from "../../cat-harness-tools/scripts/page-layout.ts";
 import { IG_SEARCH_INDEX_FILE, IG_SEARCH_SCRIPT_FILE } from "./ig-search.ts";
 
@@ -1483,7 +1483,7 @@ if (ix.artifacts.some(hasJsonView)) {
 // would list data this build cannot (tests, examples) is not written.
 const tabCounts = { history: 0, testing: 0, profileHistory: 0, profileJson: 0, examples: 0, mappings: 0 };
 /** The THIN tab views written (`ig-thin-pages.ts` `thinArtifactView`), by view. */
-const thinTabCounts = { definitions: 0, mappings: 0, json: 0, examples: 0 };
+const thinTabCounts = { definitions: 0, mappings: 0, json: 0, jsonld: 0, schema: 0, examples: 0 };
 /**
  * The resource's JSON as this site serves it, relative to an artefact page,
  * when no compiled copy is: the Publisher's own file under `--publisher-data`,
@@ -1653,7 +1653,10 @@ if (existsSync(MENU)) {
       const i = position.get(md);
       pages.delete(md);
       const resource = servedResource(a);
-      const tabs = artifactTabs(a, { resource: resource !== undefined || localResourceHref(a, COMPILED_DATA) !== undefined });
+      // The IG API sidecars the page's JSON-LD and schema views draw, where the site serves them.
+      const sidecars: Partial<Record<SidecarView, string>> = {};
+      if (igApiServing.ok) for (const k of ["jsonld", "schema"] as const) if (a.sidecars?.[k]?.localPath) sidecars[k] = `../${a.sidecars[k]!.localPath}`;
+      const tabs = artifactTabs(a, { resource: resource !== undefined || localResourceHref(a, COMPILED_DATA) !== undefined, sidecars: Object.keys(sidecars) as SidecarView[] });
       const opts = {
         label: LABEL,
         home: IG_SITE ? "../index.html" : "../",
@@ -1664,18 +1667,28 @@ if (existsSync(MENU)) {
         ...(COMPILED_DATA ? { compiledData: COMPILED_DATA } : {}),
         ...(resource ? { resource } : {}),
         ...(tabs.length ? { tabs, index: ARTIFACT_INDEX_FILE } : {}),
+        ...(Object.keys(sidecars).length ? { sidecars } : {}),
         ...(SEARCH ? { search: { index: `../${IG_SEARCH_INDEX_FILE}`, script: `../${IG_SEARCH_SCRIPT_FILE}` } } : {}),
       };
       if (resource) served += 1;
       pages.set(thinArtifactPath(a), thinArtifactView(ix, a, "content", opts));
       astPages.push(`${pageName(a)}.html`);
+      // ONE PAGE PER ARTEFACT (owner, 2026-11-10, fhir-harness#325 step 3): the
+      // artefact's page draws every view (`?view=`), and each view's old file
+      // name, the Publisher's, is a redirect stub to it, replacing the full
+      // tab page, the JSON view and the IG API view page written above.
       for (const t of tabs) {
         if (t.view === "content") continue;
-        // The thin view replaces a full tab page at the same address.
         pages.delete(join("artifact", t.file.replace(/\.html$/, ".md")));
-        pages.set(join("artifact", t.file), thinArtifactView(ix, a, t.view, opts));
+        pages.set(join("artifact", t.file), thinViewRedirect(a, t.view));
         astPages.push(t.file);
         thinTabCounts[t.view as keyof typeof thinTabCounts] += 1;
+      }
+      // An IG API view page named for its sidecar file, where that differs from the view's name.
+      for (const v of igApiViews(a)) {
+        const view: SidecarView = v.file.endsWith(".jsonld") ? "jsonld" : "schema";
+        pages.delete(join("artifact", `${v.file}.md`));
+        if (!pages.has(join("artifact", `${v.file}.html`)) && tabs.some((t) => t.view === view)) pages.set(join("artifact", `${v.file}.html`), thinViewRedirect(a, view));
       }
     }
     // The AST loader, and the list of this site's own artefact pages it keeps
@@ -1968,7 +1981,7 @@ if (CHECK) {
   console.log(`  ${artefactPages} artefact page(s) — one per artefact${THIN ? ", THIN: each a shell over its JSON-LD node, drawn by assets/ig-artifact.js" : ""}; ${sc.schema} carry a ${SIDECAR_LABEL} schema`);
   console.log(`  ${igApiViewCount} IG API view page(s) — one per held JSON Schema or JSON-LD sidecar, file fetched client-side`);
   console.log(`  ${jsonViewCount} JSON view page(s) — resource read client-side from the held package.tgz`);
-  if (THIN) console.log(`  thin tab views: ${thinTabCounts.definitions} definitions, ${thinTabCounts.mappings} mappings, ${thinTabCounts.json} JSON, ${thinTabCounts.examples} examples — each drawn by assets/ig-artifact.js from the resource's JSON`);
+  if (THIN) console.log(`  thin tab views: ${thinTabCounts.definitions} definitions, ${thinTabCounts.mappings} mappings, ${thinTabCounts.json} JSON, ${thinTabCounts.jsonld} JSON-LD, ${thinTabCounts.schema} schema, ${thinTabCounts.examples} examples — each drawn on the artefact's one page by assets/ig-artifact.js (?view=); the old file names are redirect stubs`);
   console.log(`  tab pages: ${tabCounts.history} change history, ${tabCounts.testing} testing, ${tabCounts.profileHistory} profile history, ${tabCounts.profileJson} profile JSON, ${tabCounts.examples} examples, ${tabCounts.mappings} mappings`);
   console.log(`  ${categoryPages} category page(s) — categories over ${INLINE_LIMIT}, listed off the index`);
   // THE MENU IS REPORTED EITHER WAY. An unreported page is a page nothing

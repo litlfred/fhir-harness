@@ -69,6 +69,11 @@ export interface ThinArtifactOptions {
   resource?: string;
   /** The artefact's views, its own page first ({@link artifactTabs}). Absent or one: no tab bar. */
   tabs?: readonly ArtifactTab[];
+  /**
+   * The IG API sidecars the `jsonld` and `schema` views draw, relative to the
+   * page: the served copies under `fhir-artifact-index/sidecars/`.
+   */
+  sidecars?: Partial<Record<SidecarView, string>>;
   /** The index node, relative to the page: the examples view finds what claims a profile there. */
   index?: string;
   /** The IG's search (`ig-search.ts`), relative to the page, when the site serves it: the header carries its box. */
@@ -99,18 +104,22 @@ export interface ThinArtifactOptions {
  * Not rendered: the change history, testing and XML/Turtle views, and the
  * Publisher's `comparison-v*` directories.
  */
-export type ArtifactView = "content" | "definitions" | "mappings" | "json" | "examples";
+export type ArtifactView = "content" | "definitions" | "mappings" | "json" | "jsonld" | "schema" | "examples";
+/** The views drawn from an IG API sidecar rather than the resource (`ig-api-views.ts`). */
+export type SidecarView = "jsonld" | "schema";
 
 export interface ArtifactTab {
   view: ArtifactView;
   label: string;
-  /** The page's file name, in the artefact pages' directory. */
+  /** The page's file name, in the artefact pages' directory: the Publisher's name for the view, kept as a redirect stub. */
   file: string;
+  /** Where the view is drawn: the artefact's one page, with `?view=` for any view but its content. */
+  href: string;
 }
 
-const TAB_LABEL: Record<ArtifactView, string> = { content: "Content", definitions: "Detailed Descriptions", mappings: "Mappings", json: "JSON", examples: "Examples" };
+const TAB_LABEL: Record<ArtifactView, string> = { content: "Content", definitions: "Detailed Descriptions", mappings: "Mappings", json: "JSON", jsonld: "JSON-LD", schema: "JSON Schema", examples: "Examples" };
 
-/** The file name the Publisher gives an artefact's view, which the thin page keeps. */
+/** The file name the Publisher gives an artefact's view, which the site keeps (as a redirect stub for any view but content). */
 export function artifactTabFile(a: Pick<FhirArtifact, "resourceType" | "id">, view: ArtifactView): string {
   const stem = artifactPageName(a);
   switch (view) {
@@ -118,27 +127,70 @@ export function artifactTabFile(a: Pick<FhirArtifact, "resourceType" | "id">, vi
       return `${stem}.html`;
     case "json":
       return a.resourceType === "StructureDefinition" ? `${stem}.profile.json.html` : `${stem}.json.html`;
+    case "jsonld":
+      return `${stem}.jsonld.html`;
+    case "schema":
+      return `${stem}.schema.json.html`;
     default:
       return `${stem}-${view}.html`;
   }
 }
 
 /**
- * The views an artefact gets, its own page first. None without a resource
- * this site serves: every view is drawn from it. Deterministic.
+ * Where a view is drawn (owner, 2026-11-10, fhir-harness#325 step 3: "thin
+ * page w/ dynamic load"): the artefact's ONE page, the view named in its
+ * query. One shell per artefact, not one per view.
  */
-export function artifactTabs(a: Pick<FhirArtifact, "resourceType" | "id">, o: { resource: boolean }): ArtifactTab[] {
-  if (!o.resource) return [];
-  const sd = a.resourceType === "StructureDefinition";
-  const views: ArtifactView[] = ["content", ...(sd ? (["definitions", "mappings"] as const) : []), "json", ...(sd ? (["examples"] as const) : [])];
-  return views.map((view) => ({ view, label: TAB_LABEL[view], file: artifactTabFile(a, view) }));
+export function artifactViewHref(a: Pick<FhirArtifact, "resourceType" | "id">, view: ArtifactView): string {
+  const page = artifactTabFile(a, "content");
+  return view === "content" ? page : `${page}?view=${view}`;
 }
 
-/** The tab bar, as static HTML: every view's page is a plain link, the current one marked. */
+/**
+ * The views an artefact gets, its own page first. The resource's views need
+ * a resource the pages can read; the sidecar views (`jsonld`, `schema`) need
+ * the sidecar served. None of either: no tabs. Deterministic.
+ */
+export function artifactTabs(a: Pick<FhirArtifact, "resourceType" | "id">, o: { resource: boolean; sidecars?: readonly SidecarView[] }): ArtifactTab[] {
+  const side = (["jsonld", "schema"] as const).filter((v) => o.sidecars?.includes(v));
+  if (!o.resource && side.length === 0) return [];
+  const sd = a.resourceType === "StructureDefinition";
+  const views: ArtifactView[] = ["content", ...(o.resource && sd ? (["definitions", "mappings"] as const) : []), ...(o.resource ? (["json"] as const) : []), ...side, ...(o.resource && sd ? (["examples"] as const) : [])];
+  return views.map((view) => ({ view, label: TAB_LABEL[view], file: artifactTabFile(a, view), href: artifactViewHref(a, view) }));
+}
+
+/** The tab bar, as static HTML: every view is a plain link to the one page; the renderer marks the current one. */
 function tabBar(tabs: readonly ArtifactTab[] | undefined, current: ArtifactView): string {
   if (!tabs || tabs.length < 2) return "";
-  const links = tabs.map((t) => `<a href="${escHtml(t.file)}"${t.view === current ? ' aria-current="page"' : ""}>${escHtml(t.label)}</a>`);
+  const links = tabs.map((t) => `<a href="${escHtml(t.href)}" data-view="${t.view}"${t.view === current ? ' aria-current="page"' : ""}>${escHtml(t.label)}</a>`);
   return `<nav class="iga-tabs" aria-label="Views of this artefact">${links.join("")}</nav>`;
+}
+
+/**
+ * The page at a view's old file name (`<Type>-<id>.json.html`,
+ * `-definitions.html`, `.jsonld.html`, ...): a redirect stub to the
+ * artefact's one page with that view, so a link or bookmark to the
+ * Publisher's tab name still lands. The script carries a `#fragment` across
+ * (an element on the definitions view); the meta refresh is the fallback
+ * without scripts. It declines the rail and has no `<body>` tag, so the
+ * platform's injectors leave it bare and it stays a few hundred bytes (the
+ * first preview build measured 8 KB stubs, banner and chrome injected into a
+ * stub with a body). Deterministic.
+ */
+export function thinViewRedirect(a: Pick<FhirArtifact, "resourceType" | "id">, view: ArtifactView): string {
+  const to = artifactViewHref(a, view);
+  const t = escHtml(to);
+  const js = JSON.stringify(to).replace(/</g, "\\u003c");
+  return (
+    `<!doctype html>\n<html lang="en"><head><meta charset="utf-8"><title>${escHtml(TAB_LABEL[view])} — ${escHtml(artifactPageName(a))}</title>\n` +
+    `<link rel="canonical" href="${t}">\n` +
+    `<script>location.replace(${js} + location.hash);</script>\n` +
+    `<meta http-equiv="refresh" content="0; url=${t}"><meta name="robots" content="noindex"><meta name="folio-navbar" content="none">\n` +
+    // No <body> tag: the platform's injectors (the staging banner, the rail)
+    // place their markup after one, and count a meta-refresh page without one
+    // as a forwarding stub. The link still renders, in the implied body.
+    `</head>\n<p>This view is at <a href="${t}">${t}</a>.</p></html>\n`
+  );
 }
 
 /** The thin page for one artefact, as `artifact/<Type>-<id>.html`. Deterministic. */
@@ -173,9 +225,13 @@ export function thinArtifactView(ix: FhirArtifactIndex, a: FhirArtifact, view: A
     // The AST loader and the list of this site's own pages, which it uses to
     // keep a narrative link that names one of them.
     ...(local ? { astLoader: "../assets/ast-resource.js", pages: "../assets/ast-pages.json" } : {}),
-    ...(view === "examples" && o.index ? { index: o.index } : {}),
-    // A mapping row links its element on the definitions view.
-    ...(view === "mappings" ? { definitions: artifactTabFile(a, "definitions") } : {}),
+    // The views this one page draws (`?view=`), and what the views beyond the
+    // content need: the index for examples, the sidecars, the definitions view
+    // a mapping row links its element on.
+    ...(o.tabs && o.tabs.length > 1 ? { views: o.tabs.map((t) => t.view) } : {}),
+    ...(o.index && (view === "examples" || o.tabs?.some((t) => t.view === "examples")) ? { index: o.index } : {}),
+    ...(o.sidecars && Object.keys(o.sidecars).length ? { sidecars: o.sidecars } : {}),
+    ...(view === "mappings" || o.tabs?.some((t) => t.view === "mappings") ? { definitions: artifactViewHref(a, "definitions") } : {}),
     // Where the narrative's other relative links go: the published IG, read
     // off this artefact's own published page. None: they lose their href.
     ...(html ? { published: html.slice(0, html.lastIndexOf("/") + 1) } : {}),
