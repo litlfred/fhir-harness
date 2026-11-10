@@ -501,7 +501,7 @@ export function igTopBar(menu: IgMenu, baseurl: string, title: string, search?: 
  * it reserves the row at every width.
  */
 export const IG_TOPBAR_CSS = `
-.ig-topbar{display:flex;flex-wrap:wrap;align-items:center;gap:.25rem 1rem;padding:.5rem 1.5rem;background:var(--ig-topbar-bg,#1c4b7c);color:#fff;font-size:.95rem}
+.ig-topbar{display:flex;flex-wrap:wrap;align-items:center;gap:.25rem 1rem;padding:.5rem 1.5rem;background:var(--ig-topbar-bg,#2d4271);color:#fff;font-size:.95rem}
 .ig-topbar a{color:#fff;text-decoration:none}
 .ig-topbar-home{flex:0 0 100%;font-weight:600}
 body:has(> .fa-glass-handle) .ig-topbar.fa-page-bar{padding-top:2.25rem}
@@ -509,7 +509,7 @@ body:has(> .fa-glass-handle) .ig-topbar.fa-page-bar{padding-top:2.25rem}
 .ig-topbar-group summary{cursor:pointer;list-style:none}
 .ig-topbar-group summary::after{content:" \\25BE"}
 .ig-topbar-group ul{position:absolute;z-index:20;margin:.25rem 0 0;padding:.25rem 0;min-width:16rem;list-style:none;background:#fff;border:1px solid #ccc;box-shadow:0 2px 6px rgba(0,0,0,.15)}
-.ig-topbar-group li a{display:block;padding:.25rem .75rem;color:#1c4b7c}
+.ig-topbar-group li a{display:block;padding:.25rem .75rem;color:#2d4271}
 .ig-topbar-group li a:hover{background:#eef3f8}
 .ig-topbar .ig-topbar-group ul > li{margin:0;padding:0}
 .ig-topbar .ig-topbar-group ul > li::before{content:none;display:none}
