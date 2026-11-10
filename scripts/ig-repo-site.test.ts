@@ -23,6 +23,10 @@ import {
   astRawBase,
   builtPage,
   cqlSourceOf,
+  INDEX_CACHED,
+  INDEX_REF_FILE,
+  indexRef,
+  locateArtefactIndex,
   readIgApiDir,
   rebaseSwaggerSpecs,
   siteIgApi,
@@ -680,5 +684,69 @@ describe("the IG API read from the AST cache commit (owner, 2026-11-10, card \"A
     expect(rebaseSwaggerSpecs(html, new Set(["A.openapi.json"]), (f) => `../${SIDECARS_SERVED}/${f}`)).toBe(
       `{"url": "../fhir-artifact-index/sidecars/A.openapi.json"}, {"url": "../B.openapi.json"}, url: "../fhir-artifact-index/sidecars/A.openapi.json"`,
     );
+  });
+});
+
+describe("the artefact index read from the AST cache commit (owner, 2026-11-10, card \"A\")", () => {
+  const sha = "0123456789abcdef0123456789abcdef01234567";
+  const raw = `https://raw.githubusercontent.com/o/ig/${sha}`;
+
+  test("cachedIndexNotServedPointerIs", () => {
+    const root = join(dir, "index-cached");
+    const ast = fakeAst(root, [{ resourceType: "ValueSet", id: "x" }]);
+    const site = join(root, "_site");
+    mkdirSync(site, { recursive: true });
+    const index = join(root, "index.json");
+    writeFileSync(index, "{}");
+    const r = serveAstData({ site, ast, index, byUrl: true, indexRef: indexRef({ raw, repository: "o/ig", commit: sha }) });
+    expect(r.index).toBe(false);
+    expect(existsSync(join(site, INDEX_CACHED))).toBe(false);
+    expect(JSON.parse(readFileSync(join(site, "fhir-artifact-index", INDEX_REF_FILE), "utf-8"))).toEqual({
+      $schema: "fhir-artifact-index-ref/v1",
+      index: `${raw}/fhir-artifact-index/index.json`,
+      base: `${raw}/`,
+      repository: "o/ig",
+      commit: sha,
+    });
+  });
+
+  test("olderCacheServesTheIndexAndPointsAtIt", () => {
+    const root = join(dir, "index-local");
+    const ast = fakeAst(root, [{ resourceType: "ValueSet", id: "x" }]);
+    const site = join(root, "_site");
+    mkdirSync(site, { recursive: true });
+    const index = join(root, "index.json");
+    writeFileSync(index, "{}");
+    expect(serveAstData({ site, ast, index, indexRef: indexRef({}) }).index).toBe(true);
+    expect(existsSync(join(site, INDEX_CACHED))).toBe(true);
+    expect(JSON.parse(readFileSync(join(site, "fhir-artifact-index", INDEX_REF_FILE), "utf-8")).index).toBe("index.json");
+  });
+
+  test("publisherPagesReadsTheCacheCopy", () => {
+    const root = join(dir, "index-pages");
+    const ast = fakeAst(root, [{ resourceType: "ValueSet", id: "x" }]);
+    mkdirSync(join(ast, "fhir-artifact-index"), { recursive: true });
+    writeFileSync(join(ast, INDEX_CACHED), "{}");
+    const work = join(root, "work");
+    mkdirSync(join(work, INDEX_WORK), { recursive: true });
+    writeFileSync(join(work, INDEX_WORK, "index.json"), "{}");
+    writeFileSync(join(work, AST_SOURCE_FILE), JSON.stringify({ commit: sha, remote: "https://github.com/o/ig.git" }));
+    const site = join(root, "_site");
+    mkdirSync(site, { recursive: true });
+    const said: string[] = [];
+    expect(publisherPages({ site, ast, work, log: (s) => said.push(s) }).index).toBe(false);
+    expect(existsSync(join(site, INDEX_CACHED))).toBe(false);
+    expect(said.join("\n")).toContain(`${raw}/fhir-artifact-index/index.json`);
+  });
+
+  test("locateFollowsThePointerElseTheOldPath", async () => {
+    const site = "https://o.github.io/ig";
+    expect(await locateArtefactIndex(site, async () => ({ $schema: "fhir-artifact-index-ref/v1", index: `${raw}/fhir-artifact-index/index.json` }))).toBe(`${raw}/fhir-artifact-index/index.json`);
+    expect(await locateArtefactIndex(`${site}/`, async () => ({ $schema: "fhir-artifact-index-ref/v1", index: "index.json" }))).toBe(`${site}/fhir-artifact-index/index.json`);
+    expect(
+      await locateArtefactIndex(site, async () => {
+        throw new Error("404");
+      }),
+    ).toBe(`${site}/fhir-artifact-index/index.json`);
   });
 });

@@ -170,7 +170,7 @@ resolve_branch() {
 
 count_resources() {
   local dir="$1"
-  find "$dir" -name '*.json' -not -path '*/ig-api/*' -not -name 'manifest.json' -not -name 'dependencies.json' -not -name 'fsh-index.json' -not -name 'expansions.json' -type f 2>/dev/null | head -20000 | wc -l | tr -d ' '
+  find "$dir" -name '*.json' -not -path '*/ig-api/*' -not -path '*/fhir-artifact-index/*' -not -name 'manifest.json' -not -name 'dependencies.json' -not -name 'fsh-index.json' -not -name 'expansions.json' -type f 2>/dev/null | head -20000 | wc -l | tr -d ' '
 }
 
 cmd_status() {
@@ -431,6 +431,15 @@ PY
   if [ "${IG_CACHE_IG_API:-1}" != "0" ] && command -v bun >/dev/null 2>&1; then
     bun run "$(dirname "${BASH_SOURCE[0]}")/ig-api-cache.ts" --ig "$root" --into "$tmp/ig-api" \
       || { warn "the IG API was not generated: seeding without it"; rm -rf "$tmp/ig-api"; }
+  fi
+  # The IG's artefact index, built from this AST (and the IG API above) with
+  # paths in this tree, so a site reads it by raw URL at this commit instead
+  # of publishing it (owner, 2026-11-10, card "A"; ig-index-cache.ts). A
+  # failure seeds without it. IG_CACHE_INDEX=0 leaves it out.
+  rm -rf "$tmp/fhir-artifact-index"
+  if [ "${IG_CACHE_INDEX:-1}" != "0" ] && command -v bun >/dev/null 2>&1; then
+    bun run "$(dirname "${BASH_SOURCE[0]}")/ig-index-cache.ts" --ig "$root" --tree "$tmp" \
+      || { warn "the artefact index was not built: seeding without it"; rm -rf "$tmp/fhir-artifact-index"; }
   fi
   # txcache goes alongside AST on the branch
   if [ -d "$root/input-cache/txcache" ]; then

@@ -168,7 +168,11 @@ export interface AstIndexOptions {
   instanceId: string;
   /** Where the IG is PUBLISHED (not its canonical base). Optional: absent means no `published` URL is claimed. */
   publishedBase?: string;
-  /** Path of the AST as recorded in `localPath`, relative to the IG root. Default `output-ast`. */
+  /**
+   * Path of the AST as recorded in `localPath`, relative to the IG root.
+   * Default `output-ast`. `""`: the AST's own tree, so each `localPath` is
+   * the file's path in the AST cache commit (`ig-index-cache.ts`).
+   */
   astPath?: string;
   /**
    * The keys (`Type/id`) the PUBLISHED IG actually has. When given, an
@@ -248,7 +252,7 @@ export function astToArtifactIndex(ast: Ast, opts: AstIndexOptions): AstIndexRes
     const category = publisherCategory(json);
     const isPublished = !opts.publishedKeys || opts.publishedKeys.has(`${r.resourceType}/${r.id}`);
     const published = isPublished ? publishedFor(opts.publishedBase, r.resourceType, r.id, category !== undefined) : {};
-    const localPath = `${astPath}/${r.file}`;
+    const localPath = astPath ? `${astPath}/${r.file}` : r.file;
     const provenance = {
       ...(published.html ? { upstream: published.html.url } : {}),
       local: r.source ?? localPath,
@@ -314,7 +318,7 @@ export function astToArtifactIndex(ast: Ast, opts: AstIndexOptions): AstIndexRes
     ...(canonicalBase ? { canonicalBase } : {}),
     source: {
       kind: "output",
-      of: astPath,
+      of: astPath || ".",
       ...(inputs ? { revision: inputs.sourceRevision } : {}),
       readAt: (m.generatedAt ?? new Date().toISOString()).slice(0, 10),
     },
@@ -532,7 +536,7 @@ if (import.meta.main) {
   if (!astDir || !instanceId) {
     console.error(
       "usage: ast-to-artifact-index.ts --ast <output-ast dir> --instance-id <id> " +
-        "[--published-base <url>] [--out <index.json>] [--compare <published index.json>] [--report <json>] " +
+        "[--published-base <url>] [--ast-path <recorded AST path, \"\" for the AST tree>] [--out <index.json>] [--compare <published index.json>] [--report <json>] " +
         "[--sidecars <dir> [--sidecars-local <instance-relative dir>] [--sidecars-base <url>]] [--keep-published-grouping]",
     );
     process.exit(2);
@@ -543,6 +547,7 @@ if (import.meta.main) {
   const { index, unreadable } = astToArtifactIndex(ast, {
     instanceId,
     publishedBase: arg("--published-base"),
+    ...(arg("--ast-path") !== undefined ? { astPath: arg("--ast-path")! } : {}),
     ...(pub ? { publishedKeys: new Set(pub.artifacts.map((a) => a.key)) } : {}),
   });
   if (process.argv.includes("--keep-published-grouping")) {

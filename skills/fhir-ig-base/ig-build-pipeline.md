@@ -369,6 +369,19 @@ names, never naming a layer:
   documents are `<raw>/ig-api/site/<file>`, and only the site's pages over
   them (the Swagger page) are served. An older cache with no `ig-api/` falls
   back to the step's output in the work directory, served as above.
+- **The artefact index, too** (owner, 2026-11-10, card "A"): the seed
+  also commits `fhir-artifact-index/index.json`, built from the tree it
+  commits (`ig-index-cache.ts`: `compose`'s flags, every `localPath` a path
+  in that tree, the sidecars at `ig-api/sidecars/`, no `sidecarBase`). When
+  the restored AST holds it, the site does not publish the index; it serves
+  `fhir-artifact-index/index.ref.json` (`fhir-artifact-index-ref/v1`):
+  `index` is the raw URL of the cache copy and `base` the commit's tree,
+  which its paths resolve against. An older cache: the site serves its own
+  `index.json`, and the pointer says `"index": "index.json"`. A reader on
+  another site finds the index with `locateArtefactIndex(<site>)`: the
+  pointer, else the old path. The pages themselves read their index at build
+  time; no page fetches it. `ast-history.json` stays on the site: it is
+  written at build time from the commits behind the one restored.
 - **The Swagger page** lists each spec at the address it is read from:
   `../fhir-artifact-index/sidecars/<file>`, or its raw URL
   (`rebaseSwaggerSpecs`); the generator's `../<file>` named a root path

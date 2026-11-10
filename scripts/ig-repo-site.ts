@@ -350,6 +350,43 @@ export function astSource(work: string | undefined, env: Record<string, string |
   return commit && repo ? { repository: repo, commit } : undefined;
 }
 
+/** In the AST cache commit (and so under a restored AST): the artefact index `ig-cache.sh seed` wrote (`ig-index-cache.ts`). */
+export const INDEX_CACHED = `${INDEX_SERVED}/index.json`;
+/** Served beside where the index was: where the IG's artefact index is read from. */
+export const INDEX_REF_FILE = "index.ref.json";
+export const INDEX_REF_SCHEMA = "fhir-artifact-index-ref/v1";
+
+/**
+ * The pointer a site serves at `fhir-artifact-index/index.ref.json` (owner,
+ * 2026-11-10, card "A": the index is served from the AST cache, not the site).
+ * `index` is where the IG's artefact index is: the raw URL of the cache
+ * commit's copy, or `index.json` beside the pointer when the site serves it
+ * (an older cache that holds none). `base`, with a cache copy, is what that
+ * index's `localPath`s are relative to: the cache commit's tree. Pure.
+ */
+export function indexRef(o: { raw?: string; repository?: string; commit?: string }): Record<string, string> {
+  return o.raw
+    ? { $schema: INDEX_REF_SCHEMA, index: `${o.raw}/${INDEX_CACHED}`, base: `${o.raw}/`, ...(o.repository ? { repository: o.repository } : {}), ...(o.commit ? { commit: o.commit } : {}) }
+    : { $schema: INDEX_REF_SCHEMA, index: "index.json" };
+}
+
+/**
+ * Where a reader finds an IG's artefact index from the IG's published site:
+ * the pointer's `index`, resolved against the pointer; with no readable
+ * pointer (a site built before it), `<site>/fhir-artifact-index/index.json`
+ * as before. Returns the URL; fetching it is the caller's.
+ */
+export async function locateArtefactIndex(site: string, fetchJson: (url: string) => Promise<unknown> = async (u) => (await fetch(u)).json()): Promise<string> {
+  const dir = new URL(`${INDEX_SERVED}/`, site.endsWith("/") ? site : `${site}/`);
+  const fallback = new URL("index.json", dir).href;
+  try {
+    const ref = (await fetchJson(new URL(INDEX_REF_FILE, dir).href)) as { $schema?: unknown; index?: unknown };
+    return ref?.$schema === INDEX_REF_SCHEMA && typeof ref.index === "string" ? new URL(ref.index, dir).href : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 /** Under the work directory: the AST versions `compose` read for the History view, which `publisher-pages` serves. */
 export const AST_HISTORY_WORK = "ig-ast-history.json";
 
@@ -1004,7 +1041,7 @@ export function libraryByUrl(resource: unknown, cql: CqlSource): object | undefi
  * Never the Publisher's HTML, and never a path the site already holds. With
  * `cql`, a Library is served by {@link libraryByUrl}: its CQL by URL, no ELM.
  */
-export function serveAstData(o: { site: string; ast: string; index?: string; igApi?: IgApi; cql?: CqlSource; byUrl?: boolean; history?: string }): ServedData {
+export function serveAstData(o: { site: string; ast: string; index?: string; igApi?: IgApi; cql?: CqlSource; byUrl?: boolean; history?: string; indexRef?: Record<string, string> }): ServedData {
   const manifest = join(o.ast, "manifest.json");
   if (!existsSync(manifest)) throw new Error(`${o.ast}: no AST to serve — run ${IG_SITE_SCRIPTS.ast} first`);
   const out: ServedData = { named: 0, kept: 0, sidecars: 0, siteFiles: 0, siteKept: [], siteFilled: [], index: false };
@@ -1028,7 +1065,14 @@ export function serveAstData(o: { site: string; ast: string; index?: string; igA
       }
     }
   }
-  if (o.index && existsSync(o.index)) out.index = serve(o.index, o.site, join(INDEX_SERVED, "index.json"));
+  // With a pointer to the AST cache commit's copy (`indexRef.base`), the index
+  // is read there and not served; the pointer is served either way.
+  const cachedIndex = o.indexRef?.["base"] !== undefined;
+  if (!cachedIndex && o.index && existsSync(o.index)) out.index = serve(o.index, o.site, join(INDEX_SERVED, "index.json"));
+  if (o.indexRef && (cachedIndex || out.index)) {
+    mkdirSync(join(o.site, INDEX_SERVED), { recursive: true });
+    writeFileSync(join(o.site, INDEX_SERVED, INDEX_REF_FILE), `${JSON.stringify(o.indexRef, null, 2)}\n`);
+  }
   if (o.history && existsSync(o.history)) out.history = serve(o.history, o.site, AST_HISTORY_FILE);
   if (o.igApi) {
     // Read by raw URL from the AST cache commit (`rawBase`): no sidecar is copied.
@@ -1082,7 +1126,11 @@ export function publisherPages(o: { site: string; ast: string; work?: string; ig
   const index = o.work ? join(o.work, INDEX_WORK, "index.json") : undefined;
   const raw = astRawBase(o.work);
   const history = o.work && raw ? join(o.work, AST_HISTORY_WORK) : undefined;
-  const served = serveAstData({ site: o.site, ast: o.ast, ...(index ? { index } : {}), ...(igApi ? { igApi } : {}), ...(o.cql ? { cql: o.cql } : {}), byUrl: raw !== undefined, ...(history ? { history } : {}) });
+  // The artefact index is read from the AST cache commit when the commit holds one (`ig-cache.sh seed`).
+  const src = astSource(o.work);
+  const ref = indexRef(raw && existsSync(join(o.ast, INDEX_CACHED)) ? { raw, ...src } : {});
+  const served = serveAstData({ site: o.site, ast: o.ast, ...(index ? { index } : {}), ...(igApi ? { igApi } : {}), ...(o.cql ? { cql: o.cql } : {}), byUrl: raw !== undefined, ...(history ? { history } : {}), indexRef: ref });
+  if (ref["base"]) log(`publisher pages: the artefact index is read from ${ref["index"]}, not served; ${INDEX_SERVED}/${INDEX_REF_FILE} points there`);
   if (served.history) log(`publisher pages: the AST versions at ${AST_HISTORY_FILE}`);
   if (raw) log(`publisher pages: the pages read each resource from ${raw}`);
   if (served.librariesByUrl) log(`publisher pages: ${served.librariesByUrl} Library resource(s) link their CQL in ${CQL_DIR}/ by URL; their ELM is left to the release package`);

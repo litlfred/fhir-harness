@@ -153,3 +153,9 @@ Feature: Building the FHIR artifact index from an IG AST
     When the sidecars are attached with a served base under the AST cache commit
     Then the index records the base without its trailing slash, and each sidecar keeps its local path
     And an index to which nothing binds records no base
+
+  @test:scripts/ast-to-artifact-index.test.ts::attachSidecars::emptyAstPathRecordsTreePaths
+  Scenario: an empty AST path records each resource at its path in the AST's own tree
+    Given the synthetic AST
+    When it is indexed with the AST path ""
+    Then the index validates, its source is ".", and every local path starts with resources/

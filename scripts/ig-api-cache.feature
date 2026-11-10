@@ -21,4 +21,6 @@ Feature: The IG API in the AST cache commit
     When ig-cache.sh seed --push runs
     Then the cache commit holds ig-api/sidecars, ig-api/site and ig-api/ig-api.json beside the AST
     And a restore into a fresh checkout puts them under output-ast/ig-api
-    And with IG_CACHE_IG_API=0 the seed holds the AST alone
+    And the cache commit holds fhir-artifact-index/index.json, binding the sidecar at ig-api/sidecars/
+    And a restore lays the index down under output-ast/fhir-artifact-index
+    And with IG_CACHE_IG_API=0 and IG_CACHE_INDEX=0 the seed holds the AST alone
