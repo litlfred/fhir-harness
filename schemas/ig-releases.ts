@@ -45,6 +45,13 @@ export const IgReleaseSchema = z
     /** The commit the tag points at, where GitHub reports it. */
     commitish: z.string().optional(),
     assets: z.array(ReleaseAssetSchema),
+    /**
+     * The IG AST cache commit compiled from this release's tag, where one was
+     * seeded (fhir-harness#329): a page reads the release's resources by raw
+     * URL at it. Absent for a release cut before the cache kept its commits
+     * (#326); its AST is in its `ast-data.zip`.
+     */
+    ast: z.object({ commit: z.string().regex(/^[0-9a-f]{40}$/) }).strict().optional(),
   })
   .strict();
 export type IgRelease = z.infer<typeof IgReleaseSchema>;

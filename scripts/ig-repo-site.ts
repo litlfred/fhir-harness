@@ -165,6 +165,7 @@ import type { FhirArtifactIndex } from "../schemas/fhir-artifact-index.js";
 import { buildMenu } from "./ingest-ig-menu.ts";
 import { THIN_INDEX_CONFIG_ID, THIN_PAGE_CONFIG_ID } from "./ig-thin-pages.ts";
 import { COMPILED_BY_NAME } from "./ig-artifact-jsonld.ts";
+import { AST_HISTORY_FILE, readAstHistory } from "./ig-ast-history.ts";
 import { copyDeclared, igReadScope, type IgReadScope } from "./ig-read-scope.ts";
 import { siteBuild, type SiteBuild, STAMP_FILE } from "./site-build-stamp.ts";
 import { buildQaPage, publishQaAssets } from "./ig-qa-page.ts";
@@ -328,6 +329,12 @@ export const AST_BY_URL_ENV = "SITE_AST_BY_URL";
  * (`ig-cache.sh seed`, fhir-harness#326).
  */
 export function astRawBase(work: string | undefined, env: Record<string, string | undefined> = process.env): string | undefined {
+  const s = astSource(work, env);
+  return s ? `https://raw.githubusercontent.com/${s.repository}/${s.commit}` : undefined;
+}
+
+/** The cache commit `ast` restored and the `owner/repo` it is on, as {@link astRawBase} reads them; undefined as it is. */
+export function astSource(work: string | undefined, env: Record<string, string | undefined> = process.env): { repository: string; commit: string } | undefined {
   if (!work || env[AST_BY_URL_ENV] === "0") return undefined;
   const f = join(work, AST_SOURCE_FILE);
   if (!existsSync(f)) return undefined;
@@ -339,8 +346,11 @@ export function astRawBase(work: string | undefined, env: Record<string, string 
   }
   const commit = typeof rec.commit === "string" && /^[0-9a-f]{40}$/.test(rec.commit) ? rec.commit : undefined;
   const repo = typeof rec.remote === "string" ? /github\.com[/:]([\w.-]+\/[\w.-]+?)(?:\.git)?\/?$/.exec(rec.remote)?.[1] : undefined;
-  return commit && repo ? `https://raw.githubusercontent.com/${repo}/${commit}` : undefined;
+  return commit && repo ? { repository: repo, commit } : undefined;
 }
+
+/** Under the work directory: the AST versions `compose` read for the History view, which `publisher-pages` serves. */
+export const AST_HISTORY_WORK = "ig-ast-history.json";
 
 /** The IG API sidecars a layer above left, and what it calls them. */
 export interface IgApi {
@@ -510,9 +520,19 @@ export function astArtefactPages(o: { ig: string; ast: string; work: string; sit
   // compose's own scratch `work` (the first preview build read the scratch one,
   // found no record, and pointed the pages at root copies publisher-pages never wrote).
   const raw = astRawBase(o.siteWork);
+  // The AST versions behind that commit, for each resource's History view
+  // (#329), left in the site build's work directory for publisher-pages to serve.
+  const src = astSource(o.siteWork);
+  const history = src ? readAstHistory({ ig: o.ig, ...src }) : undefined;
+  if (o.siteWork) {
+    if (history) writeFileSync(join(o.siteWork, AST_HISTORY_WORK), `${JSON.stringify(history, null, 2)}\n`);
+    else rmSync(join(o.siteWork, AST_HISTORY_WORK), { force: true });
+  }
+  if (src) o.log(history ? `artefact pages: ${history.versions.length} AST version(s) for the History view, ${history.versions.filter((v) => v.tags).length} of them tagged` : `artefact pages: the AST versions could not be read; no History view`);
   o.log(raw ? `artefact pages: the resources are read from ${raw} (the AST cache commit), not copied into the site` : `artefact pages: the resources are served at the site root as <Type>-<id>.json`);
   bun("gen-ig-pages.ts", [
     "--instance", inst, "--index", index, "--label", o.label, "--ig-site", "--compiled-data", raw ?? AST_DATA, "--search",
+    ...(history ? ["--ast-history", `../${AST_HISTORY_FILE}`, "--ast-repository", src!.repository] : []),
     ...(o.igApi ? ["--ig-api-served", ...(o.igApi.label ? ["--sidecar-label", o.igApi.label] : [])] : []),
   ]);
   return inst;
@@ -878,6 +898,8 @@ export interface ServedData {
   index: boolean;
   /** Libraries served with their CQL by URL and no ELM ({@link libraryByUrl}). */
   librariesByUrl?: number;
+  /** Whether the AST versions are served for the History view ({@link AST_HISTORY_FILE}). */
+  history?: boolean;
 }
 
 /** Copy a file into the site unless the site already holds that path. */
@@ -933,7 +955,7 @@ export function libraryByUrl(resource: unknown, cql: CqlSource): object | undefi
  * Never the Publisher's HTML, and never a path the site already holds. With
  * `cql`, a Library is served by {@link libraryByUrl}: its CQL by URL, no ELM.
  */
-export function serveAstData(o: { site: string; ast: string; index?: string; igApi?: IgApi; cql?: CqlSource; byUrl?: boolean }): ServedData {
+export function serveAstData(o: { site: string; ast: string; index?: string; igApi?: IgApi; cql?: CqlSource; byUrl?: boolean; history?: string }): ServedData {
   const manifest = join(o.ast, "manifest.json");
   if (!existsSync(manifest)) throw new Error(`${o.ast}: no AST to serve — run ${IG_SITE_SCRIPTS.ast} first`);
   const out: ServedData = { named: 0, kept: 0, sidecars: 0, siteFiles: 0, siteKept: [], siteFilled: [], index: false };
@@ -958,6 +980,7 @@ export function serveAstData(o: { site: string; ast: string; index?: string; igA
     }
   }
   if (o.index && existsSync(o.index)) out.index = serve(o.index, o.site, join(INDEX_SERVED, "index.json"));
+  if (o.history && existsSync(o.history)) out.history = serve(o.history, o.site, AST_HISTORY_FILE);
   if (o.igApi) {
     for (const f of readdirSync(o.igApi.sidecars).sort()) {
       const from = join(o.igApi.sidecars, f);
@@ -1001,7 +1024,9 @@ export function publisherPages(o: { site: string; ast: string; work?: string; ig
   const igApi = readIgApi(o.work);
   const index = o.work ? join(o.work, INDEX_WORK, "index.json") : undefined;
   const raw = astRawBase(o.work);
-  const served = serveAstData({ site: o.site, ast: o.ast, ...(index ? { index } : {}), ...(igApi ? { igApi } : {}), ...(o.cql ? { cql: o.cql } : {}), byUrl: raw !== undefined });
+  const history = o.work && raw ? join(o.work, AST_HISTORY_WORK) : undefined;
+  const served = serveAstData({ site: o.site, ast: o.ast, ...(index ? { index } : {}), ...(igApi ? { igApi } : {}), ...(o.cql ? { cql: o.cql } : {}), byUrl: raw !== undefined, ...(history ? { history } : {}) });
+  if (served.history) log(`publisher pages: the AST versions at ${AST_HISTORY_FILE}`);
   if (raw) log(`publisher pages: the pages read each resource from ${raw}`);
   if (served.librariesByUrl) log(`publisher pages: ${served.librariesByUrl} Library resource(s) link their CQL in ${CQL_DIR}/ by URL; their ELM is left to the release package`);
   log(
