@@ -32,6 +32,14 @@ Feature: Staging an IG as one just-the-docs site
     Then the files of the "demo" image subdirectory are published under "demo"
     And the subdirectory's svg is not copied into _includes
 
+  @test:scripts/build-ig-site.test.ts::an_SVG_in_input/images_is_published_minified::svgPublishedMinified
+  Scenario: an SVG from input/images is published minified, and its include copy is left as given
+    Given an IG whose input/images holds a drawing saved with Visio's records, at the top level and in a subdirectory
+    When it is staged as a site
+    Then both published copies hold the drawing without the editor's records or the whitespace between tags
+    And the copy under _includes is the IG's file as given
+    And the stage reports two SVGs minified and the bytes saved
+
   @test:scripts/build-ig-site.test.ts::staging_one_IG_as_one_just-the-docs_site::unparseableDataNotPublished
   Scenario: a data file that does not parse is not published, and is reported
     Given the example IG staged as a site

@@ -16,7 +16,7 @@
  * |---|---|---|
  * | `input/pagecontent/*.md` | `<page>.md` with front matter | the pages; title, parent and order from `sushi-config.yaml` `pages:` |
  * | `input/includes/*`, `input/pagecontent/*`, `input/images/*.svg` | `_includes/` | the Publisher resolves `{% include %}` against all three, so pages include each other and inline SVGs |
- * | `input/images/**` | the site root, subdirectories kept | the Publisher publishes them there, so pages say `<img src="x.png">` or `<script src="demo/app.js">` — except a `.json`/`.jsonld` that does not parse, which is left out and reported: publishing a broken data file under our site blocks the deploy, and whose file it is cannot be told from a file no parser can read |
+ * | `input/images/**` | the site root, subdirectories kept | the Publisher publishes them there, so pages say `<img src="x.png">` or `<script src="demo/app.js">`; an `.svg` is published minified losslessly (`svg-minify.ts`) — except a `.json`/`.jsonld` that does not parse, which is left out and reported: publishing a broken data file under our site blocks the deploy, and whose file it is cannot be told from a file no parser can read |
  * | `input/images-source/*.plantuml` | `_includes/<name>.svg` | the Publisher RENDERS these; rendered here with `--plantuml-jar`, otherwise a visible "not rendered" marker, reported |
  * | the artefact index (`--artifacts`) | `_includes/list-(simple-)?<types>.xhtml` | the Publisher GENERATES these lists of an IG's artefacts of one type; written here as Liquid over `site.data.fhir.artifact_lists`, so any IG with an index gets them (bean `9hfi`) |
  * | `ig-site-data` over the source | `_data/fhir.json` | `site.data.fhir.*`, only what is sourced |
@@ -50,6 +50,7 @@ import { defaultPackageCache, DEPENDENCY_FRAGMENTS, dependencyRows, fromImplemen
 import { readAst } from "./ig-ast.ts";
 import { copyDeclared, igReadScope, onlyDeclared } from "./ig-read-scope.ts";
 import { questionnaireFormPages, type FormPage } from "./questionnaire-form.ts";
+import { minifySvgBytes } from "./svg-minify.ts";
 import { GLOBALS_FRAGMENT, globalsFromImplementationGuide, globalsFromSushiConfig } from "./ig-globals.ts";
 import { artifactPageName } from "../schemas/fhir-artifact-index.js";
 import { wrapRaw } from "../../cat-harness-tools/scripts/lib/liquid-raw.ts";
@@ -175,6 +176,8 @@ export interface StageResult {
   menuMissing: string[];
   includes: number;
   images: number;
+  /** `input/images` SVGs published minified (`svg-minify.ts`): how many, and the bytes that saved. */
+  svgMinified?: { files: number; saved: number };
   /** Diagrams rendered from `input/images-source/*.plantuml`. */
   rendered: string[];
   /** The Publisher's artefact lists (`list-(simple-)?<types>.xhtml`) a page includes, written from the artefact index (bean `9hfi`). */
@@ -1290,6 +1293,12 @@ export interface StageOptions {
   qaPage?: string;
   /** The IG's FHIR AST; default `<src>/output-ast`. Its resources become `site.data` (see {@link astResourceData}). */
   ast?: string;
+  /**
+   * The AST cache commit's tree by URL (`astRawBase`), when the site reads
+   * the AST from there: the Questionnaire form pages then fetch each
+   * unexpanded Questionnaire from it rather than from a copy in the site.
+   */
+  astRaw?: string;
   /** The FHIR package cache the dependency table reads; default `FHIR_PACKAGE_CACHE` or `~/.fhir/packages`. */
   packageCache?: string;
   /**
@@ -2013,6 +2022,7 @@ function stageDeclaredSource(igSrc: string, out: string, opts: StageOptions): St
   let images = 0;
   const unparseable: string[] = [];
   const reserved: string[] = [];
+  const svgMinified = { files: 0, saved: 0 };
   for (const f of filesDeep(imagesDir)) {
     const owner = opts.reservedPaths?.find((p) => (p.prefix.endsWith("/") ? f.startsWith(p.prefix) : f === p.prefix));
     if (owner) {
@@ -2034,6 +2044,16 @@ function stageDeclaredSource(igSrc: string, out: string, opts: StageOptions): St
       const r = relinkPublisherTemplateAssets(readFileSync(join(imagesDir, f), "utf-8"), canonical);
       relinked += r.count;
       writeFileSync(join(out, f), r.text);
+    } else if (f.endsWith(".svg")) {
+      // Published without the drawing editor's own records and the whitespace
+      // between tags (`svg-minify.ts`): the same picture in fewer bytes.
+      const bytes = readFileSync(join(imagesDir, f));
+      const small = minifySvgBytes(bytes);
+      writeFileSync(join(out, f), small);
+      if (small.length < bytes.length) {
+        svgMinified.files++;
+        svgMinified.saved += bytes.length - small.length;
+      }
     } else {
       copyFileSync(join(imagesDir, f), join(out, f));
     }
@@ -2194,6 +2214,7 @@ function stageDeclaredSource(igSrc: string, out: string, opts: StageOptions): St
         slug: typeof sushi.id === "string" ? sushi.id : undefined,
         // The Publisher's terminology cache, where `ig-cache.sh restore` puts it.
         txcache: join(src, "input-cache", "txcache"),
+        ...(opts.astRaw ? { astRaw: opts.astRaw } : {}),
       });
     } catch (e) {
       forms = { why: (e as Error).message };
@@ -2251,7 +2272,7 @@ function stageDeclaredSource(igSrc: string, out: string, opts: StageOptions): St
     ].join("\n"),
   );
   const fillsResult = opts.fills?.length ? { filled, unused: opts.fills.map((x) => x.marker).filter((m) => !usedMarkers.has(m)) } : undefined;
-  return { annexed, unplaced, templateIncludes: templateIncludesResult, pages: pages.sort(), generated, fills: fillsResult, variables: lifted ? { artifacts: Object.keys(lifted.vars.artifacts).length, notSourced: lifted.notSourced } : undefined, unlisted: unlisted.sort(), menuMissing, includes, images, rendered, listed, notRendered, refusedIncludes, unparseable, reserved, relinked, deadLinks: [...dead].sort(), footer, ...(qa ? { qa } : {}), scheme, siteData, data, astData, ...(forms ? { forms } : {}), dependencyTables, dependencies, globals };
+  return { annexed, unplaced, templateIncludes: templateIncludesResult, pages: pages.sort(), generated, fills: fillsResult, variables: lifted ? { artifacts: Object.keys(lifted.vars.artifacts).length, notSourced: lifted.notSourced } : undefined, unlisted: unlisted.sort(), menuMissing, includes, images, rendered, listed, notRendered, refusedIncludes, unparseable, reserved, relinked, deadLinks: [...dead].sort(), footer, ...(svgMinified.files ? { svgMinified } : {}), ...(qa ? { qa } : {}), scheme, siteData, data, astData, ...(forms ? { forms } : {}), dependencyTables, dependencies, globals };
 }
 
 /**
@@ -2299,6 +2320,7 @@ export function dedupeSiteIds(site: string): Map<string, string[]> {
 export function describeStage(r: StageResult): string {
   return [
     `pages: ${r.pages.length}; includes: ${r.includes}; images: ${r.images}; diagrams rendered: ${r.rendered.length}`,
+    ...(r.svgMinified ? [`SVGs published minified: ${r.svgMinified.files}, ${(r.svgMinified.saved / 1e6).toFixed(2)} MB saved`] : []),
     ...(r.templateIncludes ? [`local template includes (ig.ini): ${r.templateIncludes.files} from ${r.templateIncludes.dir}`] : []),
     ...(r.generated.length ? [`generated from data this build holds (the Publisher generates these): ${r.generated.join(", ")}`] : []),
     ...(r.fills?.filled.length ? [`post-processing filled: ${r.fills.filled.join(", ")}`] : []),
