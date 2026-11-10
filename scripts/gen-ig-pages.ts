@@ -222,6 +222,18 @@ const THIN = !FULL_PAGES;
  * carries the search box. Absent, no page names files the site may not hold.
  */
 const SEARCH = THIN && process.argv.includes("--search");
+/**
+ * `--ast-history <href> --ast-repository <owner/repo>`: the AST versions the
+ * site serves (`ig-ast-history.ts`), relative to an artefact page, and the
+ * repository whose cache branch holds them. Each artefact whose resource the
+ * pages read gets a History view (fhir-harness#329). Thin pages only.
+ */
+const AST_HISTORY = THIN ? arg("--ast-history") : undefined;
+const AST_REPOSITORY = arg("--ast-repository");
+if (AST_HISTORY !== undefined && (AST_REPOSITORY === undefined || !/^[\w.-]+\/[\w.-]+$/.test(AST_REPOSITORY))) {
+  console.error("gen-ig-pages: --ast-history needs --ast-repository <owner/repo>");
+  process.exit(2);
+}
 const JSONLD_BASE = (() => {
   const b = arg("--jsonld-base");
   return b === undefined ? undefined : b.endsWith("/") ? b : `${b}/`;
@@ -1656,7 +1668,8 @@ if (existsSync(MENU)) {
       // The IG API sidecars the page's JSON-LD and schema views draw, where the site serves them.
       const sidecars: Partial<Record<SidecarView, string>> = {};
       if (igApiServing.ok) for (const k of ["jsonld", "schema"] as const) if (a.sidecars?.[k]?.localPath) sidecars[k] = `../${a.sidecars[k]!.localPath}`;
-      const tabs = artifactTabs(a, { resource: resource !== undefined || localResourceHref(a, COMPILED_DATA) !== undefined, sidecars: Object.keys(sidecars) as SidecarView[] });
+      const reads = resource !== undefined || localResourceHref(a, COMPILED_DATA) !== undefined;
+      const tabs = artifactTabs(a, { resource: reads, sidecars: Object.keys(sidecars) as SidecarView[], history: reads && AST_HISTORY !== undefined });
       const opts = {
         label: LABEL,
         home: IG_SITE ? "../index.html" : "../",
@@ -1668,6 +1681,7 @@ if (existsSync(MENU)) {
         ...(resource ? { resource } : {}),
         ...(tabs.length ? { tabs, index: ARTIFACT_INDEX_FILE } : {}),
         ...(Object.keys(sidecars).length ? { sidecars } : {}),
+        ...(AST_HISTORY !== undefined && AST_REPOSITORY !== undefined ? { history: { versions: AST_HISTORY, repository: AST_REPOSITORY } } : {}),
         ...(SEARCH ? { search: { index: `../${IG_SEARCH_INDEX_FILE}`, script: `../${IG_SEARCH_SCRIPT_FILE}` } } : {}),
       };
       if (resource) served += 1;
@@ -1678,7 +1692,8 @@ if (existsSync(MENU)) {
       // name, the Publisher's, is a redirect stub to it, replacing the full
       // tab page, the JSON view and the IG API view page written above.
       for (const t of tabs) {
-        if (t.view === "content") continue;
+        // The History view is new: no old file name to keep.
+        if (t.view === "content" || t.view === "history") continue;
         pages.delete(join("artifact", t.file.replace(/\.html$/, ".md")));
         pages.set(join("artifact", t.file), thinViewRedirect(a, t.view));
         astPages.push(t.file);

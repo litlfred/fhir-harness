@@ -172,6 +172,22 @@ describe("one page per artefact: the views by ?view=, the old names redirect", (
     expect(stub).not.toMatch(/<body/i);
     expect(stub).toContain('<meta name="folio-navbar" content="none">');
   });
+  it("historyTabWhenVersionsServed", () => {
+    const t = artifactTabs(VS, { resource: true, history: true });
+    expect(t.map((x) => x.view)).toEqual(["content", "json", "history"]);
+    expect(t[2]!.href).toBe("ValueSet-sections.html?view=history");
+    expect(artifactTabs(VS, { resource: false, sidecars: ["jsonld"], history: true }).map((x) => x.view)).toEqual(["content", "jsonld"]);
+    const page = thinArtifactView(IX, VS, "content", { label: "X IG", home: "../index.html", all: "../artifacts.html", resource: "../ValueSet-sections.json", tabs: t, history: { versions: "../fhir-artifact-index/ast-history.json", repository: "o/r" } });
+    expect(thinPageConfigOf(page, THIN_PAGE_CONFIG_ID)!.history).toEqual({ versions: "../fhir-artifact-index/ast-history.json", repository: "o/r", resourceType: "ValueSet", id: "sections" });
+  });
+  it("historyDrawnAsText", () => {
+    const renderer = readFileSync(join(import.meta.dir, "templates", "ig-pages", "ig-artifact.js"), "utf8");
+    expect(renderer).toContain("function drawHistory(");
+    expect(renderer).toContain('rawAt(h.repository, commit, "manifest.json")');
+    // Values go in by textContent through el(); nothing from a version is set as HTML.
+    const body = renderer.slice(renderer.indexOf("function drawHistory("), renderer.indexOf("function drawView("));
+    expect(body).not.toContain("innerHTML");
+  });
   it("rendererReadsViewQuery", () => {
     const renderer = readFileSync(join(import.meta.dir, "templates", "ig-pages", "ig-artifact.js"), "utf8");
     expect(renderer).toContain('new URLSearchParams(location.search).get("view")');

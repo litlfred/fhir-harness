@@ -114,6 +114,7 @@ import { igApiHubPageOf } from "./ig-api-hub.ts";
 import { AST_FAMILY_PREFIXES, LAYER, lsRemote, needing, type BranchLister, type InstanceFacts } from "./gen-ig-ast-pages.ts";
 import { buildMenu } from "./ingest-ig-menu.ts";
 import { igReadScope } from "./ig-read-scope.ts";
+import { annotateReleases, readAstHistory } from "./ig-ast-history.ts";
 import { realPathWithin, safeSegment } from "../../cat-harness-tools/src/core/safe-path.js";
 import { astPinsIn, IG_AST_LOCK_FILE, type IgAstPin } from "../schemas/ig-ast-lock.ts";
 
@@ -553,7 +554,10 @@ export function buildOne(t: IgTarget, work: string, log: (s: string) => void, ch
   }
   if (astPin && astPin.repository !== t.repository) return [`${IG_AST_LOCK_FILE} pins ${t.name}'s AST in ${astPin.repository}, but the IG is mounted from ${t.repository}`];
   log(astPin ? `  AST: pinned at ${astPin.branch}@${astPin.sha.slice(0, 7)} (${IG_AST_LOCK_FILE})` : `  AST: no pin in ${IG_AST_LOCK_FILE}; reading the cache branch tip`);
-  const restore = run("bash", [join(HERE, "ig-cache.sh"), "restore", "--ig-root", clone, ...(astPin ? ["--commit", astPin.sha] : [])]);
+  // The commit restored, for each release's AST commit in releases.json (#329).
+  const astRecord = join(work, `${t.name}.ast-source.json`);
+  rmSync(astRecord, { force: true });
+  const restore = run("bash", [join(HERE, "ig-cache.sh"), "restore", "--ig-root", clone, "--record", astRecord, ...(astPin ? ["--commit", astPin.sha] : [])]);
   if (!restore.ok) return [`no AST restored from ${t.repository}: ${restore.out.split("\n").slice(-3).join(" ")}`];
   const ast = join(clone, "output-ast");
   const head = run("git", ["-C", clone, "rev-parse", "HEAD"]);
@@ -615,7 +619,15 @@ export function buildOne(t: IgTarget, work: string, log: (s: string) => void, ch
   // As of the pinned commit: releases published later belong to a later pin.
   const rel = run("bun", ["run", join(HERE, "ingest-ig-releases.ts"), "--instance", t.root, "--repo", t.repository, ...(t.sha && at ? ["--as-of", at] : [])]);
   if (!rel.ok) log(`  releases: not written, could not read ${t.repository}'s releases: ${rel.out.split("\n").find((l) => l.startsWith("error:")) ?? rel.out.split("\n").slice(-1)[0]}`);
-  else log("  releases: written");
+  else {
+    log("  releases: written");
+    // Each release's AST commit, read off the cache branch's history (#329), so a page never asks the GitHub API.
+    const releases = join(t.root, "fhir-artifact-index", "releases.json");
+    const commit = existsSync(astRecord) ? (JSON.parse(readFileSync(astRecord, "utf-8")) as { commit?: string }).commit : undefined;
+    const history = commit && /^[0-9a-f]{40}$/.test(commit) ? readAstHistory({ ig: clone, commit, repository: t.repository }) : undefined;
+    if (history && existsSync(releases)) log(`  releases: ${annotateReleases(releases, history)} name the AST commit compiled from their tag`);
+    else log("  releases: no AST commit recorded for any (the cache branch's history could not be read)");
+  }
   return problems;
 }
 
