@@ -1,0 +1,16 @@
+{
+  "$schema": "qa-reports-manifest/v1",
+  "key": "pr/338/e656407b79c46f87e0bd370fba3fb6379ec572ce",
+  "source": "e656407b79c46f87e0bd370fba3fb6379ec572ce",
+  "pr": 338,
+  "written_at": "2026-11-10T19:15:21.863Z",
+  "producer": {
+    "run": "https://github.com/litlfred/fhir-harness/actions/runs/42883283695"
+  },
+  "roots": [
+    "fhir-harness/test/results"
+  ],
+  "payloadTree": "c2819969f203f2811d1fbf5adfc1759567d03f0f",
+  "files": 65,
+  "bytes": 115324
+}
