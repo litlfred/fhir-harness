@@ -168,6 +168,9 @@ describe("one page per artefact: the views by ?view=, the old names redirect", (
     expect(stub).toContain('location.replace("StructureDefinition-Composition-uv-ips.html?view=definitions" + location.hash)');
     expect(stub).toContain('<meta name="robots" content="noindex">');
     expect(stub).not.toContain("<script src=");
+    // Bare for the platform's injectors: no <body> tag, the rail declined.
+    expect(stub).not.toMatch(/<body/i);
+    expect(stub).toContain('<meta name="folio-navbar" content="none">');
   });
   it("rendererReadsViewQuery", () => {
     const renderer = readFileSync(join(import.meta.dir, "templates", "ig-pages", "ig-artifact.js"), "utf8");

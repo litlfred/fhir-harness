@@ -26,6 +26,7 @@ Feature: An artefact's tab views on the IG site
   @test:scripts/ig-tab-views.test.ts::one_page_per_artefact:_the_views_by_?view=,_the_old_names_redirect::redirectStubKeepsFragment
   Scenario: a view's old file name is a redirect stub that keeps the fragment
     Then the stub refreshes to the page with ?view=, its script carries location.hash, it is noindex and loads no script file
+    And it has no <body> tag and declines the rail, so the platform's banner and rail leave it bare
 
   @test:scripts/ig-tab-views.test.ts::one_page_per_artefact:_the_views_by_?view=,_the_old_names_redirect::rendererReadsViewQuery
   Scenario: the renderer draws the view the query names, when the page lists it

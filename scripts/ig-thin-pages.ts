@@ -172,8 +172,10 @@ function tabBar(tabs: readonly ArtifactTab[] | undefined, current: ArtifactView)
  * artefact's one page with that view, so a link or bookmark to the
  * Publisher's tab name still lands. The script carries a `#fragment` across
  * (an element on the definitions view); the meta refresh is the fallback
- * without scripts. The platform leaves a meta-refresh stub bare (no rail, no
- * banner), so it stays a few hundred bytes. Deterministic.
+ * without scripts. It declines the rail and has no `<body>` tag, so the
+ * platform's injectors leave it bare and it stays a few hundred bytes (the
+ * first preview build measured 8 KB stubs, banner and chrome injected into a
+ * stub with a body). Deterministic.
  */
 export function thinViewRedirect(a: Pick<FhirArtifact, "resourceType" | "id">, view: ArtifactView): string {
   const to = artifactViewHref(a, view);
@@ -183,8 +185,11 @@ export function thinViewRedirect(a: Pick<FhirArtifact, "resourceType" | "id">, v
     `<!doctype html>\n<html lang="en"><head><meta charset="utf-8"><title>${escHtml(TAB_LABEL[view])} — ${escHtml(artifactPageName(a))}</title>\n` +
     `<link rel="canonical" href="${t}">\n` +
     `<script>location.replace(${js} + location.hash);</script>\n` +
-    `<meta http-equiv="refresh" content="0; url=${t}"><meta name="robots" content="noindex">\n` +
-    `</head><body><p>This view is at <a href="${t}">${t}</a>.</p></body></html>\n`
+    `<meta http-equiv="refresh" content="0; url=${t}"><meta name="robots" content="noindex"><meta name="folio-navbar" content="none">\n` +
+    // No <body> tag: the platform's injectors (the staging banner, the rail)
+    // place their markup after one, and count a meta-refresh page without one
+    // as a forwarding stub. The link still renders, in the implied body.
+    `</head>\n<p>This view is at <a href="${t}">${t}</a>.</p></html>\n`
   );
 }
 
