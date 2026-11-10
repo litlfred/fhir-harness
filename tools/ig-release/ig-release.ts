@@ -24,5 +24,8 @@ export default toolFactory((t) =>
       cost: "One full Publisher build (in the workflow), then a few REST calls and the uploads.",
     },
     requires: { runtime: ["bun", "zip", "gh"], network: true },
+    remedies: [
+      { host: "github.com", none: "The draft release is made and its files uploaded on GitHub; offline, `assets` and `kind` still run and nothing is published." },
+    ],
   }),
 );
