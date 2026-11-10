@@ -62,6 +62,50 @@ of these, because each copy is under the limit.
    fetch the `package.tgz` that `ig-index:build` writes into
    `fhir-artifact-index/` at publish.
 
+## Releasing
+
+The owner set this process on 2026-11-09 (Q-REL-1 "A"). A release is cut
+from a tag, carries the same files every time, and is published by a
+person.
+
+1. **A tag starts it.** Pushing a tag such as `v1.0.0` runs the IG's
+   `ig-release.yml` caller (template:
+   `templates/ig-repo-site/ig-release.yml`). It can also be started by hand
+   for an existing tag.
+2. **The build is full.** The caller runs `ig-ast-refresh.yml` with
+   `force` and `release` set. A release is never cut from an incremental
+   AST.
+3. **Every release carries the same files.** `ig-release.ts assets`
+   gathers them:
+   - `package.tgz`, plus `package.r4.tgz` and `package.r4b.tgz` when the
+     build wrote them;
+   - `ast-data.zip`, the IG's AST, whose Library resources keep their ELM;
+   - `SHA256SUMS`.
+
+   The Pages site serves neither the AST nor the ELM: a Library entry points
+   at its CQL source and the ELM ships here. A build with no `package.tgz`
+   is refused.
+4. **It is made as a GitHub draft.** `ig-release.ts draft` makes the draft
+   and uploads the files. If the tag already has a draft, its files are
+   replaced. If the tag already has a published release, it is refused,
+   because a published release is never changed by a workflow.
+5. **The owner publishes it.** Publishing the draft on GitHub is
+   `Task_AuthorizeRelease` in `draft-to-publication.bpmn`. Until then nobody
+   but the repository's writers sees it, and `ingest-ig-releases` leaves it
+   out of `releases.json`.
+6. **A ballot, draft or CI-build version is a pre-release.**
+   `ig-release.ts kind` reads `sushi-config.yaml`:
+   - a version with a pre-release suffix (`1.0.0-ballot`) is a pre-release;
+   - so is a `releaseLabel` naming a ballot, draft, CI build, preview or
+     snapshot;
+   - anything else, including `STU1` and `trial-use`, is a release.
+
+   Pre-releases are recorded in `releases.json` with their flag, and the
+   site's releases page lists them.
+
+An IG's working version (`status: draft`, `releaseLabel: ci-build` on the
+default branch) gets no release at all. Its Pages site is the preview.
+
 ## Measure before deciding
 
 ```sh
