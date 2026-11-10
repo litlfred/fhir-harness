@@ -485,7 +485,7 @@ export function stateFromOutput(indexFile: string, output: string): number {
  * thin `artifacts.html` and `toc.html` draw. Returns the layer directory the
  * pages and the index are in.
  */
-export function astArtefactPages(o: { ig: string; ast: string; work: string; name: string; label: string; igApi?: IgApi; log: (s: string) => void }): string {
+export function astArtefactPages(o: { ig: string; ast: string; work: string; siteWork?: string; name: string; label: string; igApi?: IgApi; log: (s: string) => void }): string {
   if (!existsSync(join(o.ast, "manifest.json"))) {
     throw new Error(`${o.ast}: no AST — run ${IG_SITE_SCRIPTS.ast} first. The site is never built from the Publisher's output`);
   }
@@ -506,7 +506,10 @@ export function astArtefactPages(o: { ig: string; ast: string; work: string; nam
   bun("ast-to-artifact-index.ts", args);
   // The resources by raw URL at the restored cache commit when `ast` recorded
   // one (fhir-harness#325), else each copied to the site root (`AST_DATA`).
-  const raw = astRawBase(o.work);
+  // The SITE BUILD's work directory, where `ast` recorded the commit, not
+  // compose's own scratch `work` (the first preview build read the scratch one,
+  // found no record, and pointed the pages at root copies publisher-pages never wrote).
+  const raw = astRawBase(o.siteWork);
   o.log(raw ? `artefact pages: the resources are read from ${raw} (the AST cache commit), not copied into the site` : `artefact pages: the resources are served at the site root as <Type>-<id>.json`);
   bun("gen-ig-pages.ts", [
     "--instance", inst, "--index", index, "--label", o.label, "--ig-site", "--compiled-data", raw ?? AST_DATA, "--search",
@@ -589,7 +592,7 @@ export function compose(o: { docs: string; ig: string; baseurl: string; ast?: st
     const igApi = readIgApi(o.work);
     log(igApi ? `${name}: ${igApi.files} IG API sidecar file(s) left by a layer above${igApi.label ? `, called "${igApi.label}"` : ""}` : `${name}: no IG API sidecars under the work directory — none bound`);
     const ast = resolve(o.ast ?? join(ig, AST_DIR));
-    const inst = astArtefactPages({ ig, ast, work, name, label, ...(igApi ? { igApi } : {}), log });
+    const inst = astArtefactPages({ ig, ast, work, ...(o.work ? { siteWork: o.work } : {}), name, label, ...(igApi ? { igApi } : {}), log });
     if (o.work) {
       // For `publisher-pages`, which serves the index the pages were drawn from.
       mkdirSync(join(o.work, INDEX_WORK), { recursive: true });

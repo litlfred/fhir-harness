@@ -216,6 +216,12 @@ Feature: Building an IG repository's own site from its AST
     Then the record names the branch's commit and the remote, and the AST is laid down
     And with that AST already present the commit is recorded again, and with a changed manifest nothing is recorded
 
+  @test:scripts/ig-repo-site.test.ts::the_AST's_resources_by_raw_URL_at_the_cache_commit_(fhir-harness#325)::pagesReadTheSiteWorkRecord
+  Scenario: the artefact pages read the commit from the site build's work directory, not compose's scratch one
+    Given the record in the site build's work directory and an empty scratch directory
+    When the artefact pages are built
+    Then they name the raw URL at that commit, as publisher-pages does
+
   @test:scripts/ig-repo-site.test.ts::the_AST's_resources_by_raw_URL_at_the_cache_commit_(fhir-harness#325)::byUrlServesNoRootCopy
   Scenario: publisher pages copies no resource to the root when the pages read them by URL
     Given a work directory where ast recorded the cache commit

@@ -17,6 +17,7 @@ import type { FhirArtifact } from "../schemas/fhir-artifact-index.js";
 import {
   acceptStaleFromEnv,
   AST_SOURCE_FILE,
+  astArtefactPages,
   astGate,
   astRawBase,
   builtPage,
@@ -532,6 +533,30 @@ describe("the AST's resources by raw URL at the cache commit (fhir-harness#325)"
     writeFileSync(join(ig, "output-ast", "manifest.json"), "{}");
     expect(again().status).toBe(0);
     expect(existsSync(record)).toBe(false);
+  });
+
+  test("pagesReadTheSiteWorkRecord", () => {
+    // compose has a scratch work directory of its own; the record is in the SITE build's.
+    const root = join(dir, "pages-by-url");
+    mkdirSync(root, { recursive: true });
+    // A valid AST manifest, as the cache holds it.
+    const ast = join(root, "output-ast");
+    mkdirSync(join(ast, "resources", "ValueSet"), { recursive: true });
+    writeFileSync(join(ast, "resources", "ValueSet", "x--0000.json"), JSON.stringify({ resourceType: "ValueSet", id: "x", url: "http://ex/ValueSet/x", name: "X" }));
+    writeFileSync(
+      join(ast, "manifest.json"),
+      JSON.stringify({ $schema: "ig-ast/v1", authority: "cache", provisional: [], inputs: { toolchain: "t", sourceRevision: "a".repeat(40) }, resources: [{ key: "http://ex/ValueSet/x|", canonical: "http://ex/ValueSet/x", version: null, resourceType: "ValueSet", id: "x", name: "X", file: "resources/ValueSet/x--0000.json", source: null }] }),
+    );
+    writeFileSync(join(ast, "dependencies.json"), JSON.stringify({ $schema: "ig-ast-dependencies/v1", authority: "cache", dependencies: [] }));
+    writeFileSync(join(root, "sushi-config.yaml"), "id: ex.ig\ntitle: Ex\n");
+    const siteWork = recorded("pages-by-url-site", { commit: sha, remote: "https://github.com/a/b" });
+    const work = join(root, "scratch");
+    mkdirSync(work, { recursive: true });
+    const said: string[] = [];
+    const inst = astArtefactPages({ ig: root, ast, work, siteWork, name: "ex", label: "Ex", log: (s) => said.push(s) });
+    expect(said.join("\n")).toContain(`read from https://raw.githubusercontent.com/a/b/${sha}`);
+    const node = readFileSync(join(inst, "docs", "artifact", "ValueSet-x.jsonld"), "utf-8");
+    expect(node).toContain(`https://raw.githubusercontent.com/a/b/${sha}/resources/ValueSet/x--0000.json`);
   });
 
   test("byUrlServesNoRootCopy", () => {
