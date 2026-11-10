@@ -42,6 +42,8 @@ import {
   isPreviewBase,
   isRedirectStub,
   libraryByUrl,
+  reduceForSite,
+  rootResourcesFromEnv,
   platformCommit,
   listedInstances,
   notSource,
@@ -571,9 +573,10 @@ describe("the AST's resources by raw URL at the cache commit (fhir-harness#325)"
     expect(node).toContain(`https://raw.githubusercontent.com/a/b/${sha}/resources/ValueSet/x--0000.json`);
   });
 
-  test("byUrlServesNoRootCopy", () => {
+  test("byUrlServesReducedRootCopy", () => {
     const root = join(dir, "serve-by-url");
     const ast = fakeAst(root, [{ resourceType: "ValueSet", id: "x" }]);
+    writeFileSync(join(ast, "resources/ValueSet/x--0000.json"), JSON.stringify({ resourceType: "ValueSet", id: "x", text: { status: "generated", div: "<div>x</div>" }, url: "http://ex/ValueSet/x" }, null, 2));
     const work = recorded("serve-by-url-work", { commit: sha, remote: "https://github.com/a/b" });
     mkdirSync(join(work, INDEX_WORK), { recursive: true });
     writeFileSync(join(work, INDEX_WORK, "index.json"), "{}");
@@ -581,10 +584,81 @@ describe("the AST's resources by raw URL at the cache commit (fhir-harness#325)"
     mkdirSync(site, { recursive: true });
     const said: string[] = [];
     const r = publisherPages({ site, ast, work, log: (s) => said.push(s) });
-    expect(r.named).toBe(0);
+    expect(r.named).toBe(1);
+    expect(r.reduced).toBe(true);
     expect(r.index).toBe(true);
-    expect(existsSync(join(site, "ValueSet-x.json"))).toBe(false);
+    // FHIR's convention, the Publisher's name, at the root: minified and without the narrative.
+    expect(readFileSync(join(site, "ValueSet-x.json"), "utf-8")).toBe('{"resourceType":"ValueSet","id":"x","url":"http://ex/ValueSet/x"}');
     expect(said.join("\n")).toContain(`raw.githubusercontent.com/a/b/${sha}`);
+    expect(said.join("\n")).toContain("1 reduced resource(s) as <Type>-<id>.json at the root");
+  });
+
+  test("rootResourcesOffServesNoRootCopy", () => {
+    expect(rootResourcesFromEnv({})).toBe(true);
+    expect(rootResourcesFromEnv({ SITE_ROOT_RESOURCES: "1" })).toBe(true);
+    expect(rootResourcesFromEnv({ SITE_ROOT_RESOURCES: "0" })).toBe(false);
+    const root = join(dir, "serve-root-off");
+    const ast = fakeAst(root, [{ resourceType: "ValueSet", id: "x" }]);
+    const site = join(root, "_site");
+    mkdirSync(site, { recursive: true });
+    expect(serveAstData({ site, ast, byUrl: true, rootResources: false }).named).toBe(0);
+    expect(existsSync(join(site, "ValueSet-x.json"))).toBe(false);
+    // Without a cache commit to read by URL, the root copy is the pages' own: served whole, whatever the switch says.
+    expect(serveAstData({ site, ast, rootResources: false }).named).toBe(1);
+    expect(readFileSync(join(site, "ValueSet-x.json"), "utf-8")).toBe(JSON.stringify({ resourceType: "ValueSet", id: "x" }));
+  });
+
+  test("rootNameFromTheResourceNotTheFile", () => {
+    const root = join(dir, "serve-root-name");
+    const ast = join(root, "output-ast");
+    mkdirSync(join(ast, "resources", "ValueSet"), { recursive: true });
+    // The cache file name may change (fhir-ig-publisher#13): `<id>.json`, or a hash; the resource says what it is.
+    writeFileSync(join(ast, "resources/ValueSet/whatever.json"), JSON.stringify({ resourceType: "ValueSet", id: "Real-Id" }));
+    writeFileSync(join(ast, "manifest.json"), JSON.stringify({ resources: [{ file: "resources/ValueSet/whatever.json" }] }));
+    const site = join(root, "_site");
+    mkdirSync(site, { recursive: true });
+    expect(serveAstData({ site, ast, byUrl: true }).named).toBe(1);
+    expect(existsSync(join(site, "ValueSet-Real-Id.json"))).toBe(true);
+  });
+
+  test("caseOnlyCollisionWarned", () => {
+    const root = join(dir, "serve-root-case");
+    const ast = fakeAst(root, [{ resourceType: "ValueSet", id: "abc" }, { resourceType: "ValueSet", id: "ABC" }]);
+    const site = join(root, "_site");
+    mkdirSync(site, { recursive: true });
+    const said: string[] = [];
+    const r = serveAstData({ site, ast, byUrl: true, warn: (s) => said.push(s) });
+    expect(r.caseCollisions).toEqual(["ValueSet-abc.json / ValueSet-ABC.json"]);
+    expect(said.join("\n")).toContain("differ only by case");
+  });
+
+  test("reducedLibraryKeepsCqlPointsElmAtFullCopy", () => {
+    const full = `https://raw.githubusercontent.com/a/b/${sha}/resources/Library/L--1.json`;
+    const lib = {
+      resourceType: "Library",
+      id: "L",
+      text: { status: "generated", div: "<div/>" },
+      contained: [{ resourceType: "Parameters", id: "p", text: { status: "generated", div: "<div/>" } }],
+      content: [
+        { contentType: "text/cql", data: "Y3Fs" },
+        { contentType: "application/elm+xml", data: "eG1s" },
+        { contentType: "application/elm+json", data: "anNvbg==" },
+      ],
+    };
+    expect(reduceForSite(lib, full)).toEqual({
+      resourceType: "Library",
+      id: "L",
+      contained: [{ resourceType: "Parameters", id: "p" }],
+      content: [
+        { contentType: "text/cql", data: "Y3Fs" },
+        { contentType: "application/elm+xml", url: full },
+        { contentType: "application/elm+json", url: full },
+      ],
+    });
+    // No full copy to point at: the ELM's data is still left out, the entry kept.
+    expect((reduceForSite(lib) as { content: unknown[] }).content[1]).toEqual({ contentType: "application/elm+xml" });
+    // The input is not changed.
+    expect(lib.content[1]!.data).toBe("eG1s");
   });
 });
 

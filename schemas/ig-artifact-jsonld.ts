@@ -18,7 +18,7 @@
  * | `schema:name`, `dcterms:title`, `dcterms:description`, `schema:version` | the resource's own `name`, `title`, `description`, `version` |
  * | `dcterms:type` | the Publisher's `artifacts.html` grouping |
  * | `schema:sameAs` | the FHIR canonical URL: the artefact's identity, never where its bytes are |
- * | `schema:encoding` | each representation as a `schema:MediaObject` (`schema:contentUrl`, `schema:encodingFormat`) |
+ * | `schema:encoding` | each representation as a `schema:MediaObject` (`schema:contentUrl`, `schema:encodingFormat`, `dcterms:source`): first the reduced copy the site serves at its root as `<Type>-<id>.json` (`local`), then the full copy in the AST cache by raw URL (`mirror`), then the IG's own published file (`upstream`) |
  * | `schema:creativeWorkStatus` | `materialized` or `referenced`, the index's own two states |
  * | `prov:wasGeneratedBy` | for a compiled copy, the toolchain (`schema:instrument`) and the revision it built (`prov:used`) |
  * | `dcterms:isPartOf` | the IG, by package id, version and canonical base |
@@ -85,8 +85,13 @@ export const IgArtifactEncodingSchema = z
     "@type": z.literal("schema:MediaObject"),
     "schema:contentUrl": IdRef,
     "schema:encodingFormat": z.string().min(1),
-    /** `local`: a copy this site serves; `upstream`: the file where the IG publishes it. */
-    "dcterms:source": z.enum(["local", "upstream"]),
+    /**
+     * `local`: a copy this site serves (the reduced `<Type>-<id>.json` at the
+     * site root, listed first); `mirror`: the full copy in the IG's AST cache,
+     * by raw URL pinned to the cache commit; `upstream`: the file where the IG
+     * publishes it.
+     */
+    "dcterms:source": z.enum(["local", "mirror", "upstream"]),
   })
   .strict();
 export type IgArtifactEncoding = z.infer<typeof IgArtifactEncodingSchema>;
@@ -163,7 +168,7 @@ export const IgArtifactJsonLdKind = nodeKind("folio-ig-artifact-jsonld", [], IgA
  * | `dcterms:identifier`, `schema:version`, `schema:sameAs` | its package id, version and canonical base |
  * | `dcterms:title` | the IG's display name, as the site shows it |
  * | `schema:numberOfItems` | how many artefacts the index holds; QA holds the list to it |
- * | `schema:hasPart` | one entry per artefact, in the Publisher's order (`byCategory`), each naming its node by `@id` and repeating only what a list row shows: key, class, title, description, grouping, and for an instance (no canonical URL), which has no description to show, what the resource states instead — its profiles (`dcterms:conformsTo`) and its code (`dcterms:subject`). Its canonical (`schema:sameAs`) is repeated so a row can link a profile that is another artefact of the same IG, and its computer name (`schema:name`) only when the title shown is not that name and it is not the id, so the IG's search (`ig-search.js`) finds an artefact by every identifier from this one list |
+ * | `schema:hasPart` | one entry per artefact, in the Publisher's order (`byCategory`), each naming its node by `@id` and repeating only what a list row shows: key, class, title, description, grouping, and for an instance (no canonical URL), which has no description to show, what the resource states instead — its profiles (`dcterms:conformsTo`) and its code (`dcterms:subject`). Its canonical (`schema:sameAs`) is repeated so a row can link a profile that is another artefact of the same IG, and its computer name (`schema:name`) only when the title shown is not that name and it is not the id, so the IG's search (`ig-search.js`) finds an artefact by every identifier from this one list. `schema:contentUrl` is the resource file the site serves at its root, `<Type>-<id>.json`, the node's first `local` encoding |
  *
  * An entry is a SUMMARY of the node it names, never a second home for a fact
  * the node lacks: `check` holds every entry's key, class, canonical, profiles,
@@ -183,6 +188,8 @@ export const IgArtifactIndexEntrySchema = z
     "schema:sameAs": IdRef.optional(),
     "dcterms:conformsTo": IgConformsToSchema.optional(),
     "dcterms:subject": IgSubjectSchema.optional(),
+    /** The resource this site serves at its root, `<Type>-<id>.json` (the node's first `local` encoding), so a harvester finds every file from this one list. */
+    "schema:contentUrl": IdRef.optional(),
   })
   .strict();
 export type IgArtifactIndexEntry = z.infer<typeof IgArtifactIndexEntrySchema>;

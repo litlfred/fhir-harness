@@ -510,6 +510,19 @@ jobs:
           bash fhir-harness/scripts/ig-cache.sh seed --ig-root . --push
           echo "seeded=true" >> "$GITHUB_OUTPUT"
 
+      # The release catch-up (skill ig-binary-artefacts, "Releasing"): tagging
+      # is the owner's decision, so this only reports an untagged current
+      # version (naming the commit that set it) or a tag with no release. It
+      # never tags and never fails the run.
+      - name: Is the current version tagged and released? (advisory)
+        if: always() && !inputs.release && (inputs.ref == github.event.repository.default_branch || inputs.ref == 'main')
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          bun run fhir-harness/scripts/ig-release.ts check --ig . --repo "${{ github.repository }}" \
+            | tee -a "$GITHUB_STEP_SUMMARY" | sed 's/^/::notice::/'
+
       - name: Keep the AST when it was not seeded
         if: steps.ast.outputs.rebuild == 'true' && steps.seed.outputs.seeded != 'true'
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2

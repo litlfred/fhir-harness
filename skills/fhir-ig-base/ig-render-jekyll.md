@@ -99,9 +99,13 @@ graph, unless a build passes `--full-pages`. The shell is cat-harness-tools'
   `ig-artifact-jsonld.ts` from the index (kind
   `ig-artifact-jsonld`; QA `ig-artifact-jsonld.ts check` over the built site).
   It uses the FHIR RDF class, dcterms, schema.org and PROV, and mints nothing.
-  The page names the node as `alternate`.
+  The page names the node as `alternate`. Its encodings list the reduced
+  `<Type>-<id>.json` at the site root first (`local`), then the full copy in
+  the AST cache by raw URL (`mirror`), then the IG's published file
+  (`upstream`); `artifact/index.jsonld` names each root file on its entry
+  (`schema:contentUrl`; fhir-harness#359).
 - **One shared renderer.** `assets/ig-artifact.js` fetches the node, then
-  the resource's local copy, draws the description, facts, identity table and
+  the resource's full copy (the `mirror`, else the `local` one), draws the description, facts, identity table and
   elements, concepts or includes, and hands the narrative and JSON to
   `ast-resource.js`. The page carries only its title, key and a `<noscript>`
   link to the node and resource.
