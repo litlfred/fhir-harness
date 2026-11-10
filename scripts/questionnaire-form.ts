@@ -117,6 +117,14 @@ export interface FormPageOptions {
   expansions?: string;
   /** The IG's restored Publisher `txcache/` (`input-cache/txcache/`), for the terminology index. */
   txcache?: string;
+  /**
+   * Where the AST is read by URL: the cache commit's tree on
+   * raw.githubusercontent.com (`astRawBase`, fhir-harness#325). Given, the
+   * page's suggest editor fetches the unexpanded Questionnaire from there,
+   * at the manifest's `file`, and no `.source.json` copy is written into the
+   * site. Absent, the copy is written beside the rendered one, as before.
+   */
+  astRaw?: string;
 }
 
 export interface FormPage {
@@ -159,8 +167,8 @@ export function formPageHtml(q: { id: string; title?: string; name?: string; url
   // issue names and the runtime's FSH pane edits (`ctx.sourcePath` /
   // `ctx.sourceText`); `data-suggest-text` is the URL, relative to this page,
   // of the built Questionnaire JSON the form mode edits as `ctx.text`: the
-  // AST's `.source.json` copy, not the rendered one, whose value sets were
-  // expanded for display.
+  // AST's own file (at the AST cache commit, or its `.source.json` copy), not
+  // the rendered one, whose value sets were expanded for display.
   const src = `${o.source ? ` data-src="${esc(o.source)}"` : ""}${o.text ? ` data-suggest-text="${esc(o.text)}"` : ""} data-block="questionnaire:${esc(q.id)}" data-suggest-mode="${QUESTIONNAIRE_PROFILE.id}"`;
   return [
     "---",
@@ -253,6 +261,11 @@ export function checkerModule(): string {
   return `// GENERATED from fhir-harness/scripts/check-wireframe-questionnaire.ts; do not edit.\n${t.transformSync(readFileSync(CHECKER, "utf-8"))}`;
 }
 
+/** An AST file's URL under the cache commit's raw base, each path segment encoded. */
+export function astFileUrl(raw: string, file: string): string {
+  return `${raw.replace(/\/+$/, "")}/${file.split("/").map(encodeURIComponent).join("/")}`;
+}
+
 /**
  * Every Questionnaire in the AST gets a form page. No AST, or no
  * Questionnaire in it: nothing written and an empty list back.
@@ -273,9 +286,11 @@ export function questionnaireFormPages(astDir: string, out: string, o: FormPageO
     const { questionnaire: q, expanded, missing } = preExpand(source, expansions);
     const json = `questionnaires/Questionnaire-${r.id}.json`;
     writeFileSync(join(out, json), JSON.stringify(q, null, 2) + "\n");
-    // The unexpanded Questionnaire, as the IG built it: what a suggested edit diffs against.
-    const text = `questionnaires/Questionnaire-${r.id}.source.json`;
-    writeFileSync(join(out, text), JSON.stringify(source, null, 2) + "\n");
+    // The unexpanded Questionnaire, as the IG built it: what a suggested edit
+    // diffs against. Read from the AST cache commit when the site reads the
+    // AST by URL, else copied into the site beside the rendered one.
+    const text = o.astRaw ? astFileUrl(o.astRaw, r.file) : `questionnaires/Questionnaire-${r.id}.source.json`;
+    if (!o.astRaw) writeFileSync(join(out, text), JSON.stringify(source, null, 2) + "\n");
     const page = `Questionnaire-${r.id}-form.html`;
     const src = r.source ?? undefined;
     writeFileSync(join(out, page), formPageHtml({ ...q, id: r.id }, { builder: staged.builder, sw: staged.sw, ...o, json, text, source: src }));

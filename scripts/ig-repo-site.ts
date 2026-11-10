@@ -624,11 +624,14 @@ export function compose(o: { docs: string; ig: string; baseurl: string; ast?: st
     // The QA report the footer's "QA Report" links: the FHIR QA the build
     // holds and the knowledge graph's, on one page (`ig-qa-page.ts`).
     const qa = buildQaPage({ root: ig, ast, ...(o.work ? { validity: join(o.work, VALIDITY_FILE) } : {}) });
+    const astRaw = astRawBase(o.work);
     const r = stageIgSite(src, site, {
       baseurl,
       menu,
       // The IG's pages loop site.data.canonicals and site.data["<Type>-<id>"]: drawn from the same AST.
       ast,
+      // The form pages read each Questionnaire's AST file at the cache commit, as the artefact pages do.
+      ...(astRaw ? { astRaw } : {}),
       artifacts: artifactsFor(inst, "artifact/"),
       footer: footerFor(inst, ""),
       ...(theme.palette ? { palette: theme.palette } : {}),
