@@ -206,7 +206,12 @@ its IG sources may add the optional caller
 2. restores and judges the cache for `ref` (default `main`);
 3. if the cache is not valid, or `force` is set, runs the caller's
    `pre-export` command when it gives one, then builds the IG with
-   `AstExportCli` (Tool `ig-ast-export`, pinned `ast-export-ref`);
+   `AstExportCli` (Tool `ig-ast-export`, pinned `ast-export-ref`). The
+   exporter comes from its published bundle, the release
+   `ast-export-<commit>` that `ast-export-bundle.yml` builds once per pinned
+   commit, when its sha256 matches `scripts/ast-export-bundles.tsv`, and is
+   built from source otherwise. The bundle, the pinned Jekyll gems and the
+   FHIR packages are kept in the `fhir-ig-tooling` cache;
 4. puts back what `pre-export` changed in the inputs, and checks that the new
    AST is valid for its own commit;
 5. seeds the cache with `ig-cache.sh seed --push`, only when the commit is on

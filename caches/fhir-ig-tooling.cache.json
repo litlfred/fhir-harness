@@ -1,11 +1,11 @@
 {
   "$schema": "cache/1.0.0",
   "id": "fhir-ig-tooling",
-  "title": "FHIR IG tooling: FHIR packages, Maven repository and SUSHI for the AST refresh",
+  "title": "FHIR IG tooling: FHIR packages, Maven repository, SUSHI, Jekyll gems and the compiled AST exporter for the AST refresh",
   "instance": "fhir-harness",
   "kind": "actions-cache",
   "trustClass": "c",
-  "location": "fhir-ig-tooling-v2-<ast-export-ref>-<pins hash>-<IG hash>, in the calling IG repository's Actions cache",
+  "location": "fhir-ig-tooling-v3-<ast-export-ref>-<pins hash>-<IG hash>, in the calling IG repository's Actions cache",
   "keyRecipe": {
     "source": "hashFiles",
     "files": [
@@ -13,10 +13,10 @@
       "sushi-config.yaml",
       "ig.ini"
     ],
-    "expression": "fhir-ig-tooling-v2-${{ inputs.ast-export-ref }}-${{ hashFiles('fhir-harness/scripts/ig-toolchain.env') }}-${{ hashFiles('sushi-config.yaml', 'ig.ini') }}"
+    "expression": "fhir-ig-tooling-v3-${{ inputs.ast-export-ref }}-${{ hashFiles('fhir-harness/scripts/ig-toolchain.env') }}-${{ hashFiles('sushi-config.yaml', 'ig.ini') }}"
   },
-  "derivedInputs": "the toolchain pins (scripts/ig-toolchain.env: Java, Node and SUSHI versions), the IG's sushi-config.yaml (its FHIR package dependencies) and ig.ini, and the AST exporter ref",
-  "holds": "~/.fhir/packages, ~/.m2/repository, ~/.npm-global (SUSHI)",
+  "derivedInputs": "the toolchain pins (scripts/ig-toolchain.env: Java, Node, SUSHI, Ruby and Jekyll versions), the IG's sushi-config.yaml (its FHIR package dependencies) and ig.ini, and the AST exporter ref",
+  "holds": "~/.fhir/packages, ~/.m2/repository, ~/.npm-global (SUSHI), ~/.ig-toolchain (Jekyll gems per Ruby version; the AST exporter's classes and jars per commit, from its published bundle when its sha256 matches scripts/ast-export-bundles.tsv, else built from source)",
   "producer": "ig-ast-refresh.yml on the default branch only: a successful rebuild that missed the key saves it (actions/cache/save)",
   "consumers": [
     "the same workflow's rebuild: SUSHI and the IG Publisher with the AST exporter"
@@ -24,7 +24,8 @@
   "materializes": [
     "~/.fhir/packages/",
     "~/.m2/repository/",
-    "~/.npm-global/"
+    "~/.npm-global/",
+    "~/.ig-toolchain/"
   ],
   "stateInputs": {
     "reads": "unmeasured",
@@ -36,7 +37,7 @@
     "how": "a missed key on the default branch saves a new entry; the one restore-key keeps the pins hash, so a fallback entry has the same toolchain and only the IG's packages may differ"
   },
   "savePolicy": "default branch only, after a successful build that missed the key",
-  "verify": "the toolchain is part of the key, so an entry built with another Java, Node or SUSHI is never restored; SUSHI is also checked by version before use (`sushi --version` against the pin, reinstalled on mismatch). FHIR packages are versioned by name",
+  "verify": "the toolchain is part of the key, so an entry built with another Java, Node, SUSHI, Ruby or Jekyll is never restored; SUSHI is also checked by version before use (`sushi --version` against the pin, reinstalled on mismatch). FHIR packages are versioned by name. The AST exporter directory is keyed by its commit and only used once its `ok` marker is written; a downloaded bundle is used only when its sha256 matches the pin",
   "owner": "fhir-harness (skill ig-build-pipeline)",
   "uses": [
     ".github/workflows/ig-ast-refresh.yml:179 the toolchain pins",
