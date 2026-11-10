@@ -44,7 +44,8 @@ dead link for an invisible one. Report it to the IG instead.
 A link to `<Type>-<id>.json` resolves on our site, as it does on the
 Publisher's (fhir-harness#359), but the file there is reduced: minified, no
 `text` narrative, and a Library's ELM attachments without `data` (their
-`url` names the full resource in the AST cache; the CQL stays). A reader
+`url` names the full resource in the AST cache; the CQL is a `url` too, to the
+IG's `.cql` source or else the full resource). A reader
 who needs the narrative or the ELM follows the JSON-LD node's `mirror`
 encoding or takes the release's `package.tgz`. The artefact pages read the
 full copy themselves.
