@@ -46,7 +46,7 @@ set -euo pipefail
 IG=.
 TX=http://tx.fhir.org
 # The ast-export commit ig-ast-refresh.yml builds with (its `ast-export-ref` default).
-REF=a7a58da244f2515f00bea5c9175b598c49974b69
+REF=b1f85fa101b343e625d69df54d939b1949a062cb
 WORK="${TMPDIR:-/tmp}/ig-ast-build"
 TEMPLATE_ARGS=()
 PACKAGE_LOCK=fhir-packages.lock.json
