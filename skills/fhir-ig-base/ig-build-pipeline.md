@@ -150,9 +150,11 @@ Terms:
 - **AST**: the per-resource dump the IG Publisher AST exporter writes
   (`output-ast/`; formats in [`ig-ast-delta`](ig-ast-delta.md)).
 - **Cache branch**: `cat/fhir-harness/fhir-ast/<package id>` on the IG's own
-  repository, one orphan commit holding the AST, the Publisher's
-  `expansions.json` and its `txcache/`. `<package id>` is `sushi-config.yaml`'s
-  `id`.
+  repository. Its tip holds the AST, the Publisher's `expansions.json` and
+  its `txcache/`; each seed is a child of the previous tip, so every commit a
+  site was built from stays reachable for pages that read the AST by raw URL
+  pinned to that commit (owner, 2026-11-10; fhir-harness#325). `<package id>`
+  is `sushi-config.yaml`'s `id`.
 - **Valid**: `ig-ast.ts validity` says the AST was built from the inputs the
   commit being published has (Publisher version, `sushi-config.yaml`,
   `ig.ini`, `input/`).
