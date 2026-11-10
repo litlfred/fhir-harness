@@ -158,14 +158,14 @@ import { parse as parseYaml } from "yaml";
 import { conceptOf, profilesOf } from "./ast-to-artifact-index.ts";
 import { astValidity, type AstValidity, buildKind, readAst } from "./ig-ast.ts";
 import { composeIgSite, dedupeSiteIds, describeStage, IG_THIN_CSS_FILE, stageIgSite, type SitePalette } from "./build-ig-site";
-import { artifactSearchEntries, IG_SEARCH_INDEX_FILE, IG_SEARCH_SCRIPT_FILE, IG_SEARCH_SCRIPT_SOURCE, igSearchIndex, pageSearchEntries, withIgBar } from "./ig-search.ts";
+import { artifactSearchEntries, IG_SEARCH_ARTIFACTS_NODE, IG_SEARCH_INDEX_FILE, IG_SEARCH_SCRIPT_FILE, IG_SEARCH_SCRIPT_SOURCE, igSearchIndex, pageSearchEntries, withIgBar } from "./ig-search.ts";
 import { translationMetaBlock, withTranslationMeta } from "../../cat-harness-tools/scripts/lib/translation-meta.ts";
 import { declaredEntries, type ResolvedEntry, type Served, servedDirectories } from "../../cat-harness-tools/scripts/mount-instance-docs.ts";
 import { igOpenapiGraph, OPENAPI_DIR } from "../../cat-harness-tools/openapi/scripts/ig-site-openapi.ts";
 import type { FhirArtifactIndex } from "../schemas/fhir-artifact-index.js";
 import { buildMenu } from "./ingest-ig-menu.ts";
 import { THIN_INDEX_CONFIG_ID, THIN_PAGE_CONFIG_ID } from "./ig-thin-pages.ts";
-import { COMPILED_BY_NAME } from "./ig-artifact-jsonld.ts";
+import { ARTIFACT_DIR, ARTIFACT_INDEX_FILE, COMPILED_BY_NAME } from "./ig-artifact-jsonld.ts";
 import { AST_HISTORY_FILE, readAstHistory } from "./ig-ast-history.ts";
 import { copyDeclared, igReadScope, type IgReadScope } from "./ig-read-scope.ts";
 import { siteBuild, type SiteBuild, STAMP_FILE } from "./site-build-stamp.ts";
@@ -674,7 +674,7 @@ export function compose(o: { docs: string; ig: string; baseurl: string; ast?: st
     }
     if (c.collisions.length) throw new Error(`${name}: ${c.collisions.length} path(s) the host source already holds — refusing two answers for one URL:\n  ${c.collisions.slice(0, 20).join("\n  ")}`);
     const s = writeSearch(resolve(o.docs), site, JSON.parse(readFileSync(join(inst, INDEX_SERVED, "index.json"), "utf-8")) as FhirArtifactIndex);
-    log(`${name}: search over ${s.pages} page(s) and ${s.artifacts} artefact(s) at ${IG_SEARCH_INDEX_FILE} (${Math.round(s.bytes / 1024)} KB, fetched on the first search)`);
+    log(`${name}: search over ${s.pages} page(s) and ${s.artifacts} artefact(s) at ${IG_SEARCH_INDEX_FILE} (${Math.round(s.bytes / 1024)} KB, fetched on the first search)${s.fromNode ? `; the artefacts are read from ${ARTIFACT_DIR}/${ARTIFACT_INDEX_FILE}, not copied` : ""}`);
   } finally {
     rmSync(work, { recursive: true, force: true });
   }
@@ -683,12 +683,17 @@ export function compose(o: { docs: string; ig: string; baseurl: string; ast?: st
 /**
  * The IG's search under the docs root: the index of the staged site's pages
  * and the artefact index's artefacts, and the client every box loads
- * (`ig-search.ts`). A path the host source already holds is refused, as
- * every other file `compose` writes is.
+ * (`ig-search.ts`). When the site serves the artefact index node
+ * (`artifact/index.jsonld`, in the staged site or the docs root), the search
+ * index names it and the client reads the artefacts from it, rather than a
+ * second list of them being written here (`fromNode`). A path the host
+ * source already holds is refused, as every other file `compose` writes is.
  */
-export function writeSearch(docs: string, staged: string, ix: Pick<FhirArtifactIndex, "artifacts">): { pages: number; artifacts: number; bytes: number } {
+export function writeSearch(docs: string, staged: string, ix: Pick<FhirArtifactIndex, "artifacts">): { pages: number; artifacts: number; bytes: number; fromNode: boolean } {
   const pages = pageSearchEntries(staged);
-  const artifacts = artifactSearchEntries(ix.artifacts);
+  const node = join(ARTIFACT_DIR, ARTIFACT_INDEX_FILE);
+  const fromNode = existsSync(join(staged, node)) || existsSync(join(docs, node));
+  const artifacts = fromNode ? IG_SEARCH_ARTIFACTS_NODE : artifactSearchEntries(ix.artifacts);
   const body = `${JSON.stringify(igSearchIndex(pages, artifacts))}\n`;
   for (const [rel, text] of [[IG_SEARCH_INDEX_FILE, body], [IG_SEARCH_SCRIPT_FILE, readFileSync(IG_SEARCH_SCRIPT_SOURCE, "utf-8")]] as const) {
     const to = join(docs, rel);
@@ -696,7 +701,7 @@ export function writeSearch(docs: string, staged: string, ix: Pick<FhirArtifactI
     mkdirSync(dirname(to), { recursive: true });
     writeFileSync(to, text);
   }
-  return { pages: pages.length, artifacts: artifacts.length, bytes: Buffer.byteLength(body) };
+  return { pages: pages.length, artifacts: ix.artifacts.length, bytes: Buffer.byteLength(body), fromNode };
 }
 
 /**

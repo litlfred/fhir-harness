@@ -23,10 +23,18 @@
  *
  * ## Where the nodes go
  *
- * Beside the pages that render them, `<docs>/artifact/<Type>-<id>.jsonld`,
- * with a `.json` twin because GitHub Pages serves no JSON-LD media type (the
- * `todo-graph` and OpenAPI precedent). `gen-ig-pages.ts --thin` writes them
- * with the pages; this CLI writes them alone, and checks a built site.
+ * Beside the pages that render them, `<docs>/artifact/<Type>-<id>.jsonld`.
+ * `gen-ig-pages.ts --thin` writes them with the pages; this CLI writes them
+ * alone, and checks a built site.
+ *
+ * No `.json` twin. Each node used to have a byte-identical `<Type>-<id>.json`
+ * beside it, and the index node an `index.json`, on the reasoning that GitHub
+ * Pages serves no JSON-LD media type. Every reader fetches the `.jsonld` (the
+ * thin pages, `ig-search.js`, the `alternate` link) and parses it with
+ * `response.json()`, which does not look at the media type; nothing on a site
+ * named a twin, and the twins were 2.1 MB of one IG's site (owner,
+ * 2026-11-10, "do B": the artefact lists a site ships overlap). `check`
+ * reports a twin it finds, so a stale one is not served.
  *
  * ## IRIs
  *
@@ -204,6 +212,8 @@ export function artifactIndexJsonLd(ix: FhirArtifactIndex, o: JsonLdOptions = {}
     "@type": `fhir:${a.resourceType}`,
     "dcterms:identifier": a.key,
     "dcterms:title": a.title ?? a.name ?? a.id,
+    // The computer name, for the IG's search, when neither the title nor the id says it.
+    ...(a.name && a.name !== (a.title ?? a.name) && a.name !== a.id ? { "schema:name": a.name } : {}),
     ...(a.description ? { "dcterms:description": a.description } : {}),
     ...(a.category ? { "dcterms:type": a.category } : {}),
     ...(a.canonical ? { "schema:sameAs": { "@id": a.canonical } } : {}),
@@ -225,8 +235,8 @@ export function artifactIndexJsonLd(ix: FhirArtifactIndex, o: JsonLdOptions = {}
 
 /**
  * Every file a run writes, keyed by its path under the docs root: `<page>.jsonld`
- * and its `.json` twin per artefact, and the index node (`index.jsonld`, twin
- * `index.json`).
+ * per artefact, and the index node (`index.jsonld`). No `.json` twin (see the
+ * module's head).
  */
 export function artifactJsonLdFiles(ix: FhirArtifactIndex, o: JsonLdOptions = {}): Map<string, string> {
   const out = new Map<string, string>();
@@ -234,11 +244,9 @@ export function artifactJsonLdFiles(ix: FhirArtifactIndex, o: JsonLdOptions = {}
     const text = `${JSON.stringify(artifactJsonLd(ix, a, o), null, 2)}\n`;
     const stem = posix.join(ARTIFACT_DIR, artifactPageName(a));
     out.set(`${stem}.jsonld`, text);
-    out.set(`${stem}.json`, text);
   }
   const index = `${JSON.stringify(artifactIndexJsonLd(ix, o), null, 2)}\n`;
   out.set(posix.join(ARTIFACT_DIR, ARTIFACT_INDEX_FILE), index);
-  out.set(posix.join(ARTIFACT_DIR, ARTIFACT_INDEX_FILE.replace(/\.jsonld$/, ".json")), index);
   return out;
 }
 
@@ -265,8 +273,7 @@ export function checkArtifactIndexJsonLd(ix: FhirArtifactIndex, docsRoot: string
   if (!existsSync(p)) return [`${at}: missing — the thin artifacts and toc pages have nothing to draw`];
   const text = readFileSync(p, "utf8");
   const findings: string[] = [];
-  const twin = p.replace(/\.jsonld$/, ".json");
-  if (!existsSync(twin) || readFileSync(twin, "utf8") !== text) findings.push(`${at}: its .json twin is missing or differs`);
+  if (existsSync(p.replace(/\.jsonld$/, ".json"))) findings.push(`${at}: a .json twin is served beside it — a second copy of the node no reader fetches`);
   let raw: unknown;
   try {
     raw = JSON.parse(text);
@@ -301,6 +308,10 @@ export function checkArtifactIndexJsonLd(ix: FhirArtifactIndex, docsRoot: string
           findings.push(`${at}: the entry for ${key} says ${term} ${JSON.stringify(e[term] ?? null)}, its node ${JSON.stringify(node[term] ?? null)}`);
         }
       }
+      // Stated only when the title does not say it, so held equal only when stated.
+      if (e["schema:name"] !== undefined && e["schema:name"] !== node["schema:name"]) {
+        findings.push(`${at}: the entry for ${key} says schema:name ${JSON.stringify(e["schema:name"])}, its node ${JSON.stringify(node["schema:name"] ?? null)}`);
+      }
     } catch {
       findings.push(`${at}: ${key}'s node ${e["@id"]} is not JSON`);
     }
@@ -316,7 +327,7 @@ export function checkArtifactIndexJsonLd(ix: FhirArtifactIndex, docsRoot: string
  * - every artefact has its node, and no node names an artefact the index lacks;
  * - each node's key, type and `@id` are its own file's (a node copied to the
  *   wrong name would render another artefact's page);
- * - its `.json` twin is byte-identical;
+ * - no `.json` twin is served beside it (a second copy no reader fetches);
  * - every LOCAL `schema:contentUrl` resolves to a file under the site — the
  *   resource the page will draw. An upstream URL is not fetched: this check
  *   runs without the network, and says so.
@@ -337,8 +348,7 @@ export function checkArtifactJsonLd(ix: FhirArtifactIndex, docsRoot: string): st
       continue;
     }
     const text = readFileSync(p, "utf8");
-    const twin = p.replace(/\.jsonld$/, ".json");
-    if (!existsSync(twin) || readFileSync(twin, "utf8") !== text) findings.push(`${ARTIFACT_DIR}/${f}: its .json twin is missing or differs`);
+    if (existsSync(p.replace(/\.jsonld$/, ".json"))) findings.push(`${ARTIFACT_DIR}/${f}: a .json twin is served beside it — a second copy of the node no reader fetches`);
     let raw: unknown;
     try {
       raw = JSON.parse(text);
@@ -400,7 +410,7 @@ if (import.meta.main) {
       mkdirSync(dirname(p), { recursive: true });
       writeFileSync(p, text);
     }
-    console.log(`wrote ${files.size / 2 - 1} artefact node(s) and the index node (.jsonld + .json) under ${join(out, ARTIFACT_DIR)}/`);
+    console.log(`wrote ${files.size - 1} artefact node(s) and the index node (.jsonld) under ${join(out, ARTIFACT_DIR)}/`);
   } else {
     const dir = at("--dir");
     if (!dir) {

@@ -163,11 +163,11 @@ export const IgArtifactJsonLdKind = nodeKind("folio-ig-artifact-jsonld", [], IgA
  * | `dcterms:identifier`, `schema:version`, `schema:sameAs` | its package id, version and canonical base |
  * | `dcterms:title` | the IG's display name, as the site shows it |
  * | `schema:numberOfItems` | how many artefacts the index holds; QA holds the list to it |
- * | `schema:hasPart` | one entry per artefact, in the Publisher's order (`byCategory`), each naming its node by `@id` and repeating only what a list row shows: key, class, title, description, grouping, and for an instance (no canonical URL), which has no description to show, what the resource states instead — its profiles (`dcterms:conformsTo`) and its code (`dcterms:subject`). Its canonical (`schema:sameAs`) is repeated so a row can link a profile that is another artefact of the same IG |
+ * | `schema:hasPart` | one entry per artefact, in the Publisher's order (`byCategory`), each naming its node by `@id` and repeating only what a list row shows: key, class, title, description, grouping, and for an instance (no canonical URL), which has no description to show, what the resource states instead — its profiles (`dcterms:conformsTo`) and its code (`dcterms:subject`). Its canonical (`schema:sameAs`) is repeated so a row can link a profile that is another artefact of the same IG, and its computer name (`schema:name`) only when the title shown is not that name and it is not the id, so the IG's search (`ig-search.js`) finds an artefact by every identifier from this one list |
  *
  * An entry is a SUMMARY of the node it names, never a second home for a fact
- * the node lacks: `check` holds every entry's key, class, canonical, profiles
- * and code to its node's.
+ * the node lacks: `check` holds every entry's key, class, canonical, profiles,
+ * code and name to its node's.
  */
 export const IG_ARTIFACT_INDEX_JSONLD_SCHEMA_TAG = "folio-ig-artifact-index-jsonld/v1";
 
@@ -177,6 +177,7 @@ export const IgArtifactIndexEntrySchema = z
     "@type": z.string().regex(/^fhir:[A-Z][A-Za-z]+$/),
     "dcterms:identifier": z.string().regex(/^[A-Z][A-Za-z]+\/[A-Za-z0-9\-.]{1,64}$/),
     "dcterms:title": z.string().min(1),
+    "schema:name": z.string().min(1).optional(),
     "dcterms:description": z.string().min(1).optional(),
     "dcterms:type": z.string().min(1).optional(),
     "schema:sameAs": IdRef.optional(),

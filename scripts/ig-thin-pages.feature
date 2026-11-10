@@ -47,13 +47,13 @@ Feature: Thin artefact pages and their JSON-LD nodes
 
   @test:scripts/ig-thin-pages.test.ts::ig-artifact-jsonld_check:_the_kind's_QA,_beyond_shape::checkFailsCopiedNode
   Scenario: fails on a node copied to another artefact's name
-    When one artefact's node and JSON are copied over another's
+    When one artefact's node is copied over another's
     Then the check says the node names one artefact but the file is the other's
 
-  @test:scripts/ig-thin-pages.test.ts::ig-artifact-jsonld_check:_the_kind's_QA,_beyond_shape::checkFailsJsonTwinDiffers
-  Scenario: fails when the .json twin differs
-    When a node's .json twin is replaced
-    Then the check says the twin is missing or differs
+  @test:scripts/ig-thin-pages.test.ts::ig-artifact-jsonld_check:_the_kind's_QA,_beyond_shape::checkFailsJsonTwinServed
+  Scenario: fails when a .json twin is served beside a node
+    When a node and the index node each get a byte-identical .json copy
+    Then the check says a .json twin is served beside each, a second copy no reader fetches
 
   @test:scripts/ig-thin-pages.test.ts::ig-artifact-jsonld_check:_the_kind's_QA,_beyond_shape::checkFailsResourceMissing
   Scenario: fails when the resource the page will draw is not on the site

@@ -146,13 +146,16 @@ describe("ig-artifact-jsonld check: the kind's QA, beyond shape", () => {
   it("checkFailsCopiedNode", () => {
     const s = site();
     cpSync(node(s, PATIENT), node(s));
-    cpSync(node(s, PATIENT).replace(/\.jsonld$/, ".json"), node(s).replace(/\.jsonld$/, ".json"));
     expect(checkArtifactJsonLd(IX, s).join("\n")).toMatch(/names StructureDefinition\/Patient-uv-ips, but the file is StructureDefinition\/Composition-uv-ips's/);
   });
-  it("checkFailsJsonTwinDiffers", () => {
+  it("checkFailsJsonTwinServed", () => {
     const s = site();
-    writeFileSync(node(s).replace(/\.jsonld$/, ".json"), "{}");
-    expect(checkArtifactJsonLd(IX, s).join("\n")).toContain("twin is missing or differs");
+    expect(existsSync(node(s).replace(/\.jsonld$/, ".json"))).toBe(false);
+    cpSync(node(s), node(s).replace(/\.jsonld$/, ".json"));
+    cpSync(join(s, "artifact", "index.jsonld"), join(s, "artifact", "index.json"));
+    const out = checkArtifactJsonLd(IX, s).join("\n");
+    expect(out).toContain("StructureDefinition-Composition-uv-ips.jsonld: a .json twin is served beside it");
+    expect(out).toContain("artifact/index.jsonld: a .json twin is served beside it");
   });
   it("checkFailsResourceMissing", () => {
     const s = site();
@@ -229,13 +232,10 @@ describe("gen-ig-pages: thin by default, end to end (owner, 2026-10-12: \"make t
       "StructureDefinition-Composition-uv-ips-examples.html",
       "StructureDefinition-Composition-uv-ips-mappings.html",
       "StructureDefinition-Composition-uv-ips.html",
-      "StructureDefinition-Composition-uv-ips.json",
       "StructureDefinition-Composition-uv-ips.jsonld",
       "StructureDefinition-Composition-uv-ips.profile.json.html",
       "StructureDefinition-Patient-uv-ips.html",
-      "StructureDefinition-Patient-uv-ips.json",
       "StructureDefinition-Patient-uv-ips.jsonld",
-      "index.json",
       "index.jsonld",
     ]);
     for (const f of ["ig-artifact.js", "ig-artifact.css", "ast-resource.js", "ast-pages.json"]) expect(existsSync(join(docs("thin"), "assets", f))).toBe(true);
@@ -305,7 +305,6 @@ describe("ig-artifact-jsonld check over the index node (calibrated: each case br
     f(n);
     const text = `${JSON.stringify(n, null, 2)}\n`;
     writeFileSync(indexPath(s), text);
-    writeFileSync(indexPath(s).replace(/\.jsonld$/, ".json"), text);
   };
 
   it("indexCheckPasses", () => {
@@ -429,7 +428,6 @@ describe("what an instance states: its profiles and its code, in the node and th
     f(n);
     const text = `${JSON.stringify(n, null, 2)}\n`;
     writeFileSync(p, text);
-    writeFileSync(p.replace(/\.jsonld$/, ".json"), text);
     return s;
   };
   it("statedCheckPasses", () => {
