@@ -309,6 +309,38 @@ export function acceptStaleFromEnv(v: string | undefined): boolean {
 }
 /** The validity verdict `ast` writes under the work directory. */
 export const VALIDITY_FILE = "ig-ast-validity.json";
+/** Under the work directory: the cache commit `ast` restored and its remote (`ig-cache.sh restore --record`). */
+export const AST_SOURCE_FILE = "ig-ast-source.json";
+/** `0` keeps the old route: the resources copied to the site root, not read by URL. */
+export const AST_BY_URL_ENV = "SITE_AST_BY_URL";
+
+/**
+ * Where the pages read the AST's resources from, when they read them by URL
+ * (owner, 2026-11-10, card "A": a site points at a branch cache by
+ * raw.githubusercontent.com URL pinned to a commit, and does not copy it into
+ * gh-pages; fhir-harness#325): the cache branch's tree at the commit `ast`
+ * restored, `https://raw.githubusercontent.com/<owner>/<repo>/<sha>`.
+ *
+ * Undefined, and the resources are copied to the site root as before, when
+ * `ast` recorded no commit (an AST already in the checkout was used), the
+ * remote is not on github.com, or {@link AST_BY_URL_ENV} is `0`. The commit
+ * stays readable because each seed is a child of the branch's previous tip
+ * (`ig-cache.sh seed`, fhir-harness#326).
+ */
+export function astRawBase(work: string | undefined, env: Record<string, string | undefined> = process.env): string | undefined {
+  if (!work || env[AST_BY_URL_ENV] === "0") return undefined;
+  const f = join(work, AST_SOURCE_FILE);
+  if (!existsSync(f)) return undefined;
+  let rec: { commit?: unknown; remote?: unknown };
+  try {
+    rec = JSON.parse(readFileSync(f, "utf-8")) as typeof rec;
+  } catch {
+    return undefined;
+  }
+  const commit = typeof rec.commit === "string" && /^[0-9a-f]{40}$/.test(rec.commit) ? rec.commit : undefined;
+  const repo = typeof rec.remote === "string" ? /github\.com[/:]([\w.-]+\/[\w.-]+?)(?:\.git)?\/?$/.exec(rec.remote)?.[1] : undefined;
+  return commit && repo ? `https://raw.githubusercontent.com/${repo}/${commit}` : undefined;
+}
 
 /** The IG API sidecars a layer above left, and what it calls them. */
 export interface IgApi {
@@ -379,8 +411,13 @@ export function restoreAst(o: { ig: string; work?: string; acceptStale: boolean;
   const log = o.log ?? ((s: string) => console.error(s));
   const ig = resolve(o.ig);
   if (!existsSync(igReadScope(ig, { warn: log }).path("sushi-config.yaml"))) throw new Error(`${ig} holds no sushi-config.yaml: not an IG checkout`);
+  // The commit restored, for pages that read the AST by URL ({@link astRawBase}).
+  // Cleared first: a restore that keeps an AST already in the checkout records none.
+  const record = o.work ? join(o.work, AST_SOURCE_FILE) : undefined;
+  if (record) mkdirSync(o.work!, { recursive: true });
   const restore = (): AstValidity => {
-    const r = spawnSync("bash", [join(import.meta.dir, "ig-cache.sh"), "restore", "--ig-root", ig], { cwd: ig, stdio: ["ignore", "inherit", "inherit"] });
+    if (record) rmSync(record, { force: true });
+    const r = spawnSync("bash", [join(import.meta.dir, "ig-cache.sh"), "restore", "--ig-root", ig, ...(record ? ["--record", record] : [])], { cwd: ig, stdio: ["ignore", "inherit", "inherit"] });
     if (r.status !== 0) {
       throw new Error(`no AST to build from: ig-cache.sh restore exited ${r.status}${r.status === 1 ? " (no cache branch for this IG; run its Site publish, whose `ast` job seeds it)" : ""}. The site is never built from the Publisher's HTML`);
     }
@@ -467,8 +504,12 @@ export function astArtefactPages(o: { ig: string; ast: string; work: string; nam
   if (existsSync(published)) args.push("--compare", published, "--keep-published-grouping", "--report", join(o.work, "ast-parity.json"));
   if (o.igApi) args.push("--sidecars", o.igApi.sidecars, "--sidecars-local", SIDECARS_SERVED);
   bun("ast-to-artifact-index.ts", args);
+  // The resources by raw URL at the restored cache commit when `ast` recorded
+  // one (fhir-harness#325), else each copied to the site root (`AST_DATA`).
+  const raw = astRawBase(o.work);
+  o.log(raw ? `artefact pages: the resources are read from ${raw} (the AST cache commit), not copied into the site` : `artefact pages: the resources are served at the site root as <Type>-<id>.json`);
   bun("gen-ig-pages.ts", [
-    "--instance", inst, "--index", index, "--label", o.label, "--ig-site", "--compiled-data", AST_DATA, "--search",
+    "--instance", inst, "--index", index, "--label", o.label, "--ig-site", "--compiled-data", raw ?? AST_DATA, "--search",
     ...(o.igApi ? ["--ig-api-served", ...(o.igApi.label ? ["--sidecar-label", o.igApi.label] : [])] : []),
   ]);
   return inst;
@@ -878,12 +919,13 @@ export function libraryByUrl(resource: unknown, cql: CqlSource): object | undefi
  * Never the Publisher's HTML, and never a path the site already holds. With
  * `cql`, a Library is served by {@link libraryByUrl}: its CQL by URL, no ELM.
  */
-export function serveAstData(o: { site: string; ast: string; index?: string; igApi?: IgApi; cql?: CqlSource }): ServedData {
+export function serveAstData(o: { site: string; ast: string; index?: string; igApi?: IgApi; cql?: CqlSource; byUrl?: boolean }): ServedData {
   const manifest = join(o.ast, "manifest.json");
   if (!existsSync(manifest)) throw new Error(`${o.ast}: no AST to serve — run ${IG_SITE_SCRIPTS.ast} first`);
   const out: ServedData = { named: 0, kept: 0, sidecars: 0, siteFiles: 0, siteKept: [], siteFilled: [], index: false };
   const m = JSON.parse(readFileSync(manifest, "utf-8")) as { resources?: { resourceType?: string; id?: string; file?: string }[] };
-  for (const r of m.resources ?? []) {
+  // Read by URL from the AST cache commit ({@link astRawBase}): no copy at the root.
+  for (const r of o.byUrl ? [] : (m.resources ?? [])) {
     if (!r.file || !r.resourceType || !r.id) continue;
     const src = join(o.ast, r.file);
     if (!existsSync(src)) continue;
@@ -944,10 +986,12 @@ export function publisherPages(o: { site: string; ast: string; work?: string; ig
   if (!existsSync(o.site) || !statSync(o.site).isDirectory()) throw new Error(`${o.site}: no built site`);
   const igApi = readIgApi(o.work);
   const index = o.work ? join(o.work, INDEX_WORK, "index.json") : undefined;
-  const served = serveAstData({ site: o.site, ast: o.ast, ...(index ? { index } : {}), ...(igApi ? { igApi } : {}), ...(o.cql ? { cql: o.cql } : {}) });
+  const raw = astRawBase(o.work);
+  const served = serveAstData({ site: o.site, ast: o.ast, ...(index ? { index } : {}), ...(igApi ? { igApi } : {}), ...(o.cql ? { cql: o.cql } : {}), byUrl: raw !== undefined });
+  if (raw) log(`publisher pages: the pages read each resource from ${raw}`);
   if (served.librariesByUrl) log(`publisher pages: ${served.librariesByUrl} Library resource(s) link their CQL in ${CQL_DIR}/ by URL; their ELM is left to the release package`);
   log(
-    `publisher pages: from the AST, ${served.named} resource(s) as <Type>-<id>.json at the root (no ast-data/ mirror)` +
+    `publisher pages: from the AST, ${raw ? "no resource copied (read by URL)" : `${served.named} resource(s) as <Type>-<id>.json at the root (no ast-data/ mirror)`}` +
       `${served.kept ? ` (${served.kept} the site already held were kept)` : ""}; ` +
       `${served.index ? `the artefact index at ${INDEX_SERVED}/index.json` : "no artefact index served"}; ` +
       `${served.sidecars} IG API sidecar(s) at ${SIDECARS_SERVED}/; ${served.siteFiles} file(s) the layer above wrote for the site root. The Publisher's HTML is not taken`,

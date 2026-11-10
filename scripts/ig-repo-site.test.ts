@@ -11,10 +11,14 @@ import { spawnSync } from "node:child_process";
 import { parseBuild, STAMP_FILE } from "./site-build-stamp.ts";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { isRemoteData, localResourceHref } from "./ig-artifact-jsonld.ts";
+import type { FhirArtifact } from "../schemas/fhir-artifact-index.js";
 
 import {
   acceptStaleFromEnv,
+  AST_SOURCE_FILE,
   astGate,
+  astRawBase,
   builtPage,
   cqlSourceOf,
   IG_API_DESCRIPTOR,
@@ -456,5 +460,84 @@ describe("libraryByUrl", () => {
     expect(c.url("A B.cql")).toBe("https://raw.githubusercontent.com/litlfred/smart-immunizations/14517c8b/input/cql/A%20B.cql");
     expect(cqlSourceOf(ig, { SITE_REPOSITORY: "litlfred/smart-immunizations" })).toBeUndefined();
     expect(cqlSourceOf(join(dir, "no-ig"), { SITE_REPOSITORY: "a/b", SITE_COMMIT: "abcdef1" })).toBeUndefined();
+  });
+});
+
+describe("the AST's resources by raw URL at the cache commit (fhir-harness#325)", () => {
+  const sha = "0123456789abcdef0123456789abcdef01234567";
+  const recorded = (name: string, rec: unknown): string => {
+    const work = join(dir, name);
+    mkdirSync(work, { recursive: true });
+    writeFileSync(join(work, AST_SOURCE_FILE), typeof rec === "string" ? rec : JSON.stringify(rec));
+    return work;
+  };
+
+  test("rawBaseFromRecordedCommit", () => {
+    expect(astRawBase(recorded("raw-https", { commit: sha, remote: "https://github.com/litlfred/smart-immunizations.git" }), {})).toBe(`https://raw.githubusercontent.com/litlfred/smart-immunizations/${sha}`);
+    expect(astRawBase(recorded("raw-ssh", { commit: sha, remote: "git@github.com:litlfred/smart-immunizations" }), {})).toBe(`https://raw.githubusercontent.com/litlfred/smart-immunizations/${sha}`);
+  });
+
+  test("noRawBaseWithoutUsableRecord", () => {
+    expect(astRawBase(undefined, {})).toBeUndefined();
+    expect(astRawBase(join(dir, "raw-none"), {})).toBeUndefined();
+    expect(astRawBase(recorded("raw-short", { commit: "0123abc", remote: "https://github.com/a/b" }), {})).toBeUndefined();
+    expect(astRawBase(recorded("raw-gitlab", { commit: sha, remote: "https://gitlab.com/a/b" }), {})).toBeUndefined();
+    expect(astRawBase(recorded("raw-bad", "{not json"), {})).toBeUndefined();
+    expect(astRawBase(recorded("raw-off", { commit: sha, remote: "https://github.com/a/b" }), { SITE_AST_BY_URL: "0" })).toBeUndefined();
+  });
+
+  test("pagesPointAtRawUrl", () => {
+    const a = { resourceType: "StructureDefinition", id: "IMMZ.Immunization", materialization: { state: "materialized", purpose: "compiled", localPath: "output-ast/resources/StructureDefinition/IMMZ.Immunization--88a5f2dd.json" } } as unknown as FhirArtifact;
+    const base = `https://raw.githubusercontent.com/a/b/${sha}`;
+    expect(isRemoteData(base)).toBe(true);
+    expect(isRemoteData(".")).toBe(false);
+    expect(localResourceHref(a, base)).toBe(`${base}/resources/StructureDefinition/IMMZ.Immunization--88a5f2dd.json`);
+    expect(localResourceHref(a, ".")).toBe("../StructureDefinition-IMMZ.Immunization.json");
+  });
+
+  test("restoreRecordsCacheCommit", () => {
+    const root = join(dir, "restore-record");
+    const remote = join(root, "remote.git");
+    const ig = join(root, "ig");
+    const git = (cwd: string, ...a: string[]): string => {
+      const r = spawnSync("git", ["-c", "user.name=t", "-c", "user.email=t@t", "-c", "init.defaultBranch=main", ...a], { cwd, encoding: "utf-8" });
+      if (r.status !== 0) throw new Error(`git ${a.join(" ")}: ${r.stderr}`);
+      return r.stdout.trim();
+    };
+    mkdirSync(root, { recursive: true });
+    git(root, "init", "-q", "--bare", remote);
+    // The cache branch: the AST at the root of the tree, as `seed` writes it.
+    const cache = fakeAst(root, [{ resourceType: "ValueSet", id: "x" }]);
+    git(cache, "init", "-q");
+    git(cache, "add", ".");
+    git(cache, "commit", "-qm", "ast");
+    const commit = git(cache, "rev-parse", "HEAD");
+    git(cache, "push", "-q", remote, "HEAD:refs/heads/cat/fhir-harness/fhir-ast/ex.ig");
+    mkdirSync(ig, { recursive: true });
+    writeFileSync(join(ig, "sushi-config.yaml"), "id: ex.ig\n");
+    git(ig, "init", "-q");
+    git(ig, "remote", "add", "origin", remote);
+    const record = join(root, "work", AST_SOURCE_FILE);
+    mkdirSync(join(root, "work"), { recursive: true });
+    const r = spawnSync("bash", [join(import.meta.dir, "ig-cache.sh"), "restore", "--ig-root", ig, "--record", record], { cwd: ig, encoding: "utf-8" });
+    expect(r.status).toBe(0);
+    expect(JSON.parse(readFileSync(record, "utf-8"))).toEqual({ commit, remote });
+    expect(existsSync(join(ig, "output-ast", "manifest.json"))).toBe(true);
+  });
+
+  test("byUrlServesNoRootCopy", () => {
+    const root = join(dir, "serve-by-url");
+    const ast = fakeAst(root, [{ resourceType: "ValueSet", id: "x" }]);
+    const work = recorded("serve-by-url-work", { commit: sha, remote: "https://github.com/a/b" });
+    mkdirSync(join(work, INDEX_WORK), { recursive: true });
+    writeFileSync(join(work, INDEX_WORK, "index.json"), "{}");
+    const site = join(root, "_site");
+    mkdirSync(site, { recursive: true });
+    const said: string[] = [];
+    const r = publisherPages({ site, ast, work, log: (s) => said.push(s) });
+    expect(r.named).toBe(0);
+    expect(r.index).toBe(true);
+    expect(existsSync(join(site, "ValueSet-x.json"))).toBe(false);
+    expect(said.join("\n")).toContain(`raw.githubusercontent.com/a/b/${sha}`);
   });
 });

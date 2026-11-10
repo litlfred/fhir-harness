@@ -4,7 +4,7 @@
 #
 # USAGE
 #   scripts/ig-cache.sh status     [--ig-root DIR]
-#   scripts/ig-cache.sh restore    [--ig-root DIR] [--package NAME] [--branch BR] [--commit SHA]
+#   scripts/ig-cache.sh restore    [--ig-root DIR] [--package NAME] [--branch BR] [--commit SHA] [--record FILE]
 #   scripts/ig-cache.sh seed       [--ig-root DIR] [--package NAME] [--branch BR] [--remote REM] [--push] [--force]
 #   scripts/ig-cache.sh contribute [--ig-root DIR] [--package NAME] [--remote REM] [--force]
 #   scripts/ig-cache.sh verify     [--ig-root DIR]
@@ -52,6 +52,7 @@ IG_ROOT=""
 PACKAGE=""
 BRANCH=""
 COMMIT=""
+RECORD=""
 REMOTE="origin"
 PUSH=0
 FORCE=0
@@ -62,6 +63,7 @@ while [ $# -gt 0 ]; do
     --package) PACKAGE="${2:-}"; shift 2 ;;
     --branch)  BRANCH="${2:-}"; shift 2 ;;
     --commit)  COMMIT="${2:-}"; shift 2 ;;
+    --record)  RECORD="${2:-}"; shift 2 ;;
     --remote)  REMOTE="${2:-}"; shift 2 ;;
     --push)    PUSH=1; shift ;;
     --force)   FORCE=1; shift ;;
@@ -248,6 +250,17 @@ cmd_restore() {
   local tmp; tmp=$(mktemp -d) || die "mktemp failed"
   trap "rm -rf '$tmp'; git -C '$root' update-ref -d '$PRIVATE_REF' 2>/dev/null || true" RETURN
   
+  # `--record`: the cache commit restored and the remote it came from, so a
+  # site can read the AST's files by raw URL pinned to that commit instead of
+  # copying them (fhir-harness#325). Written only on a restore that fetched.
+  if [ -n "$RECORD" ]; then
+    local sha url
+    sha=$(igit rev-parse "$PRIVATE_REF" 2>/dev/null) || sha=""
+    # Any credentials in the remote's URL are dropped: only the repository is wanted.
+    url=$(igit remote get-url "$REMOTE" 2>/dev/null | sed -E 's#//[^/@]*@#//#') || url=""
+    [ -n "$sha" ] && printf '{"commit":"%s","remote":"%s"}\n' "$sha" "$url" > "$RECORD"
+  fi
+
   igit archive --format=tar "$PRIVATE_REF" | tar -xC "$tmp" 2>/dev/null || {
     warn "could not extract AST from '$br'."
     return 3
