@@ -693,6 +693,7 @@ export function stampTranslationMeta(site: string, ig: string): number {
     if (!/\.html?$/i.test(f)) continue;
     const abs = join(site, f);
     const html = readFileSync(abs, "utf-8");
+    if (isRedirectStub(html)) continue;
     const after = withTranslationMeta(html, block);
     if (after !== html) {
       writeFileSync(abs, after);
@@ -725,6 +726,7 @@ export function stampIgBar(site: string, label: string): { pages: number } {
     const up = "../".repeat(f.split("/").length - 1);
     const abs = join(site, f);
     const html = readFileSync(abs, "utf-8");
+    if (isRedirectStub(html)) continue;
     const after = withIgBar(html, { ref: { index: `${up}${IG_SEARCH_INDEX_FILE}`, script: `${up}${IG_SEARCH_SCRIPT_FILE}` }, label, home: `${up}index.html`, up });
     if (after !== html) {
       writeFileSync(abs, after);
@@ -732,6 +734,15 @@ export function stampIgBar(site: string, label: string): { pages: number } {
     }
   }
   return { pages: n };
+}
+
+/**
+ * An immediate meta-refresh redirect stub (a view's old file name,
+ * `ig-thin-pages.ts` `thinViewRedirect`): not a page a reader stays on, so
+ * it gets no bar and no language block, as the platform gives it no rail.
+ */
+export function isRedirectStub(html: string): boolean {
+  return /<meta\s[^>]*http-equiv\s*=\s*["']?refresh["']?[^>]*content\s*=\s*["']?\s*0\s*[;,]\s*url\s*=/i.test(html);
 }
 
 /** The config block ids of the IG's thin pages: an artefact's page, the artifacts/toc lists, the IG API hub. */

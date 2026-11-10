@@ -52,6 +52,38 @@
   var body = document.querySelector(".iga-body");
   var state = body && body.querySelector(".iga-state");
 
+  /*
+   * ONE PAGE PER ARTEFACT (owner, 2026-11-10, fhir-harness#325 step 3): the
+   * artefact's page draws any of its views, named in its query (`?view=json`).
+   * The old per-view file names are redirect stubs to it. A view the page
+   * does not list is ignored, and the page draws its content.
+   */
+  if (!indexView && !cfg.view && cfg.views) {
+    var asked = null;
+    try {
+      asked = new URLSearchParams(location.search).get("view");
+    } catch (_e) {}
+    if (asked && asked !== "content" && cfg.views.indexOf(asked) >= 0) {
+      cfg.view = asked;
+      var tabs = document.querySelectorAll(".iga-tabs a[data-view]");
+      var label = asked;
+      for (var t = 0; t < tabs.length; t++) {
+        if (tabs[t].getAttribute("data-view") === asked) {
+          tabs[t].setAttribute("aria-current", "page");
+          label = tabs[t].textContent;
+        } else tabs[t].removeAttribute("aria-current");
+      }
+      var h1 = document.querySelector(".iga h1");
+      if (h1) {
+        var sub = document.createElement("span");
+        sub.className = "iga-view";
+        sub.textContent = "— " + label;
+        h1.append(" ", sub);
+      }
+      document.title = document.title.replace(/ — /, " — " + label + " — ");
+    }
+  }
+
   function begin() {
     window.__kgLoads = (window.__kgLoads || 0) + 1;
   }
@@ -536,8 +568,48 @@
     document.body.append(s);
   }
 
+  /* The JSON-LD and JSON Schema views: the IG API sidecar, fetched and shown as the Publisher's view page shows it. */
+  function drawSidecar(view) {
+    var frag = document.createDocumentFragment();
+    var rel = cfg.sidecars && cfg.sidecars[view];
+    if (!rel) {
+      frag.append(el("p", "iga-state iga-error", "This site serves no " + view + " file for this artefact."));
+      return frag;
+    }
+    var url = new URL(rel, location.href).href;
+    var raw = el("p", "iga-raw");
+    raw.append(link(url, "Raw"), " · ");
+    var dl = link(url, "Download");
+    dl.setAttribute("download", "");
+    raw.append(dl);
+    var pre = el("pre", "ast-json");
+    var code = el("code", null, "Loading…");
+    pre.append(code);
+    frag.append(raw, pre);
+    begin();
+    fetch(url)
+      .then(function (r) {
+        if (!r.ok) throw new Error("HTTP " + r.status);
+        return r.json();
+      })
+      .then(function (d) {
+        code.textContent = JSON.stringify(d, null, 2);
+        pre.setAttribute("data-state", "loaded");
+      })
+      .catch(function (err) {
+        code.textContent = "Could not load " + rel + ": " + (err && err.message ? err.message : String(err));
+        pre.setAttribute("data-state", "error");
+      })
+      .then(end, end);
+    return frag;
+  }
+
   function drawView(view, node, src) {
     var frag = document.createDocumentFragment();
+    if (view === "jsonld" || view === "schema") {
+      frag.append(drawSidecar(view));
+      return { frag: frag };
+    }
     if (!src && view !== "examples") {
       frag.append(el("p", "iga-state iga-error", "This site serves no copy of " + node["dcterms:identifier"] + "'s JSON, which this view is drawn from."));
       return { frag: frag };

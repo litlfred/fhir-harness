@@ -23,7 +23,7 @@ import { FhirArtifactIndexSchema } from "../schemas/fhir-artifact-index.js";
 import { IPS, artifactIndex, scratchRepo } from "../test/support/ig-fixture";
 import { relinkArtifacts, stageIgSite } from "./build-ig-site";
 import { PUBLISHER_CHROME, publisherChromePages, stateFromOutput } from "./ig-repo-site";
-import { THIN_PAGE_CONFIG_ID, artifactTabFile, artifactTabs, thinArtifactView } from "./ig-thin-pages.ts";
+import { THIN_PAGE_CONFIG_ID, artifactTabFile, artifactTabs, thinArtifactView, thinViewRedirect } from "./ig-thin-pages.ts";
 import { artifactsFor } from "./stage-ig-sites";
 
 const ROOT = resolve(import.meta.dir, "..", "..");
@@ -114,6 +114,17 @@ describe("artifactTabs: which views an artefact gets, at the Publisher's file na
   it("noResourceNoTabs", () => {
     expect(artifactTabs(SD, { resource: false })).toEqual([]);
   });
+  it("sidecarTabs", () => {
+    // The IG API sidecars are views of the same page, after the JSON (fhir-harness#325 step 3).
+    expect(artifactTabs(VS, { resource: true, sidecars: ["schema", "jsonld"] }).map((t) => [t.view, t.file, t.href])).toEqual([
+      ["content", "ValueSet-sections.html", "ValueSet-sections.html"],
+      ["json", "ValueSet-sections.json.html", "ValueSet-sections.html?view=json"],
+      ["jsonld", "ValueSet-sections.jsonld.html", "ValueSet-sections.html?view=jsonld"],
+      ["schema", "ValueSet-sections.schema.json.html", "ValueSet-sections.html?view=schema"],
+    ]);
+    // A sidecar alone still gives the page its tabs.
+    expect(artifactTabs(VS, { resource: false, sidecars: ["jsonld"] }).map((t) => t.view)).toEqual(["content", "jsonld"]);
+  });
 });
 
 describe("thinArtifactView: one shell, the view in its config", () => {
@@ -130,14 +141,39 @@ describe("thinArtifactView: one shell, the view in its config", () => {
     expect(cfg.next).toBeUndefined();
   });
   it("tabBarMarksCurrent", () => {
-    for (const t of tabs) expect(html).toContain(`href="${t.file}"`);
-    expect(html).toContain('<a href="StructureDefinition-Composition-uv-ips-definitions.html" aria-current="page">');
+    for (const t of tabs) expect(html).toContain(`href="${t.href}"`);
+    expect(html).toContain('<a href="StructureDefinition-Composition-uv-ips.html?view=definitions" data-view="definitions" aria-current="page">');
   });
   it("viewIsThin", () => {
     expect(html).toContain('<script src="../assets/ig-artifact.js"></script>');
     expect(html).toContain('<meta name="folio-navbar" content="linked">');
     expect(html).not.toContain("A fixture profile.");
     expect(html.length).toBeLessThan(4000);
+  });
+});
+
+describe("one page per artefact: the views by ?view=, the old names redirect", () => {
+  const tabs = artifactTabs(VS, { resource: true, sidecars: ["jsonld", "schema"] });
+  const html = thinArtifactView(IX, VS, "content", { label: "X IG", home: "../index.html", all: "../artifacts.html", resource: "../ValueSet-sections.json", tabs, sidecars: { jsonld: "../fhir-artifact-index/sidecars/ValueSet-sections.jsonld", schema: "../fhir-artifact-index/sidecars/ValueSet-sections.schema.json" } });
+  it("pageListsViewsAndSidecars", () => {
+    expect(thinPageConfigOf(html, THIN_PAGE_CONFIG_ID)).toMatchObject({
+      views: ["content", "json", "jsonld", "schema"],
+      sidecars: { jsonld: "../fhir-artifact-index/sidecars/ValueSet-sections.jsonld", schema: "../fhir-artifact-index/sidecars/ValueSet-sections.schema.json" },
+    });
+    expect(html).toContain('href="ValueSet-sections.html?view=jsonld" data-view="jsonld"');
+  });
+  it("redirectStubKeepsFragment", () => {
+    const stub = thinViewRedirect(SD, "definitions");
+    expect(stub).toContain('<meta http-equiv="refresh" content="0; url=StructureDefinition-Composition-uv-ips.html?view=definitions">');
+    expect(stub).toContain('location.replace("StructureDefinition-Composition-uv-ips.html?view=definitions" + location.hash)');
+    expect(stub).toContain('<meta name="robots" content="noindex">');
+    expect(stub).not.toContain("<script src=");
+  });
+  it("rendererReadsViewQuery", () => {
+    const renderer = readFileSync(join(import.meta.dir, "templates", "ig-pages", "ig-artifact.js"), "utf8");
+    expect(renderer).toContain('new URLSearchParams(location.search).get("view")');
+    expect(renderer).toContain("cfg.views.indexOf(asked) >= 0");
+    expect(renderer).toContain("function drawSidecar(");
   });
 });
 
@@ -161,10 +197,14 @@ describe("gen-ig-pages --ig-site --publisher-data: a thin page per view, beside 
       "ValueSet-sections.html",
       "ValueSet-sections.json.html",
     ]);
-    const views = files.map((f) => thinPageConfigOf(page(f), THIN_PAGE_CONFIG_ID)?.view ?? "content");
-    expect(views.filter((v) => v === "content")).toHaveLength(4);
-    expect(views.filter((v) => v === "json")).toHaveLength(4);
-    expect(views.filter((v) => v === "examples")).toHaveLength(2);
+    // One page per artefact draws every view; each view's old file name is a redirect stub to it.
+    const shells = files.filter((f) => thinPageConfigOf(page(f), THIN_PAGE_CONFIG_ID) !== undefined);
+    expect(shells).toEqual(["Composition-example.html", "StructureDefinition-Composition-uv-ips.html", "StructureDefinition-Lonely.html", "ValueSet-sections.html"]);
+    for (const f of shells) expect(thinPageConfigOf(page(f), THIN_PAGE_CONFIG_ID)!.view).toBeUndefined();
+    const stub = page("StructureDefinition-Composition-uv-ips.profile.json.html");
+    expect(stub).toContain('<meta http-equiv="refresh" content="0; url=StructureDefinition-Composition-uv-ips.html?view=json">');
+    expect(stub).toContain('location.replace("StructureDefinition-Composition-uv-ips.html?view=json" + location.hash)');
+    expect(stub.length).toBeLessThan(700);
   });
 
   it("everyPageThinNoChrome", () => {
@@ -179,21 +219,20 @@ describe("gen-ig-pages --ig-site --publisher-data: a thin page per view, beside 
 
   it("ownPageLinksTabs", () => {
     const html = page("StructureDefinition-Composition-uv-ips.html");
-    for (const f of ["StructureDefinition-Composition-uv-ips-definitions.html", "StructureDefinition-Composition-uv-ips-mappings.html", "StructureDefinition-Composition-uv-ips.profile.json.html", "StructureDefinition-Composition-uv-ips-examples.html"]) {
-      expect(html).toContain(`href="${f}"`);
-    }
-    expect(page("ValueSet-sections.html")).toContain('href="ValueSet-sections.json.html"');
+    for (const v of ["definitions", "mappings", "json", "examples"]) expect(html).toContain(`href="StructureDefinition-Composition-uv-ips.html?view=${v}"`);
+    expect(thinPageConfigOf(html, THIN_PAGE_CONFIG_ID)!.views).toEqual(["content", "definitions", "mappings", "json", "examples"]);
+    expect(page("ValueSet-sections.html")).toContain('href="ValueSet-sections.html?view=json"');
   });
 
   it("everyLinkResolves", () => {
     const dead: string[] = [];
     for (const f of files) {
       const html = page(f);
-      const cfg = thinPageConfigOf(html, THIN_PAGE_CONFIG_ID)!;
-      const targets = [...html.matchAll(/(?:href|src)="([^"]+)"/g)].map((m) => m[1]!).filter((h) => !/^(data:|https?:|#)/.test(h));
+      const cfg = thinPageConfigOf(html, THIN_PAGE_CONFIG_ID) ?? {};
+      const targets = [...html.matchAll(/(?:href|src|url)="?=?([^"> ]+)"/g)].map((m) => m[1]!).filter((h) => !/^(data:|https?:|#)/.test(h));
       for (const k of ["node", "resource", "index", "pages", "astLoader", "footer", "toc", "home", "prev", "next", "definitions"]) if (typeof cfg[k] === "string") targets.push(cfg[k] as string);
       for (const t of targets) {
-        const at = posix.normalize(`artifact/${t.split("#")[0]}`);
+        const at = posix.normalize(`artifact/${t.split(/[?#]/)[0]}`);
         if (!existsSync(join(docs, at))) dead.push(`${f} → ${t}`);
       }
     }
@@ -201,10 +240,9 @@ describe("gen-ig-pages --ig-site --publisher-data: a thin page per view, beside 
   });
 
   it("viewsDrawFromJson", () => {
-    const cfg = thinPageConfigOf(page("StructureDefinition-Composition-uv-ips-mappings.html"), THIN_PAGE_CONFIG_ID)!;
-    // A mapping row links its element on the definitions view.
-    expect(cfg).toMatchObject({ view: "mappings", resource: "../StructureDefinition-Composition-uv-ips.json", definitions: "StructureDefinition-Composition-uv-ips-definitions.html" });
-    expect(thinPageConfigOf(page("StructureDefinition-Composition-uv-ips-examples.html"), THIN_PAGE_CONFIG_ID)).toMatchObject({ view: "examples", index: "index.jsonld" });
+    const cfg = thinPageConfigOf(page("StructureDefinition-Composition-uv-ips.html"), THIN_PAGE_CONFIG_ID)!;
+    // A mapping row links its element on the definitions view; the examples view reads the index.
+    expect(cfg).toMatchObject({ resource: "../StructureDefinition-Composition-uv-ips.json", definitions: "StructureDefinition-Composition-uv-ips.html?view=definitions", index: "index.jsonld" });
   });
 
   it("loaderListsEveryView", () => {

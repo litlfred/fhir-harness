@@ -29,6 +29,7 @@ import {
   igSiteStamp,
   INDEX_WORK,
   isPreviewBase,
+  isRedirectStub,
   libraryByUrl,
   platformCommit,
   listedInstances,
@@ -574,4 +575,10 @@ describe("the AST's resources by raw URL at the cache commit (fhir-harness#325)"
     expect(existsSync(join(site, "ValueSet-x.json"))).toBe(false);
     expect(said.join("\n")).toContain(`raw.githubusercontent.com/a/b/${sha}`);
   });
+});
+
+test("redirectStubsLeftBare", () => {
+  expect(isRedirectStub('<head><meta http-equiv="refresh" content="0; url=X.html?view=json"></head>')).toBe(true);
+  expect(isRedirectStub('<head><meta http-equiv="refresh" content="30"></head><body>x</body>')).toBe(false);
+  expect(isRedirectStub("<html><body>page</body></html>")).toBe(false);
 });

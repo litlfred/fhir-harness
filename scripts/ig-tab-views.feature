@@ -14,6 +14,23 @@ Feature: An artefact's tab views on the IG site
   Scenario: none without a resource this site serves: every view is drawn from it
     Then a profile without a resource this site serves has no tabs
 
+  @test:scripts/ig-tab-views.test.ts::artifactTabs:_which_views_an_artefact_gets,_at_the_Publisher's_file_names::sidecarTabs
+  Scenario: the IG API sidecars are views too: JSON-LD and JSON Schema after the JSON, at the Publisher's file names
+    Then a ValueSet with both sidecars has content, json, jsonld and schema, each drawn at ?view= on its one page
+    And a sidecar alone still gives the page its tabs
+
+  @test:scripts/ig-tab-views.test.ts::one_page_per_artefact:_the_views_by_?view=,_the_old_names_redirect::pageListsViewsAndSidecars
+  Scenario: the artefact's page lists its views and the sidecars it draws (fhir-harness#325 step 3)
+    Then its config names every view and each sidecar's served path, and its tab bar links ?view=jsonld
+
+  @test:scripts/ig-tab-views.test.ts::one_page_per_artefact:_the_views_by_?view=,_the_old_names_redirect::redirectStubKeepsFragment
+  Scenario: a view's old file name is a redirect stub that keeps the fragment
+    Then the stub refreshes to the page with ?view=, its script carries location.hash, it is noindex and loads no script file
+
+  @test:scripts/ig-tab-views.test.ts::one_page_per_artefact:_the_views_by_?view=,_the_old_names_redirect::rendererReadsViewQuery
+  Scenario: the renderer draws the view the query names, when the page lists it
+    Then ig-artifact.js reads ?view=, accepts only a listed view, and draws the sidecar views
+
   @test:scripts/ig-tab-views.test.ts::thinArtifactView:_one_shell,_the_view_in_its_config::namesCanonicalAndAlternate
   Scenario: names its own file as canonical and the node as its alternate
     Given the definitions view of a profile
@@ -26,7 +43,7 @@ Feature: An artefact's tab views on the IG site
     And it has no previous or next page
 
   @test:scripts/ig-tab-views.test.ts::thinArtifactView:_one_shell,_the_view_in_its_config::tabBarMarksCurrent
-  Scenario: its tab bar links every view, the current one marked
+  Scenario: its tab bar links every view on the artefact's one page (?view=), the current one marked
     Given the definitions view of a profile
     Then it links every tab and marks the definitions tab as the current page
 
@@ -37,7 +54,7 @@ Feature: An artefact's tab views on the IG site
     And it holds none of the resource's text and is under 4000 characters
 
   @test:scripts/ig-tab-views.test.ts::gen-ig-pages_--ig-site_--publisher-data:_a_thin_page_per_view,_beside_the_artefact's::writesEachPublisherView
-  Scenario: writes each view where the Publisher made one: definitions, mappings, JSON, and examples for every profile, claimed or not
+  Scenario: one page per artefact; each view the Publisher made (definitions, mappings, JSON, examples for every profile) keeps its file name as a redirect stub to that page
     Given thin pages generated for an IG site with the Publisher's data
     Then the files are each artefact's page and its views where the Publisher made them
     And 4 are content pages, 4 JSON views and 2 examples views
@@ -49,7 +66,7 @@ Feature: An artefact's tab views on the IG site
     And no page in the docs wears the Publisher's chrome
 
   @test:scripts/ig-tab-views.test.ts::gen-ig-pages_--ig-site_--publisher-data:_a_thin_page_per_view,_beside_the_artefact's::ownPageLinksTabs
-  Scenario: the artefact's own page links its tabs
+  Scenario: the artefact's own page links its views by ?view= and lists them in its config
     Then the profile's own page links its definitions, mappings, JSON and examples views
     And the ValueSet's page links its JSON view
 
@@ -59,7 +76,7 @@ Feature: An artefact's tab views on the IG site
     Then every link and every file named in a page's config exists in the site
 
   @test:scripts/ig-tab-views.test.ts::gen-ig-pages_--ig-site_--publisher-data:_a_thin_page_per_view,_beside_the_artefact's::viewsDrawFromJson
-  Scenario: each view draws from the Publisher's JSON the site carries, never its HTML
+  Scenario: the page's views draw from the Publisher's JSON the site carries, never its HTML; mappings link the definitions view
     Then the mappings view draws from the profile's JSON and links the definitions view
     And the examples view draws from the artefact index
 
