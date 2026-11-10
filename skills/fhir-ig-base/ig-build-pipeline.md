@@ -392,6 +392,12 @@ build banner, the release-link fix, deleting files over 100 MB, and a deploy
 that retries on a ref conflict. Commenting on a pull request that a deploy
 finished belongs to cat-harness.
 
+Every build also prints a size review before its push: the site against the
+published one, and what weighs most. It is advisory and never refuses. What to
+look at and the usual fixes are in
+[`ig-publication`](../content/fhir-ig-authoring/ig-publication.md) §"Size
+review"; the step is `Task_SizeReview` of `ig-ast-cache.bpmn`.
+
 ## Who starts a build
 
 Before an adopted IG repository publishes on its own, two questions are put
