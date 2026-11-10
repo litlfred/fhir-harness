@@ -165,6 +165,7 @@ jobs:
         id: ast
         env:
           FORCE: ${{ inputs.force }}
+          DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
         run: |
           set +e
           verdict=missing
@@ -180,6 +181,20 @@ jobs:
           rebuild=false
           [ "$verdict" != valid ] && rebuild=true
           [ "$FORCE" = "true" ] && rebuild=true
+          # A valid AST from a full build that carries no Publisher QA summary
+          # (qa.json) was seeded by a fhir-harness whose seed did not carry it
+          # (older than 7468adf5, 2026-11-06), and a valid cache is never
+          # rebuilt, so the site's QA report would never get it. Rebuild it
+          # once, in full, on the default branch, where the new AST is seeded.
+          # An incremental AST has no full Publisher QA: it is left as it is.
+          if [ "$rebuild" = false ] && [ -f output-ast/manifest.json ] && [ ! -f output-ast/qa.json ]; then
+            kind=$(bun run fhir-harness/scripts/ig-ast.ts build-kind output-ast 2>/dev/null || echo full)
+            git fetch -q origin "refs/heads/${DEFAULT_BRANCH:-main}" 2>/dev/null || true
+            if [ "$kind" = full ] && [ "$(git rev-parse HEAD)" = "$(git rev-parse -q --verify FETCH_HEAD)" ]; then
+              rebuild=true
+              echo "::notice::the cached AST is valid but carries no qa.json (the Publisher's QA summary): rebuilding it once in full"
+            fi
+          fi
           echo "verdict=$verdict" >> "$GITHUB_OUTPUT"
           echo "rebuild=$rebuild" >> "$GITHUB_OUTPUT"
           echo "::notice::AST cache for $(git rev-parse --short HEAD): $verdict; rebuild: $rebuild"
@@ -438,6 +453,10 @@ jobs:
           tail -n 20 "$RUNNER_TEMP/ast-build.log"
           # The build's own expansions, beside the AST: its ValueSets carry none.
           [ -f output/expansions.json ] && cp output/expansions.json output-ast/expansions.json
+          # The Publisher's QA summary goes with the AST too, as ig-ast-build.sh does: the
+          # site never reads output/, so a branch's AST (kept as this run's artifact, never
+          # seeded) carries it as well, whatever seed the IG's lock mounts (ig-qa-page.ts).
+          [ -f output/qa.json ] && cp output/qa.json output-ast/qa.json
           # Put the IG's inputs back as the commit has them, ALWAYS: the
           # Publisher writes under input/ during a build (it renders
           # input/images-source/*.plantuml into input/images/*.svg, overwriting
