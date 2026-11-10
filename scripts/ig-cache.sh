@@ -401,12 +401,26 @@ PY
       || die "git add failed"
     tree=$(GIT_DIR="$gitdir" GIT_INDEX_FILE="$idx" git write-tree) || die "git write-tree failed"
     rm -f "$idx"
-    commit=$(GIT_DIR="$gitdir" git commit-tree "$tree" -m "$subj") || die "git commit-tree failed"
-    igit push -f "$REMOTE" "$commit:refs/heads/$br" >/dev/null 2>&1 || die "push failed"
+    # Each seed is a CHILD of the branch's current tip, never a lone orphan
+    # commit force-pushed over it: a site reads the AST's files by raw URL
+    # pinned to the commit it was built from (owner, 2026-11-10, card "A";
+    # fhir-harness#325), and a commit nothing points at is garbage-collected,
+    # which would empty those pages. The lease refuses a push that raced
+    # another seed instead of overwriting it.
+    local parent=""
+    parent=$(igit ls-remote "$REMOTE" "refs/heads/$br" 2>/dev/null | cut -f1) || parent=""
+    if [ -n "$parent" ]; then
+      igit fetch -q --depth 1 "$REMOTE" "$parent" >/dev/null 2>&1 || die "could not fetch $br's tip $parent to seed on top of it"
+      commit=$(GIT_DIR="$gitdir" git commit-tree "$tree" -p "$parent" -m "$subj") || die "git commit-tree failed"
+    else
+      commit=$(GIT_DIR="$gitdir" git commit-tree "$tree" -m "$subj") || die "git commit-tree failed"
+    fi
+    igit push --force-with-lease="refs/heads/$br:$parent" "$REMOTE" "$commit:refs/heads/$br" >/dev/null 2>&1 \
+      || die "push failed (another seed may have moved $br; re-run)"
     printf '\npushed %s (%s resources, %s edges)\n' "$br" "$n" "$edges"
   else
     printf '\nFiles written to %s\n' "$tmp"
-    printf 'Push them to the orphan branch manually or pass --push.\n'
+    printf 'Push them to the cache branch manually or pass --push.\n'
   fi
 }
 
