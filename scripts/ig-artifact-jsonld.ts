@@ -8,7 +8,7 @@
  *
  * Usage:
  *   bun run fhir-harness/scripts/ig-artifact-jsonld.ts write --index <index.json> --out <dir>
- *     [--base <site-root-url>] [--compiled-data <path from the docs root>] [--title <IG display name>]
+ *     [--base <site-root-url>] [--compiled-data <path from the docs root>] [--title <IG display name>] [--root-resources]
  *   bun run fhir-harness/scripts/ig-artifact-jsonld.ts check --index <index.json> --dir <dir>
  *
  * ## Why here
@@ -457,7 +457,7 @@ if (import.meta.main) {
       process.exit(2);
     }
     const base = at("--base");
-    const files = artifactJsonLdFiles(ix, { ...(base ? { base: base.endsWith("/") ? base : `${base}/` } : {}), ...(at("--compiled-data") ? { compiledData: at("--compiled-data")! } : {}), ...(at("--title") ? { title: at("--title")! } : {}) });
+    const files = artifactJsonLdFiles(ix, { ...(base ? { base: base.endsWith("/") ? base : `${base}/` } : {}), ...(at("--compiled-data") ? { compiledData: at("--compiled-data")! } : {}), ...(at("--title") ? { title: at("--title")! } : {}), ...(argv.includes("--root-resources") ? { rootResources: true } : {}) });
     for (const [rel, text] of files) {
       const p = join(resolve(out), rel);
       mkdirSync(dirname(p), { recursive: true });

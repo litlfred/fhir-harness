@@ -9,7 +9,8 @@ output: schemas/skills/ig-publication/output.schema.json
 > Named by activities in `l3-fhir-pipeline.bpmn` (`Build pipeline` and
 > `Publication manager` lanes), `ig-incremental-build.bpmn` (`Incremental
 > build`, `Publisher + validator services (JVM)` and `Publication manager`
-> lanes) and `ig-ast-cache.bpmn` (`Site build` lane, the size review).
+> lanes), `ig-ast-cache.bpmn` (`Site build` lane, the size review) and
+> `ig-release.bpmn` (the owner's tag).
 
 Build a FHIR Implementation Guide and publish it: version, tag, assemble the
 site, deploy.
@@ -105,7 +106,11 @@ never built by the publisher the release claims produced it.
 
 ## Cutting a release
 
-A release starts from a `v*` tag, never from a site deploy. Pushing the tag
+A release starts from a `v*` tag, never from a site deploy, and the tag is
+the owner's: releasing is a governance decision (`ig-release.bpmn`,
+`Task_Tag`). The owner tags the commit that set the current version in
+`sushi-config.yaml` with `v<version>`; an agent never picks a version or
+pushes a tag. Pushing the tag
 runs the IG's `ig-release.yml` (template
 `templates/ig-repo-site/ig-release.yml`): a full AST build, then
 `ig-release.ts` makes a GitHub **draft** release carrying `package.tgz` (and
@@ -115,6 +120,13 @@ release. The files, the pre-release rule and the order are
 [`ig-binary-artefacts`](../../fhir-ig-base/ig-binary-artefacts.md)
 §"Releasing". The site itself is published from the AST cache
 (`ig-ast-cache.bpmn`) and carries none of these files.
+
+**Catch-up.** Every AST refresh of the default branch runs
+`ig-release.ts check`, which reports, as a notice, a current version with no
+tag (naming the commit to tag) or a tag with no release (run
+"IG release (draft)" by hand for it). Relay the notice to the owner; do not
+act on it. The details are `ig-binary-artefacts` §"Catching up a version
+that was not tagged".
 
 ## Report the URL only once it answers
 

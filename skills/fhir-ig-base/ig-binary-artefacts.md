@@ -77,16 +77,23 @@ of these, because each copy is under the limit.
 
 The owner set this process on 2026-11-09 (Q-REL-1 "A"). A release is cut
 from a tag, carries the same files every time, and is published by a
-person.
+person. The process is
+[`ig-release.bpmn`](../../processes/content/ig-release.bpmn).
 
-1. **A tag starts it.** Pushing a tag such as `v1.0.0` runs the IG's
+1. **The owner tags the IG's current version.** Releasing is a governance
+   decision: the owner tags the commit that set the version in
+   `sushi-config.yaml` with `v<version>` (for example `v0.2.0`) on the
+   default branch, and pushes the tag. An agent never chooses a version,
+   never pushes a tag and never publishes a release; it reports what is
+   missing (below) and stops.
+2. **The tag starts the build.** Pushing the tag runs the IG's
    `ig-release.yml` caller (template:
    `templates/ig-repo-site/ig-release.yml`). It can also be started by hand
    for an existing tag.
-2. **The build is full.** The caller runs `ig-ast-refresh.yml` with
+3. **The build is full.** The caller runs `ig-ast-refresh.yml` with
    `force` and `release` set. A release is never cut from an incremental
    AST.
-3. **Every release carries the same files.** `ig-release.ts assets`
+4. **Every release carries the same files.** `ig-release.ts assets`
    gathers them:
    - `package.tgz`, plus `package.r4.tgz` and `package.r4b.tgz` when the
      build wrote them;
@@ -96,15 +103,15 @@ person.
    The Pages site serves neither the AST nor the ELM: its root
    `<Type>-<id>.json` copies are reduced (rule 7), and the ELM ships here. A build with no `package.tgz`
    is refused.
-4. **It is made as a GitHub draft.** `ig-release.ts draft` makes the draft
+5. **It is made as a GitHub draft.** `ig-release.ts draft` makes the draft
    and uploads the files. If the tag already has a draft, its files are
    replaced. If the tag already has a published release, it is refused,
    because a published release is never changed by a workflow.
-5. **The owner publishes it.** Publishing the draft on GitHub is
+6. **The owner publishes it.** Publishing the draft on GitHub is
    `Task_AuthorizeRelease` in `draft-to-publication.bpmn`. Until then nobody
    but the repository's writers sees it, and `ingest-ig-releases` leaves it
    out of `releases.json`.
-6. **A ballot, draft or CI-build version is a pre-release.**
+7. **A ballot, draft or CI-build version is a pre-release.**
    `ig-release.ts kind` reads `sushi-config.yaml`:
    - a version with a pre-release suffix (`1.0.0-ballot`) is a pre-release;
    - so is a `releaseLabel` naming a ballot, draft, CI build, preview or
@@ -114,8 +121,28 @@ person.
    Pre-releases are recorded in `releases.json` with their flag, and the
    site's releases page lists them.
 
-An IG's working version (`status: draft`, `releaseLabel: ci-build` on the
-default branch) gets no release at all. Its Pages site is the preview.
+A `ci-build` version the owner tags is released as a pre-release; one the
+owner does not tag gets no release, and its Pages site is the preview.
+
+### Catching up a version that was not tagged
+
+Every AST refresh of the default branch runs `ig-release.ts check`
+(advisory: it never fails the run, never tags and never releases). It reads
+the version in `sushi-config.yaml` and prints a notice for what is missing:
+
+- `version X is untagged: the owner tags commit <sha> with vX`. The commit
+  is the one that last set the version (`git log -G` over
+  `sushi-config.yaml`), not necessarily HEAD; when the history cannot say
+  (a shallow clone), HEAD is named and the notice says so.
+- `tag vX has no release: run "IG release (draft)" (ig-release.yml) by hand
+  with tag vX`, for a tag pushed before the IG carried the caller or whose
+  run failed.
+- `vX has a draft release waiting for the owner to publish it`.
+
+To run it by hand: `bun run fhir-harness/scripts/ig-release.ts check --ig .
+--repo <owner/repo>` (a draft is listed only to a token that may write the
+repository). An older version left untagged is not reported: only the
+current one is a release the owner may still want.
 
 ## Measure before deciding
 
