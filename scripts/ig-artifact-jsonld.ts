@@ -74,8 +74,9 @@ export interface JsonLdOptions {
   base?: string;
   /**
    * Where a compiled index's resource files are served, as a path from the
-   * docs root (`gen-ig-pages --compiled-data`, e.g. `../ast-data`). Absent: no
-   * local copy is claimed.
+   * docs root (`gen-ig-pages --compiled-data`, e.g. `../ast-data`), or an
+   * absolute `https://` base the AST tree is read from ({@link isRemoteData}).
+   * Absent: no local copy is claimed.
    */
   compiledData?: string;
   /** The IG's display name, for the index node's `dcterms:title`. */
@@ -91,10 +92,23 @@ export interface JsonLdOptions {
  */
 export const COMPILED_BY_NAME = ".";
 
-/** The served path of a compiled copy, relative to an artefact page or node, or undefined. */
+/**
+ * Whether `--compiled-data` names an absolute base the AST tree is read from
+ * rather than a path on this site: the IG's AST cache branch on
+ * raw.githubusercontent.com, pinned to the commit the site was built from
+ * (owner, 2026-11-10, card "A"; fhir-harness#325). The site then carries no
+ * copy of the resources; each page fetches its own from that commit.
+ */
+export function isRemoteData(compiledData: string | undefined): boolean {
+  return compiledData !== undefined && /^https:\/\//.test(compiledData);
+}
+
+/** The served path of a compiled copy, relative to an artefact page or node (absolute for {@link isRemoteData}), or undefined. */
 export function localResourceHref(a: FhirArtifact, compiledData: string | undefined): string | undefined {
   const m = a.materialization;
   if (!compiledData || m.state !== "materialized" || m.purpose !== "compiled" || !m.localPath) return undefined;
+  // The AST branch's root is the AST directory, so its own name is dropped here too.
+  if (isRemoteData(compiledData)) return `${compiledData.replace(/\/+$/, "")}/${m.localPath.replace(/^[^/]+\//, "").split("/").map(encodeURIComponent).join("/")}`;
   // `artifact/X.jsonld` → the docs root is `../`.
   if (compiledData.replace(/\/+$/, "") === COMPILED_BY_NAME) return `../${a.resourceType}-${a.id}.json`;
   // The served tree mirrors the AST directory, so its own name is dropped.

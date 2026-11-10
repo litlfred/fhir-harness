@@ -194,3 +194,36 @@ Feature: Building an IG repository's own site from its AST
   Scenario: the CQL URL names the repository and commit the site is built from
     Given SITE_REPOSITORY and SITE_COMMIT
     Then each CQL file is linked at that commit, and with either missing nothing is linked
+
+  @test:scripts/ig-repo-site.test.ts::the_AST's_resources_by_raw_URL_at_the_cache_commit_(fhir-harness#325)::rawBaseFromRecordedCommit
+  Scenario: the pages read the AST from raw.githubusercontent.com at the cache commit ast restored
+    Given ast recorded a full cache commit and a github.com remote, over https or ssh
+    Then the base is that repository's raw URL at that commit
+
+  @test:scripts/ig-repo-site.test.ts::the_AST's_resources_by_raw_URL_at_the_cache_commit_(fhir-harness#325)::noRawBaseWithoutUsableRecord
+  Scenario: no recorded commit, a short sha, another host, a broken record or SITE_AST_BY_URL=0 keeps the root copies
+    Then no base is given and the resources are copied to the site root as before
+
+  @test:scripts/ig-repo-site.test.ts::the_AST's_resources_by_raw_URL_at_the_cache_commit_(fhir-harness#325)::pagesPointAtRawUrl
+  Scenario: an artefact's resource href is its path in the AST tree under the raw base
+    Then the AST directory's own name is dropped and the path is appended to the base
+    And with "." the href is still the root copy by the Publisher's name
+
+  @test:scripts/ig-repo-site.test.ts::the_AST's_resources_by_raw_URL_at_the_cache_commit_(fhir-harness#325)::restoreRecordsCacheCommit
+  Scenario: ig-cache.sh restore --record writes the cache commit it restored and the remote
+    Given a remote holding the IG's cache branch
+    When the AST is restored with --record
+    Then the record names the branch's commit and the remote, and the AST is laid down
+    And with that AST already present the commit is recorded again, and with a changed manifest nothing is recorded
+
+  @test:scripts/ig-repo-site.test.ts::the_AST's_resources_by_raw_URL_at_the_cache_commit_(fhir-harness#325)::pagesReadTheSiteWorkRecord
+  Scenario: the artefact pages read the commit from the site build's work directory, not compose's scratch one
+    Given the record in the site build's work directory and an empty scratch directory
+    When the artefact pages are built
+    Then they name the raw URL at that commit, as publisher-pages does
+
+  @test:scripts/ig-repo-site.test.ts::the_AST's_resources_by_raw_URL_at_the_cache_commit_(fhir-harness#325)::byUrlServesNoRootCopy
+  Scenario: publisher pages copies no resource to the root when the pages read them by URL
+    Given a work directory where ast recorded the cache commit
+    When publisher pages runs
+    Then no <Type>-<id>.json is written, the index is still served, and the log names the raw base
