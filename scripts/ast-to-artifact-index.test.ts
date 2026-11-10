@@ -252,6 +252,15 @@ describe("attachSidecars", () => {
     expect(index.sidecarsUnbound?.map((u) => u.filename)).toEqual(["LogicalModels.schema.json"]);
   });
 
+  test("emptyAstPathRecordsTreePaths", () => {
+    const { index } = astToArtifactIndex(syntheticAst(), { instanceId: "example", astPath: "" });
+    expect(FhirArtifactIndexSchema.safeParse(index).success).toBe(true);
+    expect(index.source.of).toBe(".");
+    const paths = index.artifacts.map((a) => (a.materialization as { localPath?: string } | undefined)?.localPath).filter(Boolean);
+    expect(paths.length).toBeGreaterThan(0);
+    for (const p of paths) expect(p).toMatch(/^resources\//);
+  });
+
   test("servedBaseRecordedAsSidecarBase", () => {
     const { index } = astToArtifactIndex(syntheticAst(), { instanceId: "example" });
     attachSidecars(index, sidecars(), { localPrefix: "fhir-artifact-index/sidecars", servedBase: "https://raw.githubusercontent.com/o/ig/abc/ig-api/sidecars/" });

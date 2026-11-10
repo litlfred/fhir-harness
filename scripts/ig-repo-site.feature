@@ -264,3 +264,23 @@ Feature: Building an IG repository's own site from its AST
   Scenario: the Swagger page's specs point at where the sidecars are served
     Given a Swagger page listing its specs as ../<file> from openapi/
     Then each spec that is a served sidecar is listed at fhir-artifact-index/sidecars/, and any other name is left as it was
+
+  @test:scripts/ig-repo-site.test.ts::the_artefact_index_read_from_the_AST_cache_commit_(owner,_2026-11-10,_card_"A")::cachedIndexNotServedPointerIs
+  Scenario: with a pointer to the cache commit's index, the index is not served and the pointer is
+    Given the index the site built and a pointer at the cache commit
+    When the AST's data is served
+    Then fhir-artifact-index/index.json is not in the site, and index.ref.json names the raw index, its base, the repository and the commit
+
+  @test:scripts/ig-repo-site.test.ts::the_artefact_index_read_from_the_AST_cache_commit_(owner,_2026-11-10,_card_"A")::olderCacheServesTheIndexAndPointsAtIt
+  Scenario: a cache with no index: the site serves its own, and the pointer names it
+    Then fhir-artifact-index/index.json is served, and index.ref.json points at index.json beside it
+
+  @test:scripts/ig-repo-site.test.ts::the_artefact_index_read_from_the_AST_cache_commit_(owner,_2026-11-10,_card_"A")::publisherPagesReadsTheCacheCopy
+  Scenario: publisher pages reads the index from the cache commit when the restored AST holds one
+    Given a recorded cache commit and a restored AST holding fhir-artifact-index/index.json
+    When publisher pages runs
+    Then the index is not served, and the log names its raw URL
+
+  @test:scripts/ig-repo-site.test.ts::the_artefact_index_read_from_the_AST_cache_commit_(owner,_2026-11-10,_card_"A")::locateFollowsThePointerElseTheOldPath
+  Scenario: a reader locates an IG's index from its site
+    Then the pointer's index is followed, resolved against the pointer, and with no pointer the old path is used

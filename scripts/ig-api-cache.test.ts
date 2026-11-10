@@ -38,8 +38,19 @@ function checkout(name: string, step: "ok" | "fails" | "none"): string {
   const ig = join(dir, name);
   mkdirSync(join(ig, "output-ast", "resources", "ValueSet"), { recursive: true });
   writeFileSync(join(ig, "sushi-config.yaml"), "id: ex.ig\n");
-  writeFileSync(join(ig, "output-ast", "resources", "ValueSet", "x--0000.json"), JSON.stringify({ resourceType: "ValueSet", id: "x" }));
-  writeFileSync(join(ig, "output-ast", "manifest.json"), JSON.stringify({ resources: [{ resourceType: "ValueSet", id: "x", file: "resources/ValueSet/x--0000.json" }] }));
+  writeFileSync(join(ig, "output-ast", "resources", "ValueSet", "x--0000.json"), JSON.stringify({ resourceType: "ValueSet", id: "x", url: "http://example.org/ValueSet/x", version: "1.0.0", name: "x" }));
+  writeFileSync(
+    join(ig, "output-ast", "manifest.json"),
+    JSON.stringify({
+      $schema: "ig-ast/v1",
+      authority: "cache",
+      provisional: ["indices", "dependencies", "versions"],
+      generatedAt: "2026-11-10T00:00:00Z",
+      inputs: { toolchain: "ig-publisher 2.3.4", sourceRevision: "a".repeat(40) },
+      resources: [{ key: "http://example.org/ValueSet/x|1.0.0", canonical: "http://example.org/ValueSet/x", version: "1.0.0", resourceType: "ValueSet", id: "x", name: "x", file: "resources/ValueSet/x--0000.json", source: "fsh-generated/resources/ValueSet-x.json" }],
+    }),
+  );
+  writeFileSync(join(ig, "output-ast", "dependencies.json"), JSON.stringify({ $schema: "ig-ast-dependencies/v1", authority: "cache", dependencies: [] }));
   writeFileSync(join(ig, "step.js"), step === "fails" ? "process.exit(1)" : STEP);
   writeFileSync(join(ig, "package.json"), JSON.stringify({ name: "ex", scripts: step === "none" ? {} : { [SIDECARS_STEP]: "bun run step.js" } }));
   return ig;
@@ -94,6 +105,10 @@ describe("the IG API for the AST cache commit", () => {
     expect(tree).toContain("ig-api/site/ValueSets.schema.json");
     expect(tree).toContain("ig-api/ig-api.json");
     expect(tree).toContain("manifest.json");
+    // The artefact index, built from the same tree, with the IG API's sidecars bound at their paths in it.
+    expect(tree).toContain("fhir-artifact-index/index.json");
+    const ix = JSON.parse(git(remote, "show", `${br}:fhir-artifact-index/index.json`)) as { artifacts: { key: string; sidecars?: { schema?: { localPath?: string } } }[] };
+    expect(ix.artifacts.find((a) => a.key === "ValueSet/x")?.sidecars?.schema?.localPath).toBe("ig-api/sidecars/ValueSet-x.schema.json");
     // A restore into a fresh checkout lays the IG API down beside the AST.
     const fresh = join(dir, "ig-restore");
     mkdirSync(fresh, { recursive: true });
@@ -103,9 +118,10 @@ describe("the IG API for the AST cache commit", () => {
     const restore = spawnSync("bash", [join(import.meta.dir, "ig-cache.sh"), "restore", "--ig-root", fresh], { cwd: fresh, encoding: "utf-8" });
     expect(restore.status).toBe(0);
     expect(existsSync(join(fresh, "output-ast", "ig-api", "sidecars", "ValueSet-x.schema.json"))).toBe(true);
+    expect(existsSync(join(fresh, "output-ast", "fhir-artifact-index", "index.json"))).toBe(true);
     // IG_CACHE_IG_API=0 seeds the AST alone.
-    const bare = spawnSync("bash", [join(import.meta.dir, "ig-cache.sh"), "seed", "--ig-root", ig, "--push", "--force"], { cwd: ig, encoding: "utf-8", env: { ...env, IG_CACHE_IG_API: "0" } });
+    const bare = spawnSync("bash", [join(import.meta.dir, "ig-cache.sh"), "seed", "--ig-root", ig, "--push", "--force"], { cwd: ig, encoding: "utf-8", env: { ...env, IG_CACHE_IG_API: "0", IG_CACHE_INDEX: "0" } });
     expect(bare.status).toBe(0);
-    expect(git(remote, "ls-tree", "-r", "--name-only", br).split("\n").some((f) => f.startsWith("ig-api/"))).toBe(false);
+    expect(git(remote, "ls-tree", "-r", "--name-only", br).split("\n").some((f) => f.startsWith("ig-api/") || f.startsWith("fhir-artifact-index/"))).toBe(false);
   });
 });
