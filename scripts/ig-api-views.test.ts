@@ -37,6 +37,8 @@ describe("IG API views", () => {
     expect(d.script).toBe(`../${IG_API_VIEW_SCRIPT}`);
     // Fetched from the SERVED graph, not from a copy beside the page.
     expect(d.src).toBe("../fhir-artifact-index/sidecars/ValueSet-Actors.jsonld");
+    // Read from the AST cache commit when the index names a sidecar base.
+    expect(igApiViewData(a, igApiViews(a)[1]!, "../", false, "https://raw.example/ig-api/sidecars").src).toBe("https://raw.example/ig-api/sidecars/ValueSet-Actors.jsonld");
     // The page carries no file text: the loader fetches it (bean `680p`).
     expect(JSON.stringify(d)).not.toContain("@context");
   });

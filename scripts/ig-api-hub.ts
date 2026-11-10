@@ -57,14 +57,25 @@ export interface HubEntry {
   view?: string;
 }
 
+/**
+ * Where a page fetches or links a bound sidecar: `<sidecarBase>/<file>` when
+ * the index reads the sidecars from the AST cache commit (`sidecarBase`), else
+ * its `localPath`, prefixed by the page's way to the served root (`toRoot`).
+ * Undefined for a sidecar held nowhere. Pure.
+ */
+export function sidecarHref(ix: Pick<FhirArtifactIndex, "sidecarBase">, r: { localPath?: string } | undefined, toRoot = ""): string | undefined {
+  if (!r?.localPath) return undefined;
+  return ix.sidecarBase ? `${ix.sidecarBase}/${basename(r.localPath)}` : `${toRoot}${r.localPath}`;
+}
+
 /** One entry per sidecar the index binds, with its artefact's page and its view page. Pure. */
-export function hubEntries(ix: Pick<FhirArtifactIndex, "artifacts">): HubEntry[] {
+export function hubEntries(ix: Pick<FhirArtifactIndex, "artifacts" | "sidecarBase">): HubEntry[] {
   const out: HubEntry[] = [];
   for (const a of ix.artifacts ?? []) {
     for (const k of SIDECAR_KINDS) {
       const r = a.sidecars?.[k.key];
       if (!r) continue;
-      const href = r.localPath ?? r.url;
+      const href = sidecarHref(ix, r) ?? r.url;
       const file = basename(href);
       out.push({
         file,
@@ -97,12 +108,12 @@ export function igApiHubNode(o: { label: string; entries: readonly HubEntry[]; o
       ...(e.view ? { "schema:url": e.view } : {}),
       ...(e.artefact ? { "schema:about": { "@id": e.artefact.page, "schema:identifier": e.artefact.key } } : {}),
     })),
-    "schema:workExample": [...(o.documents ?? [])].sort().map((d) => ({ "@type": "schema:DigitalDocument", "schema:name": d, "schema:contentUrl": d })),
+    "schema:workExample": [...(o.documents ?? [])].sort().map((d) => ({ "@type": "schema:DigitalDocument", "schema:name": basename(d), "schema:contentUrl": d })),
   };
 }
 
 /** The node as the file served at {@link IG_API_HUB_NODE}. */
-export function igApiHubNodeJson(ix: Pick<FhirArtifactIndex, "artifacts">, label: string, extra: { openapi?: boolean; documents?: readonly string[] } = {}): string {
+export function igApiHubNodeJson(ix: Pick<FhirArtifactIndex, "artifacts" | "sidecarBase">, label: string, extra: { openapi?: boolean; documents?: readonly string[] } = {}): string {
   return `${JSON.stringify(igApiHubNode({ label, entries: hubEntries(ix), ...extra }), null, 2)}\n`;
 }
 
@@ -174,7 +185,7 @@ export function igApiHubNodeFill(label: string, marker: string, prefix: string, 
  * Write the hub into a built site at its root: the page at `page`, its node
  * and its loader. Returns the files written.
  */
-export function writeIgApiHubSite(o: { site: string; ix: Pick<FhirArtifactIndex, "artifacts">; label: string; page: string; openapi?: boolean; documents?: readonly string[] }): string[] {
+export function writeIgApiHubSite(o: { site: string; ix: Pick<FhirArtifactIndex, "artifacts" | "sidecarBase">; label: string; page: string; openapi?: boolean; documents?: readonly string[] }): string[] {
   mkdirSync(join(o.site, "assets"), { recursive: true });
   writeFileSync(join(o.site, IG_API_HUB_NODE), igApiHubNodeJson(o.ix, o.label, { ...(o.openapi ? { openapi: true } : {}), ...(o.documents ? { documents: o.documents } : {}) }));
   writeFileSync(join(o.site, IG_API_HUB_NODE_SCRIPT), readFileSync(IG_API_HUB_NODE_LOADER, "utf-8"));

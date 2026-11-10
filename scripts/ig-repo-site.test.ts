@@ -23,6 +23,10 @@ import {
   astRawBase,
   builtPage,
   cqlSourceOf,
+  readIgApiDir,
+  rebaseSwaggerSpecs,
+  siteIgApi,
+  SWAGGER_PAGE,
   dropForeignIndexes,
   foreignArtefactIndexes,
   IG_API_DESCRIPTOR,
@@ -616,5 +620,65 @@ describe("another IG layer's artefact index is not copied into this IG's site (o
     expect(existsSync(join(site, "base-ig", "l1-extraction"))).toBe(true);
     expect(existsSync(join(site, "fhir-artifact-index", "index.json"))).toBe(true);
     expect(dropForeignIndexes(site, root, entries)).toEqual([]);
+  });
+});
+
+describe("the IG API read from the AST cache commit (owner, 2026-11-10, card \"A\")", () => {
+  const sha = "0123456789abcdef0123456789abcdef01234567";
+  const raw = `https://raw.githubusercontent.com/o/ig/${sha}`;
+  /** A work directory where `ast` recorded the cache commit, an AST whose cache holds an IG API, and the step's own output. */
+  const setup = (name: string, cached: boolean) => {
+    const root = join(dir, name);
+    const ast = fakeAst(root, [{ resourceType: "ValueSet", id: "x" }]);
+    const work = join(root, "work");
+    mkdirSync(join(work, IG_API_WORK, "sidecars"), { recursive: true });
+    writeFileSync(join(work, AST_SOURCE_FILE), JSON.stringify({ commit: sha, remote: "https://github.com/o/ig.git" }));
+    writeFileSync(join(work, IG_API_WORK, "sidecars", "ValueSet-x.schema.json"), "{}");
+    if (cached) {
+      const c = join(ast, IG_API_WORK);
+      mkdirSync(join(c, "sidecars"), { recursive: true });
+      mkdirSync(join(c, IG_API_SITE, "openapi"), { recursive: true });
+      writeFileSync(join(c, "sidecars", "ValueSet-x.schema.json"), "{}");
+      writeFileSync(join(c, "sidecars", "ValueSet-x.openapi.json"), "{}");
+      writeFileSync(join(c, IG_API_SITE, "ValueSets.schema.json"), "{}");
+      writeFileSync(join(c, IG_API_SITE, SWAGGER_PAGE), `<script>var swaggerUrls = [{"url": "../ValueSet-x.openapi.json"}]; url: "../ValueSet-x.openapi.json"</script>`);
+      writeFileSync(join(c, IG_API_DESCRIPTOR), JSON.stringify({ label: "My API" }));
+    }
+    return { root, ast, work };
+  };
+
+  test("cachedIgApiReadByRawUrl", () => {
+    const { ast, work } = setup("api-cached", true);
+    expect(siteIgApi(work, ast, {})).toEqual({ sidecars: join(ast, IG_API_WORK, "sidecars"), files: 2, label: "My API", site: join(ast, IG_API_WORK, IG_API_SITE), rawBase: `${raw}/${IG_API_WORK}` });
+  });
+
+  test("olderCacheFallsBackToTheStepsOutput", () => {
+    const { ast, work } = setup("api-old-cache", false);
+    expect(siteIgApi(work, ast, {})).toEqual({ sidecars: join(work, IG_API_WORK, "sidecars"), files: 1 });
+    // No recorded commit (or by-URL off): the step's output, even when the cache holds one.
+    const c = setup("api-off", true);
+    expect(siteIgApi(c.work, c.ast, { SITE_AST_BY_URL: "0" })?.rawBase).toBeUndefined();
+  });
+
+  test("byUrlServesNoSidecarAndRebasesSwagger", () => {
+    const { root, ast } = setup("api-serve", true);
+    const site = join(root, "_site");
+    mkdirSync(site, { recursive: true });
+    const igApi = { ...readIgApiDir(join(ast, IG_API_WORK))!, rawBase: `${raw}/${IG_API_WORK}` };
+    const r = serveAstData({ site, ast, igApi, byUrl: true });
+    expect(r.sidecars).toBe(0);
+    expect(r.siteFiles).toBe(1);
+    expect(existsSync(join(site, SIDECARS_SERVED))).toBe(false);
+    expect(existsSync(join(site, "ValueSets.schema.json"))).toBe(false);
+    const page = readFileSync(join(site, SWAGGER_PAGE), "utf-8");
+    expect(page).toContain(`"url": "${raw}/ig-api/sidecars/ValueSet-x.openapi.json"`);
+    expect(page).not.toContain('"../ValueSet-x.openapi.json"');
+  });
+
+  test("localSwaggerSpecsPointAtTheServedSidecars", () => {
+    const html = `{"url": "../A.openapi.json"}, {"url": "../B.openapi.json"}, url: "../A.openapi.json"`;
+    expect(rebaseSwaggerSpecs(html, new Set(["A.openapi.json"]), (f) => `../${SIDECARS_SERVED}/${f}`)).toBe(
+      `{"url": "../fhir-artifact-index/sidecars/A.openapi.json"}, {"url": "../B.openapi.json"}, url: "../fhir-artifact-index/sidecars/A.openapi.json"`,
+    );
   });
 });

@@ -353,6 +353,21 @@ names, never naming a layer:
   descriptor's `"placeholder"` marker is a shell around the layer's content,
   and the layer's page at the same path replaces it. No other page is
   replaced.
+- **In the AST cache commit** (owner, 2026-11-10, card "A"):
+  `ig-cache.sh seed` runs the same step over the AST it seeds
+  (`ig-api-cache.ts`) and commits its `ig-api/` (`sidecars/`, `site/`,
+  `ig-api.json`) beside the AST, so the generator's flags stay the layer
+  above's. When `ast` recorded the cache commit and the restored AST holds
+  `ig-api/`, the site binds that copy instead and copies none of it: the
+  index records `sidecarBase` (`<raw>/ig-api/sidecars`), every API tab, view
+  page, hub entry and OpenAPI embed reads `<sidecarBase>/<file>`, the hub's
+  documents are `<raw>/ig-api/site/<file>`, and only the site's pages over
+  them (the Swagger page) are served. An older cache with no `ig-api/` falls
+  back to the step's output in the work directory, served as above.
+- **The Swagger page** lists each spec at the address it is read from:
+  `../fhir-artifact-index/sidecars/<file>`, or its raw URL
+  (`rebaseSwaggerSpecs`); the generator's `../<file>` named a root path
+  where no sidecar is served.
 
 **What the site serves from the AST**: each resource once, under the
 Publisher's name `<Type>-<id>.json` at the root (the thin pages' data,

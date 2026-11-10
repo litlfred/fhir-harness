@@ -22,3 +22,10 @@ Feature: The IG API hub page
     When the hub site is written to "api.html"
     Then the page, node and loader script are written
     And the page is headed "Example API" and the node has 2 parts
+
+  @test:scripts/ig-api-hub.test.ts::sidecarHref:_read_from_the_AST_cache_commit_when_the_index_says_so::sidecarHrefFromBaseOrLocalPath
+  Scenario: a sidecar is linked at the index's sidecar base, else at its local path
+    Given a sidecar bound at a local path
+    Then without a base it is linked at the local path from the page, and with one at the base
+    And the hub entries link the base while their view pages stay the site's
+    And a hub document given as a URL is named by its file

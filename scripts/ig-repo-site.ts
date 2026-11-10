@@ -353,6 +353,20 @@ export function astSource(work: string | undefined, env: Record<string, string |
 /** Under the work directory: the AST versions `compose` read for the History view, which `publisher-pages` serves. */
 export const AST_HISTORY_WORK = "ig-ast-history.json";
 
+/** The Swagger page the IG API generator writes among the site files (`ig-api-gen.ts`). */
+export const SWAGGER_PAGE = "openapi/index.html";
+
+/**
+ * The Swagger page with each spec it lists at the address the site serves it
+ * from. The generator lists each wrapper as `../<file>` from `openapi/`, the
+ * site root, where no sidecar is served: they are at
+ * `fhir-artifact-index/sidecars/` or, read from the AST cache commit, at its
+ * raw URL. Only a listed name that is one of `files` is rewritten. Pure.
+ */
+export function rebaseSwaggerSpecs(html: string, files: ReadonlySet<string>, href: (file: string) => string): string {
+  return html.replace(/"\.\.\/([^"\/]+\.openapi\.json)"/g, (m, f: string) => (files.has(f) ? JSON.stringify(href(f)) : m));
+}
+
 /** The IG API sidecars a layer above left, and what it calls them. */
 export interface IgApi {
   sidecars: string;
@@ -366,6 +380,12 @@ export interface IgApi {
    * replaced by the layer's file at the same path; no other page ever is.
    */
   placeholder?: string;
+  /**
+   * Set when the files are read from the AST cache commit rather than served
+   * by the site ({@link siteIgApi}): the raw URL of this directory there,
+   * `https://raw.githubusercontent.com/<owner>/<repo>/<sha>/ig-api`.
+   */
+  rawBase?: string;
 }
 
 /**
@@ -374,8 +394,24 @@ export interface IgApi {
  * the pages would otherwise carry a label nobody chose.
  */
 export function readIgApi(work: string | undefined): IgApi | undefined {
-  if (!work) return undefined;
-  const dir = join(work, IG_API_WORK);
+  return work ? readIgApiDir(join(work, IG_API_WORK)) : undefined;
+}
+
+/**
+ * The IG API the site binds: the one the AST cache commit holds, read by raw
+ * URL at that commit, when `ast` recorded the commit and the cache holds one
+ * (`ig-cache.sh seed` writes it, {@link seedIgApi}); else the one a layer
+ * above left in the work directory, served by the site (an older cache, a
+ * cache off github.com, or {@link AST_BY_URL_ENV} `0`).
+ */
+export function siteIgApi(work: string | undefined, ast: string, env: Record<string, string | undefined> = process.env): IgApi | undefined {
+  const raw = astRawBase(work, env);
+  const cached = raw ? readIgApiDir(join(ast, IG_API_WORK)) : undefined;
+  return cached ? { ...cached, rawBase: `${raw}/${IG_API_WORK}` } : readIgApi(work);
+}
+
+/** {@link readIgApi} over the `ig-api` directory itself. */
+export function readIgApiDir(dir: string): IgApi | undefined {
   const sidecars = join(dir, "sidecars");
   if (!existsSync(sidecars) || !statSync(sidecars).isDirectory()) return undefined;
   const files = readdirSync(sidecars).filter((f) => statSync(join(sidecars, f)).isFile()).length;
@@ -513,7 +549,7 @@ export function astArtefactPages(o: { ig: string; ast: string; work: string; sit
   const args = ["--ast", relative(o.ig, o.ast) || ".", "--instance-id", o.name, "--out", index];
   const published = join(o.ig, INDEX_SERVED, "index.json");
   if (existsSync(published)) args.push("--compare", published, "--keep-published-grouping", "--report", join(o.work, "ast-parity.json"));
-  if (o.igApi) args.push("--sidecars", o.igApi.sidecars, "--sidecars-local", SIDECARS_SERVED);
+  if (o.igApi) args.push("--sidecars", o.igApi.sidecars, "--sidecars-local", SIDECARS_SERVED, ...(o.igApi.rawBase ? ["--sidecars-base", `${o.igApi.rawBase}/sidecars`] : []));
   bun("ast-to-artifact-index.ts", args);
   // The resources by raw URL at the restored cache commit when `ast` recorded
   // one (fhir-harness#325), else each copied to the site root (`AST_DATA`).
@@ -610,9 +646,13 @@ export function compose(o: { docs: string; ig: string; baseurl: string; ast?: st
     const site = join(work, "site");
     const baseurl = o.baseurl.replace(/\/$/, "");
     const label = igTitle(ig) ?? name;
-    const igApi = readIgApi(o.work);
-    log(igApi ? `${name}: ${igApi.files} IG API sidecar file(s) left by a layer above${igApi.label ? `, called "${igApi.label}"` : ""}` : `${name}: no IG API sidecars under the work directory — none bound`);
     const ast = resolve(o.ast ?? join(ig, AST_DIR));
+    const igApi = siteIgApi(o.work, ast);
+    log(
+      igApi
+        ? `${name}: ${igApi.files} IG API sidecar file(s) ${igApi.rawBase ? `read from the AST cache commit (${igApi.rawBase}), not copied into the site` : "left by a layer above"}${igApi.label ? `, called "${igApi.label}"` : ""}`
+        : `${name}: no IG API sidecars in the AST cache or the work directory — none bound`,
+    );
     const inst = astArtefactPages({ ig, ast, work, ...(o.work ? { siteWork: o.work } : {}), name, label, ...(igApi ? { igApi } : {}), log });
     if (o.work) {
       // For `publisher-pages`, which serves the index the pages were drawn from.
@@ -983,13 +1023,21 @@ export function serveAstData(o: { site: string; ast: string; index?: string; igA
   if (o.index && existsSync(o.index)) out.index = serve(o.index, o.site, join(INDEX_SERVED, "index.json"));
   if (o.history && existsSync(o.history)) out.history = serve(o.history, o.site, AST_HISTORY_FILE);
   if (o.igApi) {
-    for (const f of readdirSync(o.igApi.sidecars).sort()) {
-      const from = join(o.igApi.sidecars, f);
-      if (statSync(from).isFile() && serve(from, o.site, join(SIDECARS_SERVED, f))) out.sidecars += 1;
+    // Read by raw URL from the AST cache commit (`rawBase`): no sidecar is copied.
+    const files = readdirSync(o.igApi.sidecars).filter((f) => statSync(join(o.igApi!.sidecars, f)).isFile()).sort();
+    for (const f of o.igApi.rawBase ? [] : files) {
+      if (serve(join(o.igApi.sidecars, f), o.site, join(SIDECARS_SERVED, f))) out.sidecars += 1;
     }
+    const specHref = (f: string): string => (o.igApi!.rawBase ? `${o.igApi!.rawBase}/sidecars/${f}` : `../${SIDECARS_SERVED}/${f}`);
     if (o.igApi.site) {
       for (const f of filesUnder(o.igApi.site)) {
-        if (serve(join(o.igApi.site, f), o.site, f)) out.siteFiles += 1;
+        // The documents beside the pages (the enumeration schemas) are read
+        // from the cache commit too; the pages over them are the site's.
+        if (o.igApi.rawBase && !/\.html?$/i.test(f)) continue;
+        if (serve(join(o.igApi.site, f), o.site, f)) {
+          out.siteFiles += 1;
+          if (f === SWAGGER_PAGE) writeFileSync(join(o.site, f), rebaseSwaggerSpecs(readFileSync(join(o.site, f), "utf-8"), new Set(files), specHref));
+        }
         else if (o.igApi.placeholder && /\.html?$/i.test(f) && readFileSync(join(o.site, f), "utf-8").includes(o.igApi.placeholder)) {
           // The IG's page is a shell around the layer's marker: the layer's page is its content.
           cpSync(join(o.igApi.site, f), join(o.site, f));
@@ -1022,7 +1070,7 @@ export const CQL_DIR = "input/cql";
 export function publisherPages(o: { site: string; ast: string; work?: string; ig?: string; cql?: CqlSource; log?: (s: string) => void }): ServedData {
   const log = o.log ?? ((s: string) => console.error(s));
   if (!existsSync(o.site) || !statSync(o.site).isDirectory()) throw new Error(`${o.site}: no built site`);
-  const igApi = readIgApi(o.work);
+  const igApi = siteIgApi(o.work, o.ast);
   const index = o.work ? join(o.work, INDEX_WORK, "index.json") : undefined;
   const raw = astRawBase(o.work);
   const history = o.work && raw ? join(o.work, AST_HISTORY_WORK) : undefined;
@@ -1034,7 +1082,7 @@ export function publisherPages(o: { site: string; ast: string; work?: string; ig
     `publisher pages: from the AST, ${raw ? "no resource copied (read by URL)" : `${served.named} resource(s) as <Type>-<id>.json at the root (no ast-data/ mirror)`}` +
       `${served.kept ? ` (${served.kept} the site already held were kept)` : ""}; ` +
       `${served.index ? `the artefact index at ${INDEX_SERVED}/index.json` : "no artefact index served"}; ` +
-      `${served.sidecars} IG API sidecar(s) at ${SIDECARS_SERVED}/; ${served.siteFiles} file(s) the layer above wrote for the site root. The Publisher's HTML is not taken`,
+      `${igApi?.rawBase ? `the IG API sidecars read from ${igApi.rawBase} (none copied)` : `${served.sidecars} IG API sidecar(s) at ${SIDECARS_SERVED}/`}; ${served.siteFiles} file(s) the layer above wrote for the site root. The Publisher's HTML is not taken`,
   );
   if (served.siteFilled.length) log(`publisher pages: ${served.siteFilled.length} page(s) of the IG's own held the layer above's placeholder and are its page now: ${served.siteFilled.join(", ")}`);
   // The IG API hub, drawn from the index's bound sidecars (bean `h7ap`): at the
@@ -1048,7 +1096,7 @@ export function publisherPages(o: { site: string; ast: string; work?: string; ig
       const mine = !existsSync(at) || (igApi.site !== undefined && existsSync(join(igApi.site, page))) || (igApi.placeholder !== undefined && readFileSync(at, "utf-8").includes(igApi.placeholder));
       if (mine) {
         const openapi = existsSync(join(o.site, "openapi", "index.html"));
-        const documents = igApi.site ? readdirSync(igApi.site).filter((f) => f.endsWith(".schema.json") && statSync(join(igApi.site!, f)).isFile()) : [];
+        const documents = (igApi.site ? readdirSync(igApi.site).filter((f) => f.endsWith(".schema.json") && statSync(join(igApi.site!, f)).isFile()) : []).map((f) => (igApi.rawBase ? `${igApi.rawBase}/${IG_API_SITE}/${f}` : f));
         writeIgApiHubSite({ site: o.site, ix, label: igApi.label ?? "IG API", page, openapi, documents });
         log(`publisher pages: the ${igApi.label ?? "IG API"} hub at ${page}, drawn from the index (${hubEntries(ix).length} sidecar(s))`);
       } else log(`publisher pages: ${page} is a page of the IG's own without the hub's placeholder; no hub written over it`);
