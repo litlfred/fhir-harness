@@ -144,6 +144,7 @@
         <cat-harness.processes:fulfilment kinds="person system" reason="publishing the built IG site is mechanical; the lane records who is accountable for what is live, and a publication manager may also publish by hand." />
         <bootstrap.processes:skill ref="content-publish" />
         <bootstrap.processes:skill ref="ig-publication" />
+        <bootstrap.processes:skill ref="ig-binary-artefacts" />
       </bpmn:extensionElements>
       <bpmn:incoming>C12</bpmn:incoming>
       <bpmn:outgoing>C13</bpmn:outgoing>

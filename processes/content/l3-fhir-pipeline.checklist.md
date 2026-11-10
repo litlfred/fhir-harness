@@ -85,7 +85,7 @@ How an L3 FHIR Implementation Guide is authored in FSH, built with SUSHI, the va
 ### 8. Publish the IG site (`Task_PublishIg`)
 
 - Who: the `Publication manager` lane (role `publication-manager`).
-- Skill: `content-publish`, `ig-publication`.
+- Skill: `content-publish`, `ig-publication`, `ig-binary-artefacts`.
 - What: Release authorisation and review follow draft-to-publication.bpmn.
 - Record it: `workflow_complete` with `node: "Task_PublishIg"`.
 - next: → `EndEvent_IgPublished` (Published IG site)
