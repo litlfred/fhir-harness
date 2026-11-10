@@ -13,6 +13,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { isRemoteData, localResourceHref } from "./ig-artifact-jsonld.ts";
 import type { FhirArtifact } from "../schemas/fhir-artifact-index.js";
+import type { ResolvedEntry } from "../../cat-harness-tools/scripts/mount-instance-docs.ts";
 
 import {
   acceptStaleFromEnv,
@@ -22,6 +23,8 @@ import {
   astRawBase,
   builtPage,
   cqlSourceOf,
+  dropForeignIndexes,
+  foreignArtefactIndexes,
   IG_API_DESCRIPTOR,
   IG_API_SITE,
   IG_API_WORK,
@@ -581,4 +584,37 @@ test("redirectStubsLeftBare", () => {
   expect(isRedirectStub('<head><meta http-equiv="refresh" content="0; url=X.html?view=json"></head>')).toBe(true);
   expect(isRedirectStub('<head><meta http-equiv="refresh" content="30"></head><body>x</body>')).toBe(false);
   expect(isRedirectStub("<html><body>page</body></html>")).toBe(false);
+});
+
+describe("another IG layer's artefact index is not copied into this IG's site (owner, 2026-11-10)", () => {
+  const entry = (name: string, instanceDir: string, path: string, extra: Record<string, unknown> = {}) =>
+    ({ name, instanceDir, entry: { path, ...extra }, abs: join(instanceDir, path) }) as unknown as ResolvedEntry;
+
+  test("foreignIndexesAreTheOtherLayersServedIndexes", () => {
+    const root = join(dir, "foreign-ix");
+    const entries = [
+      entry("base-ig", join(root, "base-ig"), "fhir-artifact-index/", { served: true, graphTypologies: ["fhir-artifact-index"] }),
+      entry("base-ig", join(root, "base-ig"), "openapi/", { served: true, graphTypologies: ["openapi"] }),
+      entry("other-ig", join(root, "other-ig"), "fhir-artifact-index/", { graphTypologies: ["fhir-artifact-index"] }),
+      entry("this-ig", root, "fhir-artifact-index/", { served: true, graphTypologies: ["fhir-artifact-index"] }),
+    ];
+    expect(foreignArtefactIndexes(root, entries).map((s) => s.route)).toEqual(["base-ig/fhir-artifact-index"]);
+  });
+
+  test("dropForeignIndexesRemovesOnlyThoseRoutes", () => {
+    const root = join(dir, "foreign-drop");
+    const site = join(root, "_site");
+    mkdirSync(join(site, "base-ig", "fhir-artifact-index", "sidecars"), { recursive: true });
+    writeFileSync(join(site, "base-ig", "fhir-artifact-index", "index.json"), "{}");
+    writeFileSync(join(site, "base-ig", "fhir-artifact-index", "sidecars", "a.schema.json"), "{\"x\":1}");
+    mkdirSync(join(site, "base-ig", "l1-extraction"), { recursive: true });
+    mkdirSync(join(site, "fhir-artifact-index"), { recursive: true });
+    writeFileSync(join(site, "fhir-artifact-index", "index.json"), "{}");
+    const entries = [entry("base-ig", join(root, "base-ig"), "fhir-artifact-index/", { served: true, graphTypologies: ["fhir-artifact-index"] })];
+    expect(dropForeignIndexes(site, root, entries)).toEqual([{ route: "base-ig/fhir-artifact-index", bytes: 9 }]);
+    expect(existsSync(join(site, "base-ig", "fhir-artifact-index"))).toBe(false);
+    expect(existsSync(join(site, "base-ig", "l1-extraction"))).toBe(true);
+    expect(existsSync(join(site, "fhir-artifact-index", "index.json"))).toBe(true);
+    expect(dropForeignIndexes(site, root, entries)).toEqual([]);
+  });
 });
