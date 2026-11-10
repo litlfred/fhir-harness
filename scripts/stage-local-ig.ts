@@ -674,6 +674,10 @@ export const IG_DROPPED: readonly DroppedByRuling[] = [
     ruling: "owner, 2026-10-15, \"New address only\": the IG API sidecars are served at fhir-artifact-index/sidecars/ and no copy is made at schemas/",
   },
   {
+    dir: "ast-data",
+    ruling: "owner, 2026-11-08, site size: the IG's AST (ast-data/) is not published on the site; resources are served once as <Type>-<id>.json and the AST ships as ast-data.zip on a release (fhir-harness#314, Q-REL-1 \"A\")",
+  },
+  {
     feature: "siteNav",
     ruling: "owner, 2026-10-15, layout \"C\" (chosen from wireframes): the folio rail stands in for the theme's side menu, so #site-nav is not carried; the IG's top bar carries the search box",
   },

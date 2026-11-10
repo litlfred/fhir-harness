@@ -422,10 +422,11 @@ describe("an IG repository's folio site (owner, 2026-10-14)", () => {
   });
 
   test("parityExcusesRuledDrops", () => {
-    expect(IG_DROPPED.map((d) => d.dir ?? `feature:${d.feature}`)).toEqual(["comparison-v*", "schemas", "feature:siteNav"]);
+    expect(IG_DROPPED.map((d) => d.dir ?? `feature:${d.feature}`)).toEqual(["comparison-v*", "schemas", "ast-data", "feature:siteNav"]);
     expect(IG_DROPPED[0]!.ruling).toContain("2a");
     expect(IG_DROPPED[1]!.ruling).toContain("New address only");
-    expect(IG_DROPPED[2]!.ruling).toMatch(/2026-10-15.*layout "C"/);
+    expect(IG_DROPPED[2]!.ruling).toMatch(/2026-11-08.*ast-data/);
+    expect(IG_DROPPED[3]!.ruling).toMatch(/2026-10-15.*layout "C"/);
     // Each entry names one thing, never both.
     for (const d of IG_DROPPED) expect((d.dir === undefined) !== (d.feature === undefined)).toBe(true);
     // Search and the language picker are never excused.
@@ -433,7 +434,7 @@ describe("an IG repository's folio site (owner, 2026-10-14)", () => {
   });
 
   test("dropsInWords", () => {
-    expect(IG_DROPPED.map(droppedWords)).toEqual(["comparison-v*/", "schemas/", "the page feature siteNav"]);
+    expect(IG_DROPPED.map(droppedWords)).toEqual(["comparison-v*/", "schemas/", "ast-data/", "the page feature siteNav"]);
   });
 
   test("noLandingRefused", () => {
