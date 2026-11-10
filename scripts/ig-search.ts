@@ -27,6 +27,21 @@
  * - Each artefact in the artefact index: its title, name, id, key, canonical
  *   and description, linked to its thin page `artifact/<Type>-<id>.html`.
  *
+ * ## The artefacts are read from the index node, not copied
+ *
+ * When the site serves the artefact index node (`artifact/index.jsonld`,
+ * `ig-artifact-jsonld.ts`), the search index holds only the pages and names
+ * that node (`artifacts`); the client fetches both and makes the artefact
+ * entries from the node's rows. The node already lists every artefact with
+ * its title, key, canonical and description for the thin `artifacts` and
+ * `toc` pages, and repeats the computer name for this search, so a second
+ * list of the same artefacts in `ig-search.json` was a copy (owner,
+ * 2026-11-10, "do B": 0.28 MB of 0.40 MB on one IG). A reader who searches
+ * downloads about what they did before, compressed (the node is 30 KB
+ * gzipped, the artefact half of the old index 26 KB), and a reader who has
+ * opened the artifacts page has the node already. A site with no node (a
+ * `--full-pages` build) keeps the artefacts in the search index, as before.
+ *
  * Not the artefacts' element tables or narratives: those are in the
  * resources, which the thin pages load on demand, and indexing them would
  * put the whole AST into one file every reader downloads.
@@ -50,7 +65,7 @@ import { join } from "node:path";
 import { escHtml } from "../../cat-harness-tools/scripts/thin-page.ts";
 import { PAGE_BAR_CLASS, PAGE_LAYOUT_MARK, pageLayoutTags } from "../../cat-harness-tools/scripts/page-layout.ts";
 import type { FhirArtifact } from "../schemas/fhir-artifact-index.js";
-import { ARTIFACT_DIR, artifactPageName } from "./ig-artifact-jsonld.ts";
+import { ARTIFACT_DIR, ARTIFACT_INDEX_FILE, artifactPageName } from "./ig-artifact-jsonld.ts";
 
 /** The IG's one stylesheet, under the docs root (`ig-thin-pages.ts` `THIN_PAGE_STYLE`). */
 export const IG_ARTIFACT_CSS_FILE = "assets/ig-artifact.css";
@@ -61,8 +76,11 @@ export const IG_SEARCH_INDEX_FILE = "assets/ig-search.json";
 export const IG_SEARCH_SCRIPT_FILE = "assets/ig-search.js";
 /** The client's source, beside the other thin-page templates. */
 export const IG_SEARCH_SCRIPT_SOURCE = join(import.meta.dir, "templates", "ig-pages", "ig-search.js");
-/** The index's format, which the client checks. */
-export const IG_SEARCH_FORMAT = "fhir-harness-ig-search/v1";
+/**
+ * The index's format, which the client checks. v2 added `artifacts`; the
+ * client reads v1 too.
+ */
+export const IG_SEARCH_FORMAT = "fhir-harness-ig-search/v2";
 /** One searchable thing. Short keys: the file is downloaded by every reader who searches. */
 export interface IgSearchEntry {
   /** Title, as shown. */
@@ -83,8 +101,16 @@ export interface IgSearchIndex {
   format: typeof IG_SEARCH_FORMAT;
   /** Where the hrefs are relative to, relative to the index file. */
   base: "../";
+  /**
+   * The artefact index node the client makes the artefact entries from,
+   * relative to the index file; absent, `entries` holds the artefacts.
+   */
+  artifacts?: string;
   entries: IgSearchEntry[];
 }
+
+/** The index node, relative to the search index (`assets/` → `artifact/index.jsonld`). */
+export const IG_SEARCH_ARTIFACTS_NODE = `../${ARTIFACT_DIR}/${ARTIFACT_INDEX_FILE}`;
 
 /** Where the box's index and script are, relative to (or absolute from) the page carrying it. */
 export interface IgSearchRef {
@@ -295,7 +321,13 @@ export function artifactSearchEntries(artifacts: ReadonlyArray<Pick<FhirArtifact
   });
 }
 
-/** The index file's content. Deterministic. */
-export function igSearchIndex(pages: readonly IgSearchEntry[], artifacts: readonly IgSearchEntry[]): IgSearchIndex {
-  return { format: IG_SEARCH_FORMAT, base: "../", entries: [...pages, ...artifacts] };
+/**
+ * The index file's content. Deterministic. `artifacts` is either the
+ * artefact entries, or the path of the index node they are read from
+ * ({@link IG_SEARCH_ARTIFACTS_NODE}).
+ */
+export function igSearchIndex(pages: readonly IgSearchEntry[], artifacts: readonly IgSearchEntry[] | string): IgSearchIndex {
+  return typeof artifacts === "string"
+    ? { format: IG_SEARCH_FORMAT, base: "../", artifacts, entries: [...pages] }
+    : { format: IG_SEARCH_FORMAT, base: "../", entries: [...pages, ...artifacts] };
 }

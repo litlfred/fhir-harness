@@ -100,6 +100,11 @@ Feature: Searching an IG site
     When the search index is built from one page and one artefact
     Then it has the format, a base of "../" and the page before the artefact
 
+  @test:scripts/ig-search.test.ts::the_index::indexNamesNodeInsteadOfCopy
+  Scenario: when the site serves the artefact index node, the file names it and holds only the pages
+    When the search index is built from one page and the index node's path
+    Then it has the format, a base of "../", the node at "../artifact/index.jsonld" and only the page
+
   @test:scripts/ig-search.test.ts::the_client_searches_the_index::titleOutranksText
   Scenario: a title match outranks a page's text, and hrefs resolve against the docs root
     When the client searches for "immunization"
@@ -118,6 +123,30 @@ Feature: Searching an IG site
   @test:scripts/ig-search.test.ts::the_client_searches_the_index::emptyQueryFindsNothing
   Scenario: an empty query finds nothing
     Then a blank query finds nothing
+
+  @test:scripts/ig-search.test.ts::the_client_reads_the_artefacts_from_the_index_node::sameEntriesAsTheCopy
+  Scenario: the artefacts read from the index node are the entries the search index used to copy
+    Given an index of a ValueSet with a name and title, a profile titled by its name, and a Patient with only an id
+    When the client makes entries from the index node
+    Then they are the copied entries, each linked beside the node, with no name the title already says
+
+  @test:scripts/ig-search.test.ts::the_client_reads_the_artefacts_from_the_index_node::nameOnlyWhenTitleDoesNotSayIt
+  Scenario: the index node repeats an artefact's name only when its title is not that name
+    Then the ValueSet's row carries its name and the profile's row does not
+
+  @test:scripts/ig-search.test.ts::the_client_reads_the_artefacts_from_the_index_node::foundByNameAndLinkedBesideNode
+  Scenario: an artefact is found by its name, and links its thin page beside the node
+    Then searching for "acmevs" finds "ACME Codes" at artifact/ValueSet-acme-vs.html
+
+  @test:scripts/ig-search.test.ts::the_client_reads_the_artefacts_from_the_index_node::absoluteNodeIdsStillLinkThisSite
+  Scenario: a node with absolute IRIs still links the pages of the site it was read from
+    Given an index node written with an absolute base
+    Then a hit links the page beside the node the client fetched, not the base
+
+  @test:scripts/ig-search.test.ts::compose_writes_the_search;_publisher-pages_writes_the_language_picker's_block::writeSearchReadsArtefactsFromNode
+  Scenario: writeSearch: with the index node in the site, the artefacts are read from it, not copied
+    When the search is written for a staged site with one page, one artefact and the index node
+    Then 1 page and 1 artefact are counted, the index names "../artifact/index.jsonld" and holds only the page
 
   @test:scripts/ig-search.test.ts::compose_writes_the_search;_publisher-pages_writes_the_language_picker's_block::writeSearchRefusesExisting
   Scenario: writeSearch: the index and the client under the docs root, refusing a path the host holds

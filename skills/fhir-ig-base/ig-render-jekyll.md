@@ -94,8 +94,9 @@ graph, unless a build passes `--full-pages`. The shell is cat-harness-tools'
 ### Artefact pages (`gen-ig-pages.ts`)
 
 - **Page address:** `artifact/<Type>-<id>.html`, self-canonical.
-- **The asset is a JSON-LD node**, `artifact/<Type>-<id>.jsonld` with a
-  `.json` twin, written by `ig-artifact-jsonld.ts` from the index (kind
+- **The asset is a JSON-LD node**, `artifact/<Type>-<id>.jsonld`, with no
+  `.json` twin (every reader fetches the `.jsonld`), written by
+  `ig-artifact-jsonld.ts` from the index (kind
   `ig-artifact-jsonld`; QA `ig-artifact-jsonld.ts check` over the built site).
   It uses the FHIR RDF class, dcterms, schema.org and PROV, and mints nothing.
   The page names the node as `alternate`.
