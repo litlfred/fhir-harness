@@ -225,6 +225,20 @@ over the IG's pages and artefacts (`ig-search.ts`):
   `publisher-pages` writes (cat-harness-tools `lib/translation-meta.ts`) into
   every built page lacking one, from the IG checkout's translation
   declaration; `set-html-lang.ts` reads it afterwards.
+- Translated pages (fhir-harness#382). When the IG declares `translations/`
+  in `contentTypes.ig.include`, each catalogue
+  `translations/<locale>/pagecontent/<page>.po` is injected into its page
+  (cat-harness-tools `injectMarkdown`, the segmentation the catalogue was
+  extracted with) and staged at `<locale>/<page>.md`, the path the picker
+  opens. The page and its translations carry `lang`, `available_locales` and,
+  on a translation, `translation_status` and `translation_source`; the thin
+  layout writes the picker's block from them, so the picker links each
+  language that exists. A span with no translation stays in English. A locale
+  is `verified` only when `translations/<locale>/status.json` records a
+  sign-off; otherwise `unverified`, and docs-ui shows its notice. Translated
+  pages are out of the menu, and relative links climb out of the locale
+  folder unless they point at a page translated into the same locale
+  (`scripts/ig-page-translations.ts`).
 
 The root parity guard (cat-harness-tools `site-parity.ts`) refuses to publish
 a build lacking the search box or language block over a root that had them.

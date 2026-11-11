@@ -222,6 +222,20 @@ export function pageItems(ig: string, scope: ReadScope = EVERYTHING): ContentIte
     }
   };
   for (const d of IG_PAGE_DIRS) walk(d);
+  // The page catalogues the site publishes as translated pages
+  // (`ig-page-translations.ts`, fhir-harness#382): their text reaches the site
+  // too, so it is cleared with the pages it translates.
+  const tr = "translations";
+  if (existsSync(join(ig, tr)) && scope.reaches(tr)) {
+    for (const loc of readdirSync(join(ig, tr), { withFileTypes: true }).filter((e) => e.isDirectory()).map((e) => e.name).sort()) {
+      const pc = `${tr}/${loc}/pagecontent`;
+      if (!existsSync(join(ig, pc)) || !scope.reaches(pc)) continue;
+      for (const f of readdirSync(join(ig, pc)).filter((n) => n.endsWith(".po")).sort()) {
+        const r = `${pc}/${f}`;
+        if (scope.declares(r)) out.push(item("page", r, "page", readFileSync(join(ig, r), "utf-8")));
+      }
+    }
+  }
   return out;
 }
 
