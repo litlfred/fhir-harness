@@ -130,7 +130,7 @@ From there the IG grows in place, and leaves only through
    is not undone by a revert, so the question in `sub-kg-lifecycle` §"7 and
    12" is asked first, with default "not yet". The owner may create it
    themselves; a session without the permission hands over with
-   [`agent-handoff`](../../../cat-harness/sdlc/skills/sdlc-core/agent-handoff.md).
+   `agent-handoff` (opt-in `cat-harness.sdlc`).
 2. **Mount, don't declare.** The repository gets an `index.config.json`
    naming the layer it builds on (this one, or an overlay above it such as
    the WHO SMART Base IG) as a remote layer with consent, and the `index.lock.json`
@@ -159,7 +159,7 @@ From there the IG grows in place, and leaves only through
    agent the owner names for that run. Until it has run, the repository's
    preview is not built anywhere: say so and ask. Do not stage it on another
    repository's site instead
-   ([`feature-staging`](../../../cat-harness/sdlc/skills/sdlc-core/feature-staging.md),
+   (`feature-staging`,
    *Which site*).
 
 ### `existing-ig`
