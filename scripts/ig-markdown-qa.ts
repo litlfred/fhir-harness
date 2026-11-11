@@ -135,7 +135,8 @@ export function scanDir(dir: string, draw = pageMarkdownDrawer()): { scanned: nu
 export function markdownQaMarkdown(r: { scanned: number; findings: MarkdownFinding[] } | undefined, o: { limit?: number } = {}): string[] {
   const lines = ["### Markdown rendering", ""];
   if (!r) return [...lines, "This build held no resources to scan.", ""];
-  const cell = (s: string) => s.replace(/\|/g, "\\|").replace(/`/g, "'");
+  // A backslash first, so a field ending in "\" cannot escape the cell's closing pipe.
+  const cell = (s: string) => s.replace(/\\/g, "\\\\").replace(/\|/g, "\\|").replace(/`/g, "'");
   lines.push(
     `Each markdown field the artefact pages draw (${MARKDOWN_FIELDS.map((f) => `\`${f}\``).join(", ")}), drawn by the pages' own renderer, checked for markup left as plain text. ${r.scanned} resource(s) scanned.`,
     "",

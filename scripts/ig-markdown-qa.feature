@@ -20,4 +20,4 @@ Feature: The QA report finds markdown an artefact page shows as text
     When the AST is scanned
     Then two resources are scanned and the one field is reported with its path, what was left and how it starts
     And the narrative is not scanned
-    And the QA section lists it in a table, a pipe escaped, or says "none" when there are no findings
+    And the QA section lists it in a table, a backslash and a pipe escaped, or says "none" when there are no findings

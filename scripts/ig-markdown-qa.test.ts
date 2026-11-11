@@ -40,5 +40,7 @@ describe("ig-markdown-qa", () => {
     expect(md).toContain("2 resource(s) scanned");
     expect(md).toContain("| `Basic/Phone` | `extension[0].valueMarkdown` | heading | ## Persona \\| pipe |");
     expect(markdownQaMarkdown({ scanned: 3, findings: [] }).join("\n")).toContain("**Findings:** none.");
+    const slash = markdownQaMarkdown({ scanned: 1, findings: [{ resource: "X/y", path: "description", markup: ["heading"], excerpt: "## a\\" }] }).join("\n");
+    expect(slash).toContain("| ## a\\\\ |");
   });
 });
