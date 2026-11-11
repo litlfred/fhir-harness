@@ -74,7 +74,7 @@
       });
       var e = {
         t: p["dcterms:title"] || id,
-        h: String(p["@id"] || "").split("/").pop().replace(/\.jsonld$/, ".html"),
+        h: String(p["@id"] || "").split("/").pop().replace(/\.jsonld$/, "") + ".html",
         k: String(p["@type"] || "").replace(/^fhir:/, ""),
       };
       if (ids.length) e.i = ids.join(" ");

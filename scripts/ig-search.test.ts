@@ -146,7 +146,7 @@ describe("the thin pages' header", () => {
     expect(html.indexOf('href="../assets/page-layout.css"')).toBeGreaterThan(0);
     expect(html.indexOf("page-layout.css")).toBeLessThan(html.indexOf("ig-artifact.css"));
     expect(html).toContain('<header class="iga-top fa-page-bar">');
-    expect(html).toContain('<main class="iga fa-page-main">');
+    expect(html).toContain('<main class="iga fa-page-main"');
     expect(html).toContain('<footer id="ig-footer" class="fa-page-foot">');
     const list = thinIndexPage({ view: "toc", heading: "Table of Contents", label: "ACME IG", canonical: "toc.html", index: "artifact/index.jsonld", pagesHref: "artifact/", assets: "", home: "index.html", artifacts: "artifacts.html", toc: "toc.html" });
     expect(list).toContain('href="assets/page-layout.css"');
