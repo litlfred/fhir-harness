@@ -14,7 +14,7 @@
   "kind": "prose",
   "title": "When",
   "text": "../sections/s009-when.md",
-  "derivedFrom": "https://litlfred.github.io/folio-assistant/assets/library/jsonld/fhir-harness/cucumber-2024-gherkin-reference/manifest.jsonld",
-  "sourceDocument": "https://litlfred.github.io/folio-assistant/assets/library/jsonld/fhir-harness/cucumber-2024-gherkin-reference/manifest.jsonld",
+  "derivedFrom": "https://litlfred.github.io/folio-assistant/assets/library/jsonld/fhir-harness/source/cucumber-2024-gherkin-reference",
+  "sourceDocument": "https://litlfred.github.io/folio-assistant/assets/library/jsonld/fhir-harness/source/cucumber-2024-gherkin-reference",
   "provenance": "ingested"
 }
