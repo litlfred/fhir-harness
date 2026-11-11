@@ -22,10 +22,16 @@ import { FhirArtifactIndexSchema, type FhirArtifactIndex } from "../schemas/fhir
 import { IG_ARTIFACT_INDEX_JSONLD_SCHEMA_TAG, IG_ARTIFACT_JSONLD_SCHEMA_TAG, IgArtifactIndexJsonLdSchema, IgArtifactJsonLdSchema } from "../schemas/ig-artifact-jsonld.js";
 import { IPS, artifactIndex, scratchRepo } from "../test/support/ig-fixture";
 import { artifactIndexJsonLd, artifactJsonLd, artifactJsonLdFiles, checkArtifactJsonLd } from "./ig-artifact-jsonld.ts";
-import { THIN_INDEX_CONFIG_ID, THIN_PAGE_CONFIG_ID, thinArtifactPage, thinIndexPage } from "./ig-thin-pages.ts";
-import { thinPageConfigOf } from "../../cat-harness-tools/scripts/thin-page.ts";
+import { THIN_INDEX_CONFIG_ID, THIN_PAGE_CONFIG_ID, isArtifactPage, thinArtifactPage, thinIndexPage } from "./ig-thin-pages.ts";
+import { pageNodeOf, pageNodeProblems, thinPageConfigOf } from "../../cat-harness-tools/scripts/thin-page.ts";
 import { composeIgSite, stageIgSite } from "./build-ig-site";
 import { artifactsFor } from "./stage-ig-sites";
+
+/** A `data-kg-<name>` on the page's node element, unescaped. */
+function kgData(html: string, name: string): string | undefined {
+  const m = new RegExp(`<main[^>]*\\sdata-kg-${name}="([^"]*)"`).exec(html);
+  return m?.[1]?.replace(/&quot;/g, '"').replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
+}
 
 /** A parsed JSON-LD node, mutated in place by the rewrite helpers below. */
 // eslint-disable-next-line @typescript-eslint/no-explicit-any -- arbitrary JSON-LD, indexed freely by each case
@@ -74,8 +80,9 @@ describe("ig-artifact-jsonld: one node per artefact, in borrowed vocabularies", 
     expect(n["@context"].fhir).toBe("http://hl7.org/fhir/");
     expect(n["dcterms:identifier"]).toBe("StructureDefinition/Composition-uv-ips");
     expect(n["schema:sameAs"]).toEqual({ "@id": `${IPS.canonical}/StructureDefinition/Composition-uv-ips` });
-    // Relative to the node's own file, which is the same directory as its page.
-    expect(n["@id"]).toBe("StructureDefinition-Composition-uv-ips.jsonld");
+    // Extensionless kind/id (cat-harness-tools#1830), relative to the node's own
+    // file: its JSON-LD is the IRI plus `.jsonld`, its page the IRI plus `.html`.
+    expect(n["@id"]).toBe("StructureDefinition-Composition-uv-ips");
     const local = n["schema:encoding"].filter((e) => e["dcterms:source"] === "local");
     expect(local.map((e) => e["schema:contentUrl"]["@id"])).toEqual(["../ast-data/resources/StructureDefinition/Composition-uv-ips--7ae5e8a1.json"]);
     expect(n["prov:wasGeneratedBy"]).toEqual({ "@type": "prov:Activity", "schema:instrument": "ig-publisher test", "prov:used": "a".repeat(40) });
@@ -84,7 +91,7 @@ describe("ig-artifact-jsonld: one node per artefact, in borrowed vocabularies", 
 
   it("baseMakesIrisAbsolute", () => {
     const n = artifactJsonLd(IX, COMPOSITION, { base: "https://example.org/ig/", compiledData: "ast-data" });
-    expect(n["@id"]).toBe("https://example.org/ig/artifact/StructureDefinition-Composition-uv-ips.jsonld");
+    expect(n["@id"]).toBe("https://example.org/ig/artifact/StructureDefinition-Composition-uv-ips");
     expect(n["schema:encoding"][0]!["schema:contentUrl"]["@id"]).toBe("https://example.org/ig/ast-data/resources/StructureDefinition/Composition-uv-ips--7ae5e8a1.json");
   });
 
@@ -180,13 +187,20 @@ describe("thinArtifactPage: identity and a pointer, nothing of the artefact's co
     expect(html).toContain('<meta name="folio-navbar" content="linked">');
     expect(html).not.toContain('class="fa-nav"');
   });
-  it("pageConfigNodeLoadersOrder", () => {
-    const cfg = thinPageConfigOf(html, THIN_PAGE_CONFIG_ID)!;
-    expect(cfg.node).toBe("StructureDefinition-Composition-uv-ips.jsonld");
-    expect(cfg.astLoader).toBe("../assets/ast-resource.js");
-    expect(cfg.prev).toBe("../");
-    expect(cfg.next).toBe("StructureDefinition-Patient-uv-ips.html");
-    expect(cfg.published).toBe(`${IPS.published}/`);
+  it("pageDeclaresNodeLoadersOrder", () => {
+    // The page declares its node, not a private config block (cat-harness-tools#1830).
+    expect(pageNodeProblems(html)).toEqual([]);
+    const decl = pageNodeOf(html)!;
+    expect(decl.rdfa[0]!.iri).toBe("StructureDefinition-Composition-uv-ips");
+    expect(decl.rdfa[0]!.types).toEqual(["http://hl7.org/fhir/StructureDefinition"]);
+    expect(isArtifactPage(html)).toBe(true);
+    expect(thinPageConfigOf(html, THIN_PAGE_CONFIG_ID)).toBeUndefined();
+    expect(html).toContain('<script src="../assets/kg-render.js"></script>');
+    expect(html.indexOf("kg-render.js")).toBeLessThan(html.indexOf("ig-artifact.js"));
+    expect(kgData(html, "ast-loader")).toBe("../assets/ast-resource.js");
+    expect(kgData(html, "prev")).toBe("../");
+    expect(kgData(html, "next")).toBe("StructureDefinition-Patient-uv-ips.html");
+    expect(kgData(html, "published")).toBe(`${IPS.published}/`);
   });
   it("noscriptLinksNodeAndResource", () => {
     expect(html).toMatch(/<noscript>.*href="StructureDefinition-Composition-uv-ips\.jsonld".*href="\.\.\/ast-data\/resources\/StructureDefinition\/Composition-uv-ips--7ae5e8a1\.json"/s);
@@ -204,7 +218,9 @@ describe("the shared renderer", () => {
   it("rendererParses", () => {
     const src = readFileSync(join(import.meta.dir, "templates", "ig-pages", "ig-artifact.js"), "utf8");
     expect(() => new Function(src)).not.toThrow();
-    // It reads its own config block, the id the pages write.
+    // It registers with the generic renderer for FHIR classes, and still reads
+    // the config block of a page from before the declaration.
+    expect(src).toContain('match: FHIR_NS');
     expect(src).toContain(`getElementById("${THIN_PAGE_CONFIG_ID}")`);
   });
 });
@@ -238,12 +254,13 @@ describe("gen-ig-pages: thin by default, end to end (owner, 2026-10-12: \"make t
       "StructureDefinition-Patient-uv-ips.jsonld",
       "index.jsonld",
     ]);
-    for (const f of ["ig-artifact.js", "ig-artifact.css", "ast-resource.js", "ast-pages.json"]) expect(existsSync(join(docs("thin"), "assets", f))).toBe(true);
+    for (const f of ["ig-artifact.js", "kg-render.js", "ig-artifact.css", "ast-resource.js", "ast-pages.json"]) expect(existsSync(join(docs("thin"), "assets", f))).toBe(true);
     const page = readFileSync(join(docs("thin"), "artifact", "StructureDefinition-Composition-uv-ips.html"), "utf8");
     expect(page.startsWith("<!doctype html>")).toBe(true);
-    expect(page.length).toBeLessThan(3000);
+    // About 300 B more than before the node declaration (RDFa, its JSON-LD stub, the renderer's script tag).
+    expect(page.length).toBeLessThan(3400);
     // The reading order survives: the first artefact's next is the second.
-    expect(thinPageConfigOf(page, THIN_PAGE_CONFIG_ID)!.next).toBe("StructureDefinition-Patient-uv-ips.html");
+    expect(kgData(page, "next")).toBe("StructureDefinition-Patient-uv-ips.html");
     // The index node is titled after the IG's display name.
     expect(JSON.parse(readFileSync(join(docs("thin"), "artifact", "index.jsonld"), "utf8"))["dcterms:title"]).toBe("IPS");
   });
@@ -281,7 +298,7 @@ describe("the index node: every artefact once, each entry naming its node", () =
     expect(n.$schema).toBe(IG_ARTIFACT_INDEX_JSONLD_SCHEMA_TAG);
     expect(n["@id"]).toBe("index.jsonld");
     expect(n["schema:numberOfItems"]).toBe(2);
-    expect(n["schema:hasPart"].map((e) => e["@id"])).toEqual(["StructureDefinition-Composition-uv-ips.jsonld", "StructureDefinition-Patient-uv-ips.jsonld"]);
+    expect(n["schema:hasPart"].map((e) => e["@id"])).toEqual(["StructureDefinition-Composition-uv-ips", "StructureDefinition-Patient-uv-ips"]);
     expect(n["schema:hasPart"][1]!["dcterms:title"]).toBe("Patient (IPS)");
     // It names nodes, never renderings.
     expect(JSON.stringify(n)).not.toContain(".html");
@@ -326,7 +343,7 @@ describe("ig-artifact-jsonld check over the index node (calibrated: each case br
   it("indexCheckFailsWrongNode", () => {
     const s = site();
     rewrite(s, (n) => {
-      n["schema:hasPart"][0]["@id"] = "StructureDefinition-Patient-uv-ips.jsonld";
+      n["schema:hasPart"][0]["@id"] = "StructureDefinition-Patient-uv-ips";
     });
     expect(checkArtifactJsonLd(IX, s).join("\n")).toContain("names a node that is StructureDefinition/Patient-uv-ips");
   });

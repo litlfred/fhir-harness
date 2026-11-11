@@ -66,7 +66,8 @@ of these, because each copy is under the limit.
    serves every resource of the AST there (fhir-harness#359), but not
    whole: minified, with no `text` narrative, and each Library ELM
    attachment (contentType naming `elm`) without its `data`, pointing by
-   `url` at the full resource in the AST cache. The CQL stays. On one
+   `url` at the full resource in the AST cache. The CQL is a link too: `url`
+   at the IG's `.cql` source, or else the full resource. On one
    measured IG that is 13 MB instead of 47 MB. The full resources
    are the AST cache commit's (by raw URL, which the pages read) and the
    release's `package.tgz` and `ast-data.zip`. `SITE_ROOT_RESOURCES=0`

@@ -7,6 +7,7 @@
     "ig-ast-delta",
     "ig-binary-artefacts",
     "ig-build-pipeline",
+    "ig-content-qa",
     "ig-publisher-fork",
     "ig-publisher-reduction",
     "ig-render-jekyll",

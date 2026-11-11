@@ -57,6 +57,7 @@ import { wrapRaw } from "../../cat-harness-tools/scripts/lib/liquid-raw.ts";
 import type { IgReleases } from "../schemas/ig-releases.ts";
 import { astFooterData, IG_QA_PAGE, igSiteFooter, sushiFooterData, type IgFooterData, type IgSiteFooter } from "./ig-footer.ts";
 import { thinIndexPage } from "./ig-thin-pages.ts";
+import { dirFor, hasTranslation, localeFrontMatter, pageLocales, relinkForLocale, SOURCE_LOCALE, translateWithIncludes, TRANSLATION_META_LIQUID } from "./ig-page-translations.ts";
 import { IG_SEARCH_CSS, IG_SEARCH_INDEX_FILE, IG_SEARCH_SCRIPT_FILE, igSearchBox, igSearchScript, type IgSearchRef } from "./ig-search.ts";
 import { withRenderedBy } from "../../cat-harness-tools/scripts/viewer-declarations.js";
 import { NAVBAR_LINKED } from "../../cat-harness-tools/scripts/lib/harness-rail.ts";
@@ -162,8 +163,21 @@ export function frontMatter(nav: PageNav): string {
   ].join("\n");
 }
 
+/**
+ * Write one staged page: its own front matter kept with `data` added, or the
+ * navigation's front matter with `data` added. Page variables are written as
+ * JSON flow mappings (YAML is a superset of JSON).
+ */
+function writePage(to: string, body: string, data: Record<string, unknown>, nav: PageNav): void {
+  const dataLines = Object.entries(data).map(([k, v]) => `${k}: ${JSON.stringify(v)}\n`).join("");
+  mkdirSync(dirname(to), { recursive: true });
+  writeFileSync(to, body.startsWith("---\n") ? `---\n${dataLines}${body.slice(4)}` : frontMatter(nav).replace(/---\n$/, `${dataLines}---\n`) + body);
+}
+
 export interface StageResult {
   pages: string[];
+  /** Translated copies of the pages, `<locale>/<page>.md`, from the IG's page catalogues (fhir-harness#382). */
+  translated?: string[];
   /** Pages the Publisher generates, written here from data this build holds (`toc`, `artifacts`). */
   generated: string[];
   /** Pages a fill was written into, and each fill whose marker no page holds — reported, never dropped. */
@@ -777,9 +791,11 @@ export function thinIgLayout(assetsAt: string, tocNav = "", sectionLabel?: strin
   const asset = (f: string) => `{{ '${assetsAt}${f}' | relative_url }}`;
   return [
     "<!doctype html>",
-    '<html lang="{{ page.lang | default: site.lang | default: \'en\' }}">',
+    '<html lang="{{ page.lang | default: site.lang | default: \'en\' }}"{% if page.dir %} dir="{{ page.dir }}"{% endif %}>',
     "<head>",
     '<meta charset="utf-8">',
+    // The language picker's block, from the page's front matter, when the IG has translations of it (fhir-harness#382).
+    TRANSLATION_META_LIQUID,
     '<meta name="viewport" content="width=device-width, initial-scale=1">',
     "<title>{% if page.title and page.title != site.title %}{{ page.title }} — {% endif %}{{ site.title }}</title>",
     '<link rel="canonical" href="{{ page.url | relative_url }}">',
@@ -1911,8 +1927,17 @@ function stageDeclaredSource(igSrc: string, out: string, opts: StageOptions): St
     for (const d of o.dead) dead.add(d);
     return o.text;
   };
+  // The IG's page catalogues (fhir-harness#382): `translations/` when the IG
+  // declares it in `contentTypes.ig.include`, read from the staged copy so
+  // the read scope holds.
+  const pageLocs = pageLocales(join(src, "translations"));
+  const translatedPages: string[] = [];
+  const pageStems = new Set(files(pagecontent).filter((f) => f.endsWith(".md")).map((f) => basename(f, ".md")));
+  const sourceOf = (stem: string): string | undefined => (pageStems.has(stem) ? readFileSync(join(pagecontent, `${stem}.md`), "utf-8") : undefined);
+  const localesOf = (stem: string): string[] => [SOURCE_LOCALE, ...pageLocs.filter((l) => hasTranslation(stem, l, sourceOf, pageStems)).map((l) => l.locale)];
   for (const f of files(pagecontent).filter((f) => f.endsWith(".md"))) {
     const name = basename(f, ".md");
+    const raw = readFileSync(join(pagecontent, f), "utf-8");
     let n = nav.get(name);
     if (!n) {
       unlisted.push(f);
@@ -1920,7 +1945,9 @@ function stageDeclaredSource(igSrc: string, out: string, opts: StageOptions): St
       // Under a menu it stays reachable but out of the nav, as on the IG.
       n = { title: name, navOrder: 1000 + unlisted.length, ...(fromMenu ? { navExclude: true } : {}) };
     }
-    let body = relink(readFileSync(join(pagecontent, f), "utf-8"));
+    // One page's Markdown, English or translated, through the same steps.
+    const render = (md: string, collect: boolean): { body: string; data: Record<string, unknown> } => {
+    let body = relink(md);
     if (cellLookup) {
       const c = linkTableCells(body, cellLookup);
       body = c.text;
@@ -1948,11 +1975,13 @@ function stageDeclaredSource(igSrc: string, out: string, opts: StageOptions): St
       if (!body.includes(fill.marker)) continue;
       body = body.split(fill.marker).join(fill.body);
       data = { ...data, ...fill.data };
-      filled.push(`${f} (${fill.marker})`);
-      usedMarkers.add(fill.marker);
+      if (collect) {
+        filled.push(`${f} (${fill.marker})`);
+        usedMarkers.add(fill.marker);
+      }
     }
     for (const a of (opts.annexes ?? []).filter((x) => x.page === f)) {
-      annexed.push(`${f} <- ${basename(a.src)}`);
+      if (collect) annexed.push(`${f} <- ${basename(a.src)}`);
       // A MARKDOWN annex is content the layer's graph holds for this page
       // (a cross-reference section, say) and is appended as written. A JSON
       // one is a table, loaded when the page opens.
@@ -1965,11 +1994,29 @@ function stageDeclaredSource(igSrc: string, out: string, opts: StageOptions): St
       body += annexMount(basename(a.src), a.columns);
       jsonAnnexes++;
     }
-    // Page variables as JSON flow mappings — YAML is a superset of JSON.
-    const dataLines = Object.entries(data).map(([k, v]) => `${k}: ${JSON.stringify(v)}\n`).join("");
-    // A page that already carries front matter keeps it, with the fill's data added.
-    writeFileSync(join(out, f), body.startsWith("---\n") ? `---\n${dataLines}${body.slice(4)}` : frontMatter(n).replace(/---\n$/, `${dataLines}---\n`) + body);
+    return { body, data };
+    };
+    const en = render(raw, true);
+    const available = localesOf(name);
+    const localeData = available.length > 1 ? localeFrontMatter({ lang: SOURCE_LOCALE, available }) : {};
+    writePage(join(out, f), en.body, { ...en.data, ...localeData }, n);
     pages.push(f);
+    for (const l of pageLocs) {
+      if (!available.includes(l.locale)) continue;
+      const t = translateWithIncludes(name, l, sourceOf, pageStems);
+      const here = new Set([...pageStems].filter((k) => hasTranslation(k, l, sourceOf, pageStems)).map((k) => `${k}.html`));
+      const tr = render(t.md, false);
+      const body = relinkForLocale(tr.body, here);
+      const data = {
+        ...tr.data,
+        ...localeFrontMatter({ lang: l.locale, available, status: l.status, source: `${name}.html` }),
+        dir: dirFor(l.locale),
+        translated_spans: `${t.translated}/${t.total}`,
+      };
+      // Out of the menu: the picker, not the nav, leads to it.
+      writePage(join(out, l.locale, f), body, { ...data, nav_exclude: true }, { title: n.title, navOrder: n.navOrder });
+      translatedPages.push(`${l.locale}/${f}`);
+    }
   }
 
   if (jsonAnnexes) {
@@ -2309,7 +2356,7 @@ function stageDeclaredSource(igSrc: string, out: string, opts: StageOptions): St
     ].join("\n"),
   );
   const fillsResult = opts.fills?.length ? { filled, unused: opts.fills.map((x) => x.marker).filter((m) => !usedMarkers.has(m)) } : undefined;
-  return { annexed, unplaced, templateIncludes: templateIncludesResult, pages: pages.sort(), generated, fills: fillsResult, variables: lifted ? { artifacts: Object.keys(lifted.vars.artifacts).length, notSourced: lifted.notSourced } : undefined, unlisted: unlisted.sort(), menuMissing, includes, images, rendered, listed, notRendered, refusedIncludes, unparseable, reserved, relinked, deadLinks: [...dead].sort(), footer, ...(svgMinified.files ? { svgMinified } : {}), ...(qa ? { qa } : {}), scheme, siteData, data, astData, ...(forms ? { forms } : {}), dependencyTables, dependencies, globals };
+  return { annexed, unplaced, templateIncludes: templateIncludesResult, pages: pages.sort(), ...(translatedPages.length ? { translated: translatedPages.sort() } : {}), generated, fills: fillsResult, variables: lifted ? { artifacts: Object.keys(lifted.vars.artifacts).length, notSourced: lifted.notSourced } : undefined, unlisted: unlisted.sort(), menuMissing, includes, images, rendered, listed, notRendered, refusedIncludes, unparseable, reserved, relinked, deadLinks: [...dead].sort(), footer, ...(svgMinified.files ? { svgMinified } : {}), ...(qa ? { qa } : {}), scheme, siteData, data, astData, ...(forms ? { forms } : {}), dependencyTables, dependencies, globals };
 }
 
 /**
@@ -2357,6 +2404,7 @@ export function dedupeSiteIds(site: string): Map<string, string[]> {
 export function describeStage(r: StageResult): string {
   return [
     `pages: ${r.pages.length}; includes: ${r.includes}; images: ${r.images}; diagrams rendered: ${r.rendered.length}`,
+    ...(r.translated?.length ? [`translated pages: ${r.translated.length} (${[...new Set(r.translated.map((p) => p.split("/")[0]))].join(", ")})`] : []),
     ...(r.svgMinified ? [`SVGs published minified: ${r.svgMinified.files}, ${(r.svgMinified.saved / 1e6).toFixed(2)} MB saved`] : []),
     ...(r.templateIncludes ? [`local template includes (ig.ini): ${r.templateIncludes.files} from ${r.templateIncludes.dir}`] : []),
     ...(r.generated.length ? [`generated from data this build holds (the Publisher generates these): ${r.generated.join(", ")}`] : []),
