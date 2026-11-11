@@ -323,6 +323,7 @@
     var frag = document.createDocumentFragment();
     var cols;
     var rows = [];
+    var rowIds = [];
     var title;
     if (resource.resourceType === "StructureDefinition") {
       var list = (resource.differential && resource.differential.element) || (resource.snapshot && resource.snapshot.element) || [];
@@ -335,6 +336,9 @@
       var flat = [];
       (function walk(cs, depth) {
         cs.forEach(function (c) {
+          // Each concept's row is anchored as the IG Publisher anchors it, `<CodeSystem id>-<code>`,
+          // so a link to one code (a diagram's, another guide's) lands on its row.
+          rowIds.push(resource.id + "-" + c.code);
           flat.push([new Array(depth + 1).join("· ") + c.code, c.display || "", c.definition || ""]);
           if (c.concept) walk(c.concept, depth + 1);
         });
@@ -377,8 +381,9 @@
     thead.append(tr);
     t.append(thead);
     var tb = el("tbody");
-    rows.forEach(function (r) {
+    rows.forEach(function (r, n) {
       var x = el("tr");
+      if (rowIds[n]) x.id = rowIds[n];
       r.forEach(function (v, i) {
         x.append(el("td", i === 0 ? "iga-code" : null, v));
       });
@@ -388,6 +393,13 @@
     var wrap = el("div", "iga-scroll");
     wrap.append(t);
     frag.append(wrap);
+    // The rows are drawn after the page loaded, so the browser's own jump to `#<id>` found nothing: jump once they are in.
+    if (rowIds.length && location.hash.length > 1) {
+      setTimeout(function () {
+        var to = document.getElementById(decodeURIComponent(location.hash.slice(1)));
+        if (to) to.scrollIntoView();
+      }, 0);
+    }
     return frag;
   }
 
