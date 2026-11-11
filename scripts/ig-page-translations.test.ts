@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { dirFor, localesFor, pageLocales, relinkForLocale, signedOff, translatePage } from "./ig-page-translations.ts";
+import { dirFor, hasTranslation, localesFor, pageLocales, relinkForLocale, signedOff, translatePage, translateWithIncludes } from "./ig-page-translations.ts";
 
 const po = (pairs: [string, string][]) => pairs.map(([i, s]) => `msgid "${i}"\nmsgstr "${s}"`).join("\n\n") + "\n";
 
@@ -57,5 +57,17 @@ describe("ig-page-translations (fhir-harness#382)", () => {
   test("Arabic is right to left", () => {
     expect(dirFor("ar")).toBe("rtl");
     expect(dirFor("fr")).toBe("ltr");
+  });
+
+  test("a page made only of includes is translated through them (home page)", () => {
+    const [fr] = pageLocales(fixture());
+    const src: Record<string, string> = { home: "{% include index.md %}\n\n{% include other.md %}\n", index: "Hello world.\n", other: "Not translated.\n" };
+    const pages = new Set(Object.keys(src));
+    const sourceOf = (s: string) => src[s];
+    expect(hasTranslation("home", fr!, sourceOf, pages)).toBe(true);
+    expect(hasTranslation("other", fr!, sourceOf, pages)).toBe(false);
+    const t = translateWithIncludes("home", fr!, sourceOf, pages);
+    expect(t.md).toContain("Bonjour le monde.");
+    expect(t.md).toContain("{% include other.md %}");
   });
 });

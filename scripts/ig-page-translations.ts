@@ -88,6 +88,60 @@ export function translatePage(sourceMd: string, catalogue: Map<string, string>):
   return { md: r.translated, translated: r.stats.translatedSpans, total: r.stats.totalSpans };
 }
 
+const INCLUDE_RE = /\{%-?\s*include\s+([^\s%]+)\s*-?%\}/g;
+
+/** The pages `md` includes by name (`{% include overview.md %}`), as stems of `pages`. */
+export function includedPages(md: string, pages: ReadonlySet<string>): string[] {
+  const out: string[] = [];
+  for (const m of md.matchAll(INCLUDE_RE)) {
+    const stem = m[1]!.replace(/\.md$/, "");
+    if (m[1]!.endsWith(".md") && pages.has(stem) && !out.includes(stem)) out.push(stem);
+  }
+  return out;
+}
+
+/**
+ * Whether a page has anything in `locale`: its own catalogue, or one of a page
+ * it includes. An IG's home page is often only includes
+ * (`{% include overview.md %}`), with no string of its own.
+ */
+export function hasTranslation(stem: string, l: PageLocale, sourceOf: (stem: string) => string | undefined, pages: ReadonlySet<string>, seen = new Set<string>()): boolean {
+  if (l.catalogues.has(stem)) return true;
+  if (seen.has(stem)) return false;
+  seen.add(stem);
+  const md = sourceOf(stem);
+  return md !== undefined && includedPages(md, pages).some((s) => hasTranslation(s, l, sourceOf, pages, seen));
+}
+
+/**
+ * One page translated, with each page it includes inlined in the same
+ * language. An included page left as `{% include x.md %}` would render the
+ * English copy in `_includes/`, so a French home page would read English.
+ * An included page with nothing in this locale stays an include (English).
+ */
+export function translateWithIncludes(
+  stem: string,
+  l: PageLocale,
+  sourceOf: (stem: string) => string | undefined,
+  pages: ReadonlySet<string>,
+  depth = 0,
+): { md: string; translated: number; total: number } {
+  const src = sourceOf(stem) ?? "";
+  const own = l.catalogues.get(stem);
+  const t = own ? translatePage(src, own) : { md: src, translated: 0, total: 0 };
+  let { translated, total } = t;
+  if (depth >= 4) return t;
+  const md = t.md.replace(INCLUDE_RE, (whole, name: string) => {
+    const s = name.replace(/\.md$/, "");
+    if (!name.endsWith(".md") || !pages.has(s) || s === stem || !hasTranslation(s, l, sourceOf, pages)) return whole;
+    const inner = translateWithIncludes(s, l, sourceOf, pages, depth + 1);
+    translated += inner.translated;
+    total += inner.total;
+    return inner.md.trim();
+  });
+  return { md, translated, total };
+}
+
 const SKIP_URL = /^(?:[a-z][a-z0-9+.-]*:|\/|#|\{\{|\{%|\.\.\/)/i;
 
 /**

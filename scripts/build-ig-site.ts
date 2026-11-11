@@ -57,7 +57,7 @@ import { wrapRaw } from "../../cat-harness-tools/scripts/lib/liquid-raw.ts";
 import type { IgReleases } from "../schemas/ig-releases.ts";
 import { astFooterData, IG_QA_PAGE, igSiteFooter, sushiFooterData, type IgFooterData, type IgSiteFooter } from "./ig-footer.ts";
 import { thinIndexPage } from "./ig-thin-pages.ts";
-import { dirFor, localeFrontMatter, localesFor, pageLocales, relinkForLocale, SOURCE_LOCALE, translatePage, TRANSLATION_META_LIQUID } from "./ig-page-translations.ts";
+import { dirFor, hasTranslation, localeFrontMatter, pageLocales, relinkForLocale, SOURCE_LOCALE, translateWithIncludes, TRANSLATION_META_LIQUID } from "./ig-page-translations.ts";
 import { IG_SEARCH_CSS, IG_SEARCH_INDEX_FILE, IG_SEARCH_SCRIPT_FILE, igSearchBox, igSearchScript, type IgSearchRef } from "./ig-search.ts";
 import { withRenderedBy } from "../../cat-harness-tools/scripts/viewer-declarations.js";
 import { NAVBAR_LINKED } from "../../cat-harness-tools/scripts/lib/harness-rail.ts";
@@ -1932,6 +1932,9 @@ function stageDeclaredSource(igSrc: string, out: string, opts: StageOptions): St
   // the read scope holds.
   const pageLocs = pageLocales(join(src, "translations"));
   const translatedPages: string[] = [];
+  const pageStems = new Set(files(pagecontent).filter((f) => f.endsWith(".md")).map((f) => basename(f, ".md")));
+  const sourceOf = (stem: string): string | undefined => (pageStems.has(stem) ? readFileSync(join(pagecontent, `${stem}.md`), "utf-8") : undefined);
+  const localesOf = (stem: string): string[] => [SOURCE_LOCALE, ...pageLocs.filter((l) => hasTranslation(stem, l, sourceOf, pageStems)).map((l) => l.locale)];
   for (const f of files(pagecontent).filter((f) => f.endsWith(".md"))) {
     const name = basename(f, ".md");
     const raw = readFileSync(join(pagecontent, f), "utf-8");
@@ -1994,15 +1997,14 @@ function stageDeclaredSource(igSrc: string, out: string, opts: StageOptions): St
     return { body, data };
     };
     const en = render(raw, true);
-    const available = localesFor(name, pageLocs);
+    const available = localesOf(name);
     const localeData = available.length > 1 ? localeFrontMatter({ lang: SOURCE_LOCALE, available }) : {};
     writePage(join(out, f), en.body, { ...en.data, ...localeData }, n);
     pages.push(f);
     for (const l of pageLocs) {
-      const po = l.catalogues.get(name);
-      if (!po) continue;
-      const t = translatePage(raw, po);
-      const here = new Set([...l.catalogues.keys()].map((k) => `${k}.html`));
+      if (!available.includes(l.locale)) continue;
+      const t = translateWithIncludes(name, l, sourceOf, pageStems);
+      const here = new Set([...pageStems].filter((k) => hasTranslation(k, l, sourceOf, pageStems)).map((k) => `${k}.html`));
       const tr = render(t.md, false);
       const body = relinkForLocale(tr.body, here);
       const data = {
