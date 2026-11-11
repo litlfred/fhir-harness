@@ -8,6 +8,13 @@ Feature: The IG's quality checks page
     And it shows the errors and hints counts, says nothing of suppressed messages, and links the record at assets/fhir-qa/qa.json
     And it shows when the AST was generated and which parts are provisional until a full IG Publisher run
 
+  @test:scripts/ig-qa-page.test.ts::ig-qa-page::markdownSectionFromAst
+  Scenario: FHIR QA: markdown the artefact pages would show as text is listed
+    Given an AST holding a ValueSet whose description is a markdown heading
+    When the FHIR QA section is written
+    Then a "Markdown rendering" section lists the ValueSet, its description field and "heading"
+    And an AST with no resources gets no such section
+
   @test:scripts/ig-qa-page.test.ts::ig-qa-page::fhirQaWithoutSummarySaysSo
   Scenario: FHIR QA: an AST without the summary says so, never zeros
     Given an AST with a manifest but no QA summary, and a validity record saying the AST is stale because the inputs changed

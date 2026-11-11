@@ -45,6 +45,16 @@ describe("ig-qa-page", () => {
     expect(md).toContain("| provisional | `indices`, `versions`, until a full IG Publisher run |");
   });
 
+  test("markdownSectionFromAst", () => {
+    const ast = dirWith({ "manifest.json": JSON.stringify(MANIFEST), "a.json": JSON.stringify({ resourceType: "ValueSet", id: "vs", description: "## Heading" }) });
+    const q = readFhirQa(ast);
+    expect(q.markdown?.scanned).toBe(1);
+    const md = fhirQaMarkdown(q).join("\n");
+    expect(md).toContain("### Markdown rendering");
+    expect(md).toContain("| `ValueSet/vs` | `description` | heading |");
+    expect(fhirQaMarkdown(readFhirQa(dirWith({ "manifest.json": JSON.stringify(MANIFEST) }))).join("\n")).not.toContain("### Markdown rendering");
+  });
+
   test("fhirQaWithoutSummarySaysSo", () => {
     const ast = dirWith({ "manifest.json": JSON.stringify(MANIFEST) });
     const validity = join(dirWith({ "v.json": JSON.stringify({ verdict: "stale", detail: { verdict: "stale", why: "the inputs changed" }, recorded: { inputDigest: "a" }, current: { inputDigest: "b" } }) }), "v.json");
