@@ -39,6 +39,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { copyKgQaRecords, kgQaMarkdown, kgQaReport, type KgQaReport } from "../../cat-harness-tools/scripts/kg-qa-report.ts";
 import { readDeclaration } from "../../cat-harness-tools/schemas/kg/cat-harness.ts";
+import { QA_MESSAGES_FILE, QA_MESSAGES_SCHEMA } from "./ig-qa-messages.ts";
 
 /** Where the KG records are published under the site root. */
 export const KG_QA_ASSETS = "assets/kg-qa";
@@ -46,6 +47,8 @@ export const KG_QA_ASSETS = "assets/kg-qa";
 export const FHIR_QA_ASSETS = "assets/fhir-qa";
 /** The Publisher's QA summary, as its run writes it to `output/` and the AST build carries it. */
 export const PUBLISHER_QA_FILE = "qa.json";
+/** The page script that draws the Publisher's messages in its own layout, published beside them. */
+export const QA_MESSAGES_SCRIPT = "qa-messages.js";
 
 type Json = Record<string, unknown>;
 
@@ -53,6 +56,8 @@ type Json = Record<string, unknown>;
 export interface FhirQa {
   /** The Publisher's `qa.json`, as the AST carries it. */
   publisher?: Json;
+  /** The Publisher's full message list (`ig-qa-messages.ts`), as the AST carries it. */
+  messages?: Json;
   /** The AST's `manifest.json`. */
   manifest?: Json;
   /** `ig-ast-validity.json`, as `ig-repo-site ast` wrote it. */
@@ -74,7 +79,9 @@ export function readFhirQa(ast: string | undefined, validityFile?: string): Fhir
   const publisher = ast ? readJson(join(ast, PUBLISHER_QA_FILE)) : undefined;
   const manifest = ast ? readJson(join(ast, "manifest.json")) : undefined;
   const validity = readJson(validityFile) as FhirQa["validity"];
-  return { ...(publisher ? { publisher } : {}), ...(manifest ? { manifest } : {}), ...(validity ? { validity } : {}) };
+  const read = ast ? readJson(join(ast, QA_MESSAGES_FILE)) : undefined;
+  const messages = read && read.$schema === QA_MESSAGES_SCHEMA && Array.isArray(read.groups) && read.groups.length > 0 ? read : undefined;
+  return { ...(publisher ? { publisher } : {}), ...(messages ? { messages } : {}), ...(manifest ? { manifest } : {}), ...(validity ? { validity } : {}) };
 }
 
 const code = (v: unknown): string => `\`${String(v).replace(/`/g, "'")}\``;
@@ -97,7 +104,15 @@ export function fhirQaMarkdown(q: FhirQa, o: { up?: string } = {}): string[] {
     const run = [p.tool ? `IG Publisher ${String(p.tool)}` : undefined, p.version ? `FHIR ${String(p.version)}` : undefined, p.date ?? p.dateISO8601 ? `on ${String(p.date ?? p.dateISO8601)}` : undefined].filter(Boolean);
     lines.push(`The Publisher's own QA summary for the run this AST came from${run.length ? ` (${run.join(", ")})` : ""}. [Summary (JSON)](${up}${FHIR_QA_ASSETS}/${PUBLISHER_QA_FILE})`, "");
     const held = rows.filter(([, n]) => n !== undefined);
-    if (held.length) {
+    if (q.messages) {
+      lines.push(
+        `Every message the Publisher reported, laid out as its own \`qa.html\` lays them out. [Messages (JSON)](${up}${FHIR_QA_ASSETS}/${QA_MESSAGES_FILE})`,
+        "",
+        `<div class="ig-qa-publisher" markdown="0" data-summary="${up}${FHIR_QA_ASSETS}/${PUBLISHER_QA_FILE}" data-messages="${up}${FHIR_QA_ASSETS}/${QA_MESSAGES_FILE}"><p>Loading the Publisher's messages…</p><noscript><p>The messages are drawn in the browser; without JavaScript, read the JSON above.</p></noscript></div>`,
+        `<script src="${up}${FHIR_QA_ASSETS}/${QA_MESSAGES_SCRIPT}"></script>`,
+        "",
+      );
+    } else if (held.length) {
       lines.push("| messages | count |", "|---|---|");
       for (const [k, n] of held) lines.push(`| ${k} | ${n} |`);
       lines.push("");
@@ -176,6 +191,10 @@ export function publishQaAssets(r: { fhir: FhirQa; kg: KgQaReport }, site: strin
     mkdirSync(join(site, FHIR_QA_ASSETS), { recursive: true });
     writeFileSync(join(site, FHIR_QA_ASSETS, PUBLISHER_QA_FILE), `${JSON.stringify(r.fhir.publisher, null, 2)}\n`);
   }
+  if (r.fhir.publisher && r.fhir.messages) {
+    writeFileSync(join(site, FHIR_QA_ASSETS, QA_MESSAGES_FILE), `${JSON.stringify(r.fhir.messages)}\n`);
+    writeFileSync(join(site, FHIR_QA_ASSETS, QA_MESSAGES_SCRIPT), QA_MESSAGES_JS);
+  }
   return copyKgQaRecords(r.kg, site, KG_QA_ASSETS);
 }
 
@@ -199,3 +218,144 @@ function main(): number {
 }
 
 if (import.meta.main) process.exit(main());
+
+/**
+ * The page script: the Publisher's `qa.html` layout, drawn from `qa.json` and
+ * `qa-messages.json` (ValidationPresenter: the header, the "Quality Checks"
+ * table, the file table, then each file's Path / Severity / Message table,
+ * in the Publisher's colours). Plain ES5, every value written as text.
+ */
+export const QA_MESSAGES_JS = String.raw`(function () {
+  "use strict";
+  var COLOR = { fatal: "#ff9999", error: "#ffdddd", warning: "#ffebcc", information: "#ffffe6" };
+  var boxes = document.querySelectorAll(".ig-qa-publisher");
+  if (boxes.length && !document.getElementById("ig-qa-publisher-css")) {
+    var css = document.createElement("style");
+    css.id = "ig-qa-publisher-css";
+    css.textContent =
+      ".ig-qa-publisher table.grid{border-collapse:collapse;margin:0 0 1em;font-size:.85em;width:auto}" +
+      ".ig-qa-publisher table.grid td{border:1px solid #888;padding:3px 6px;vertical-align:top;color:#000}" +
+      ".ig-qa-publisher table.grid td.plain{color:inherit}" +
+      ".ig-qa-publisher .mid{font-size:8px;color:navy;display:none}" +
+      ".ig-qa-publisher.show-ids .mid{display:inline}" +
+      ".ig-qa-publisher .grid-wrap{overflow-x:auto}";
+    document.head.appendChild(css);
+  }
+  for (var i = 0; i < boxes.length; i++) run(boxes[i]);
+
+  function el(tag, text, attrs) {
+    var e = document.createElement(tag);
+    if (text != null) e.textContent = String(text);
+    for (var k in attrs || {}) if (Object.prototype.hasOwnProperty.call(attrs, k)) e.setAttribute(k, attrs[k]);
+    return e;
+  }
+  function getJson(u) {
+    return fetch(u).then(function (r) {
+      if (!r.ok) throw new Error(u + " answered HTTP " + r.status);
+      return r.json();
+    });
+  }
+  function row(cells, color, bold) {
+    var tr = el("tr", null, color ? { style: "background-color: " + color } : null);
+    cells.forEach(function (c) {
+      var td = el("td", null, color ? null : { "class": "plain" });
+      if (c && c.nodeType) td.appendChild(c);
+      else if (bold) td.appendChild(el("b", c));
+      else td.textContent = c == null ? "" : String(c);
+      tr.appendChild(td);
+    });
+    return tr;
+  }
+  function wrap(table) {
+    var d = el("div", null, { "class": "grid-wrap" });
+    d.appendChild(table);
+    return d;
+  }
+  function counts(g) {
+    var c = { err: 0, warn: 0, info: 0 };
+    g.messages.forEach(function (m) {
+      if (m.severity === "error" || m.severity === "fatal") c.err++;
+      else if (m.severity === "warning") c.warn++;
+      else c.info++;
+    });
+    return c;
+  }
+
+  function run(box) {
+    Promise.all([getJson(box.getAttribute("data-summary")).catch(function () { return {}; }), getJson(box.getAttribute("data-messages"))])
+      .then(function (r) { draw(box, r[0] || {}, r[1] || {}); })
+      .catch(function (e) {
+        box.textContent = "";
+        box.appendChild(el("p", "Could not load the Publisher's messages (" + e.message + ")."));
+      });
+  }
+
+  function draw(box, q, m) {
+    box.textContent = "";
+    var groups = Array.isArray(m.groups) ? m.groups : [];
+    box.appendChild(el("h4", "Validation Results for " + (q.title || q.name || "this IG")));
+    var p = el("p");
+    p.appendChild(document.createTextNode("Generated " + (q.date || q.dateISO8601 || "?") + ", FHIR version " + (q.version || "?") + " for " + (q["package-id"] || "?") + "#" + (q["ig-ver"] || "?")));
+    if (q.url) {
+      p.appendChild(document.createTextNode(" (canonical = "));
+      var a = el("a", q.url, { href: q.url });
+      p.appendChild(a);
+      p.appendChild(document.createTextNode(")"));
+    }
+    p.appendChild(document.createTextNode("."));
+    box.appendChild(p);
+
+    var qc = el("table", null, { "class": "grid" });
+    var head = el("tr");
+    var th = el("td", null, { colspan: "2", "class": "plain" });
+    th.appendChild(el("b", "Quality Checks"));
+    head.appendChild(th);
+    qc.appendChild(head);
+    qc.appendChild(row(["Publisher Version:", q.tool || "?"]));
+    var btn = el("button", "Show Message Ids", { type: "button" });
+    btn.addEventListener("click", function () {
+      var on = box.className.indexOf("show-ids") < 0;
+      box.className = on ? box.className + " show-ids" : box.className.replace(/ ?show-ids/, "");
+      btn.textContent = on ? "Hide Message Ids" : "Show Message Ids";
+    });
+    var sum = el("span");
+    sum.appendChild(document.createTextNode(" errors = " + (q.errs != null ? q.errs : "?") + ", warn = " + (q.warnings != null ? q.warnings : "?") + ", info = " + (q.hints != null ? q.hints : "?") + ", broken links = " + (q["broken-links"] != null ? q["broken-links"] : "?") + ".  "));
+    sum.appendChild(btn);
+    qc.appendChild(row(["Summary:", sum]));
+    box.appendChild(wrap(qc));
+
+    var files = el("table", null, { "class": "grid" });
+    files.appendChild(row(["Filename", "Errors", "Warnings", "Hints"], null, true));
+    groups.forEach(function (g, i) {
+      var c = counts(g);
+      var link = el("a", g.file || "Build Errors", { href: "#qa-f" + i });
+      var b = el("b");
+      b.appendChild(link);
+      files.appendChild(row([b, String(c.err), String(c.warn), String(c.info)], c.err ? COLOR.error : "#EFFFEF"));
+    });
+    box.appendChild(wrap(files));
+    if (!groups.length) box.appendChild(el("p", m.absent ? "No messages: " + m.absent + "." : "The Publisher reported no messages."));
+
+    groups.forEach(function (g, i) {
+      box.appendChild(el("hr"));
+      var c = counts(g);
+      box.appendChild(el("h5", (g.file || "Build Errors") + "  (" + c.err + " errors, " + c.warn + " warnings, " + c.info + " hints)", { id: "qa-f" + i }));
+      var t = el("table", null, { "class": "grid" });
+      t.appendChild(row(["Path", "Severity", "Message"], null, true));
+      g.messages.forEach(function (msg) {
+        var where = (msg.path || "") + (msg.line > 0 ? " (l" + msg.line + "/c" + msg.col + ")" : "");
+        var text = el("span");
+        text.appendChild(el("b", msg.text));
+        if (msg.messageId) {
+          text.appendChild(document.createTextNode(" "));
+          text.appendChild(el("span", msg.messageId, { "class": "mid" }));
+        }
+        var pw = el("b", where);
+        var sv = el("b", msg.severity);
+        t.appendChild(row([pw, sv, text], COLOR[msg.severity] || COLOR.information));
+      });
+      box.appendChild(wrap(t));
+    });
+  }
+})();
+`;
