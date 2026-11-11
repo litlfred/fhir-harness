@@ -650,13 +650,17 @@ describe("the AST's resources by raw URL at the cache commit (fhir-harness#325)"
       id: "L",
       contained: [{ resourceType: "Parameters", id: "p" }],
       content: [
-        { contentType: "text/cql", data: "Y3Fs" },
+        { contentType: "text/cql", url: full },
         { contentType: "application/elm+xml", url: full },
         { contentType: "application/elm+json", url: full },
       ],
     });
-    // No full copy to point at: the ELM's data is still left out, the entry kept.
+    // The CQL links to the IG's own .cql source when there is one.
+    const cqlUrl = "https://raw.githubusercontent.com/o/r/abc1234/input/cql/L.cql";
+    expect((reduceForSite(lib, full, cqlUrl) as { content: unknown[] }).content[0]).toEqual({ contentType: "text/cql", url: cqlUrl });
+    // No full copy to point at: the ELM's data is still left out, the entry kept, and the CQL stays inline.
     expect((reduceForSite(lib) as { content: unknown[] }).content[1]).toEqual({ contentType: "application/elm+xml" });
+    expect((reduceForSite(lib) as { content: unknown[] }).content[0]).toEqual({ contentType: "text/cql", data: "Y3Fs" });
     // The input is not changed.
     expect(lib.content[1]!.data).toBe("eG1s");
   });

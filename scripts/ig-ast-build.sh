@@ -118,6 +118,8 @@ java -Xmx10g -cp "$CP" org.hl7.fhir.igtools.ast.AstExportCli -ig "$IG" -ast-out 
 # The Publisher's QA summary goes with the AST too: the site is built from the AST, never the Publisher's
 # output, so this is the FHIR QA its QA report can show (ig-qa-page.ts).
 [ -f output/qa.json ] && cp output/qa.json output-ast/qa.json
+# And every message it reported (output/qa.xml), as JSON, for the report's qa.html layout.
+bun run "$HERE/ig-qa-messages.ts" output/qa.xml output-ast/qa-messages.json >&2 || true
 restore_inputs
 bun run "$HERE/ig-ast.ts" validity output-ast --ig . > /dev/null \
   || { echo "ig-ast-build: the AST just built is not valid for $(git rev-parse --short HEAD)" >&2; exit 1; }

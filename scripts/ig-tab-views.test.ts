@@ -362,6 +362,31 @@ describe("the shared renderer and the AST loader draw the views", () => {
     expect(renderer).toContain('astHolder(src, "json")');
     expect(ast).toContain('getAttribute("data-ast-view") === "json"');
   });
+  it("descriptionDrawsMarkdownSubset", () => {
+    // Run description() with a tiny DOM stand-in: each node is {tag, cls, kids}.
+    type N = { tag: string; cls?: string; kids: (N | string)[]; start?: number; href?: string; tagName?: string };
+    const mk = (tag: string, cls?: string, text?: string): N => ({ tag, tagName: tag.toUpperCase(), cls, kids: text === undefined ? [] : [text], append(...k: (N | string)[]) { this.kids.push(...k.filter((x) => x !== "")); } }) as N;
+    const src = renderer.slice(renderer.indexOf("function breaks("), renderer.indexOf("function stats("));
+    const draw = new Function("el", "link", "indexView", "document", src + "; return description;")(
+      mk,
+      (href: string, text: string) => Object.assign(mk("a", undefined, text), { href }),
+      false,
+      { createDocumentFragment: () => mk("#frag") },
+    ) as (t: string) => N;
+    const show = (n: N | string): string => (typeof n === "string" ? n : `<${n.tag}>${n.kids.map(show).join("")}</${n.tag}>`);
+    const out = (t: string) => draw(t).kids.map(show).join("");
+    expect(out("**Persona**: a *shared* `phone`.")).toBe("<p><strong>Persona</strong>: a <em>shared</em> <code>phone</code>.</p>");
+    expect(out("**In**:\n\n- [A](a.html): one\n- two\n  wrapped")).toBe('<p><strong>In</strong>:</p><ul><li><a>A</a>: one</li><li>two\nwrapped</li></ul>');
+    expect(out("Lead:\n1. first\n2. second")).toBe("<p>Lead:</p><ol><li>first</li><li>second</li></ol>");
+    expect(out("in\n2023. Then")).toBe("<p>in\n2023. Then</p>");
+    expect(out("a * b * c and 2*3")).toBe("<p>a * b * c and 2*3</p>");
+    expect(out("- ![Bo](data:image/svg+xml;base64,AA==) [Bo](p.html), father")).toBe("<ul><li><img></img> <a>Bo</a>, father</li></ul>");
+    expect(out("![x](javascript:void)")).toBe("<p>x</p>");
+    expect(out("![x](https://example.org/x.png)")).toBe("<p>x</p>");
+    // Text only: the renderer never sets markdown as HTML.
+    const body = renderer.slice(renderer.indexOf("function inline("), renderer.indexOf("function stats("));
+    expect(body).not.toContain("innerHTML");
+  });
   it("neitherReadsPublisherHtml", () => {
     expect(renderer).not.toMatch(/fetch\([^)]*\.html/);
     expect(ast).not.toMatch(/fetch\([^)]*\.html/);

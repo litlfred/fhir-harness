@@ -170,6 +170,7 @@ import { AST_HISTORY_FILE, readAstHistory } from "./ig-ast-history.ts";
 import { copyDeclared, igReadScope, type IgReadScope } from "./ig-read-scope.ts";
 import { siteBuild, type SiteBuild, STAMP_FILE } from "./site-build-stamp.ts";
 import { buildQaPage, publishQaAssets } from "./ig-qa-page.ts";
+import { ACCEPT_UNREVIEWED_ENV, runGate, type ContentQaVerdict } from "./ig-content-qa.ts";
 import { annexesFor, artifactsFor, copyDocsInto, footerFor, githubEditBase, instanceNeeds, webpagePalette } from "./stage-ig-sites.ts";
 // The preview directories (cat-harness-tools `schemas/sdlc/preview-prefix.ts`):
 // `branches/` since 2026-11-05, and the legacy `STAGING/` still read. Named
@@ -670,6 +671,19 @@ export function copyIgSource(ig: string, src: string, scope: IgReadScope = igRea
   return top;
 }
 
+/**
+ * The injection gate for one compose (`ig-content-qa.ts`). A missing or stale
+ * review refuses every publish, previews included (owner, 2026-11-10, card
+ * Q-INJ-1 "B: previews refuse too"). `IG_CONTENT_QA_ACCEPT_UNREVIEWED=1`
+ * accepts one for a local build only (`stage-local-ig`), and the QA page says
+ * so. Nothing accepts a pattern hit or an open finding. Throws on a refusal,
+ * naming each text.
+ */
+export function contentQaGate(o: { ig: string; ast: string; scope: IgReadScope; work?: string; env?: Record<string, string | undefined>; log: (s: string) => void }): ContentQaVerdict {
+  const accept = (o.env ?? process.env)[ACCEPT_UNREVIEWED_ENV] === "1";
+  return runGate({ ig: o.ig, ast: o.ast, scope: o.scope, acceptUnreviewed: accept, ...(o.work ? { work: o.work } : {}), log: o.log });
+}
+
 /** Whether the IG has PlantUML sources to render. */
 function hasPlantuml(ig: string): boolean {
   const d = join(ig, "input", "images-source");
@@ -700,6 +714,9 @@ export function compose(o: { docs: string; ig: string; baseurl: string; ast?: st
     const baseurl = o.baseurl.replace(/\/$/, "");
     const label = igTitle(ig) ?? name;
     const ast = resolve(o.ast ?? join(ig, AST_DIR));
+    // The injection gate (fhir-harness#330), before anything is staged: a
+    // pattern hit, an open finding, or a missing or stale agent review refuses.
+    const content = contentQaGate({ ig, ast, scope, ...(o.work ? { work: o.work } : {}), log });
     const igApi = siteIgApi(o.work, ast);
     log(
       igApi
@@ -716,7 +733,7 @@ export function compose(o: { docs: string; ig: string; baseurl: string; ast?: st
     const annexes = annexesFor(ig, log);
     // The QA report the footer's "QA Report" links: the FHIR QA the build
     // holds and the knowledge graph's, on one page (`ig-qa-page.ts`).
-    const qa = buildQaPage({ root: ig, ast, ...(o.work ? { validity: join(o.work, VALIDITY_FILE) } : {}) });
+    const qa = buildQaPage({ root: ig, ast, content, ...(o.work ? { validity: join(o.work, VALIDITY_FILE) } : {}) });
     const astRaw = astRawBase(o.work);
     const r = stageIgSite(src, site, {
       baseurl,
@@ -1020,10 +1037,13 @@ const isElm = (contentType: unknown): boolean => typeof contentType === "string"
  * and each Library attachment of compiled logic (a contentType naming `elm`)
  * without its `data`. The attachment entry stays, with `url` set to `fullUrl`,
  * the AST cache's full copy of the resource, when there is one, so the ELM is
- * still reachable; the CQL stays as it is. Written minified by the caller. The
- * full copy is the AST cache's and the release's `package.tgz`. Pure.
+ * still reachable. The CQL (`text/cql`) is a link too (owner, 2026-11-10: "Cql
+ * link"): its `data` goes and `url` is `cqlUrl`, the IG's own `.cql` source,
+ * or else `fullUrl`; with neither, the CQL stays inline, never dropped.
+ * Written minified by the caller. The full copy is the AST cache's and the
+ * release's `package.tgz`. Pure.
  */
-export function reduceForSite(resource: Record<string, unknown>, fullUrl?: string): Record<string, unknown> {
+export function reduceForSite(resource: Record<string, unknown>, fullUrl?: string, cqlUrl?: string): Record<string, unknown> {
   const strip = (r: Record<string, unknown>): Record<string, unknown> => {
     const { text: _text, ...rest } = r;
     return rest;
@@ -1032,9 +1052,17 @@ export function reduceForSite(resource: Record<string, unknown>, fullUrl?: strin
   if (Array.isArray(out["contained"])) out["contained"] = (out["contained"] as unknown[]).map((c) => (c && typeof c === "object" ? strip(c as Record<string, unknown>) : c));
   if (out["resourceType"] === "Library" && Array.isArray(out["content"])) {
     out["content"] = (out["content"] as Record<string, unknown>[]).map((c) => {
-      if (!c || typeof c !== "object" || !isElm(c["contentType"]) || c["data"] === undefined) return c;
-      const { data: _data, ...rest } = c;
-      return fullUrl ? { ...rest, url: fullUrl } : rest;
+      if (!c || typeof c !== "object" || c["data"] === undefined) return c;
+      if (isElm(c["contentType"])) {
+        const { data: _data, ...rest } = c;
+        return fullUrl ? { ...rest, url: fullUrl } : rest;
+      }
+      const link = cqlUrl ?? fullUrl;
+      if (c["contentType"] === "text/cql" && link) {
+        const { data: _data, ...rest } = c;
+        return { ...rest, url: link };
+      }
+      return c;
     });
   }
   return out;
@@ -1058,6 +1086,17 @@ export interface CqlSource {
 /** The compiled-logic content types a docs-site Library leaves out: the ELM ships in the release package. */
 export const ELM_CONTENT_TYPES: ReadonlySet<string> = new Set(["application/elm+xml", "application/elm+json"]);
 
+/** The IG's `.cql` source of a Library, by its name or id, when the IG holds it. */
+function cqlFileOf(r: { name?: unknown; id?: unknown }, cql: CqlSource): string | undefined {
+  return [r.name, r.id].filter((x): x is string => typeof x === "string" && /^[A-Za-z0-9._-]+$/.test(x)).map((n) => `${n}.cql`).find((f) => existsSync(join(cql.dir, f)));
+}
+
+/** The URL of a Library's `.cql` source, when the IG holds it. */
+export function cqlFileUrl(r: { name?: unknown; id?: unknown }, cql: CqlSource): string | undefined {
+  const file = cqlFileOf(r, cql);
+  return file === undefined ? undefined : cql.url(file);
+}
+
 /**
  * A Library as the docs site serves it (owner, 2026-11-08, card "ELM", option
  * A: reference the CQL from the KG). The compiled ELM (`application/elm+xml`,
@@ -1070,7 +1109,7 @@ export const ELM_CONTENT_TYPES: ReadonlySet<string> = new Set(["application/elm+
 export function libraryByUrl(resource: unknown, cql: CqlSource): object | undefined {
   const r = resource as { resourceType?: string; id?: string; name?: string; content?: Array<{ contentType?: string; data?: string; url?: string }> };
   if (r?.resourceType !== "Library" || !Array.isArray(r.content)) return undefined;
-  const file = [r.name, r.id].filter((x): x is string => typeof x === "string" && /^[A-Za-z0-9._-]+$/.test(x)).map((n) => `${n}.cql`).find((f) => existsSync(join(cql.dir, f)));
+  const file = cqlFileOf(r, cql);
   let changed = false;
   const content = r.content.flatMap((c) => {
     if (c.contentType && ELM_CONTENT_TYPES.has(c.contentType)) {
@@ -1147,7 +1186,7 @@ export function serveAstData(o: {
       continue;
     }
     if (reduce) {
-      const text = JSON.stringify(reduceForSite(json, o.rawBase ? `${o.rawBase}/${r.file.split("/").map(encodeURIComponent).join("/")}` : undefined));
+      const text = JSON.stringify(reduceForSite(json, o.rawBase ? `${o.rawBase}/${r.file.split("/").map(encodeURIComponent).join("/")}` : undefined, o.cql && resourceType === "Library" ? cqlFileUrl(json, o.cql) : undefined));
       writeFileSync(join(o.site, rel), text);
       out.named += 1;
       out.rootBytes = (out.rootBytes ?? 0) + Buffer.byteLength(text);
