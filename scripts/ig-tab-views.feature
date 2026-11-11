@@ -136,10 +136,11 @@ Feature: An artefact's tab views on the IG site
     Then the renderer's JSON view uses the AST loader, which recognises the JSON view
 
   @test:scripts/ig-tab-views.test.ts::the_shared_renderer_and_the_AST_loader_draw_the_views::descriptionDrawsMarkdownSubset
-  Scenario: a markdown description draws bold, emphasis, code, links and lists, as text
+  Scenario: a markdown description draws bold, emphasis, code, links, images and lists, as text
     Given descriptions with **strong**, *emphasis*, `code`, a link, a "-" list with a wrapped item, and a "1." list after a paragraph
     When the renderer draws them
     Then each becomes its element, and the list items become list elements
+    And an inline picture (a data: SVG avatar) is drawn as an image, and an image with an unsafe source as its alt text only
     And a "2023." line inside a paragraph and a lone "*" stay as written
     And nothing in the markdown drawer sets HTML
 

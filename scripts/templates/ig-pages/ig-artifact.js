@@ -143,11 +143,18 @@
   }
 
   /* The description is the IG's markdown. A small, safe subset is drawn:
-     paragraphs, `-`/`*`/`+` and `1.` lists, [text](url) links, **strong**,
-     *emphasis* and `code`. Everything goes in as text through el(); nothing
+     paragraphs, `-`/`*`/`+` and `1.` lists, [text](url) links, ![alt](src)
+     images, **strong**, *emphasis* and `code`. Everything goes in as text through el(); nothing
      from the markdown is set as HTML. Anything else stays as written. */
   var LIST_ITEM = /^\s{0,3}(?:([-*+])|(\d{1,9})[.)])\s+(.*)$/;
-  var INLINE = /`([^`]+)`|\[([^\]]+)\]\(([^)\s]+)\)|\*\*(?=\S)([\s\S]*?\S)\*\*|\*(?=[^\s*])([^*]*?[^\s*])\*/g;
+  var INLINE = /!\[([^\]]*)\]\(([^)\s]+)\)|`([^`]+)`|\[([^\]]+)\]\(([^)\s]+)\)|\*\*(?=\S)([\s\S]*?\S)\*\*|\*(?=[^\s*])([^*]*?[^\s*])\*/g;
+  /* An image's source: a page-relative or web URL, or an inline raster or SVG
+     picture. In an <img>, an SVG runs no script. */
+  function imageSrc(src) {
+    // The web-or-relative half is safe()'s test, written out so this drawer
+    // stands alone (the markdown QA check runs it outside the page).
+    return /^data:image\/(?:png|jpeg|gif|webp|svg\+xml)[;,]/i.test(src) || /^(https?:|\.{0,2}\/|[^:]*$)/i.test(src);
+  }
 
   function inline(parent, text, root) {
     var re = new RegExp(INLINE.source, "g");
@@ -155,16 +162,23 @@
     var m;
     while ((m = re.exec(text))) {
       parent.append(text.slice(last, m.index));
-      if (m[1] !== undefined) {
-        parent.append(el("code", null, m[1]));
-      } else if (m[2] !== undefined) {
+      if (m[2] !== undefined) {
+        if (imageSrc(m[2])) {
+          var img = el("img", "iga-inline-img");
+          img.alt = m[1];
+          img.src = /^[a-z][a-z0-9+.-]*:/i.test(m[2]) || m[2].charAt(0) === "/" ? m[2] : root + m[2];
+          parent.append(img);
+        } else parent.append(m[1]);
+      } else if (m[3] !== undefined) {
+        parent.append(el("code", null, m[3]));
+      } else if (m[4] !== undefined) {
         // An artefact page's name (`<Type>-<id>.html`, a view's too) is a
         // neighbour of an artefact page: those live together under artifact/.
-        var href = /^[a-z][a-z0-9+.-]*:/i.test(m[3]) || m[3].charAt(0) === "/" || m[3].charAt(0) === "#" ? m[3] : (!indexView && /^[A-Z][A-Za-z]+-[^/]+\.html(#|$)/.test(m[3]) ? "" : root) + m[3];
-        parent.append(link(href, m[2]));
+        var href = /^[a-z][a-z0-9+.-]*:/i.test(m[5]) || m[5].charAt(0) === "/" || m[5].charAt(0) === "#" ? m[5] : (!indexView && /^[A-Z][A-Za-z]+-[^/]+\.html(#|$)/.test(m[5]) ? "" : root) + m[5];
+        parent.append(link(href, m[4]));
       } else {
-        var em = el(m[4] !== undefined ? "strong" : "em");
-        inline(em, m[4] !== undefined ? m[4] : m[5], root);
+        var em = el(m[6] !== undefined ? "strong" : "em");
+        inline(em, m[6] !== undefined ? m[6] : m[7], root);
         parent.append(em);
       }
       last = re.lastIndex;

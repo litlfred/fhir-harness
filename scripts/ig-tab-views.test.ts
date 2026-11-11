@@ -381,6 +381,8 @@ describe("the shared renderer and the AST loader draw the views", () => {
     expect(out("Lead:\n1. first\n2. second")).toBe("<p>Lead:</p><ol><li>first</li><li>second</li></ol>");
     expect(out("in\n2023. Then")).toBe("<p>in\n2023. Then</p>");
     expect(out("a * b * c and 2*3")).toBe("<p>a * b * c and 2*3</p>");
+    expect(out("- ![Bo](data:image/svg+xml;base64,AA==) [Bo](p.html), father")).toBe("<ul><li><img></img> <a>Bo</a>, father</li></ul>");
+    expect(out("![x](javascript:void)")).toBe("<p>x</p>");
     // Text only: the renderer never sets markdown as HTML.
     const body = renderer.slice(renderer.indexOf("function inline("), renderer.indexOf("function stats("));
     expect(body).not.toContain("innerHTML");
