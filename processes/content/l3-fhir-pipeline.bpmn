@@ -139,11 +139,12 @@
       <bpmn:outgoing>C12</bpmn:outgoing>
     </bpmn:serviceTask>
     <bpmn:serviceTask id="Task_PublishIg" name="Publish the IG site">
-      <bpmn:documentation>Release authorisation and review follow draft-to-publication.bpmn.</bpmn:documentation>
+      <bpmn:documentation>Release authorisation and review follow draft-to-publication.bpmn. The site is published from the AST on the IG's cache branch (ig-ast-cache.bpmn). A release is started by the owner pushing a `v*` tag of the current version (`ig-release.bpmn`, which also holds the catch-up when a version was not tagged): the IG's `ig-release.yml` runs a full AST build, then `ig-release.ts` makes a GitHub DRAFT release carrying `package.tgz` (and its R4/R4B variants), `ast-data.zip` and `SHA256SUMS`; the owner publishing that draft is Task_AuthorizeRelease (skill `ig-binary-artefacts` §"Releasing"). The site serves each resource as a reduced `&lt;Type&gt;-&lt;id&gt;.json` at its root; the full copies are the release's and the AST cache's.</bpmn:documentation>
       <bpmn:extensionElements>
         <cat-harness.processes:fulfilment kinds="person system" reason="publishing the built IG site is mechanical; the lane records who is accountable for what is live, and a publication manager may also publish by hand." />
         <bootstrap.processes:skill ref="content-publish" />
         <bootstrap.processes:skill ref="ig-publication" />
+        <bootstrap.processes:skill ref="ig-binary-artefacts" />
       </bpmn:extensionElements>
       <bpmn:incoming>C12</bpmn:incoming>
       <bpmn:outgoing>C13</bpmn:outgoing>

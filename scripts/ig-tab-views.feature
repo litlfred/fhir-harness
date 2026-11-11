@@ -28,6 +28,15 @@ Feature: An artefact's tab views on the IG site
     Then the stub refreshes to the page with ?view=, its script carries location.hash, it is noindex and loads no script file
     And it has no <body> tag and declines the rail, so the platform's banner and rail leave it bare
 
+  @test:scripts/ig-tab-views.test.ts::one_page_per_artefact:_the_views_by_?view=,_the_old_names_redirect::historyTabWhenVersionsServed
+  Scenario: a History view when the site serves the AST versions and the page reads the resource (fhir-harness#329)
+    Then the tabs end with history at ?view=history, a page without the resource has none
+    And the page's config names the versions, the repository, and the resource's type and id
+
+  @test:scripts/ig-tab-views.test.ts::one_page_per_artefact:_the_views_by_?view=,_the_old_names_redirect::historyDrawnAsText
+  Scenario: the History view reads each version by raw URL at its commit and draws values as text
+    Then the renderer looks the file up in that commit's manifest.json and sets no HTML from a version
+
   @test:scripts/ig-tab-views.test.ts::one_page_per_artefact:_the_views_by_?view=,_the_old_names_redirect::rendererReadsViewQuery
   Scenario: the renderer draws the view the query names, when the page lists it
     Then ig-artifact.js reads ?view=, accepts only a listed view, and draws the sidecar views

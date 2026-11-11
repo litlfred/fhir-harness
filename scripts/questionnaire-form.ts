@@ -24,9 +24,14 @@
  *                                            platform chrome's, which an IG
  *                                            repository's site composes at the
  *                                            same root (see QFORM_EDIT_LINKS)
- *   assets/formbuilder/<version>/            the self-hosted NLM Form Builder, its
+ *   assets/formbuilder/<version>/            the self-hosted NLM Form Builder's
  *                                            index.html rewritten, and the service
  *                                            worker that answers its cross-site calls
+ *                                            and serves the bundle below
+ *   assets/formbuilder-bundle/<version>/     the builder's vendored bundle, unchanged,
+ *                                            so a shared host can serve it once for
+ *                                            every IG (owner, 2026-11-10: "share it on
+ *                                            smart-html-jtd like LHC-Forms")
  *   assets/jquery/<version>/                 the jQuery its index.html loads
  *   assets/terminology/                      the IG's terminology index and UCUM
  *
@@ -73,6 +78,10 @@ const SW_SCRIPT = join(HERE, "terminology-sw.js");
 const SW_MAP = join(HERE, "terminology-map.js");
 /** The Form Builder's directory on the site, and the worker's scope. */
 export const BUILDER_AT = `assets/formbuilder/${FORMBUILDER_VERSION}/`;
+/** The builder's vendored bundle on the site: the same bytes for every IG, so it can be shared. */
+export const BUNDLE_AT = `assets/formbuilder-bundle/${FORMBUILDER_VERSION}/`;
+/** The files the builder's directory keeps itself: the pages and the worker. Every other file is the bundle's. */
+export const BUILDER_OWN = ["index.html", "window-open.html", "fa-terminology-sw.js", "fa-terminology-map.js"] as const;
 
 /**
  * The Questionnaire mode as a ✍ suggest runtime profile
@@ -108,6 +117,14 @@ export interface FormPageOptions {
   expansions?: string;
   /** The IG's restored Publisher `txcache/` (`input-cache/txcache/`), for the terminology index. */
   txcache?: string;
+  /**
+   * Where the AST is read by URL: the cache commit's tree on
+   * raw.githubusercontent.com (`astRawBase`, fhir-harness#325). Given, the
+   * page's suggest editor fetches the unexpanded Questionnaire from there,
+   * at the manifest's `file`, and no `.source.json` copy is written into the
+   * site. Absent, the copy is written beside the rendered one, as before.
+   */
+  astRaw?: string;
 }
 
 export interface FormPage {
@@ -150,8 +167,8 @@ export function formPageHtml(q: { id: string; title?: string; name?: string; url
   // issue names and the runtime's FSH pane edits (`ctx.sourcePath` /
   // `ctx.sourceText`); `data-suggest-text` is the URL, relative to this page,
   // of the built Questionnaire JSON the form mode edits as `ctx.text`: the
-  // AST's `.source.json` copy, not the rendered one, whose value sets were
-  // expanded for display.
+  // AST's own file (at the AST cache commit, or its `.source.json` copy), not
+  // the rendered one, whose value sets were expanded for display.
   const src = `${o.source ? ` data-src="${esc(o.source)}"` : ""}${o.text ? ` data-suggest-text="${esc(o.text)}"` : ""} data-block="questionnaire:${esc(q.id)}" data-suggest-mode="${QUESTIONNAIRE_PROFILE.id}"`;
   return [
     "---",
@@ -212,14 +229,17 @@ export function builderIndexHtml(original: string, swUrl: string): string {
 
 /** The service worker's URL relative to the builder's directory, its configuration in the query. */
 export function swUrl(indexFile: string): string {
-  const q = new URLSearchParams({ index: `../../terminology/${indexFile}`, ucum: "../../terminology/ucum.json", lhc: `../../lhc-forms/${LHC_FORMS_VERSION}/`, v: LHC_FORMS_VERSION });
+  const q = new URLSearchParams({ index: `../../terminology/${indexFile}`, ucum: "../../terminology/ucum.json", lhc: `../../lhc-forms/${LHC_FORMS_VERSION}/`, v: LHC_FORMS_VERSION, bundle: `../../formbuilder-bundle/${FORMBUILDER_VERSION}/` });
   return `fa-terminology-sw.js?${q}`;
 }
 
 /** The self-hosted builder, its worker, jQuery and the terminology, under `out`. */
 export function stageBuilder(out: string, o: Pick<FormPageOptions, "expansions" | "txcache">): { builder: string; sw: { url: string; scope: string }; codes: number } {
   const dir = join(out, BUILDER_AT);
-  cpSync(FORMBUILDER_DIR, dir, { recursive: true });
+  // The bundle goes beside the builder, unchanged; the worker serves it under
+  // the builder's directory, so the app's relative paths are not rewritten.
+  cpSync(FORMBUILDER_DIR, join(out, BUNDLE_AT), { recursive: true, filter: (f) => !/[\\/]index\.html$/.test(f) });
+  mkdirSync(dir, { recursive: true });
   cpSync(JQUERY_DIR, join(out, "assets", "jquery", JQUERY_VERSION), { recursive: true });
   const index = buildIndex({ expansions: o.expansions, txcache: o.txcache });
   const w = writeIndex(index, join(out, "assets", "terminology"));
@@ -239,6 +259,11 @@ export function stageBuilder(out: string, o: Pick<FormPageOptions, "expansions" 
 export function checkerModule(): string {
   const t = new Bun.Transpiler({ loader: "ts", target: "browser" });
   return `// GENERATED from fhir-harness/scripts/check-wireframe-questionnaire.ts; do not edit.\n${t.transformSync(readFileSync(CHECKER, "utf-8"))}`;
+}
+
+/** An AST file's URL under the cache commit's raw base, each path segment encoded. */
+export function astFileUrl(raw: string, file: string): string {
+  return `${raw.replace(/\/+$/, "")}/${file.split("/").map(encodeURIComponent).join("/")}`;
 }
 
 /**
@@ -261,9 +286,11 @@ export function questionnaireFormPages(astDir: string, out: string, o: FormPageO
     const { questionnaire: q, expanded, missing } = preExpand(source, expansions);
     const json = `questionnaires/Questionnaire-${r.id}.json`;
     writeFileSync(join(out, json), JSON.stringify(q, null, 2) + "\n");
-    // The unexpanded Questionnaire, as the IG built it: what a suggested edit diffs against.
-    const text = `questionnaires/Questionnaire-${r.id}.source.json`;
-    writeFileSync(join(out, text), JSON.stringify(source, null, 2) + "\n");
+    // The unexpanded Questionnaire, as the IG built it: what a suggested edit
+    // diffs against. Read from the AST cache commit when the site reads the
+    // AST by URL, else copied into the site beside the rendered one.
+    const text = o.astRaw ? astFileUrl(o.astRaw, r.file) : `questionnaires/Questionnaire-${r.id}.source.json`;
+    if (!o.astRaw) writeFileSync(join(out, text), JSON.stringify(source, null, 2) + "\n");
     const page = `Questionnaire-${r.id}-form.html`;
     const src = r.source ?? undefined;
     writeFileSync(join(out, page), formPageHtml({ ...q, id: r.id }, { builder: staged.builder, sw: staged.sw, ...o, json, text, source: src }));

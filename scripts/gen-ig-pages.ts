@@ -114,7 +114,7 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from "node:fs";
 import { basename, join, posix, relative, resolve, sep } from "node:path";
 import { compareRoute } from "../../cat-harness-tools/scripts/route-authority.ts";
-import { IG_API_HUB_DEFAULT_PAGE, IG_API_HUB_NODE, IG_API_HUB_NODE_LOADER, IG_API_HUB_NODE_SCRIPT, hasIgApi, igApiHubBody, igApiHubNodeJson } from "./ig-api-hub.ts";
+import { IG_API_HUB_DEFAULT_PAGE, IG_API_HUB_NODE, IG_API_HUB_NODE_LOADER, IG_API_HUB_NODE_SCRIPT, hasIgApi, igApiHubBody, igApiHubNodeJson, sidecarHref } from "./ig-api-hub.ts";
 import { IG_API_VIEW_SCRIPT, igApiServed, igApiViewData, igApiViews } from "./ig-api-views.ts";
 import { IG_CHROME_SCOPE, igFooterData } from "./ig-footer.ts";
 import { JSON_VIEW_SCRIPT, VIEW_PAGE, examplesPage, hasJsonView, historyPage, jsonViewData, mappingsPage, mdText, packageEntries, rebaseDescriptionLinks, profileJsonViewData, resourceFacts, resourceTabs, testingPage, type TabPageData } from "./resource-views.ts";
@@ -207,6 +207,13 @@ const MENU = join(INSTANCE, "fhir-artifact-index", "menu.json");
  * at them.
  */
 const COMPILED_DATA = arg("--compiled-data")?.replace(/\/+$/, "");
+/**
+ * `--root-resources`: the site serves each compiled resource at its root as
+ * `<Type>-<id>.json`, a reduced copy (`ig-repo-site.ts` `reduceForSite`), so
+ * each JSON-LD node lists that file first and the `--compiled-data` copy as
+ * its mirror (fhir-harness#359). The pages still draw the `--compiled-data` copy.
+ */
+const ROOT_RESOURCES = process.argv.includes("--root-resources");
 const AST_LOADER = join(import.meta.dir, "templates", "ig-pages", "ast-resource.js");
 /** Thin unless `--full-pages` (see the module doc). `--thin`, the old opt-in, is accepted and is the default. */
 const FULL_PAGES = process.argv.includes("--full-pages");
@@ -222,6 +229,18 @@ const THIN = !FULL_PAGES;
  * carries the search box. Absent, no page names files the site may not hold.
  */
 const SEARCH = THIN && process.argv.includes("--search");
+/**
+ * `--ast-history <href> --ast-repository <owner/repo>`: the AST versions the
+ * site serves (`ig-ast-history.ts`), relative to an artefact page, and the
+ * repository whose cache branch holds them. Each artefact whose resource the
+ * pages read gets a History view (fhir-harness#329). Thin pages only.
+ */
+const AST_HISTORY = THIN ? arg("--ast-history") : undefined;
+const AST_REPOSITORY = arg("--ast-repository");
+if (AST_HISTORY !== undefined && (AST_REPOSITORY === undefined || !/^[\w.-]+\/[\w.-]+$/.test(AST_REPOSITORY))) {
+  console.error("gen-ig-pages: --ast-history needs --ast-repository <owner/repo>");
+  process.exit(2);
+}
 const JSONLD_BASE = (() => {
   const b = arg("--jsonld-base");
   return b === undefined ? undefined : b.endsWith("/") ? b : `${b}/`;
@@ -864,7 +883,7 @@ function repLinks(a: FhirArtifact): string {
   for (const [k, label] of [["schema", "JSON Schema"], ["jsonld", "JSON-LD"]] as const) {
     const r = a.sidecars?.[k];
     if (!r) continue;
-    out.push(r.localPath && igApiServable().ok ? `<a href="../${esc(r.localPath)}">${label}</a>` : `<a href="${esc(r.url)}" rel="external">${label} (upstream)</a>`);
+    out.push(r.localPath && igApiServable().ok ? `<a href="${esc(sidecarHref(ix, r, "../")!)}">${label}</a>` : `<a href="${esc(r.url)}" rel="external">${label} (upstream)</a>`);
   }
   // Separated by a middot. The old stylesheet gave `.reps` a flex gap; with
   // that gone the links rendered as one word, which reads as a broken link
@@ -1189,7 +1208,7 @@ function artifactPage(ix: FhirArtifactIndex, a: FhirArtifact): string {
   // difference from the standard render rather than a match.
   const openapi =
     a.resourceType === "ValueSet" && a.sidecars?.openapi?.localPath && igApiServable().ok
-      ? { src: `../${a.sidecars.openapi.localPath}`, script: `../${IG_API_OPENAPI_SCRIPT}` }
+      ? { src: sidecarHref(ix, a.sidecars.openapi, "../")!, script: `../${IG_API_OPENAPI_SCRIPT}` }
       : undefined;
 
   const apiRows = (["schema", "displays", "openapi", "jsonld"] as const).map((k) => {
@@ -1200,7 +1219,7 @@ function artifactPage(ix: FhirArtifactIndex, a: FhirArtifact): string {
     // IG API VIEW PAGES loop below. The WHO SMART Immunizations IG's index is not served,
     // so 388 of its artefact pages linked a page that did not exist.
     const view = (k === "schema" || k === "jsonld") && r.localPath && igApiServable().ok ? ` · [view](${mdCell(r.localPath.split("/").pop()!)}.html)` : "";
-    const held = r.localPath ? `\`${mdCell(r.localPath)}\`${view}` : "*by reference*";
+    const held = r.localPath ? `${ix.sidecarBase ? `<${mdCell(sidecarHref(ix, r)!)}>` : `\`${mdCell(r.localPath)}\``}${view}` : "*by reference*";
     return `| ${label} | <${mdCell(r.url)}> | ${held} |`;
   });
 
@@ -1436,7 +1455,7 @@ if (igApiServing.ok === false && ix.artifacts.some((a) => igApiViews(a).length >
 }
 for (const a of igApiServing.ok ? ix.artifacts : []) {
   for (const v of igApiViews(a)) {
-    const data = igApiViewData(a, v, "../", Boolean(ix.package?.localPath));
+    const data = igApiViewData(a, v, "../", Boolean(ix.package?.localPath), ix.sidecarBase);
     igApiViewCount += 1;
     pages.set(
       join("artifact", `${v.file}.md`),
@@ -1655,8 +1674,9 @@ if (existsSync(MENU)) {
       const resource = servedResource(a);
       // The IG API sidecars the page's JSON-LD and schema views draw, where the site serves them.
       const sidecars: Partial<Record<SidecarView, string>> = {};
-      if (igApiServing.ok) for (const k of ["jsonld", "schema"] as const) if (a.sidecars?.[k]?.localPath) sidecars[k] = `../${a.sidecars[k]!.localPath}`;
-      const tabs = artifactTabs(a, { resource: resource !== undefined || localResourceHref(a, COMPILED_DATA) !== undefined, sidecars: Object.keys(sidecars) as SidecarView[] });
+      if (igApiServing.ok) for (const k of ["jsonld", "schema"] as const) if (a.sidecars?.[k]?.localPath) sidecars[k] = sidecarHref(ix, a.sidecars[k], "../")!;
+      const reads = resource !== undefined || localResourceHref(a, COMPILED_DATA) !== undefined;
+      const tabs = artifactTabs(a, { resource: reads, sidecars: Object.keys(sidecars) as SidecarView[], history: reads && AST_HISTORY !== undefined });
       const opts = {
         label: LABEL,
         home: IG_SITE ? "../index.html" : "../",
@@ -1668,6 +1688,7 @@ if (existsSync(MENU)) {
         ...(resource ? { resource } : {}),
         ...(tabs.length ? { tabs, index: ARTIFACT_INDEX_FILE } : {}),
         ...(Object.keys(sidecars).length ? { sidecars } : {}),
+        ...(AST_HISTORY !== undefined && AST_REPOSITORY !== undefined ? { history: { versions: AST_HISTORY, repository: AST_REPOSITORY } } : {}),
         ...(SEARCH ? { search: { index: `../${IG_SEARCH_INDEX_FILE}`, script: `../${IG_SEARCH_SCRIPT_FILE}` } } : {}),
       };
       if (resource) served += 1;
@@ -1678,7 +1699,8 @@ if (existsSync(MENU)) {
       // name, the Publisher's, is a redirect stub to it, replacing the full
       // tab page, the JSON view and the IG API view page written above.
       for (const t of tabs) {
-        if (t.view === "content") continue;
+        // The History view is new: no old file name to keep.
+        if (t.view === "content" || t.view === "history") continue;
         pages.delete(join("artifact", t.file.replace(/\.html$/, ".md")));
         pages.set(join("artifact", t.file), thinViewRedirect(a, t.view));
         astPages.push(t.file);
@@ -1697,7 +1719,7 @@ if (existsSync(MENU)) {
       pages.set(join("assets", "ast-resource.js"), readFileSync(AST_LOADER, "utf8"));
       pages.set(join("assets", "ast-pages.json"), `${JSON.stringify([...new Set(astPages)].sort())}\n`);
     }
-    for (const [rel, text] of artifactJsonLdFiles(ix, { ...(JSONLD_BASE ? { base: JSONLD_BASE } : {}), ...(COMPILED_DATA ? { compiledData: COMPILED_DATA } : {}), title: LABEL })) {
+    for (const [rel, text] of artifactJsonLdFiles(ix, { ...(JSONLD_BASE ? { base: JSONLD_BASE } : {}), ...(COMPILED_DATA ? { compiledData: COMPILED_DATA } : {}), ...(ROOT_RESOURCES ? { rootResources: true } : {}), title: LABEL })) {
       pages.set(rel, text);
     }
     pages.set(THIN_PAGE_SCRIPT, readFileSync(THIN_RENDERER, "utf8"));

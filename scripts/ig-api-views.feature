@@ -12,6 +12,7 @@ Feature: Pages viewing an artefact's IG API sidecars
     Then its tabs are Narrative Content, JSON, JSON Schema and JSON-LD, with JSON-LD active
     And the narrative tab links the artefact page, the label is "JSON-LD" and the loader script is one level up
     And the source is the served sidecar, and the data carries no file text
+    And with the index's sidecar base the file is fetched there
 
   @test:scripts/ig-api-views.test.ts::IG_API_views::loaderPrettyPrintsJson
   Scenario: the loader shows the file as the Publisher does: JSON.stringify(parsed, null, 2)

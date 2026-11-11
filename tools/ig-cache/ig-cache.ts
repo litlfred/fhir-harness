@@ -6,7 +6,7 @@ export default toolFactory((t) =>
     id: "ig-cache",
     title: "FHIR AST cache",
     description:
-      "Restore, verify, seed and diagnose the prebuilt AST artefacts for an IG. Always try `restore` first: a full AST build via AstExportCli is expensive, a restore is fast.",
+      "Restore, verify, seed and diagnose the prebuilt AST artefacts for an IG. Always try `restore` first: a full AST build via AstExportCli is expensive, a restore is fast. `seed` commits the IG API a layer above generates from the AST (`ig-site:sidecars`, via `ig-api-cache.ts`) as `ig-api/` beside it, and the artefact index built from that tree (`ig-index-cache.ts`) as `fhir-artifact-index/index.json`, so a site reads both by raw URL at the cache commit.",
     install: { none: true },
     invoke: { shell: "fhir-harness/scripts/ig-cache.sh" },
     io: {

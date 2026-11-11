@@ -5,6 +5,7 @@
  *   bun run fhir-harness/scripts/ig-release.ts assets --output <publisher output/> --ast <AST dir> --out <dir>
  *   bun run fhir-harness/scripts/ig-release.ts kind   --ig <IG root>
  *   bun run fhir-harness/scripts/ig-release.ts draft  --repo <owner/repo> --tag <tag> --dir <dir> [--prerelease] [--dry-run]
+ *   bun run fhir-harness/scripts/ig-release.ts check  --ig <IG root> [--repo <owner/repo>]
  *
  * `assets` gathers what every release carries: the Publisher's `package.tgz`
  * (and its R4 and R4B variants when the build wrote them) and `ast-data.zip`,
@@ -20,6 +21,16 @@
  * `Task_AuthorizeRelease` in `draft-to-publication.bpmn`. A tag that already
  * has a PUBLISHED release is refused; a tag that has a draft gets its files
  * replaced.
+ *
+ * `check` is the CATCH-UP (owner, 2026-11-10: "need to add this to process
+ * (and how to catchup if not tagged)"). Tagging is a governance decision: the
+ * owner tags the IG's current version, `v<version>` from `sushi-config.yaml`,
+ * and that tag starts the release. `check` reports, never acts: when the
+ * version has no tag it names the commit that set the version (`git log -G`
+ * over `sushi-config.yaml`, HEAD when the history cannot say) for the owner to
+ * tag; when the tag has no release, draft or published, it says to run the IG
+ * release workflow by hand for that tag. It always exits 0 unless misused.
+ * Nothing here ever pushes a tag or picks a version.
  *
  * Nothing here knows about any one IG or publisher (fhir-harness/AGENTS.md).
  *
@@ -182,6 +193,96 @@ export function draftRelease(o: { repo: string; tag: string; dir: string; prerel
   return log;
 }
 
+/** Runs git in a directory; injectable for tests. */
+export type Git = (args: string[], cwd: string) => { status: number; out: string };
+const git: Git = (args, cwd) => {
+  const r = spawnSync("git", args, { cwd, encoding: "utf-8" });
+  return { status: r.status ?? 1, out: `${r.stdout ?? ""}`.trim() };
+};
+
+/** What `check` found: the version, its tag, and each thing the owner should do. */
+export interface ReleaseCheck {
+  version?: string;
+  tag?: string;
+  tagged?: boolean;
+  /** The commit that last set the version, the one to tag. */
+  versionCommit?: string;
+  /** `draft`, `published`, `none`, or `unknown` (the release list could not be read). */
+  release?: "draft" | "published" | "none" | "unknown";
+  /** One line per finding, for the run's log; empty when all is in order. */
+  report: string[];
+}
+
+/** The tag a version is released under. */
+export function releaseTag(version: string): string {
+  return `v${version}`;
+}
+
+/** Whether `tag` exists, locally or on `origin` (a CI checkout may hold no tags). */
+export function tagExists(ig: string, tag: string, run: Git = git): boolean {
+  if (run(["rev-parse", "-q", "--verify", `refs/tags/${tag}`], ig).status === 0) return true;
+  const r = run(["ls-remote", "--tags", "origin", `refs/tags/${tag}`], ig);
+  return r.status === 0 && r.out.length > 0;
+}
+
+/**
+ * The commit that last set `version` in `sushi-config.yaml`: the newest
+ * commit whose diff adds or removes a `version:` line holding it. Undefined
+ * when the history cannot say (a shallow clone, a file never committed).
+ */
+export function versionCommit(ig: string, version: string, run: Git = git): string | undefined {
+  // A basic regular expression, git's default for -G: only `.` needs escaping in a version.
+  const esc = version.replace(/[\\.[\]*^$]/g, "\\$&");
+  const r = run(["log", "-1", "--format=%H", "-G", `^version:[[:space:]]*["']*${esc}["']*[[:space:]]*$`, "--", "sushi-config.yaml"], ig);
+  return r.status === 0 && /^[0-9a-f]{40}$/.test(r.out) ? r.out : undefined;
+}
+
+/**
+ * The catch-up check (module doc): whether the IG's current version is tagged,
+ * and whether its tag has a release. Reports; never tags, never releases.
+ */
+export function releaseCheck(o: { ig: string; repo?: string }, run: Git = git, call: Gh = gh): ReleaseCheck {
+  const cfgPath = join(o.ig, "sushi-config.yaml");
+  if (!existsSync(cfgPath)) return { report: [`${cfgPath}: no sushi-config.yaml, so no version to check`] };
+  const cfg = parseYaml(readFileSync(cfgPath, "utf-8")) as Record<string, unknown>;
+  const version = cfg["version"] === undefined || cfg["version"] === null ? "" : String(cfg["version"]).trim();
+  if (!version) return { report: ["sushi-config.yaml has no version: nothing to tag"] };
+  const tag = releaseTag(version);
+  const kind = releaseKind(cfg);
+  if (!tagExists(o.ig, tag, run)) {
+    const at = versionCommit(o.ig, version, run);
+    const head = run(["rev-parse", "HEAD"], o.ig).out;
+    return {
+      version,
+      tag,
+      tagged: false,
+      ...(at ? { versionCommit: at } : {}),
+      report: [
+        `version ${version} is untagged: the owner tags commit ${at ?? head} with ${tag}` +
+          `${at ? " (the commit that set the version)" : " (HEAD: the history does not say which commit set the version)"}` +
+          `${kind === "prerelease" ? "; it is a pre-release" : ""}. Pushing the tag starts the IG release (draft). An agent never tags.`,
+      ],
+    };
+  }
+  if (!o.repo) return { version, tag, tagged: true, release: "unknown", report: [`${tag} is tagged; pass --repo <owner/repo> to check it has a release`] };
+  let rel: ReturnType<typeof releaseFor>;
+  try {
+    rel = releaseFor(o.repo, tag, call);
+  } catch (e) {
+    return { version, tag, tagged: true, release: "unknown", report: [`${tag} is tagged; its release could not be read (${(e as Error).message.split("\n")[0]})`] };
+  }
+  if (!rel) {
+    return {
+      version,
+      tag,
+      tagged: true,
+      release: "none",
+      report: [`tag ${tag} has no release: run "IG release (draft)" (ig-release.yml) by hand with tag ${tag}. (A draft is visible only to a token with write access.)`],
+    };
+  }
+  return { version, tag, tagged: true, release: rel.draft ? "draft" : "published", report: rel.draft ? [`${tag} has a draft release waiting for the owner to publish it`] : [] };
+}
+
 function arg(argv: readonly string[], name: string): string | undefined {
   const i = argv.indexOf(name);
   return i >= 0 ? argv[i + 1] : undefined;
@@ -207,7 +308,15 @@ function main(argv: string[]): number {
       for (const l of draftRelease({ repo, tag, dir, prerelease: argv.includes("--prerelease"), dryRun: argv.includes("--dry-run") })) console.log(l);
       return 0;
     }
-    console.error("usage: ig-release.ts assets|kind|draft …");
+    if (cmd === "check") {
+      const ig = resolve(arg(argv, "--ig") ?? ".");
+      const repo = arg(argv, "--repo");
+      const c = releaseCheck({ ig, ...(repo ? { repo } : {}) });
+      for (const l of c.report) console.log(`ig-release check: ${l}`);
+      if (!c.report.length) console.log(`ig-release check: ${c.tag} is tagged and released`);
+      return 0;
+    }
+    console.error("usage: ig-release.ts assets|kind|draft|check …");
     return 2;
   } catch (e) {
     console.error(`ig-release: ${(e as Error).message}`);

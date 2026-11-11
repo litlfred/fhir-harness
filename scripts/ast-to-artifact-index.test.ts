@@ -252,6 +252,27 @@ describe("attachSidecars", () => {
     expect(index.sidecarsUnbound?.map((u) => u.filename)).toEqual(["LogicalModels.schema.json"]);
   });
 
+  test("emptyAstPathRecordsTreePaths", () => {
+    const { index } = astToArtifactIndex(syntheticAst(), { instanceId: "example", astPath: "" });
+    expect(FhirArtifactIndexSchema.safeParse(index).success).toBe(true);
+    expect(index.source.of).toBe(".");
+    const paths = index.artifacts.map((a) => (a.materialization as { localPath?: string } | undefined)?.localPath).filter(Boolean);
+    expect(paths.length).toBeGreaterThan(0);
+    for (const p of paths) expect(p).toMatch(/^resources\//);
+  });
+
+  test("servedBaseRecordedAsSidecarBase", () => {
+    const { index } = astToArtifactIndex(syntheticAst(), { instanceId: "example" });
+    attachSidecars(index, sidecars(), { localPrefix: "fhir-artifact-index/sidecars", servedBase: "https://raw.githubusercontent.com/o/ig/abc/ig-api/sidecars/" });
+    expect(FhirArtifactIndexSchema.safeParse(index).success).toBe(true);
+    expect(index.sidecarBase).toBe("https://raw.githubusercontent.com/o/ig/abc/ig-api/sidecars");
+    // The held path stays: it names the file, and the base says where it is read.
+    expect(index.artifacts.find((a) => a.key === "CodeSystem/Colours")!.sidecars?.jsonld?.localPath).toBe("fhir-artifact-index/sidecars/CodeSystem-Colours.jsonld");
+    const { index: none } = astToArtifactIndex(syntheticAst(), { instanceId: "example" });
+    attachSidecars(none, mkdtempSync(join(tmpdir(), "ast-sidecars-")), { localPrefix: "x", servedBase: "https://raw.example/x" });
+    expect(none.sidecarBase).toBeUndefined();
+  });
+
   test("titleStemBindsWithPublishedUrl", () => {
     const { index } = astToArtifactIndex(syntheticAst(), { instanceId: "example" });
     const cat = index.artifacts.find((a) => a.key === "StructureDefinition/Cat")!;

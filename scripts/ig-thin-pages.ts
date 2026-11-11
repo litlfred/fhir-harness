@@ -74,6 +74,12 @@ export interface ThinArtifactOptions {
    * page: the served copies under `fhir-artifact-index/sidecars/`.
    */
   sidecars?: Partial<Record<SidecarView, string>>;
+  /**
+   * The History view's data (fhir-harness#329): the AST versions the site
+   * serves, relative to the page, and the `owner/repo` whose cache branch
+   * holds them, read by raw URL at each version's commit.
+   */
+  history?: { versions: string; repository: string };
   /** The index node, relative to the page: the examples view finds what claims a profile there. */
   index?: string;
   /** The IG's search (`ig-search.ts`), relative to the page, when the site serves it: the header carries its box. */
@@ -104,7 +110,7 @@ export interface ThinArtifactOptions {
  * Not rendered: the change history, testing and XML/Turtle views, and the
  * Publisher's `comparison-v*` directories.
  */
-export type ArtifactView = "content" | "definitions" | "mappings" | "json" | "jsonld" | "schema" | "examples";
+export type ArtifactView = "content" | "definitions" | "mappings" | "json" | "jsonld" | "schema" | "examples" | "history";
 /** The views drawn from an IG API sidecar rather than the resource (`ig-api-views.ts`). */
 export type SidecarView = "jsonld" | "schema";
 
@@ -117,7 +123,7 @@ export interface ArtifactTab {
   href: string;
 }
 
-const TAB_LABEL: Record<ArtifactView, string> = { content: "Content", definitions: "Detailed Descriptions", mappings: "Mappings", json: "JSON", jsonld: "JSON-LD", schema: "JSON Schema", examples: "Examples" };
+const TAB_LABEL: Record<ArtifactView, string> = { content: "Content", definitions: "Detailed Descriptions", mappings: "Mappings", json: "JSON", jsonld: "JSON-LD", schema: "JSON Schema", examples: "Examples", history: "History" };
 
 /** The file name the Publisher gives an artefact's view, which the site keeps (as a redirect stub for any view but content). */
 export function artifactTabFile(a: Pick<FhirArtifact, "resourceType" | "id">, view: ArtifactView): string {
@@ -151,11 +157,11 @@ export function artifactViewHref(a: Pick<FhirArtifact, "resourceType" | "id">, v
  * a resource the pages can read; the sidecar views (`jsonld`, `schema`) need
  * the sidecar served. None of either: no tabs. Deterministic.
  */
-export function artifactTabs(a: Pick<FhirArtifact, "resourceType" | "id">, o: { resource: boolean; sidecars?: readonly SidecarView[] }): ArtifactTab[] {
+export function artifactTabs(a: Pick<FhirArtifact, "resourceType" | "id">, o: { resource: boolean; sidecars?: readonly SidecarView[]; history?: boolean }): ArtifactTab[] {
   const side = (["jsonld", "schema"] as const).filter((v) => o.sidecars?.includes(v));
   if (!o.resource && side.length === 0) return [];
   const sd = a.resourceType === "StructureDefinition";
-  const views: ArtifactView[] = ["content", ...(o.resource && sd ? (["definitions", "mappings"] as const) : []), ...(o.resource ? (["json"] as const) : []), ...side, ...(o.resource && sd ? (["examples"] as const) : [])];
+  const views: ArtifactView[] = ["content", ...(o.resource && sd ? (["definitions", "mappings"] as const) : []), ...(o.resource ? (["json"] as const) : []), ...side, ...(o.resource && sd ? (["examples"] as const) : []), ...(o.resource && o.history ? (["history"] as const) : [])];
   return views.map((view) => ({ view, label: TAB_LABEL[view], file: artifactTabFile(a, view), href: artifactViewHref(a, view) }));
 }
 
@@ -231,6 +237,7 @@ export function thinArtifactView(ix: FhirArtifactIndex, a: FhirArtifact, view: A
     ...(o.tabs && o.tabs.length > 1 ? { views: o.tabs.map((t) => t.view) } : {}),
     ...(o.index && (view === "examples" || o.tabs?.some((t) => t.view === "examples")) ? { index: o.index } : {}),
     ...(o.sidecars && Object.keys(o.sidecars).length ? { sidecars: o.sidecars } : {}),
+    ...(o.history && o.tabs?.some((t) => t.view === "history") ? { history: { ...o.history, resourceType: a.resourceType, id: a.id } } : {}),
     ...(view === "mappings" || o.tabs?.some((t) => t.view === "mappings") ? { definitions: artifactViewHref(a, "definitions") } : {}),
     // Where the narrative's other relative links go: the published IG, read
     // off this artefact's own published page. None: they lose their href.

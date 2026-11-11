@@ -27,6 +27,7 @@ therefore resolves somewhere specific, or is said to resolve nowhere.**
 |---|---|---|
 | an artefact page (`StructureDefinition-X.html`) | `artifact/…` on our site | `relinkArtifacts` |
 | …differing only in CASE (`-hcert` for `-HCert`) | the one page it can mean; two candidates leave it alone | `relinkArtifacts` |
+| a resource's JSON (`StructureDefinition-X.json`) | the reduced copy at our site's root, as the Publisher names it; the full one is the AST cache's by raw URL (each node's `mirror` encoding) and the release's `package.tgz` | `publisher-pages` (`serveAstData`, `reduceForSite`) |
 | a Publisher download (`package.tgz`, `*.zip`) | the IG's published site (sushi `canonical`) | `relinkPublisherOutputs` |
 | `qa.html`, on a site that holds the harness's QA report | that page on our site (the FHIR QA and the knowledge graph's, `ig-qa-page.ts`) | `stageIgSite` `qaPage` |
 | a Publisher-only page (`qa.html`, `toc.html`, …) | the published site | `relinkOffSite`, `PUBLISHER_PAGES` |
@@ -37,6 +38,16 @@ therefore resolves somewhere specific, or is said to resolve nowhere.**
 The last row is deliberate. A page that is in no source anywhere is dead on
 the IG's own published site too; pointing it there would trade our visible
 dead link for an invisible one. Report it to the IG instead.
+
+## A resource's JSON at the root is reduced
+
+A link to `<Type>-<id>.json` resolves on our site, as it does on the
+Publisher's (fhir-harness#359), but the file there is reduced: minified, no
+`text` narrative, and a Library's ELM attachments without `data` (their
+`url` names the full resource in the AST cache; the CQL stays). A reader
+who needs the narrative or the ELM follows the JSON-LD node's `mirror`
+encoding or takes the release's `package.tgz`. The artefact pages read the
+full copy themselves.
 
 ## Liquid the Publisher accepts and Jekyll does not
 

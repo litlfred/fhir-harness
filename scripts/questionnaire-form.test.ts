@@ -3,10 +3,10 @@
  * names no real IG.
  */
 import { afterAll, describe, expect, test } from "bun:test";
-import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { BUILDER_AT, builderIndexHtml, QFORM_EDIT_LINKS, checkerModule, formPageHtml, LHC_FORMS_VERSION, lformsFhirVersion, questionnaireFormPages, SMART_FORMS_URL, swUrl } from "./questionnaire-form.ts";
+import { astFileUrl, BUILDER_AT, BUILDER_OWN, BUNDLE_AT, builderIndexHtml, QFORM_EDIT_LINKS, checkerModule, formPageHtml, LHC_FORMS_VERSION, lformsFhirVersion, questionnaireFormPages, SMART_FORMS_URL, swUrl } from "./questionnaire-form.ts";
 
 const made: string[] = [];
 afterAll(() => made.forEach((d) => rmSync(d, { recursive: true, force: true })));
@@ -63,11 +63,16 @@ describe("questionnaireFormPages", () => {
       `${BUILDER_AT}window-open.html`,
       `${BUILDER_AT}fa-terminology-sw.js`,
       `${BUILDER_AT}fa-terminology-map.js`,
+      `${BUNDLE_AT}main.dd0ec5f4ab3ef14c.js`,
+      `${BUNDLE_AT}assets/fhir.schema.json`,
       "assets/jquery/3.6.0/jquery.min.js",
       "assets/terminology/index.json",
       "assets/terminology/ucum.json",
     ])
       expect(existsSync(join(out, f))).toBe(true);
+    // The builder's directory keeps only its pages and the worker; the bundle is beside it, unchanged.
+    expect(readdirSync(join(out, BUILDER_AT)).sort()).toEqual([...BUILDER_OWN].sort());
+    expect(existsSync(join(out, BUNDLE_AT, "index.html"))).toBe(false);
     expect(existsSync(join(out, "Questionnaire-p1-form.html"))).toBe(false);
     // The platform chrome's path, which an IG repository's site composes at the same root.
     expect(existsSync(join(out, "assets/js/edit-links.js"))).toBe(false);
@@ -77,6 +82,25 @@ describe("questionnaireFormPages", () => {
     expect(questionnaireFormPages(join(out, "absent"), out)).toEqual([]);
     expect(questionnaireFormPages(ast([{ type: "Patient", id: "p", json: {} }]), out)).toEqual([]);
     expect(existsSync(join(out, "assets"))).toBe(false);
+  });
+  test("sourceReadFromAstCacheCommit", () => {
+    const raw = "https://raw.githubusercontent.com/o/ig/0123456789abcdef0123456789abcdef01234567";
+    const copied = tmp("q-site-");
+    const byUrl = tmp("q-site-");
+    const dir = ast([{ type: "Questionnaire", id: "intake", json: intake, source: "input/fsh/intake.fsh" }]);
+    questionnaireFormPages(dir, copied, { editBase: "https://github.com/o/ig/edit/main" });
+    questionnaireFormPages(dir, byUrl, { editBase: "https://github.com/o/ig/edit/main", astRaw: `${raw}/` });
+    const host = (out: string) => /<div id="fa-qform"[^>]*>/.exec(readFileSync(join(out, "Questionnaire-intake-form.html"), "utf-8"))![0];
+    // No AST commit: the unexpanded copy is in the site, and the page reads it there.
+    expect(existsSync(join(copied, "questionnaires/Questionnaire-intake.source.json"))).toBe(true);
+    expect(host(copied)).toContain('data-suggest-text="questionnaires/Questionnaire-intake.source.json"');
+    // The AST read by URL: the page reads the manifest's file at the commit, and no copy is written.
+    expect(host(byUrl)).toContain(`data-suggest-text="${raw}/resources/Questionnaire/intake.json"`);
+    expect(existsSync(join(byUrl, "questionnaires/Questionnaire-intake.source.json"))).toBe(false);
+    expect(readdirSync(join(byUrl, "questionnaires"))).toEqual(["Questionnaire-intake.json"]);
+  });
+  test("astFileUrlEncodesSegments", () => {
+    expect(astFileUrl("https://raw.githubusercontent.com/o/r/abc", "resources/Questionnaire/Q #1--ab.json")).toBe("https://raw.githubusercontent.com/o/r/abc/resources/Questionnaire/Q%20%231--ab.json");
   });
 });
 
@@ -168,4 +192,13 @@ test("checkerBrowserModule", async () => {
   writeFileSync(join(dir, "c.mjs"), js);
   const m = await import(join(dir, "c.mjs"));
   expect(m.checkSuggestion('{"resourceType":"Questionnaire"}', "{").errors).toHaveLength(1);
+});
+
+describe("the worker's configuration", () => {
+  test("swUrlNamesTheBundleBesideTheBuilder", () => {
+    const q = new URLSearchParams(swUrl("index.json").split("?")[1]);
+    expect(q.get("bundle")).toBe("../../formbuilder-bundle/12.9.0/");
+    // Percent-encoded, as a shared-asset rewrite finds a relative query value.
+    expect(swUrl("index.json")).toContain("bundle=..%2F..%2Fformbuilder-bundle%2F12.9.0%2F");
+  });
 });

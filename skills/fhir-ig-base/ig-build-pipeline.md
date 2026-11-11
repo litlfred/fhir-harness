@@ -206,7 +206,12 @@ its IG sources may add the optional caller
 2. restores and judges the cache for `ref` (default `main`);
 3. if the cache is not valid, or `force` is set, runs the caller's
    `pre-export` command when it gives one, then builds the IG with
-   `AstExportCli` (Tool `ig-ast-export`, pinned `ast-export-ref`);
+   `AstExportCli` (Tool `ig-ast-export`, pinned `ast-export-ref`). The
+   exporter comes from its published bundle, the release
+   `ast-export-<commit>` that `ast-export-bundle.yml` builds once per pinned
+   commit, when its sha256 matches `scripts/ast-export-bundles.tsv`, and is
+   built from source otherwise. The bundle, the pinned Jekyll gems and the
+   FHIR packages are kept in the `fhir-ig-tooling` cache;
 4. puts back what `pre-export` changed in the inputs, and checks that the new
    AST is valid for its own commit;
 5. seeds the cache with `ig-cache.sh seed --push`, only when the commit is on
@@ -331,7 +336,7 @@ names, never naming a layer:
 | `ig-site:compose` | source, required | this layer | the artefact index from the AST, the thin pages, the IG composed at the root |
 | `ig-site:openapi` | site, when the IG holds `openapi/cat-openapi.config.json` | cat-harness-tools | a page and an IRI for each OpenAPI operation, at `openapi/` |
 | `ig-site:publisher-pages` | site, required | this layer | the AST's data served, the Publisher-chrome guard, the build stamp |
-| `ig-site:bar` | final | this layer | the language picker and the IG's slim bar on the pages the platform wrote after `publisher-pages` (`ig-repo-site.ts bar`) |
+| `ig-site:bar` | final | this layer | the language picker and the IG's slim bar on the pages the platform wrote after `publisher-pages` (`ig-repo-site.ts bar`); and it leaves out another IG layer's served artefact index that the platform's mount copied in (`dropForeignIndexes`; owner, 2026-11-10: another layer's content is cross-referenced, not copied — that IG publishes its index on its own site) |
 
 **The handshake with a layer above** (`ig-repo-site.ts`):
 
@@ -353,13 +358,57 @@ names, never naming a layer:
   descriptor's `"placeholder"` marker is a shell around the layer's content,
   and the layer's page at the same path replaces it. No other page is
   replaced.
+- **In the AST cache commit** (owner, 2026-11-10, card "A"):
+  `ig-cache.sh seed` runs the same step over the AST it seeds
+  (`ig-api-cache.ts`) and commits its `ig-api/` (`sidecars/`, `site/`,
+  `ig-api.json`) beside the AST, so the generator's flags stay the layer
+  above's. When `ast` recorded the cache commit and the restored AST holds
+  `ig-api/`, the site binds that copy instead and copies none of it: the
+  index records `sidecarBase` (`<raw>/ig-api/sidecars`), every API tab, view
+  page, hub entry and OpenAPI embed reads `<sidecarBase>/<file>`, the hub's
+  documents are `<raw>/ig-api/site/<file>`, and only the site's pages over
+  them (the Swagger page) are served. An older cache with no `ig-api/` falls
+  back to the step's output in the work directory, served as above.
+- **The artefact index, too** (owner, 2026-11-10, card "A"): the seed
+  also commits `fhir-artifact-index/index.json`, built from the tree it
+  commits (`ig-index-cache.ts`: `compose`'s flags, every `localPath` a path
+  in that tree, the sidecars at `ig-api/sidecars/`, no `sidecarBase`). When
+  the restored AST holds it, the site does not publish the index; it serves
+  `fhir-artifact-index/index.ref.json` (`fhir-artifact-index-ref/v1`):
+  `index` is the raw URL of the cache copy and `base` the commit's tree,
+  which its paths resolve against. An older cache: the site serves its own
+  `index.json`, and the pointer says `"index": "index.json"`. A reader on
+  another site finds the index with `locateArtefactIndex(<site>)`: the
+  pointer, else the old path. The pages themselves read their index at build
+  time; no page fetches it. `ast-history.json` stays on the site: it is
+  written at build time from the commits behind the one restored.
+- **The Swagger page** lists each spec at the address it is read from:
+  `../fhir-artifact-index/sidecars/<file>`, or its raw URL
+  (`rebaseSwaggerSpecs`); the generator's `../<file>` named a root path
+  where no sidecar is served.
 
 **What the site serves from the AST**: each resource once, under the
-Publisher's name `<Type>-<id>.json` at the root (the thin pages' data,
-`gen-ig-pages --compiled-data .`, and the narrative's links; no `ast-data/`
-mirror, owner 2026-11-08), the
-artefact index at `fhir-artifact-index/index.json`, and the AST as
-`site.data` for the IG's own pages. The grouping of the IG's committed
+Publisher's name `<Type>-<id>.json` at the root, as FHIR's convention and
+the IG Publisher have it (owner, 2026-11-10, card "C"; fhir-harness#359; no
+`ast-data/` mirror, owner 2026-11-08); the artefact index, or the pointer to
+the cache's copy (above); and the AST as `site.data` for the IG's own pages.
+When `ast` recorded the cache commit, the pages read each resource IN FULL by
+raw URL at that commit, and the root copy is **reduced**
+(`ig-repo-site.ts` `reduceForSite`): minified, without `text` (the pages
+render the narrative from the full copy), and each Library attachment whose
+contentType names `elm` without its `data`, its `url` set to the full
+resource in the cache; the CQL stays. Measured on one IG of 756 resources: 47 MB
+verbatim, 13 MB reduced. The JSON-LD graph names the root file first (each
+node's `local` encoding, each `artifact/index.jsonld` entry's
+`schema:contentUrl`) and the cache copy second (`mirror`); `ig-artifact-jsonld.ts
+check` holds every local file to the built site. The full copy is the cache
+commit's and the release's `package.tgz` ([`ig-binary-artefacts`](ig-binary-artefacts.md)).
+The root name is read from the resource (`resourceType`, `id`), not the
+cache file's name; two names that differ only by case are warned about, as
+they clash on a case-insensitive disk for the Publisher too.
+`SITE_ROOT_RESOURCES=0` serves no root copy when the pages read by URL;
+without a cache commit (or with `SITE_AST_BY_URL=0`) the root copy is the
+pages' own and is served whole. The grouping of the IG's committed
 `fhir-artifact-index/index.json` is kept when it holds one, since the AST
 stops before the Publisher assigns categories.
 
@@ -391,6 +440,12 @@ Deploying to a pages branch belongs to this layer: the history page, the CI
 build banner, the release-link fix, deleting files over 100 MB, and a deploy
 that retries on a ref conflict. Commenting on a pull request that a deploy
 finished belongs to cat-harness.
+
+Every build also prints a size review before its push: the site against the
+published one, and what weighs most. It is advisory and never refuses. What to
+look at and the usual fixes are in
+[`ig-publication`](../content/fhir-ig-authoring/ig-publication.md) §"Size
+review"; the step is `Task_SizeReview` of `ig-ast-cache.bpmn`.
 
 ## Who starts a build
 

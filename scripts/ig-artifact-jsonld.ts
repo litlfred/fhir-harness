@@ -8,7 +8,7 @@
  *
  * Usage:
  *   bun run fhir-harness/scripts/ig-artifact-jsonld.ts write --index <index.json> --out <dir>
- *     [--base <site-root-url>] [--compiled-data <path from the docs root>] [--title <IG display name>]
+ *     [--base <site-root-url>] [--compiled-data <path from the docs root>] [--title <IG display name>] [--root-resources]
  *   bun run fhir-harness/scripts/ig-artifact-jsonld.ts check --index <index.json> --dir <dir>
  *
  * ## Why here
@@ -23,10 +23,29 @@
  *
  * ## Where the nodes go
  *
- * Beside the pages that render them, `<docs>/artifact/<Type>-<id>.jsonld`,
- * with a `.json` twin because GitHub Pages serves no JSON-LD media type (the
- * `todo-graph` and OpenAPI precedent). `gen-ig-pages.ts --thin` writes them
- * with the pages; this CLI writes them alone, and checks a built site.
+ * Beside the pages that render them, `<docs>/artifact/<Type>-<id>.jsonld`.
+ * `gen-ig-pages.ts --thin` writes them with the pages; this CLI writes them
+ * alone, and checks a built site.
+ *
+ * ## The resource files the nodes name
+ *
+ * With `rootResources` (the IG site's default; owner, 2026-11-10, card "C";
+ * fhir-harness#359), each node's first encoding is the resource at the site
+ * root, `<Type>-<id>.json`, as the IG Publisher names it and FHIR readers
+ * expect (`dcterms:source` `local`), and its second the full copy in the AST
+ * cache by raw URL at the cache commit (`mirror`). The root copy is reduced
+ * (no narrative, no ELM data: `ig-repo-site.ts` `reduceForSite`); the page
+ * draws the mirror. The index node names each root file on its entry
+ * (`schema:contentUrl`), so the whole set is found from one document.
+ *
+ * No `.json` twin. Each node used to have a byte-identical `<Type>-<id>.json`
+ * beside it, and the index node an `index.json`, on the reasoning that GitHub
+ * Pages serves no JSON-LD media type. Every reader fetches the `.jsonld` (the
+ * thin pages, `ig-search.js`, the `alternate` link) and parses it with
+ * `response.json()`, which does not look at the media type; nothing on a site
+ * named a twin, and the twins were 2.1 MB of one IG's site (owner,
+ * 2026-11-10, "do B": the artefact lists a site ships overlap). `check`
+ * reports a twin it finds, so a stale one is not served.
  *
  * ## IRIs
  *
@@ -81,6 +100,31 @@ export interface JsonLdOptions {
   compiledData?: string;
   /** The IG's display name, for the index node's `dcterms:title`. */
   title?: string;
+  /**
+   * Whether the site serves each compiled resource at its ROOT as
+   * `<Type>-<id>.json`, the IG Publisher's name and FHIR's convention (owner,
+   * 2026-11-10, card "C"; fhir-harness#359). Each node then lists that file
+   * first (`local`) and the AST cache's full copy second (`mirror`), and the
+   * index node names it on each entry (`schema:contentUrl`). The root copy is
+   * reduced (`ig-repo-site.ts` `reduceForSite`); the mirror is the full one.
+   */
+  rootResources?: boolean;
+}
+
+/** The name a resource is served under at the site root: `<Type>-<id>.json`, as the IG Publisher writes it. */
+export function rootResourceName(a: { resourceType: string; id: string }): string {
+  return `${a.resourceType}-${a.id}.json`;
+}
+
+/**
+ * The root copy of an artefact, relative to `artifact/<file>`, when the site
+ * serves one ({@link JsonLdOptions.rootResources}) and the AST holds the
+ * resource (a compiled, materialized artefact); else undefined.
+ */
+export function rootResourceHref(a: FhirArtifact, o: Pick<JsonLdOptions, "rootResources">): string | undefined {
+  const m = a.materialization;
+  if (!o.rootResources || m.state !== "materialized" || m.purpose !== "compiled" || !m.localPath) return undefined;
+  return `../${rootResourceName(a)}`;
 }
 
 /**
@@ -154,9 +198,14 @@ export function statedFacts(a: FhirArtifact): Pick<IgArtifactJsonLd, "dcterms:co
 export function artifactJsonLd(ix: FhirArtifactIndex, a: FhirArtifact, o: JsonLdOptions = {}): IgArtifactJsonLd {
   const file = `${artifactPageName(a)}.jsonld`;
   const encodings: IgArtifactEncoding[] = [];
+  // The site's root copy first (reduced), then the compiled copy the pages
+  // read: the AST cache's full copy by raw URL (`mirror`), or a copy this site
+  // serves (`local`) when it is not the root one already listed.
+  const root = rootResourceHref(a, o);
+  if (root) encodings.push({ "@type": "schema:MediaObject", "schema:contentUrl": { "@id": iriFor(root, o.base) }, "schema:encodingFormat": FHIR_JSON, "dcterms:source": "local" });
   const local = localResourceHref(a, o.compiledData);
-  if (local) {
-    encodings.push({ "@type": "schema:MediaObject", "schema:contentUrl": { "@id": iriFor(local, o.base) }, "schema:encodingFormat": FHIR_JSON, "dcterms:source": "local" });
+  if (local && local !== root) {
+    encodings.push({ "@type": "schema:MediaObject", "schema:contentUrl": { "@id": iriFor(local, o.base) }, "schema:encodingFormat": FHIR_JSON, "dcterms:source": isRemoteData(o.compiledData) ? "mirror" : "local" });
   }
   // The upstream JSON, where the IG publishes it. The html is the Publisher's
   // page, which this node does not point at: the page that renders this node
@@ -199,16 +248,22 @@ export function artifactJsonLd(ix: FhirArtifactIndex, a: FhirArtifact, o: JsonLd
  * its node and carrying what a list row shows. Deterministic.
  */
 export function artifactIndexJsonLd(ix: FhirArtifactIndex, o: JsonLdOptions = {}): IgArtifactIndexJsonLd {
-  const parts = [...byCategory(ix.artifacts).values()].flat().map((a) => ({
-    "@id": iriFor(`${artifactPageName(a)}.jsonld`, o.base),
-    "@type": `fhir:${a.resourceType}`,
-    "dcterms:identifier": a.key,
-    "dcterms:title": a.title ?? a.name ?? a.id,
-    ...(a.description ? { "dcterms:description": a.description } : {}),
-    ...(a.category ? { "dcterms:type": a.category } : {}),
-    ...(a.canonical ? { "schema:sameAs": { "@id": a.canonical } } : {}),
-    ...statedFacts(a),
-  }));
+  const parts = [...byCategory(ix.artifacts).values()].flat().map((a) => {
+    const root = rootResourceHref(a, o);
+    return {
+      "@id": iriFor(`${artifactPageName(a)}.jsonld`, o.base),
+      "@type": `fhir:${a.resourceType}`,
+      "dcterms:identifier": a.key,
+      "dcterms:title": a.title ?? a.name ?? a.id,
+      // The computer name, for the IG's search, when neither the title nor the id says it.
+      ...(a.name && a.name !== (a.title ?? a.name) && a.name !== a.id ? { "schema:name": a.name } : {}),
+      ...(a.description ? { "dcterms:description": a.description } : {}),
+      ...(a.category ? { "dcterms:type": a.category } : {}),
+      ...(a.canonical ? { "schema:sameAs": { "@id": a.canonical } } : {}),
+      ...statedFacts(a),
+      ...(root ? { "schema:contentUrl": { "@id": iriFor(root, o.base) } } : {}),
+    };
+  });
   return {
     "@context": { ...IG_ARTIFACT_JSONLD_CONTEXT },
     $schema: IG_ARTIFACT_INDEX_JSONLD_SCHEMA_TAG,
@@ -225,8 +280,8 @@ export function artifactIndexJsonLd(ix: FhirArtifactIndex, o: JsonLdOptions = {}
 
 /**
  * Every file a run writes, keyed by its path under the docs root: `<page>.jsonld`
- * and its `.json` twin per artefact, and the index node (`index.jsonld`, twin
- * `index.json`).
+ * per artefact, and the index node (`index.jsonld`). No `.json` twin (see the
+ * module's head).
  */
 export function artifactJsonLdFiles(ix: FhirArtifactIndex, o: JsonLdOptions = {}): Map<string, string> {
   const out = new Map<string, string>();
@@ -234,11 +289,9 @@ export function artifactJsonLdFiles(ix: FhirArtifactIndex, o: JsonLdOptions = {}
     const text = `${JSON.stringify(artifactJsonLd(ix, a, o), null, 2)}\n`;
     const stem = posix.join(ARTIFACT_DIR, artifactPageName(a));
     out.set(`${stem}.jsonld`, text);
-    out.set(`${stem}.json`, text);
   }
   const index = `${JSON.stringify(artifactIndexJsonLd(ix, o), null, 2)}\n`;
   out.set(posix.join(ARTIFACT_DIR, ARTIFACT_INDEX_FILE), index);
-  out.set(posix.join(ARTIFACT_DIR, ARTIFACT_INDEX_FILE.replace(/\.jsonld$/, ".json")), index);
   return out;
 }
 
@@ -265,8 +318,7 @@ export function checkArtifactIndexJsonLd(ix: FhirArtifactIndex, docsRoot: string
   if (!existsSync(p)) return [`${at}: missing — the thin artifacts and toc pages have nothing to draw`];
   const text = readFileSync(p, "utf8");
   const findings: string[] = [];
-  const twin = p.replace(/\.jsonld$/, ".json");
-  if (!existsSync(twin) || readFileSync(twin, "utf8") !== text) findings.push(`${at}: its .json twin is missing or differs`);
+  if (existsSync(p.replace(/\.jsonld$/, ".json"))) findings.push(`${at}: a .json twin is served beside it — a second copy of the node no reader fetches`);
   let raw: unknown;
   try {
     raw = JSON.parse(text);
@@ -301,6 +353,17 @@ export function checkArtifactIndexJsonLd(ix: FhirArtifactIndex, docsRoot: string
           findings.push(`${at}: the entry for ${key} says ${term} ${JSON.stringify(e[term] ?? null)}, its node ${JSON.stringify(node[term] ?? null)}`);
         }
       }
+      // The root file the entry names is the node's first local copy, and is on the site.
+      const first = (node["schema:encoding"] as IgArtifactEncoding[] | undefined)?.find((x) => x["dcterms:source"] === "local")?.["schema:contentUrl"]["@id"];
+      const named = e["schema:contentUrl"]?.["@id"];
+      if (named !== undefined) {
+        if (named !== first) findings.push(`${at}: the entry for ${key} names ${named}, its node's local copy is ${first ?? "none"}`);
+        else if (!existsSync(resolve(dir, decodeURI(relFrom(n["@id"], named))))) findings.push(`${at}: the entry for ${key} names ${named}, which is not on the site`);
+      }
+      // Stated only when the title does not say it, so held equal only when stated.
+      if (e["schema:name"] !== undefined && e["schema:name"] !== node["schema:name"]) {
+        findings.push(`${at}: the entry for ${key} says schema:name ${JSON.stringify(e["schema:name"])}, its node ${JSON.stringify(node["schema:name"] ?? null)}`);
+      }
     } catch {
       findings.push(`${at}: ${key}'s node ${e["@id"]} is not JSON`);
     }
@@ -316,10 +379,11 @@ export function checkArtifactIndexJsonLd(ix: FhirArtifactIndex, docsRoot: string
  * - every artefact has its node, and no node names an artefact the index lacks;
  * - each node's key, type and `@id` are its own file's (a node copied to the
  *   wrong name would render another artefact's page);
- * - its `.json` twin is byte-identical;
+ * - no `.json` twin is served beside it (a second copy no reader fetches);
  * - every LOCAL `schema:contentUrl` resolves to a file under the site — the
- *   resource the page will draw. An upstream URL is not fetched: this check
- *   runs without the network, and says so.
+ *   root `<Type>-<id>.json` a harvester reads, or the copy the page draws. A
+ *   mirror or upstream URL is not fetched: this check runs without the
+ *   network, and says so.
  *
  * Returns the findings; empty is a pass.
  */
@@ -337,8 +401,7 @@ export function checkArtifactJsonLd(ix: FhirArtifactIndex, docsRoot: string): st
       continue;
     }
     const text = readFileSync(p, "utf8");
-    const twin = p.replace(/\.jsonld$/, ".json");
-    if (!existsSync(twin) || readFileSync(twin, "utf8") !== text) findings.push(`${ARTIFACT_DIR}/${f}: its .json twin is missing or differs`);
+    if (existsSync(p.replace(/\.jsonld$/, ".json"))) findings.push(`${ARTIFACT_DIR}/${f}: a .json twin is served beside it — a second copy of the node no reader fetches`);
     let raw: unknown;
     try {
       raw = JSON.parse(text);
@@ -394,13 +457,13 @@ if (import.meta.main) {
       process.exit(2);
     }
     const base = at("--base");
-    const files = artifactJsonLdFiles(ix, { ...(base ? { base: base.endsWith("/") ? base : `${base}/` } : {}), ...(at("--compiled-data") ? { compiledData: at("--compiled-data")! } : {}), ...(at("--title") ? { title: at("--title")! } : {}) });
+    const files = artifactJsonLdFiles(ix, { ...(base ? { base: base.endsWith("/") ? base : `${base}/` } : {}), ...(at("--compiled-data") ? { compiledData: at("--compiled-data")! } : {}), ...(at("--title") ? { title: at("--title")! } : {}), ...(argv.includes("--root-resources") ? { rootResources: true } : {}) });
     for (const [rel, text] of files) {
       const p = join(resolve(out), rel);
       mkdirSync(dirname(p), { recursive: true });
       writeFileSync(p, text);
     }
-    console.log(`wrote ${files.size / 2 - 1} artefact node(s) and the index node (.jsonld + .json) under ${join(out, ARTIFACT_DIR)}/`);
+    console.log(`wrote ${files.size - 1} artefact node(s) and the index node (.jsonld) under ${join(out, ARTIFACT_DIR)}/`);
   } else {
     const dir = at("--dir");
     if (!dir) {

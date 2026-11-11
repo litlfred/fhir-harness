@@ -170,7 +170,7 @@ resolve_branch() {
 
 count_resources() {
   local dir="$1"
-  find "$dir" -name '*.json' -not -name 'manifest.json' -not -name 'dependencies.json' -not -name 'fsh-index.json' -not -name 'expansions.json' -type f 2>/dev/null | head -20000 | wc -l | tr -d ' '
+  find "$dir" -name '*.json' -not -path '*/ig-api/*' -not -path '*/fhir-artifact-index/*' -not -name 'manifest.json' -not -name 'dependencies.json' -not -name 'fsh-index.json' -not -name 'expansions.json' -type f 2>/dev/null | head -20000 | wc -l | tr -d ' '
 }
 
 cmd_status() {
@@ -420,6 +420,26 @@ PY
   # site never reads the Publisher's output/, so the AST carries it.
   if [ -f "$root/output/qa.json" ] && [ ! -f "$tmp/qa.json" ]; then
     cp "$root/output/qa.json" "$tmp/qa.json"
+  fi
+  # The IG API: the sidecars a layer above generates from this AST
+  # (`ig-site:sidecars`), committed with it so a site reads them by raw URL at
+  # this commit instead of copying them (owner, 2026-11-10, card "A";
+  # ig-api-cache.ts). Always regenerated, never carried from a restore. A
+  # failure seeds without one, and a site built from the commit falls back to
+  # generating them. IG_CACHE_IG_API=0 leaves it out.
+  rm -rf "$tmp/ig-api"
+  if [ "${IG_CACHE_IG_API:-1}" != "0" ] && command -v bun >/dev/null 2>&1; then
+    bun run "$(dirname "${BASH_SOURCE[0]}")/ig-api-cache.ts" --ig "$root" --into "$tmp/ig-api" \
+      || { warn "the IG API was not generated: seeding without it"; rm -rf "$tmp/ig-api"; }
+  fi
+  # The IG's artefact index, built from this AST (and the IG API above) with
+  # paths in this tree, so a site reads it by raw URL at this commit instead
+  # of publishing it (owner, 2026-11-10, card "A"; ig-index-cache.ts). A
+  # failure seeds without it. IG_CACHE_INDEX=0 leaves it out.
+  rm -rf "$tmp/fhir-artifact-index"
+  if [ "${IG_CACHE_INDEX:-1}" != "0" ] && command -v bun >/dev/null 2>&1; then
+    bun run "$(dirname "${BASH_SOURCE[0]}")/ig-index-cache.ts" --ig "$root" --tree "$tmp" \
+      || { warn "the artefact index was not built: seeding without it"; rm -rf "$tmp/fhir-artifact-index"; }
   fi
   # txcache goes alongside AST on the branch
   if [ -d "$root/input-cache/txcache" ]; then

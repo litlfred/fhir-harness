@@ -403,6 +403,16 @@ export const FhirArtifactIndexSchema = z
      * for why these are recorded rather than warned about and forgotten.
      */
     sidecarsUnbound: z.array(UnboundSidecarSchema).optional(),
+    /**
+     * Where the bound sidecars' bytes are read from when the site does not
+     * hold them: an absolute base, the IG API in the AST cache commit
+     * (`https://raw.githubusercontent.com/<owner>/<repo>/<sha>/ig-api/sidecars`;
+     * owner, 2026-11-10, card "A"). A sidecar is then fetched at
+     * `<sidecarBase>/<file>` (`ig-api-hub.ts` `sidecarHref`), and its
+     * `localPath` stays the path it would be held at. Absent, each is served at
+     * its `localPath`.
+     */
+    sidecarBase: z.string().url().optional(),
     count: z.number().int().nonnegative(),
     artifacts: z.array(FhirArtifactSchema),
   })

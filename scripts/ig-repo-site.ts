@@ -158,13 +158,15 @@ import { parse as parseYaml } from "yaml";
 import { conceptOf, profilesOf } from "./ast-to-artifact-index.ts";
 import { astValidity, type AstValidity, buildKind, readAst } from "./ig-ast.ts";
 import { composeIgSite, dedupeSiteIds, describeStage, IG_THIN_CSS_FILE, stageIgSite, type SitePalette } from "./build-ig-site";
-import { artifactSearchEntries, IG_SEARCH_INDEX_FILE, IG_SEARCH_SCRIPT_FILE, IG_SEARCH_SCRIPT_SOURCE, igSearchIndex, pageSearchEntries, withIgBar } from "./ig-search.ts";
+import { artifactSearchEntries, IG_SEARCH_ARTIFACTS_NODE, IG_SEARCH_INDEX_FILE, IG_SEARCH_SCRIPT_FILE, IG_SEARCH_SCRIPT_SOURCE, igSearchIndex, pageSearchEntries, withIgBar } from "./ig-search.ts";
 import { translationMetaBlock, withTranslationMeta } from "../../cat-harness-tools/scripts/lib/translation-meta.ts";
+import { declaredEntries, type ResolvedEntry, type Served, servedDirectories } from "../../cat-harness-tools/scripts/mount-instance-docs.ts";
 import { igOpenapiGraph, OPENAPI_DIR } from "../../cat-harness-tools/openapi/scripts/ig-site-openapi.ts";
 import type { FhirArtifactIndex } from "../schemas/fhir-artifact-index.js";
 import { buildMenu } from "./ingest-ig-menu.ts";
 import { THIN_INDEX_CONFIG_ID, THIN_PAGE_CONFIG_ID } from "./ig-thin-pages.ts";
-import { COMPILED_BY_NAME } from "./ig-artifact-jsonld.ts";
+import { ARTIFACT_DIR, ARTIFACT_INDEX_FILE, COMPILED_BY_NAME, rootResourceName } from "./ig-artifact-jsonld.ts";
+import { AST_HISTORY_FILE, readAstHistory } from "./ig-ast-history.ts";
 import { copyDeclared, igReadScope, type IgReadScope } from "./ig-read-scope.ts";
 import { siteBuild, type SiteBuild, STAMP_FILE } from "./site-build-stamp.ts";
 import { buildQaPage, publishQaAssets } from "./ig-qa-page.ts";
@@ -314,6 +316,19 @@ export const VALIDITY_FILE = "ig-ast-validity.json";
 export const AST_SOURCE_FILE = "ig-ast-source.json";
 /** `0` keeps the old route: the resources copied to the site root, not read by URL. */
 export const AST_BY_URL_ENV = "SITE_AST_BY_URL";
+/**
+ * `0` serves no root `<Type>-<id>.json` when the pages read the resources by
+ * URL (as before fhir-harness#359). By default the site carries every
+ * resource at its root, reduced ({@link reduceForSite}), as FHIR's convention
+ * and the IG Publisher do (owner, 2026-11-10, card "C"). Without a cache
+ * commit to read by URL the root copies are the pages' own, full, either way.
+ */
+export const ROOT_RESOURCES_ENV = "SITE_ROOT_RESOURCES";
+
+/** Whether the site serves the reduced root copies: yes unless {@link ROOT_RESOURCES_ENV} is `0`. Pure. */
+export function rootResourcesFromEnv(env: Record<string, string | undefined> = process.env): boolean {
+  return env[ROOT_RESOURCES_ENV] !== "0";
+}
 
 /**
  * Where the pages read the AST's resources from, when they read them by URL
@@ -329,6 +344,12 @@ export const AST_BY_URL_ENV = "SITE_AST_BY_URL";
  * (`ig-cache.sh seed`, fhir-harness#326).
  */
 export function astRawBase(work: string | undefined, env: Record<string, string | undefined> = process.env): string | undefined {
+  const s = astSource(work, env);
+  return s ? `https://raw.githubusercontent.com/${s.repository}/${s.commit}` : undefined;
+}
+
+/** The cache commit `ast` restored and the `owner/repo` it is on, as {@link astRawBase} reads them; undefined as it is. */
+export function astSource(work: string | undefined, env: Record<string, string | undefined> = process.env): { repository: string; commit: string } | undefined {
   if (!work || env[AST_BY_URL_ENV] === "0") return undefined;
   const f = join(work, AST_SOURCE_FILE);
   if (!existsSync(f)) return undefined;
@@ -340,7 +361,61 @@ export function astRawBase(work: string | undefined, env: Record<string, string 
   }
   const commit = typeof rec.commit === "string" && /^[0-9a-f]{40}$/.test(rec.commit) ? rec.commit : undefined;
   const repo = typeof rec.remote === "string" ? /github\.com[/:]([\w.-]+\/[\w.-]+?)(?:\.git)?\/?$/.exec(rec.remote)?.[1] : undefined;
-  return commit && repo ? `https://raw.githubusercontent.com/${repo}/${commit}` : undefined;
+  return commit && repo ? { repository: repo, commit } : undefined;
+}
+
+/** In the AST cache commit (and so under a restored AST): the artefact index `ig-cache.sh seed` wrote (`ig-index-cache.ts`). */
+export const INDEX_CACHED = `${INDEX_SERVED}/index.json`;
+/** Served beside where the index was: where the IG's artefact index is read from. */
+export const INDEX_REF_FILE = "index.ref.json";
+export const INDEX_REF_SCHEMA = "fhir-artifact-index-ref/v1";
+
+/**
+ * The pointer a site serves at `fhir-artifact-index/index.ref.json` (owner,
+ * 2026-11-10, card "A": the index is served from the AST cache, not the site).
+ * `index` is where the IG's artefact index is: the raw URL of the cache
+ * commit's copy, or `index.json` beside the pointer when the site serves it
+ * (an older cache that holds none). `base`, with a cache copy, is what that
+ * index's `localPath`s are relative to: the cache commit's tree. Pure.
+ */
+export function indexRef(o: { raw?: string; repository?: string; commit?: string }): Record<string, string> {
+  return o.raw
+    ? { $schema: INDEX_REF_SCHEMA, index: `${o.raw}/${INDEX_CACHED}`, base: `${o.raw}/`, ...(o.repository ? { repository: o.repository } : {}), ...(o.commit ? { commit: o.commit } : {}) }
+    : { $schema: INDEX_REF_SCHEMA, index: "index.json" };
+}
+
+/**
+ * Where a reader finds an IG's artefact index from the IG's published site:
+ * the pointer's `index`, resolved against the pointer; with no readable
+ * pointer (a site built before it), `<site>/fhir-artifact-index/index.json`
+ * as before. Returns the URL; fetching it is the caller's.
+ */
+export async function locateArtefactIndex(site: string, fetchJson: (url: string) => Promise<unknown> = async (u) => (await fetch(u)).json()): Promise<string> {
+  const dir = new URL(`${INDEX_SERVED}/`, site.endsWith("/") ? site : `${site}/`);
+  const fallback = new URL("index.json", dir).href;
+  try {
+    const ref = (await fetchJson(new URL(INDEX_REF_FILE, dir).href)) as { $schema?: unknown; index?: unknown };
+    return ref?.$schema === INDEX_REF_SCHEMA && typeof ref.index === "string" ? new URL(ref.index, dir).href : fallback;
+  } catch {
+    return fallback;
+  }
+}
+
+/** Under the work directory: the AST versions `compose` read for the History view, which `publisher-pages` serves. */
+export const AST_HISTORY_WORK = "ig-ast-history.json";
+
+/** The Swagger page the IG API generator writes among the site files (`ig-api-gen.ts`). */
+export const SWAGGER_PAGE = "openapi/index.html";
+
+/**
+ * The Swagger page with each spec it lists at the address the site serves it
+ * from. The generator lists each wrapper as `../<file>` from `openapi/`, the
+ * site root, where no sidecar is served: they are at
+ * `fhir-artifact-index/sidecars/` or, read from the AST cache commit, at its
+ * raw URL. Only a listed name that is one of `files` is rewritten. Pure.
+ */
+export function rebaseSwaggerSpecs(html: string, files: ReadonlySet<string>, href: (file: string) => string): string {
+  return html.replace(/"\.\.\/([^"\/]+\.openapi\.json)"/g, (m, f: string) => (files.has(f) ? JSON.stringify(href(f)) : m));
 }
 
 /** The IG API sidecars a layer above left, and what it calls them. */
@@ -356,6 +431,12 @@ export interface IgApi {
    * replaced by the layer's file at the same path; no other page ever is.
    */
   placeholder?: string;
+  /**
+   * Set when the files are read from the AST cache commit rather than served
+   * by the site ({@link siteIgApi}): the raw URL of this directory there,
+   * `https://raw.githubusercontent.com/<owner>/<repo>/<sha>/ig-api`.
+   */
+  rawBase?: string;
 }
 
 /**
@@ -364,8 +445,24 @@ export interface IgApi {
  * the pages would otherwise carry a label nobody chose.
  */
 export function readIgApi(work: string | undefined): IgApi | undefined {
-  if (!work) return undefined;
-  const dir = join(work, IG_API_WORK);
+  return work ? readIgApiDir(join(work, IG_API_WORK)) : undefined;
+}
+
+/**
+ * The IG API the site binds: the one the AST cache commit holds, read by raw
+ * URL at that commit, when `ast` recorded the commit and the cache holds one
+ * (`ig-cache.sh seed` writes it, {@link seedIgApi}); else the one a layer
+ * above left in the work directory, served by the site (an older cache, a
+ * cache off github.com, or {@link AST_BY_URL_ENV} `0`).
+ */
+export function siteIgApi(work: string | undefined, ast: string, env: Record<string, string | undefined> = process.env): IgApi | undefined {
+  const raw = astRawBase(work, env);
+  const cached = raw ? readIgApiDir(join(ast, IG_API_WORK)) : undefined;
+  return cached ? { ...cached, rawBase: `${raw}/${IG_API_WORK}` } : readIgApi(work);
+}
+
+/** {@link readIgApi} over the `ig-api` directory itself. */
+export function readIgApiDir(dir: string): IgApi | undefined {
   const sidecars = join(dir, "sidecars");
   if (!existsSync(sidecars) || !statSync(sidecars).isDirectory()) return undefined;
   const files = readdirSync(sidecars).filter((f) => statSync(join(sidecars, f)).isFile()).length;
@@ -503,7 +600,7 @@ export function astArtefactPages(o: { ig: string; ast: string; work: string; sit
   const args = ["--ast", relative(o.ig, o.ast) || ".", "--instance-id", o.name, "--out", index];
   const published = join(o.ig, INDEX_SERVED, "index.json");
   if (existsSync(published)) args.push("--compare", published, "--keep-published-grouping", "--report", join(o.work, "ast-parity.json"));
-  if (o.igApi) args.push("--sidecars", o.igApi.sidecars, "--sidecars-local", SIDECARS_SERVED);
+  if (o.igApi) args.push("--sidecars", o.igApi.sidecars, "--sidecars-local", SIDECARS_SERVED, ...(o.igApi.rawBase ? ["--sidecars-base", `${o.igApi.rawBase}/sidecars`] : []));
   bun("ast-to-artifact-index.ts", args);
   // The resources by raw URL at the restored cache commit when `ast` recorded
   // one (fhir-harness#325), else each copied to the site root (`AST_DATA`).
@@ -511,9 +608,22 @@ export function astArtefactPages(o: { ig: string; ast: string; work: string; sit
   // compose's own scratch `work` (the first preview build read the scratch one,
   // found no record, and pointed the pages at root copies publisher-pages never wrote).
   const raw = astRawBase(o.siteWork);
+  // The JSON-LD nodes name the root `<Type>-<id>.json` publisher-pages serves (fhir-harness#359).
+  const rootResources = rootResourcesFromEnv();
+  // The AST versions behind that commit, for each resource's History view
+  // (#329), left in the site build's work directory for publisher-pages to serve.
+  const src = astSource(o.siteWork);
+  const history = src ? readAstHistory({ ig: o.ig, ...src }) : undefined;
+  if (o.siteWork) {
+    if (history) writeFileSync(join(o.siteWork, AST_HISTORY_WORK), `${JSON.stringify(history, null, 2)}\n`);
+    else rmSync(join(o.siteWork, AST_HISTORY_WORK), { force: true });
+  }
+  if (src) o.log(history ? `artefact pages: ${history.versions.length} AST version(s) for the History view, ${history.versions.filter((v) => v.tags).length} of them tagged` : `artefact pages: the AST versions could not be read; no History view`);
   o.log(raw ? `artefact pages: the resources are read from ${raw} (the AST cache commit), not copied into the site` : `artefact pages: the resources are served at the site root as <Type>-<id>.json`);
   bun("gen-ig-pages.ts", [
     "--instance", inst, "--index", index, "--label", o.label, "--ig-site", "--compiled-data", raw ?? AST_DATA, "--search",
+    ...(rootResources ? ["--root-resources"] : []),
+    ...(history ? ["--ast-history", `../${AST_HISTORY_FILE}`, "--ast-repository", src!.repository] : []),
     ...(o.igApi ? ["--ig-api-served", ...(o.igApi.label ? ["--sidecar-label", o.igApi.label] : [])] : []),
   ]);
   return inst;
@@ -603,12 +713,16 @@ export function compose(o: { docs: string; ig: string; baseurl: string; ast?: st
     const site = join(work, "site");
     const baseurl = o.baseurl.replace(/\/$/, "");
     const label = igTitle(ig) ?? name;
-    const igApi = readIgApi(o.work);
-    log(igApi ? `${name}: ${igApi.files} IG API sidecar file(s) left by a layer above${igApi.label ? `, called "${igApi.label}"` : ""}` : `${name}: no IG API sidecars under the work directory — none bound`);
     const ast = resolve(o.ast ?? join(ig, AST_DIR));
     // The injection gate (fhir-harness#330), before anything is staged: a
     // pattern hit, an open finding, or a missing or stale agent review refuses.
     const content = contentQaGate({ ig, ast, scope, ...(o.work ? { work: o.work } : {}), log });
+    const igApi = siteIgApi(o.work, ast);
+    log(
+      igApi
+        ? `${name}: ${igApi.files} IG API sidecar file(s) ${igApi.rawBase ? `read from the AST cache commit (${igApi.rawBase}), not copied into the site` : "left by a layer above"}${igApi.label ? `, called "${igApi.label}"` : ""}`
+        : `${name}: no IG API sidecars in the AST cache or the work directory — none bound`,
+    );
     const inst = astArtefactPages({ ig, ast, work, ...(o.work ? { siteWork: o.work } : {}), name, label, ...(igApi ? { igApi } : {}), log });
     if (o.work) {
       // For `publisher-pages`, which serves the index the pages were drawn from.
@@ -620,11 +734,14 @@ export function compose(o: { docs: string; ig: string; baseurl: string; ast?: st
     // The QA report the footer's "QA Report" links: the FHIR QA the build
     // holds and the knowledge graph's, on one page (`ig-qa-page.ts`).
     const qa = buildQaPage({ root: ig, ast, content, ...(o.work ? { validity: join(o.work, VALIDITY_FILE) } : {}) });
+    const astRaw = astRawBase(o.work);
     const r = stageIgSite(src, site, {
       baseurl,
       menu,
       // The IG's pages loop site.data.canonicals and site.data["<Type>-<id>"]: drawn from the same AST.
       ast,
+      // The form pages read each Questionnaire's AST file at the cache commit, as the artefact pages do.
+      ...(astRaw ? { astRaw } : {}),
       artifacts: artifactsFor(inst, "artifact/"),
       footer: footerFor(inst, ""),
       ...(theme.palette ? { palette: theme.palette } : {}),
@@ -670,7 +787,7 @@ export function compose(o: { docs: string; ig: string; baseurl: string; ast?: st
     }
     if (c.collisions.length) throw new Error(`${name}: ${c.collisions.length} path(s) the host source already holds — refusing two answers for one URL:\n  ${c.collisions.slice(0, 20).join("\n  ")}`);
     const s = writeSearch(resolve(o.docs), site, JSON.parse(readFileSync(join(inst, INDEX_SERVED, "index.json"), "utf-8")) as FhirArtifactIndex);
-    log(`${name}: search over ${s.pages} page(s) and ${s.artifacts} artefact(s) at ${IG_SEARCH_INDEX_FILE} (${Math.round(s.bytes / 1024)} KB, fetched on the first search)`);
+    log(`${name}: search over ${s.pages} page(s) and ${s.artifacts} artefact(s) at ${IG_SEARCH_INDEX_FILE} (${Math.round(s.bytes / 1024)} KB, fetched on the first search)${s.fromNode ? `; the artefacts are read from ${ARTIFACT_DIR}/${ARTIFACT_INDEX_FILE}, not copied` : ""}`);
   } finally {
     rmSync(work, { recursive: true, force: true });
   }
@@ -679,12 +796,17 @@ export function compose(o: { docs: string; ig: string; baseurl: string; ast?: st
 /**
  * The IG's search under the docs root: the index of the staged site's pages
  * and the artefact index's artefacts, and the client every box loads
- * (`ig-search.ts`). A path the host source already holds is refused, as
- * every other file `compose` writes is.
+ * (`ig-search.ts`). When the site serves the artefact index node
+ * (`artifact/index.jsonld`, in the staged site or the docs root), the search
+ * index names it and the client reads the artefacts from it, rather than a
+ * second list of them being written here (`fromNode`). A path the host
+ * source already holds is refused, as every other file `compose` writes is.
  */
-export function writeSearch(docs: string, staged: string, ix: Pick<FhirArtifactIndex, "artifacts">): { pages: number; artifacts: number; bytes: number } {
+export function writeSearch(docs: string, staged: string, ix: Pick<FhirArtifactIndex, "artifacts">): { pages: number; artifacts: number; bytes: number; fromNode: boolean } {
   const pages = pageSearchEntries(staged);
-  const artifacts = artifactSearchEntries(ix.artifacts);
+  const node = join(ARTIFACT_DIR, ARTIFACT_INDEX_FILE);
+  const fromNode = existsSync(join(staged, node)) || existsSync(join(docs, node));
+  const artifacts = fromNode ? IG_SEARCH_ARTIFACTS_NODE : artifactSearchEntries(ix.artifacts);
   const body = `${JSON.stringify(igSearchIndex(pages, artifacts))}\n`;
   for (const [rel, text] of [[IG_SEARCH_INDEX_FILE, body], [IG_SEARCH_SCRIPT_FILE, readFileSync(IG_SEARCH_SCRIPT_SOURCE, "utf-8")]] as const) {
     const to = join(docs, rel);
@@ -692,7 +814,7 @@ export function writeSearch(docs: string, staged: string, ix: Pick<FhirArtifactI
     mkdirSync(dirname(to), { recursive: true });
     writeFileSync(to, text);
   }
-  return { pages: pages.length, artifacts: artifacts.length, bytes: Buffer.byteLength(body) };
+  return { pages: pages.length, artifacts: ix.artifacts.length, bytes: Buffer.byteLength(body), fromNode };
 }
 
 /**
@@ -895,6 +1017,44 @@ export interface ServedData {
   index: boolean;
   /** Libraries served with their CQL by URL and no ELM ({@link libraryByUrl}). */
   librariesByUrl?: number;
+  /** Whether the AST versions are served for the History view ({@link AST_HISTORY_FILE}). */
+  history?: boolean;
+  /** Whether the root copies are reduced ({@link reduceForSite}): the pages read the full ones by URL. */
+  reduced?: boolean;
+  /** The bytes of the reduced root copies written. */
+  rootBytes?: number;
+  /** Root names that differ from another only by case: one file on a case-insensitive file system, as with the IG Publisher. */
+  caseCollisions?: string[];
+}
+
+/** Whether an attachment's content type is compiled logic (ELM), by its name. */
+const isElm = (contentType: unknown): boolean => typeof contentType === "string" && /elm/i.test(contentType);
+
+/**
+ * A resource as the site serves it at its root (owner, 2026-11-10, card "C";
+ * fhir-harness#359): its generated narrative (`text`, also of each contained
+ * resource) removed, since the artefact pages render it from the full copy,
+ * and each Library attachment of compiled logic (a contentType naming `elm`)
+ * without its `data`. The attachment entry stays, with `url` set to `fullUrl`,
+ * the AST cache's full copy of the resource, when there is one, so the ELM is
+ * still reachable; the CQL stays as it is. Written minified by the caller. The
+ * full copy is the AST cache's and the release's `package.tgz`. Pure.
+ */
+export function reduceForSite(resource: Record<string, unknown>, fullUrl?: string): Record<string, unknown> {
+  const strip = (r: Record<string, unknown>): Record<string, unknown> => {
+    const { text: _text, ...rest } = r;
+    return rest;
+  };
+  const out = strip(resource);
+  if (Array.isArray(out["contained"])) out["contained"] = (out["contained"] as unknown[]).map((c) => (c && typeof c === "object" ? strip(c as Record<string, unknown>) : c));
+  if (out["resourceType"] === "Library" && Array.isArray(out["content"])) {
+    out["content"] = (out["content"] as Record<string, unknown>[]).map((c) => {
+      if (!c || typeof c !== "object" || !isElm(c["contentType"]) || c["data"] === undefined) return c;
+      const { data: _data, ...rest } = c;
+      return fullUrl ? { ...rest, url: fullUrl } : rest;
+    });
+  }
+  return out;
 }
 
 /** Copy a file into the site unless the site already holds that path. */
@@ -947,26 +1107,72 @@ export function libraryByUrl(resource: unknown, cql: CqlSource): object | undefi
 /**
  * Serve the AST's data in the built site: each resource once, by the
  * Publisher's name at the root, the artefact index, and the IG API sidecars.
- * Never the Publisher's HTML, and never a path the site already holds. With
- * `cql`, a Library is served by {@link libraryByUrl}: its CQL by URL, no ELM.
+ * Never the Publisher's HTML, and never a path the site already holds. When
+ * the pages read the resources by URL (`byUrl`), each root copy is reduced
+ * ({@link reduceForSite}) and minified (fhir-harness#359). Otherwise it is
+ * the pages' own copy, as the AST holds it; with `cql`, a Library is then
+ * served by {@link libraryByUrl}: its CQL by URL, no ELM.
  */
-export function serveAstData(o: { site: string; ast: string; index?: string; igApi?: IgApi; cql?: CqlSource; byUrl?: boolean }): ServedData {
+export function serveAstData(o: {
+  site: string;
+  ast: string;
+  index?: string;
+  igApi?: IgApi;
+  cql?: CqlSource;
+  byUrl?: boolean;
+  /** With `byUrl`: `false` serves no root copy ({@link ROOT_RESOURCES_ENV}); otherwise each is served reduced. */
+  rootResources?: boolean;
+  /** The AST cache commit's tree by raw URL: a reduced Library's ELM attachments point at the full copy there. */
+  rawBase?: string;
+  history?: string;
+  indexRef?: Record<string, string>;
+  warn?: (s: string) => void;
+}): ServedData {
   const manifest = join(o.ast, "manifest.json");
   if (!existsSync(manifest)) throw new Error(`${o.ast}: no AST to serve — run ${IG_SITE_SCRIPTS.ast} first`);
   const out: ServedData = { named: 0, kept: 0, sidecars: 0, siteFiles: 0, siteKept: [], siteFilled: [], index: false };
   const m = JSON.parse(readFileSync(manifest, "utf-8")) as { resources?: { resourceType?: string; id?: string; file?: string }[] };
-  // Read by URL from the AST cache commit ({@link astRawBase}): no copy at the root.
-  for (const r of o.byUrl ? [] : (m.resources ?? [])) {
-    if (!r.file || !r.resourceType || !r.id) continue;
+  // Read by URL from the AST cache commit ({@link astRawBase}): the root copy
+  // is reduced, or with `rootResources: false` not served at all.
+  const reduce = o.byUrl === true;
+  if (reduce) out.reduced = true;
+  const lower = new Map<string, string>();
+  for (const r of reduce && o.rootResources === false ? [] : (m.resources ?? [])) {
+    if (!r.file) continue;
     const src = join(o.ast, r.file);
     if (!existsSync(src)) continue;
-    const rel = `${r.resourceType}-${r.id}.json`;
-    if (!serve(src, o.site, rel)) {
+    // The name from the resource itself, not the cache's file name (which may change, fhir-ig-publisher#13).
+    let json: Record<string, unknown>;
+    try {
+      json = JSON.parse(readFileSync(src, "utf-8")) as Record<string, unknown>;
+    } catch {
+      o.warn?.(`publisher pages: ${r.file} is not JSON; not served at the root`);
+      continue;
+    }
+    const resourceType = typeof json["resourceType"] === "string" ? json["resourceType"] : r.resourceType;
+    const id = typeof json["id"] === "string" ? json["id"] : r.id;
+    if (!resourceType || !id) continue;
+    const rel = rootResourceName({ resourceType, id });
+    const seen = lower.get(rel.toLowerCase());
+    if (seen !== undefined && seen !== rel) {
+      (out.caseCollisions ??= []).push(`${seen} / ${rel}`);
+      o.warn?.(`publisher pages: ${rel} and ${seen} differ only by case — one file on a case-insensitive file system (the IG Publisher has the same clash); both are served`);
+    }
+    lower.set(rel.toLowerCase(), rel);
+    if (existsSync(join(o.site, rel))) {
       out.kept += 1;
       continue;
     }
+    if (reduce) {
+      const text = JSON.stringify(reduceForSite(json, o.rawBase ? `${o.rawBase}/${r.file.split("/").map(encodeURIComponent).join("/")}` : undefined));
+      writeFileSync(join(o.site, rel), text);
+      out.named += 1;
+      out.rootBytes = (out.rootBytes ?? 0) + Buffer.byteLength(text);
+      continue;
+    }
+    serve(src, o.site, rel);
     out.named += 1;
-    if (o.cql && r.resourceType === "Library") {
+    if (o.cql && resourceType === "Library") {
       const slim = libraryByUrl(JSON.parse(readFileSync(src, "utf-8")), o.cql);
       if (slim) {
         writeFileSync(join(o.site, rel), `${JSON.stringify(slim, null, 2)}\n`);
@@ -974,15 +1180,31 @@ export function serveAstData(o: { site: string; ast: string; index?: string; igA
       }
     }
   }
-  if (o.index && existsSync(o.index)) out.index = serve(o.index, o.site, join(INDEX_SERVED, "index.json"));
+  // With a pointer to the AST cache commit's copy (`indexRef.base`), the index
+  // is read there and not served; the pointer is served either way.
+  const cachedIndex = o.indexRef?.["base"] !== undefined;
+  if (!cachedIndex && o.index && existsSync(o.index)) out.index = serve(o.index, o.site, join(INDEX_SERVED, "index.json"));
+  if (o.indexRef && (cachedIndex || out.index)) {
+    mkdirSync(join(o.site, INDEX_SERVED), { recursive: true });
+    writeFileSync(join(o.site, INDEX_SERVED, INDEX_REF_FILE), `${JSON.stringify(o.indexRef, null, 2)}\n`);
+  }
+  if (o.history && existsSync(o.history)) out.history = serve(o.history, o.site, AST_HISTORY_FILE);
   if (o.igApi) {
-    for (const f of readdirSync(o.igApi.sidecars).sort()) {
-      const from = join(o.igApi.sidecars, f);
-      if (statSync(from).isFile() && serve(from, o.site, join(SIDECARS_SERVED, f))) out.sidecars += 1;
+    // Read by raw URL from the AST cache commit (`rawBase`): no sidecar is copied.
+    const files = readdirSync(o.igApi.sidecars).filter((f) => statSync(join(o.igApi!.sidecars, f)).isFile()).sort();
+    for (const f of o.igApi.rawBase ? [] : files) {
+      if (serve(join(o.igApi.sidecars, f), o.site, join(SIDECARS_SERVED, f))) out.sidecars += 1;
     }
+    const specHref = (f: string): string => (o.igApi!.rawBase ? `${o.igApi!.rawBase}/sidecars/${f}` : `../${SIDECARS_SERVED}/${f}`);
     if (o.igApi.site) {
       for (const f of filesUnder(o.igApi.site)) {
-        if (serve(join(o.igApi.site, f), o.site, f)) out.siteFiles += 1;
+        // The documents beside the pages (the enumeration schemas) are read
+        // from the cache commit too; the pages over them are the site's.
+        if (o.igApi.rawBase && !/\.html?$/i.test(f)) continue;
+        if (serve(join(o.igApi.site, f), o.site, f)) {
+          out.siteFiles += 1;
+          if (f === SWAGGER_PAGE) writeFileSync(join(o.site, f), rebaseSwaggerSpecs(readFileSync(join(o.site, f), "utf-8"), new Set(files), specHref));
+        }
         else if (o.igApi.placeholder && /\.html?$/i.test(f) && readFileSync(join(o.site, f), "utf-8").includes(o.igApi.placeholder)) {
           // The IG's page is a shell around the layer's marker: the layer's page is its content.
           cpSync(join(o.igApi.site, f), join(o.site, f));
@@ -1015,17 +1237,41 @@ export const CQL_DIR = "input/cql";
 export function publisherPages(o: { site: string; ast: string; work?: string; ig?: string; cql?: CqlSource; log?: (s: string) => void }): ServedData {
   const log = o.log ?? ((s: string) => console.error(s));
   if (!existsSync(o.site) || !statSync(o.site).isDirectory()) throw new Error(`${o.site}: no built site`);
-  const igApi = readIgApi(o.work);
+  const igApi = siteIgApi(o.work, o.ast);
   const index = o.work ? join(o.work, INDEX_WORK, "index.json") : undefined;
   const raw = astRawBase(o.work);
-  const served = serveAstData({ site: o.site, ast: o.ast, ...(index ? { index } : {}), ...(igApi ? { igApi } : {}), ...(o.cql ? { cql: o.cql } : {}), byUrl: raw !== undefined });
+  const history = o.work && raw ? join(o.work, AST_HISTORY_WORK) : undefined;
+  // The artefact index is read from the AST cache commit when the commit holds one (`ig-cache.sh seed`).
+  const src = astSource(o.work);
+  const ref = indexRef(raw && existsSync(join(o.ast, INDEX_CACHED)) ? { raw, ...src } : {});
+  const served = serveAstData({
+    site: o.site,
+    ast: o.ast,
+    ...(index ? { index } : {}),
+    ...(igApi ? { igApi } : {}),
+    ...(o.cql ? { cql: o.cql } : {}),
+    byUrl: raw !== undefined,
+    rootResources: rootResourcesFromEnv(),
+    ...(raw ? { rawBase: raw } : {}),
+    ...(history ? { history } : {}),
+    indexRef: ref,
+    warn: log,
+  });
+  if (ref["base"]) log(`publisher pages: the artefact index is read from ${ref["index"]}, not served; ${INDEX_SERVED}/${INDEX_REF_FILE} points there`);
+  if (served.history) log(`publisher pages: the AST versions at ${AST_HISTORY_FILE}`);
   if (raw) log(`publisher pages: the pages read each resource from ${raw}`);
   if (served.librariesByUrl) log(`publisher pages: ${served.librariesByUrl} Library resource(s) link their CQL in ${CQL_DIR}/ by URL; their ELM is left to the release package`);
   log(
-    `publisher pages: from the AST, ${raw ? "no resource copied (read by URL)" : `${served.named} resource(s) as <Type>-<id>.json at the root (no ast-data/ mirror)`}` +
+    `publisher pages: from the AST, ${
+      served.reduced && served.named
+        ? `${served.named} reduced resource(s) as <Type>-<id>.json at the root, ${((served.rootBytes ?? 0) / 1e6).toFixed(1)} MB (no narrative, no ELM data; the pages read the full copy by URL)`
+        : raw
+          ? `no resource copied (read by URL; ${ROOT_RESOURCES_ENV}=0)`
+          : `${served.named} resource(s) as <Type>-<id>.json at the root (no ast-data/ mirror)`
+    }` +
       `${served.kept ? ` (${served.kept} the site already held were kept)` : ""}; ` +
       `${served.index ? `the artefact index at ${INDEX_SERVED}/index.json` : "no artefact index served"}; ` +
-      `${served.sidecars} IG API sidecar(s) at ${SIDECARS_SERVED}/; ${served.siteFiles} file(s) the layer above wrote for the site root. The Publisher's HTML is not taken`,
+      `${igApi?.rawBase ? `the IG API sidecars read from ${igApi.rawBase} (none copied)` : `${served.sidecars} IG API sidecar(s) at ${SIDECARS_SERVED}/`}; ${served.siteFiles} file(s) the layer above wrote for the site root. The Publisher's HTML is not taken`,
   );
   if (served.siteFilled.length) log(`publisher pages: ${served.siteFilled.length} page(s) of the IG's own held the layer above's placeholder and are its page now: ${served.siteFilled.join(", ")}`);
   // The IG API hub, drawn from the index's bound sidecars (bean `h7ap`): at the
@@ -1039,7 +1285,7 @@ export function publisherPages(o: { site: string; ast: string; work?: string; ig
       const mine = !existsSync(at) || (igApi.site !== undefined && existsSync(join(igApi.site, page))) || (igApi.placeholder !== undefined && readFileSync(at, "utf-8").includes(igApi.placeholder));
       if (mine) {
         const openapi = existsSync(join(o.site, "openapi", "index.html"));
-        const documents = igApi.site ? readdirSync(igApi.site).filter((f) => f.endsWith(".schema.json") && statSync(join(igApi.site!, f)).isFile()) : [];
+        const documents = (igApi.site ? readdirSync(igApi.site).filter((f) => f.endsWith(".schema.json") && statSync(join(igApi.site!, f)).isFile()) : []).map((f) => (igApi.rawBase ? `${igApi.rawBase}/${IG_API_SITE}/${f}` : f));
         writeIgApiHubSite({ site: o.site, ix, label: igApi.label ?? "IG API", page, openapi, documents });
         log(`publisher pages: the ${igApi.label ?? "IG API"} hub at ${page}, drawn from the index (${hubEntries(ix).length} sidecar(s))`);
       } else log(`publisher pages: ${page} is a page of the IG's own without the hub's placeholder; no hub written over it`);
@@ -1085,12 +1331,52 @@ export function publisherPages(o: { site: string; ast: string; work?: string; ig
  * `publisher-pages` — the identifier lookup page and the mounted layer
  * docs. Owner, 2026-10-15: those pages get the search box too. Both stamps
  * leave a page that already carries them as it was, so the pages
- * `publisher-pages` stamped are untouched.
+ * `publisher-pages` stamped are untouched. The step also leaves out the other
+ * IG layers' artefact indexes the mount of served directories copied in
+ * ({@link dropForeignIndexes}).
  */
 export function lateBar(site: string, ig: string): { lang: number; pages: number } {
   const lang = stampTranslationMeta(site, ig);
   const { pages } = stampIgBar(site, igTitle(ig) ?? basename(resolve(ig)));
   return { lang, pages };
+}
+
+/**
+ * The served artefact indexes of OTHER IG layers that the platform's mount of
+ * served directories (cat-harness-tools `mount-instance-docs.ts`) copies into
+ * this IG's site: every directory a layer other than the checkout's own
+ * declares `served` with the `fhir-artifact-index` kind, with the route it was
+ * copied to. Pure over `entries` (`declaredEntries` of the checkout).
+ *
+ * Owner, 2026-11-10: another layer's content is not copied into an IG's site,
+ * only cross-referenced. That index (the base IG's `index.json`, `package.tgz`
+ * and IG API sidecars, 2.9 MB on one IG) is built at publish for the
+ * build-time readers of the mounted layer (its artefact-index visualiser,
+ * which links that IG's own published pages), and nothing on this site
+ * fetches it: this site's pages read their own index at
+ * `fhir-artifact-index/`. That IG publishes the index on its own site.
+ */
+export function foreignArtefactIndexes(root: string, entries: readonly ResolvedEntry[]): Served[] {
+  const own = resolve(root);
+  return servedDirectories(entries.filter((e) => e.entry.served === true && resolve(e.instanceDir) !== own && (e.entry.graphTypologies ?? []).includes(INDEX_SERVED)));
+}
+
+/**
+ * Remove from the built site the other IG layers' artefact indexes the mount
+ * of served directories copied there ({@link foreignArtefactIndexes}). Run by
+ * the final step `ig-site:bar`, after that mount. Returns each route removed
+ * and its size.
+ */
+export function dropForeignIndexes(site: string, root: string, entries: readonly ResolvedEntry[] = declaredEntries(resolve(root))): { route: string; bytes: number }[] {
+  const out: { route: string; bytes: number }[] = [];
+  for (const sv of foreignArtefactIndexes(root, entries)) {
+    const at = join(site, sv.route);
+    if (!existsSync(at)) continue;
+    const size = (p: string): number => (statSync(p).isDirectory() ? readdirSync(p).reduce((n, f) => n + size(join(p, f)), 0) : statSync(p).size);
+    out.push({ route: sv.route, bytes: size(at) });
+    rmSync(at, { recursive: true, force: true });
+  }
+  return out;
 }
 
 if (import.meta.main) {
@@ -1116,6 +1402,8 @@ if (import.meta.main) {
     } else if (cmd === "bar" && target) {
       const r = lateBar(resolve(target), ig);
       console.log(`bar: the language picker's block on ${r.lang} and the IG's slim bar on ${r.pages} page(s) the platform wrote after publisher-pages`);
+      const dropped = dropForeignIndexes(resolve(target), ig);
+      for (const d of dropped) console.log(`bar: ${d.route}/ left out (${(d.bytes / 1e6).toFixed(2)} MB), another IG layer's artefact index: that IG publishes it on its own site, and no page here reads it`);
     } else {
       console.error(
         "usage: ig-repo-site.ts ast [--ig <checkout>] [--work <dir>]\n" +
