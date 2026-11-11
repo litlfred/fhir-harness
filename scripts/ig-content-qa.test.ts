@@ -3,6 +3,7 @@ import { mkdirSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
+  pageItems,
   CONTENT_QA_SIDECAR,
   INJECTION_RULES,
   collectItems,
@@ -184,5 +185,19 @@ describe("the browser's copy of the rules", () => {
     expect(injectionHits(PUBLISHER_DIV)).toEqual([]);
     expect(injectionHits('<div><img src=x onerror="alert(1)"></div>')).toEqual(["an on* event handler attribute"]);
     expect(injectionHits('<a href="&#106;avascript:x">')).toEqual(["a javascript:/vbscript: URL"]);
+  });
+});
+
+describe("pageItems: translated page catalogues (fhir-harness#382)", () => {
+  test("translations/<locale>/pagecontent/*.po are cleared with the pages", () => {
+    const ig = mkdtempSync(join(tmpdir(), "qa-tr-"));
+    mkdirSync(join(ig, "input", "pagecontent"), { recursive: true });
+    writeFileSync(join(ig, "input", "pagecontent", "index.md"), "Hello.\n");
+    mkdirSync(join(ig, "translations", "fr", "pagecontent"), { recursive: true });
+    writeFileSync(join(ig, "translations", "fr", "pagecontent", "index.po"), 'msgid "Hello."\nmsgstr "Bonjour."\n');
+    writeFileSync(join(ig, "translations", "fr", "pagecontent", "index.pot"), 'msgid "Hello."\nmsgstr ""\n');
+    expect(pageItems(ig).map((i) => i.where)).toEqual(["input/pagecontent/index.md", "translations/fr/pagecontent/index.po"]);
+    const notDeclared = { declares: (r: string) => !r.startsWith("translations/"), reaches: () => true };
+    expect(pageItems(ig, notDeclared).map((i) => i.where)).toEqual(["input/pagecontent/index.md"]);
   });
 });
