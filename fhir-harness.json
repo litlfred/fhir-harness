@@ -236,6 +236,11 @@
         "script": "ingest:ig-chrome:check",
         "kind": "report",
         "reason": "CI CANNOT OBTAIN ITS INPUT, and here it needs THREE checkouts rather than one. It compares the committed `chrome.json` against the `fhir.template` chain the IG's `ig.ini` names — `fhir.base.template` and `who.template.root`, which are separate repositories (`HL7/ig-template-base`, `WorldHealthOrganization/smart-ig-template`) that this checkout does not contain and a runner cannot fetch. The wall the retired `ingest:ig-menu:check` met, one layer worse: an IG's appearance is declared in no file the IG owns. Built so a skip CANNOT be mistaken for a pass — with no `--ig`/`--layer` it exits **2**, printing `could not determine`, rather than the 0 a silent skip would give. What IS gated, on every run and without the network, is the committed chrome's EFFECT: `smart-trust:pages:check` regenerates all 681 pages from it and compares them byte for byte, and `check:kind-validators` parses the file against `folio-ig-chrome/v1`. Run this one by hand after cloning the IG and its templates, or from `/prepare-merge`. Bean `ajx9`"
+      },
+      {
+        "script": "check:ig-content-qa",
+        "kind": "covered-by",
+        "reason": "RUNS AT EVERY IG SITE PUBLISH, not as a step of its own: `ig-site:compose` (`ig-repo-site.ts` `contentQaGate`) calls the same `runGate` before anything is staged, so a pattern hit, an open finding, or a missing or stale review refuses the publish, previews included (fhir-harness#330, card Q-INJ-1). It judges ONE IG checkout and its AST cache; at a platform or index root there is no IG, so there it can only fail with `no AST at output-ast`. Kept as a script to run the gate by hand on an IG checkout (skill `ig-content-qa`)"
       }
     ]
   },
