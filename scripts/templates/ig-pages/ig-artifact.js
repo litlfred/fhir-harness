@@ -143,17 +143,27 @@
   }
 
   /* The description is the IG's markdown. A small, safe subset is drawn:
-     paragraphs, `-`/`*`/`+` and `1.` lists, [text](url) links, ![alt](src)
-     images, **strong**, *emphasis* and `code`. Everything goes in as text through el(); nothing
+     paragraphs, `-`/`*`/`+` and `1.` lists, [text](url) links, ![alt](data:image/...)
+     inline pictures, **strong**, *emphasis* and `code`. Everything goes in as text through el(); nothing
      from the markdown is set as HTML. Anything else stays as written. */
   var LIST_ITEM = /^\s{0,3}(?:([-*+])|(\d{1,9})[.)])\s+(.*)$/;
   var INLINE = /!\[([^\]]*)\]\(([^)\s]+)\)|`([^`]+)`|\[([^\]]+)\]\(([^)\s]+)\)|\*\*(?=\S)([\s\S]*?\S)\*\*|\*(?=[^\s*])([^*]*?[^\s*])\*/g;
-  /* An image's source: a page-relative or web URL, or an inline raster or SVG
-     picture. In an <img>, an SVG runs no script. */
-  function imageSrc(src) {
-    // The web-or-relative half is safe()'s test, written out so this drawer
-    // stands alone (the markdown QA check runs it outside the page).
-    return /^data:image\/(?:png|jpeg|gif|webp|svg\+xml)[;,]/i.test(src) || /^(https?:|\.{0,2}\/|[^:]*$)/i.test(src);
+  /* An image is drawn only from an inline picture, `data:image/<raster or
+     svg+xml>[;base64],...`, as a blob: URL made from its decoded bytes, so no
+     text from the markdown becomes the <img>'s address. In an <img>, an SVG
+     runs no script. Any other source shows its alt text. */
+  var IMAGE_DATA = /^data:(image\/(?:png|jpeg|gif|webp|svg\+xml))(;base64)?,([\s\S]*)$/i;
+  function imageUrl(src) {
+    var m = IMAGE_DATA.exec(src);
+    if (!m || typeof Blob === "undefined" || typeof URL === "undefined" || !URL.createObjectURL) return null;
+    try {
+      var raw = m[2] ? atob(m[3]) : decodeURIComponent(m[3]);
+      var bytes = new Uint8Array(raw.length);
+      for (var i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i) & 255;
+      return URL.createObjectURL(new Blob([bytes], { type: m[1].toLowerCase() }));
+    } catch (_e) {
+      return null;
+    }
   }
 
   function inline(parent, text, root) {
@@ -163,10 +173,11 @@
     while ((m = re.exec(text))) {
       parent.append(text.slice(last, m.index));
       if (m[2] !== undefined) {
-        if (imageSrc(m[2])) {
+        var url = imageUrl(m[2]);
+        if (url) {
           var img = el("img", "iga-inline-img");
           img.alt = m[1];
-          img.src = /^[a-z][a-z0-9+.-]*:/i.test(m[2]) || m[2].charAt(0) === "/" ? m[2] : root + m[2];
+          img.src = url;
           parent.append(img);
         } else parent.append(m[1]);
       } else if (m[3] !== undefined) {

@@ -140,7 +140,7 @@ Feature: An artefact's tab views on the IG site
     Given descriptions with **strong**, *emphasis*, `code`, a link, a "-" list with a wrapped item, and a "1." list after a paragraph
     When the renderer draws them
     Then each becomes its element, and the list items become list elements
-    And an inline picture (a data: SVG avatar) is drawn as an image, and an image with an unsafe source as its alt text only
+    And an inline picture (a data: SVG avatar) is drawn as an image from its own bytes, and an image with any other source as its alt text only
     And a "2023." line inside a paragraph and a lone "*" stay as written
     And nothing in the markdown drawer sets HTML
 
