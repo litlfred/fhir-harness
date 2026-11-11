@@ -170,6 +170,7 @@ import { AST_HISTORY_FILE, readAstHistory } from "./ig-ast-history.ts";
 import { copyDeclared, igReadScope, type IgReadScope } from "./ig-read-scope.ts";
 import { siteBuild, type SiteBuild, STAMP_FILE } from "./site-build-stamp.ts";
 import { buildQaPage, publishQaAssets } from "./ig-qa-page.ts";
+import { ACCEPT_UNREVIEWED_ENV, runGate, type ContentQaVerdict } from "./ig-content-qa.ts";
 import { annexesFor, artifactsFor, copyDocsInto, footerFor, githubEditBase, instanceNeeds, webpagePalette } from "./stage-ig-sites.ts";
 // The preview directories (cat-harness-tools `schemas/sdlc/preview-prefix.ts`):
 // `branches/` since 2026-11-05, and the legacy `STAGING/` still read. Named
@@ -670,6 +671,19 @@ export function copyIgSource(ig: string, src: string, scope: IgReadScope = igRea
   return top;
 }
 
+/**
+ * The injection gate for one compose (`ig-content-qa.ts`). A missing or stale
+ * review refuses every publish, previews included (owner, 2026-11-10, card
+ * Q-INJ-1 "B: previews refuse too"). `IG_CONTENT_QA_ACCEPT_UNREVIEWED=1`
+ * accepts one for a local build only (`stage-local-ig`), and the QA page says
+ * so. Nothing accepts a pattern hit or an open finding. Throws on a refusal,
+ * naming each text.
+ */
+export function contentQaGate(o: { ig: string; ast: string; scope: IgReadScope; work?: string; env?: Record<string, string | undefined>; log: (s: string) => void }): ContentQaVerdict {
+  const accept = (o.env ?? process.env)[ACCEPT_UNREVIEWED_ENV] === "1";
+  return runGate({ ig: o.ig, ast: o.ast, scope: o.scope, acceptUnreviewed: accept, ...(o.work ? { work: o.work } : {}), log: o.log });
+}
+
 /** Whether the IG has PlantUML sources to render. */
 function hasPlantuml(ig: string): boolean {
   const d = join(ig, "input", "images-source");
@@ -700,6 +714,9 @@ export function compose(o: { docs: string; ig: string; baseurl: string; ast?: st
     const baseurl = o.baseurl.replace(/\/$/, "");
     const label = igTitle(ig) ?? name;
     const ast = resolve(o.ast ?? join(ig, AST_DIR));
+    // The injection gate (fhir-harness#330), before anything is staged: a
+    // pattern hit, an open finding, or a missing or stale agent review refuses.
+    const content = contentQaGate({ ig, ast, scope, ...(o.work ? { work: o.work } : {}), log });
     const igApi = siteIgApi(o.work, ast);
     log(
       igApi
@@ -716,7 +733,7 @@ export function compose(o: { docs: string; ig: string; baseurl: string; ast?: st
     const annexes = annexesFor(ig, log);
     // The QA report the footer's "QA Report" links: the FHIR QA the build
     // holds and the knowledge graph's, on one page (`ig-qa-page.ts`).
-    const qa = buildQaPage({ root: ig, ast, ...(o.work ? { validity: join(o.work, VALIDITY_FILE) } : {}) });
+    const qa = buildQaPage({ root: ig, ast, content, ...(o.work ? { validity: join(o.work, VALIDITY_FILE) } : {}) });
     const astRaw = astRawBase(o.work);
     const r = stageIgSite(src, site, {
       baseurl,

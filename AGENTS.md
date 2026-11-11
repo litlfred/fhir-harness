@@ -84,7 +84,7 @@ AST holds (the skill above, "Annexes an IG's pages load on demand").
 
 <!-- skills:index:begin -->
 
-_17 skills in 3 directories, generated from each skill's front matter. `bun run cat readme:sync` rewrites this list and `readme:sync:check` fails when it is stale. Skills this repository inherits are listed by the repositories that publish them._
+_18 skills in 3 directories, generated from each skill's front matter. `bun run cat readme:sync` rewrites this list and `readme:sync:check` fails when it is stale. Skills this repository inherits are listed by the repositories that publish them._
 
 **`skills/content/fhir-ig-authoring/`** (6)
 
@@ -104,7 +104,7 @@ _17 skills in 3 directories, generated from each skill's front matter. `bun run 
 | [`fhir-client-operations`](skills/fhir-client/fhir-client-operations.md) | Reading, searching and writing FHIR R4 resources through the SMARTerFHIR client (`BaseClient` and its vendor subclasses): the launch-context reads, `requestResource`, `create` with its automatic… |
 | [`smart-launch`](skills/fhir-client/smart-launch.md) | How a browser app performs a SMART on FHIR launch — EHR launch and standalone launch — with the SMARTerFHIR library: `SmartLaunchHandler`, the `LAUNCH` and `EMR` enums, the scopes it requests per… |
 
-**`skills/fhir-ig-base/`** (9)
+**`skills/fhir-ig-base/`** (10)
 
 | Skill | What it is for |
 |---|---|
@@ -112,6 +112,7 @@ _17 skills in 3 directories, generated from each skill's front matter. `bun run 
 | [`ig-ast-delta`](skills/fhir-ig-base/ig-ast-delta.md) | List and view what changed between two IG ASTs, check whether an AST is still valid for the IG's current inputs, and render the delta as just-the-docs pages that carry the provisional mark. |
 | [`ig-binary-artefacts`](skills/fhir-ig-base/ig-binary-artefacts.md) | Where the IG Publisher's binary outputs go — full-ig.zip, package.tgz and its R4/R4B variants, package.db, validator packs, and the definitions, examples and expansions zips — and why a pages branch… |
 | [`ig-build-pipeline`](skills/fhir-ig-base/ig-build-pipeline.md) | The bare FHIR IG pipeline — FSH to SUSHI to the IG Publisher to a pages branch, with no pre-processing and no post-processing. |
+| [`ig-content-qa`](skills/fhir-ig-base/ig-content-qa.md) | Review an IG's resource narratives, markdown fields and pages for injection attempts before its site is published, and record the review as the QA sidecar the publish gate reads (qa/ig-content-qa.json, keyed to the… |
 | [`ig-publisher-fork`](skills/fhir-ig-base/ig-publisher-fork.md) | Requirements for an agent working a local experimental fork of the IG Publisher — which repositories, what the AST must carry, what must not change, and the acceptance criteria. |
 | [`ig-publisher-reduction`](skills/fhir-ig-base/ig-publisher-reduction.md) | The phased transition that reduces the IG Publisher to AST + QA — five phases, each with an exit criterion that is measured rather than asserted, and the staleness contract that makes an AST-backed… |
 | [`ig-render-jekyll`](skills/fhir-ig-base/ig-render-jekyll.md) | Rendering a FHIR IG's content through the just-the-docs pipeline instead of mounting the IG Publisher's finished HTML — the JSON-only representation contract, navigation derived from… |
