@@ -39,6 +39,8 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { copyKgQaRecords, kgQaMarkdown, kgQaReport, type KgQaReport } from "../../cat-harness-tools/scripts/kg-qa-report.ts";
 import { readDeclaration } from "../../cat-harness-tools/schemas/kg/cat-harness.ts";
+import { execFileSync } from "node:child_process";
+import { QA_MESSAGES_FILE, QA_MESSAGES_SCHEMA } from "./ig-qa-messages.ts";
 
 /** Where the KG records are published under the site root. */
 export const KG_QA_ASSETS = "assets/kg-qa";
@@ -46,6 +48,10 @@ export const KG_QA_ASSETS = "assets/kg-qa";
 export const FHIR_QA_ASSETS = "assets/fhir-qa";
 /** The Publisher's QA summary, as its run writes it to `output/` and the AST build carries it. */
 export const PUBLISHER_QA_FILE = "qa.json";
+/** Where the site's artifact pages are: `ARTIFACT_DIR` of `ig-artifact-jsonld.ts`, named here so this page does not load that module's schemas. */
+const ARTIFACT_DIR = "artifact";
+/** The page script that draws the Publisher's messages in its own layout, published beside them. */
+export const QA_MESSAGES_SCRIPT = "qa-messages.js";
 
 type Json = Record<string, unknown>;
 
@@ -53,6 +59,10 @@ type Json = Record<string, unknown>;
 export interface FhirQa {
   /** The Publisher's `qa.json`, as the AST carries it. */
   publisher?: Json;
+  /** The Publisher's full message list (`ig-qa-messages.ts`), as the AST carries it. */
+  messages?: Json;
+  /** Where the IG's tracked files are, at the commit this site is built from (`https://github.com/<o>/<r>/blob/<sha>/`), for the messages' file links. */
+  sourceBase?: string;
   /** The AST's `manifest.json`. */
   manifest?: Json;
   /** `ig-ast-validity.json`, as `ig-repo-site ast` wrote it. */
@@ -74,7 +84,9 @@ export function readFhirQa(ast: string | undefined, validityFile?: string): Fhir
   const publisher = ast ? readJson(join(ast, PUBLISHER_QA_FILE)) : undefined;
   const manifest = ast ? readJson(join(ast, "manifest.json")) : undefined;
   const validity = readJson(validityFile) as FhirQa["validity"];
-  return { ...(publisher ? { publisher } : {}), ...(manifest ? { manifest } : {}), ...(validity ? { validity } : {}) };
+  const read = ast ? readJson(join(ast, QA_MESSAGES_FILE)) : undefined;
+  const messages = read && read.$schema === QA_MESSAGES_SCHEMA && Array.isArray(read.groups) && read.groups.length > 0 ? read : undefined;
+  return { ...(publisher ? { publisher } : {}), ...(messages ? { messages } : {}), ...(manifest ? { manifest } : {}), ...(validity ? { validity } : {}) };
 }
 
 const code = (v: unknown): string => `\`${String(v).replace(/`/g, "'")}\``;
@@ -97,7 +109,15 @@ export function fhirQaMarkdown(q: FhirQa, o: { up?: string } = {}): string[] {
     const run = [p.tool ? `IG Publisher ${String(p.tool)}` : undefined, p.version ? `FHIR ${String(p.version)}` : undefined, p.date ?? p.dateISO8601 ? `on ${String(p.date ?? p.dateISO8601)}` : undefined].filter(Boolean);
     lines.push(`The Publisher's own QA summary for the run this AST came from${run.length ? ` (${run.join(", ")})` : ""}. [Summary (JSON)](${up}${FHIR_QA_ASSETS}/${PUBLISHER_QA_FILE})`, "");
     const held = rows.filter(([, n]) => n !== undefined);
-    if (held.length) {
+    if (q.messages) {
+      lines.push(
+        `Every message the Publisher reported, laid out as its own \`qa.html\` lays them out. [Messages (JSON)](${up}${FHIR_QA_ASSETS}/${QA_MESSAGES_FILE})`,
+        "",
+        `<div class="ig-qa-publisher" markdown="0" data-summary="${up}${FHIR_QA_ASSETS}/${PUBLISHER_QA_FILE}" data-messages="${up}${FHIR_QA_ASSETS}/${QA_MESSAGES_FILE}" data-pages="${up}assets/ast-pages.json" data-artifacts="${up}${ARTIFACT_DIR}/"${q.sourceBase ? ` data-source="${q.sourceBase}"` : ""}><p>Loading the Publisher's messages…</p><noscript><p>The messages are drawn in the browser; without JavaScript, read the JSON above.</p></noscript></div>`,
+        `<script src="${up}${FHIR_QA_ASSETS}/${QA_MESSAGES_SCRIPT}"></script>`,
+        "",
+      );
+    } else if (held.length) {
       lines.push("| messages | count |", "|---|---|");
       for (const [k, n] of held) lines.push(`| ${k} | ${n} |`);
       lines.push("");
@@ -162,10 +182,24 @@ export function renderQaPage(o: { title: string; fhir: FhirQa; kg: KgQaReport; u
   ].join("\n");
 }
 
+/** `https://github.com/<o>/<r>/blob/<sha>/` for a GitHub checkout, so a message's tracked file links to its source; undefined otherwise. */
+export function githubBlobBase(root: string): string | undefined {
+  try {
+    const git = (...a: string[]) => execFileSync("git", ["-C", root, ...a], { encoding: "utf-8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+    const remote = /github\.com[/:]([\w.-]+)\/([\w.-]+?)(?:\.git)?\/?$/.exec(git("remote", "get-url", "origin"));
+    const sha = git("rev-parse", "HEAD");
+    return remote && /^[0-9a-f]{40}$/.test(sha) ? `https://github.com/${remote[1]}/${remote[2]}/blob/${sha}/` : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 /** The page for the checkout at `root`: its text, and what it links that must be published beside it ({@link publishQaAssets}). */
 export function buildQaPage(o: { root: string; ast?: string; validity?: string; title?: string }): { page: string; fhir: FhirQa; kg: KgQaReport } {
   const root = resolve(o.root);
   const fhir = readFhirQa(o.ast, o.validity);
+  const sourceBase = githubBlobBase(root);
+  if (sourceBase) fhir.sourceBase = sourceBase;
   const kg = kgQaReport(root, readDeclaration(root)?.name);
   return { page: renderQaPage({ title: o.title ?? "QA Report", fhir, kg }), fhir, kg };
 }
@@ -175,6 +209,10 @@ export function publishQaAssets(r: { fhir: FhirQa; kg: KgQaReport }, site: strin
   if (r.fhir.publisher) {
     mkdirSync(join(site, FHIR_QA_ASSETS), { recursive: true });
     writeFileSync(join(site, FHIR_QA_ASSETS, PUBLISHER_QA_FILE), `${JSON.stringify(r.fhir.publisher, null, 2)}\n`);
+  }
+  if (r.fhir.publisher && r.fhir.messages) {
+    writeFileSync(join(site, FHIR_QA_ASSETS, QA_MESSAGES_FILE), `${JSON.stringify(r.fhir.messages)}\n`);
+    writeFileSync(join(site, FHIR_QA_ASSETS, QA_MESSAGES_SCRIPT), QA_MESSAGES_JS);
   }
   return copyKgQaRecords(r.kg, site, KG_QA_ASSETS);
 }
@@ -199,3 +237,209 @@ function main(): number {
 }
 
 if (import.meta.main) process.exit(main());
+
+/**
+ * The page script: the Publisher's `qa.html` layout, drawn from `qa.json` and
+ * `qa-messages.json` (ValidationPresenter: the header, the "Quality Checks"
+ * table, the file table, then each file's Path / Severity / Message table,
+ * in the Publisher's colours). Plain ES5, every value written as text.
+ */
+export const QA_MESSAGES_JS = String.raw`(function () {
+  "use strict";
+  var COLOR = { fatal: "#ff9999", error: "#ffdddd", warning: "#ffebcc", information: "#ffffe6" };
+  var boxes = document.querySelectorAll(".ig-qa-publisher");
+  if (boxes.length && !document.getElementById("ig-qa-publisher-css")) {
+    var css = document.createElement("style");
+    css.id = "ig-qa-publisher-css";
+    css.textContent =
+      ".ig-qa-publisher table.grid{border-collapse:collapse;margin:0 0 1em;font-size:.85em;width:auto}" +
+      ".ig-qa-publisher table.grid td{border:1px solid #888;padding:3px 6px;vertical-align:top;color:#000}" +
+      ".ig-qa-publisher table.grid td.plain{color:inherit}" +
+      ".ig-qa-publisher .mid{font-size:8px;color:navy;display:none}" +
+      ".ig-qa-publisher.show-ids .mid{display:inline}" +
+      ".ig-qa-publisher .grid-wrap{overflow-x:auto}";
+    document.head.appendChild(css);
+  }
+  for (var i = 0; i < boxes.length; i++) run(boxes[i]);
+
+  function el(tag, text, attrs) {
+    var e = document.createElement(tag);
+    if (text != null) e.textContent = String(text);
+    for (var k in attrs || {}) if (Object.prototype.hasOwnProperty.call(attrs, k)) e.setAttribute(k, attrs[k]);
+    return e;
+  }
+  function getJson(u) {
+    return fetch(u).then(function (r) {
+      if (!r.ok) throw new Error(u + " answered HTTP " + r.status);
+      return r.json();
+    });
+  }
+  function row(cells, color, bold) {
+    var tr = el("tr", null, color ? { style: "background-color: " + color } : null);
+    cells.forEach(function (c) {
+      var td = el("td", null, color ? null : { "class": "plain" });
+      if (c && c.nodeType) td.appendChild(c);
+      else if (bold) td.appendChild(el("b", c));
+      else td.textContent = c == null ? "" : String(c);
+      tr.appendChild(td);
+    });
+    return tr;
+  }
+  function wrap(table) {
+    var d = el("div", null, { "class": "grid-wrap" });
+    d.appendChild(table);
+    return d;
+  }
+  function counts(g) {
+    var c = { err: 0, warn: 0, info: 0 };
+    g.messages.forEach(function (m) {
+      if (m.severity === "error" || m.severity === "fatal") c.err++;
+      else if (m.severity === "warning") c.warn++;
+      else c.info++;
+    });
+    return c;
+  }
+
+  function run(box) {
+    var pagesUrl = box.getAttribute("data-pages");
+    Promise.all([
+      getJson(box.getAttribute("data-summary")).catch(function () { return {}; }),
+      getJson(box.getAttribute("data-messages")),
+      pagesUrl ? getJson(pagesUrl).catch(function () { return []; }) : Promise.resolve([]),
+    ])
+      .then(function (r) {
+        var pages = {};
+        (Array.isArray(r[2]) ? r[2] : []).forEach(function (p) { pages[p] = true; });
+        var q = r[0] || {};
+        var canon = typeof q.url === "string" ? q.url.replace(/\/ImplementationGuide\/[^\/]+$/, "") : "";
+        draw(box, q, r[1] || {}, {
+          pages: pages,
+          artifacts: box.getAttribute("data-artifacts") || "artifact/",
+          source: box.getAttribute("data-source") || "",
+          canon: canon,
+        });
+      })
+      .catch(function (e) {
+        box.textContent = "";
+        box.appendChild(el("p", "Could not load the Publisher's messages (" + e.message + ")."));
+      });
+  }
+
+  /** The site's page for a resource named Type-id, when the site has one. */
+  function pageFor(L, name) {
+    return L.pages[name + ".html"] ? L.artifacts + name + ".html" : null;
+  }
+  /** A message file: its artifact page on this site, and its source at the built commit when it is tracked (input/...). */
+  function fileCell(L, file, label) {
+    var span = el("span");
+    var base = file ? file.replace(/^.*\//, "").replace(/\.(json|xml|fsh)$/, "") : "";
+    var page = base && pageFor(L, base);
+    span.appendChild(page ? el("a", label, { href: page }) : document.createTextNode(label));
+    if (file && L.source && /^input\//.test(file)) {
+      span.appendChild(document.createTextNode(" "));
+      span.appendChild(el("a", "(source)", { href: L.source + file.split("/").map(encodeURIComponent).join("/") }));
+    }
+    return span;
+  }
+  /** Message text with each URL linked: one of this IG's canonicals to its page here, any other to itself. */
+  function linkText(L, text) {
+    var out = el("b");
+    var re = /https?:\/\/[^\s'"<>()|]+[^\s'"<>()|.,;:]/g;
+    var last = 0;
+    var m;
+    while ((m = re.exec(text))) {
+      out.appendChild(document.createTextNode(text.slice(last, m.index)));
+      var u = m[0].replace(/\|.*$/, "");
+      var href = u;
+      if (L.canon && u.indexOf(L.canon + "/") === 0) {
+        var rest = u.slice(L.canon.length + 1).split("/");
+        if (rest.length === 2) href = pageFor(L, rest[0] + "-" + rest[1]) || u;
+      }
+      out.appendChild(el("a", m[0], { href: href }));
+      last = m.index + m[0].length;
+    }
+    out.appendChild(document.createTextNode(text.slice(last)));
+    return out;
+  }
+
+  function draw(box, q, m, L) {
+    box.textContent = "";
+    var groups = Array.isArray(m.groups) ? m.groups : [];
+    box.appendChild(el("h4", "Validation Results for " + (q.title || q.name || "this IG")));
+    var p = el("p");
+    p.appendChild(document.createTextNode("Generated " + (q.date || q.dateISO8601 || "?") + ", FHIR version " + (q.version || "?") + " for "));
+    var igName = (q["package-id"] || "?") + "#" + (q["ig-ver"] || "?");
+    var igPage = q["package-id"] && pageFor(L, "ImplementationGuide-" + q["package-id"]);
+    p.appendChild(igPage ? el("a", igName, { href: igPage }) : document.createTextNode(igName));
+    if (q.url) {
+      p.appendChild(document.createTextNode(" (canonical = "));
+      var a = el("a", q.url, { href: q.url });
+      p.appendChild(a);
+      p.appendChild(document.createTextNode(")"));
+    }
+    p.appendChild(document.createTextNode("."));
+    box.appendChild(p);
+
+    var qc = el("table", null, { "class": "grid" });
+    var head = el("tr");
+    var th = el("td", null, { colspan: "2", "class": "plain" });
+    th.appendChild(el("b", "Quality Checks"));
+    head.appendChild(th);
+    qc.appendChild(head);
+    qc.appendChild(row(["Publisher Version:", q.tool || "?"]));
+    var btn = el("button", "Show Message Ids", { type: "button" });
+    btn.addEventListener("click", function () {
+      var on = box.className.indexOf("show-ids") < 0;
+      box.className = on ? box.className + " show-ids" : box.className.replace(/ ?show-ids/, "");
+      btn.textContent = on ? "Hide Message Ids" : "Show Message Ids";
+    });
+    var sum = el("span");
+    sum.appendChild(document.createTextNode(" errors = " + (q.errs != null ? q.errs : "?") + ", warn = " + (q.warnings != null ? q.warnings : "?") + ", info = " + (q.hints != null ? q.hints : "?") + ", broken links = " + (q["broken-links"] != null ? q["broken-links"] : "?") + ".  "));
+    sum.appendChild(btn);
+    qc.appendChild(row(["Summary:", sum]));
+    box.appendChild(wrap(qc));
+
+    var files = el("table", null, { "class": "grid", id: "qa-files" });
+    files.appendChild(row(["Filename", "Errors", "Warnings", "Hints"], null, true));
+    groups.forEach(function (g, i) {
+      var c = counts(g);
+      var b = el("b");
+      b.appendChild(el("a", g.file || "Build Errors", { href: "#qa-f" + i }));
+      var base = g.file ? g.file.replace(/^.*\//, "").replace(/\.(json|xml|fsh)$/, "") : "";
+      var page = base && pageFor(L, base);
+      if (page) {
+        b.appendChild(document.createTextNode(" "));
+        b.appendChild(el("a", "(page)", { href: page }));
+      }
+      files.appendChild(row([b, String(c.err), String(c.warn), String(c.info)], c.err ? COLOR.error : "#EFFFEF"));
+    });
+    box.appendChild(wrap(files));
+    if (!groups.length) box.appendChild(el("p", m.absent ? "No messages: " + m.absent + "." : "The Publisher reported no messages."));
+
+    groups.forEach(function (g, i) {
+      box.appendChild(el("hr"));
+      var c = counts(g);
+      var h = el("h5", null, { id: "qa-f" + i });
+      h.appendChild(fileCell(L, g.file, g.file || "Build Errors"));
+      h.appendChild(document.createTextNode("  (" + c.err + " errors, " + c.warn + " warnings, " + c.info + " hints) "));
+      h.appendChild(el("a", "\u2191 files", { href: "#qa-files" }));
+      box.appendChild(h);
+      var t = el("table", null, { "class": "grid" });
+      t.appendChild(row(["Path", "Severity", "Message"], null, true));
+      g.messages.forEach(function (msg) {
+        var where = (msg.path || "") + (msg.line > 0 ? " (l" + msg.line + "/c" + msg.col + ")" : "");
+        var text = el("span");
+        text.appendChild(linkText(L, msg.text));
+        if (msg.messageId) {
+          text.appendChild(document.createTextNode(" "));
+          text.appendChild(el("span", msg.messageId, { "class": "mid" }));
+        }
+        var pw = el("b", where);
+        var sv = el("b", msg.severity);
+        t.appendChild(row([pw, sv, text], COLOR[msg.severity] || COLOR.information));
+      });
+      box.appendChild(wrap(t));
+    });
+  }
+})();
+`;

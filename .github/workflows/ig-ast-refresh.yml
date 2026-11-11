@@ -187,12 +187,20 @@ jobs:
           # rebuilt, so the site's QA report would never get it. Rebuild it
           # once, in full, on the default branch, where the new AST is seeded.
           # An incremental AST has no full Publisher QA: it is left as it is.
-          if [ "$rebuild" = false ] && [ -f output-ast/manifest.json ] && [ ! -f output-ast/qa.json ]; then
+          # The same once more for the Publisher's full message list
+          # (qa-messages.json, the qa.html layout's data), when the lock's
+          # fhir-harness can write one: a build whose Publisher wrote no
+          # qa.xml still writes the file, so this never repeats.
+          missing=""
+          [ -f output-ast/qa.json ] || missing="qa.json (the Publisher's QA summary)"
+          [ -z "$missing" ] && [ -f fhir-harness/scripts/ig-qa-messages.ts ] && [ ! -f output-ast/qa-messages.json ] \
+            && missing="qa-messages.json (the Publisher's message list)"
+          if [ "$rebuild" = false ] && [ -f output-ast/manifest.json ] && [ -n "$missing" ]; then
             kind=$(bun run fhir-harness/scripts/ig-ast.ts build-kind output-ast 2>/dev/null || echo full)
             git fetch -q origin "refs/heads/${DEFAULT_BRANCH:-main}" 2>/dev/null || true
             if [ "$kind" = full ] && [ "$(git rev-parse HEAD)" = "$(git rev-parse -q --verify FETCH_HEAD)" ]; then
               rebuild=true
-              echo "::notice::the cached AST is valid but carries no qa.json (the Publisher's QA summary): rebuilding it once in full"
+              echo "::notice::the cached AST is valid but carries no $missing: rebuilding it once in full"
             fi
           fi
           echo "verdict=$verdict" >> "$GITHUB_OUTPUT"
@@ -457,6 +465,11 @@ jobs:
           # site never reads output/, so a branch's AST (kept as this run's artifact, never
           # seeded) carries it as well, whatever seed the IG's lock mounts (ig-qa-page.ts).
           [ -f output/qa.json ] && cp output/qa.json output-ast/qa.json
+          # Every message the Publisher reported (output/qa.xml), as the JSON the
+          # site's QA report draws in the Publisher's qa.html layout.
+          if [ -f fhir-harness/scripts/ig-qa-messages.ts ]; then
+            bun run fhir-harness/scripts/ig-qa-messages.ts output/qa.xml output-ast/qa-messages.json || true
+          fi
           # Put the IG's inputs back as the commit has them, ALWAYS: the
           # Publisher writes under input/ during a build (it renders
           # input/images-source/*.plantuml into input/images/*.svg, overwriting
