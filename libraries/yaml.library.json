@@ -21,6 +21,7 @@
     "scripts/fhir-cache-seed-npm.ts",
     "scripts/ig-footer-parity.test.ts",
     "scripts/ig-nav-diff.ts",
+    "scripts/ig-release.ts",
     "scripts/ig-repo-site.ts",
     "scripts/ig-site-data.ts",
     "scripts/ingest-ig-chrome.ts",
