@@ -28,7 +28,8 @@ export const MARKDOWN_FIELDS = ["description", "definition", "comment", "require
 export const LEFTOVERS: { name: string; re: RegExp }[] = [
   { name: "bold", re: /\*\*\S(?:[^*]*?\S)?\*\*|__\S(?:[^_]*?\S)?__/ },
   { name: "list marker", re: /(?:^|\n)[ \t]{0,3}(?:[-*+]|\d{1,9}[.)])[ \t]+\S/ },
-  { name: "link", re: /\[[^\]\n]+\]\([^)\s]+\)/ },
+  // "(" then a drawn link is two links, "[Reference]([Patient])", not one left as text.
+  { name: "link", re: /\[[^\]\n]+\]\((?!\[)[^)\s]+\)/ },
   { name: "image", re: /!\[/ },
   { name: "code", re: /`[^`\n]+`/ },
   { name: "heading", re: /(?:^|\n)#{1,6}[ \t]+\S/ },

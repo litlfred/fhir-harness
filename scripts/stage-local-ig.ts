@@ -656,7 +656,7 @@ export const IG_SITE_STEPS = { ast: "ig-site:ast", source: "ig-site:compose", si
  * - `openapi`, a site step before `site`: run when the checkout holds an
  *   OpenAPI graph (`openapi/cat-openapi.config.json`).
  */
-export const IG_SITE_OPTIONAL = { sidecars: "ig-site:sidecars", index: "ig-index:build", drawings: "render:bpmn", openapi: "ig-site:openapi", bar: "ig-site:bar" } as const;
+export const IG_SITE_OPTIONAL = { sidecars: "ig-site:sidecars", index: "ig-index:build", drawings: "render:bpmn", openapi: "ig-site:openapi", bar: "ig-site:bar", pageScan: "ig-site:page-render-qa" } as const;
 
 /**
  * What an IG repository's root used to serve and no longer does, by the
@@ -840,6 +840,11 @@ export function igFolioSite(o: {
   const finalSteps: string[] = [];
   if (o.scripts.has(IG_SITE_OPTIONAL.bar)) finalSteps.push(IG_SITE_OPTIONAL.bar);
   else notes.push(`${IG_SITE_OPTIONAL.bar}: no mounted layer provides it — the identifier lookup and mounted docs pages keep no IG bar`);
+  // Last, on the finished pages: the QA report's page scan (owner, 2026-11-11, Q-MD-2).
+  if (o.scripts.has(IG_SITE_OPTIONAL.pageScan)) {
+    finalSteps.push(IG_SITE_OPTIONAL.pageScan);
+    notes.push(`${IG_SITE_OPTIONAL.pageScan}: run, every page opened in a headless browser for markup shown as text (reported in the QA report, never gating)`);
+  } else notes.push(`${IG_SITE_OPTIONAL.pageScan}: no mounted layer provides it — the QA report's page scan says it has no results`);
   return {
     site: {
       scope: o.landing.name,

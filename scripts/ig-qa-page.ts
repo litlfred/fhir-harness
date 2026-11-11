@@ -42,6 +42,7 @@ import { readDeclaration } from "../../cat-harness-tools/schemas/kg/cat-harness.
 import { execFileSync } from "node:child_process";
 import { QA_MESSAGES_FILE, QA_MESSAGES_SCHEMA } from "./ig-qa-messages.ts";
 import { markdownQaMarkdown, scanDir, type MarkdownFinding } from "./ig-markdown-qa.ts";
+import { pageRenderQaMarkdown } from "./ig-page-render-qa.ts";
 
 /** Where the KG records are published under the site root. */
 export const KG_QA_ASSETS = "assets/kg-qa";
@@ -160,6 +161,7 @@ export function fhirQaMarkdown(q: FhirQa, o: { up?: string } = {}): string[] {
     }
   } else lines.push("This build recorded no validity verdict for the AST.", "");
   if (q.markdown) lines.push(...markdownQaMarkdown(q.markdown));
+  lines.push(...pageRenderQaMarkdown({ up }));
   return lines;
 }
 
