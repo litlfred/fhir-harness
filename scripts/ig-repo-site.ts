@@ -164,7 +164,7 @@ import { declaredEntries, type ResolvedEntry, type Served, servedDirectories } f
 import { igOpenapiGraph, OPENAPI_DIR } from "../../cat-harness-tools/openapi/scripts/ig-site-openapi.ts";
 import type { FhirArtifactIndex } from "../schemas/fhir-artifact-index.js";
 import { buildMenu } from "./ingest-ig-menu.ts";
-import { THIN_INDEX_CONFIG_ID, THIN_PAGE_CONFIG_ID } from "./ig-thin-pages.ts";
+import { THIN_INDEX_CONFIG_ID, THIN_PAGE_CONFIG_ID, isArtifactPage } from "./ig-thin-pages.ts";
 import { ARTIFACT_DIR, ARTIFACT_INDEX_FILE, COMPILED_BY_NAME, rootResourceName } from "./ig-artifact-jsonld.ts";
 import { AST_HISTORY_FILE, readAstHistory } from "./ig-ast-history.ts";
 import { copyDeclared, igReadScope, type IgReadScope } from "./ig-read-scope.ts";
@@ -884,8 +884,8 @@ const TOC_LABEL_RE = /<meta name="fa-visualiser-label" content="[^"]*">/;
  *
  * This copies the declaration and its label, read off a built page that has
  * them (`index.html` first), into each thin page that lacks one, before the
- * rail pass reads it. Only pages carrying one of {@link IG_THIN_CONFIG_IDS}
- * are touched: a page of anybody else's keeps its own section. No page with
+ * rail pass reads it. Only pages carrying one of {@link IG_THIN_CONFIG_IDS},
+ * or an artefact page that declares its node ({@link isArtifactPage}), are touched: a page of anybody else's keeps its own section. No page with
  * the declaration, nothing to copy and nothing stamped.
  */
 export function stampIgTocNav(site: string): { pages: number } {
@@ -907,7 +907,7 @@ export function stampIgTocNav(site: string): { pages: number } {
   for (const f of all) {
     const abs = join(site, f);
     const html = readFileSync(abs, "utf-8");
-    if (!thin.test(html) || TOC_NAV_RE.test(html)) continue;
+    if (!(thin.test(html) || isArtifactPage(html)) || TOC_NAV_RE.test(html)) continue;
     const at = html.search(/<\/head>/i);
     if (at < 0) continue;
     const add = `${label && !TOC_LABEL_RE.test(html) ? `${label}\n` : ""}${nav}\n`;

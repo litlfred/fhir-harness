@@ -120,8 +120,9 @@ import { IG_CHROME_SCOPE, igFooterData } from "./ig-footer.ts";
 import { JSON_VIEW_SCRIPT, VIEW_PAGE, examplesPage, hasJsonView, historyPage, jsonViewData, mappingsPage, mdText, packageEntries, rebaseDescriptionLinks, profileJsonViewData, resourceFacts, resourceTabs, testingPage, type TabPageData } from "./resource-views.ts";
 import { isDirectoryReadme } from "@litlfred/cat-harness-tools/schemas/kg/kg-node.js";
 import { ARTIFACT_INDEX_FILE, artifactJsonLdFiles, localResourceHref } from "./ig-artifact-jsonld.ts";
-import { THIN_PAGE_SCRIPT, THIN_PAGE_STYLE, artifactTabs, thinArtifactPath, thinArtifactView, thinViewRedirect, type SidecarView } from "./ig-thin-pages.ts";
+import { THIN_PAGE_RENDERER, THIN_PAGE_SCRIPT, THIN_PAGE_STYLE, artifactTabs, thinArtifactPath, thinArtifactView, thinViewRedirect, type SidecarView } from "./ig-thin-pages.ts";
 import { PAGE_LAYOUT_CSS_FILE, PAGE_LAYOUT_CSS_SOURCE, PAGE_LAYOUT_JS_FILE, PAGE_LAYOUT_JS_SOURCE } from "../../cat-harness-tools/scripts/page-layout.ts";
+import { kgRenderScript } from "../../cat-harness-tools/scripts/thin-page.ts";
 import { IG_SEARCH_INDEX_FILE, IG_SEARCH_SCRIPT_FILE } from "./ig-search.ts";
 
 import { IgMenuSchema, type IgMenu, type IgMenuGroup, menuHref, menuItemCount } from "../schemas/ig-menu.js";
@@ -1723,6 +1724,8 @@ if (existsSync(MENU)) {
       pages.set(rel, text);
     }
     pages.set(THIN_PAGE_SCRIPT, readFileSync(THIN_RENDERER, "utf8"));
+    // The generic renderer the artefact pages declare their node for (cat-harness-tools#1830).
+    pages.set(THIN_PAGE_RENDERER, kgRenderScript());
     pages.set(THIN_PAGE_STYLE, readFileSync(THIN_STYLE, "utf8"));
     // The shared page layout every thin page links before its own stylesheet
     // (cat-harness-tools `page-layout.ts`): one width, one bar, one scroll.

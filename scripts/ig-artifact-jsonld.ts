@@ -49,8 +49,12 @@
  *
  * ## IRIs
  *
- * With `--base`, each `@id` is absolute: `<base>artifact/<Type>-<id>.jsonld`.
- * Without it the `@id` is the file's own name, which a JSON-LD processor
+ * Each node's `@id` is extensionless, `artifact/<Type>-<id>`: its kind
+ * (`artifact`) and id are its last two segments (cat-harness-tools#1830,
+ * Q-THIN-2 A), the node's JSON-LD is at the IRI plus `.jsonld`, and the
+ * artefact's page is at the IRI plus `.html`, which a static host serves at
+ * the IRI itself. With `--base`, each `@id` is absolute under it. Without it
+ * the `@id` is relative, which a JSON-LD processor
  * resolves against the document's URL — the same node wherever the site is
  * served, a staging preview included. Every `schema:contentUrl` follows the
  * same rule.
@@ -196,7 +200,6 @@ export function statedFacts(a: FhirArtifact): Pick<IgArtifactJsonLd, "dcterms:co
 
 /** The node for one artefact. Deterministic: the same index gives the same bytes. */
 export function artifactJsonLd(ix: FhirArtifactIndex, a: FhirArtifact, o: JsonLdOptions = {}): IgArtifactJsonLd {
-  const file = `${artifactPageName(a)}.jsonld`;
   const encodings: IgArtifactEncoding[] = [];
   // The site's root copy first (reduced), then the compiled copy the pages
   // read: the AST cache's full copy by raw URL (`mirror`), or a copy this site
@@ -219,7 +222,7 @@ export function artifactJsonLd(ix: FhirArtifactIndex, a: FhirArtifact, o: JsonLd
   const node: IgArtifactJsonLd = {
     "@context": { ...IG_ARTIFACT_JSONLD_CONTEXT },
     $schema: IG_ARTIFACT_JSONLD_SCHEMA_TAG,
-    "@id": iriFor(file, o.base),
+    "@id": iriFor(artifactPageName(a), o.base),
     "@type": `fhir:${a.resourceType}`,
     "dcterms:identifier": a.key,
     ...(a.name ? { "schema:name": a.name } : {}),
@@ -251,7 +254,7 @@ export function artifactIndexJsonLd(ix: FhirArtifactIndex, o: JsonLdOptions = {}
   const parts = [...byCategory(ix.artifacts).values()].flat().map((a) => {
     const root = rootResourceHref(a, o);
     return {
-      "@id": iriFor(`${artifactPageName(a)}.jsonld`, o.base),
+      "@id": iriFor(artifactPageName(a), o.base),
       "@type": `fhir:${a.resourceType}`,
       "dcterms:identifier": a.key,
       "dcterms:title": a.title ?? a.name ?? a.id,
@@ -336,7 +339,7 @@ export function checkArtifactIndexJsonLd(ix: FhirArtifactIndex, docsRoot: string
     if (seen.has(key)) findings.push(`${at}: lists ${key} twice`);
     seen.add(key);
     if (!want.has(key)) findings.push(`${at}: lists ${key}, which the artefact index does not hold`);
-    const nodePath = resolve(dir, decodeURI(relFrom(n["@id"], e["@id"])));
+    const nodePath = `${resolve(dir, decodeURI(relFrom(n["@id"], e["@id"])))}.jsonld`;
     if (!existsSync(nodePath)) {
       findings.push(`${at}: ${key}'s node ${e["@id"]} is not on the site`);
       continue;
@@ -416,7 +419,8 @@ export function checkArtifactJsonLd(ix: FhirArtifactIndex, docsRoot: string): st
     }
     const n = parsed.data;
     if (n["dcterms:identifier"] !== a.key) findings.push(`${ARTIFACT_DIR}/${f}: names ${n["dcterms:identifier"]}, but the file is ${a.key}'s`);
-    if (!n["@id"].endsWith(`/${f}`) && n["@id"] !== f) findings.push(`${ARTIFACT_DIR}/${f}: its @id ${n["@id"]} is not its own address`);
+    const iri = f.replace(/\.jsonld$/, "");
+    if (!n["@id"].endsWith(`/${iri}`) && n["@id"] !== iri) findings.push(`${ARTIFACT_DIR}/${f}: its @id ${n["@id"]} is not its own address`);
     for (const e of n["schema:encoding"]) {
       if (e["dcterms:source"] !== "local") continue;
       const url = e["schema:contentUrl"]["@id"];

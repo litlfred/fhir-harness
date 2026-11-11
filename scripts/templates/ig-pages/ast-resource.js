@@ -31,12 +31,21 @@
 
   var DROP = { SCRIPT: 1, IFRAME: 1, OBJECT: 1, EMBED: 1, LINK: 1, META: 1, BASE: 1, FORM: 1 };
 
+  // The page's shared load counter, the object every loader on it uses
+  // (kg-render.js, ig-footer.js, ...): the last to finish marks the page loaded.
+  function loads() {
+    return (window.__kgLoads = window.__kgLoads || {
+      pending: 0,
+      done: function () {
+        if (--this.pending === 0) document.documentElement.setAttribute("data-kg-loaded", "");
+      },
+    });
+  }
   function begin() {
-    window.__kgLoads = (window.__kgLoads || 0) + 1;
+    loads().pending++;
   }
   function end() {
-    window.__kgLoads -= 1;
-    if (window.__kgLoads <= 0) document.documentElement.setAttribute("data-kg-loaded", "");
+    loads().done();
   }
 
   function sanitise(node) {

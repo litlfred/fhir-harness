@@ -34,14 +34,65 @@
  *
  * Nothing here may know about WHO (fhir-harness/AGENTS.md).
  */
-import { escHtml, thinPageHtml } from "../../cat-harness-tools/scripts/thin-page.ts";
+import { KG_RENDER_ASSET, escHtml, nodeAttrs, pageNodeOf, thinPageHtml, type PageNode, type Prefixes } from "../../cat-harness-tools/scripts/thin-page.ts";
 import { PAGE_BAR_CLASS, PAGE_FOOT_CLASS, PAGE_MAIN_CLASS } from "../../cat-harness-tools/scripts/page-layout.ts";
 import type { FhirArtifact, FhirArtifactIndex } from "../schemas/fhir-artifact-index.js";
 import { ARTIFACT_DIR, artifactPageName, localResourceHref } from "./ig-artifact-jsonld.ts";
 import { igSearchBox, igSearchScript, type IgSearchRef } from "./ig-search.ts";
 
-/** The config block's id — how a run, or a check, recognises a thin artefact page. */
+/**
+ * The config block's id of a thin artefact page from before it declared its
+ * node (cat-harness-tools#1830): a run still recognises one, to replace it.
+ */
 export const THIN_PAGE_CONFIG_ID = "ig-artifact-page";
+/** FHIR RDF's namespace: an artefact page's node is typed `fhir:<resourceType>`, as its JSON-LD node is. */
+export const FHIR_NS = "http://hl7.org/fhir/";
+export const ARTIFACT_PREFIXES: Prefixes = { fhir: FHIR_NS };
+/** The generic renderer, under the docs root (cat-harness-tools `KG_RENDER_ASSET`). */
+export const THIN_PAGE_RENDERER = KG_RENDER_ASSET;
+
+/**
+ * The node an artefact's page renders: its IRI is the page's own address
+ * without `.html` (`ig-artifact-jsonld.ts`), written relative to the page so
+ * it is the same node wherever the site is served.
+ */
+export function artifactPageNode(a: Pick<FhirArtifact, "resourceType" | "id">): PageNode {
+  return { iri: artifactPageName(a), types: [`fhir:${a.resourceType}`] };
+}
+
+/** Is this an artefact's thin page — by the FHIR node it declares, not by its name or a config block? */
+export function isArtifactPage(html: string): boolean {
+  return pageNodeOf(html)?.rdfa.some((n) => n.types.some((t) => t.startsWith(FHIR_NS))) ?? false;
+}
+
+/**
+ * What an artefact's page tells its renderer, read back from the page, in the
+ * shape its config block had (`node`, `view`, `astLoader`, `sidecars`, ...):
+ * the same reading `ig-artifact.js` makes. Undefined for any other page.
+ */
+export function artifactPageConfigOf(html: string): Record<string, unknown> | undefined {
+  if (!isArtifactPage(html)) return undefined;
+  const unesc = (v: string) => v.replace(/&quot;/g, '"').replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&#39;/g, "'").replace(/&amp;/g, "&");
+  const main = /<main\b[^>]*\stypeof="[^"]*"[^>]*>/.exec(html)?.[0] ?? "";
+  const d: Record<string, string> = {};
+  for (const m of main.matchAll(/\sdata-kg-([a-z-]+)="([^"]*)"/g)) d[m[1]!] = unesc(m[2]!);
+  const alt = /<link rel="alternate" type="application\/ld\+json" href="([^"]*)">/.exec(html)?.[1];
+  const cfg: Record<string, unknown> = { ...(alt ? { node: unesc(alt) } : {}) };
+  const plain: Record<string, string> = { view: "view", home: "home", toc: "toc", footer: "footer", prev: "prev", next: "next", resource: "resource", pages: "pages", index: "index", definitions: "definitions", published: "published", astLoader: "ast-loader" };
+  for (const [k, a] of Object.entries(plain)) if (d[a] !== undefined) cfg[k] = d[a];
+  if (d.views) cfg.views = d.views.split(/\s+/);
+  if (d["sidecar-jsonld"] || d["sidecar-schema"]) cfg.sidecars = { ...(d["sidecar-jsonld"] ? { jsonld: d["sidecar-jsonld"] } : {}), ...(d["sidecar-schema"] ? { schema: d["sidecar-schema"] } : {}) };
+  if (d["history-versions"]) cfg.history = { versions: d["history-versions"], repository: d["history-repository"], resourceType: d["history-type"], id: d["history-id"] };
+  return cfg;
+}
+
+/** `data-kg-<name>="value"` for each set value, in order: the page's identity for the renderer. */
+function dataAttrs(d: Record<string, string | undefined>): string {
+  return Object.entries(d)
+    .filter((e): e is [string, string] => e[1] !== undefined)
+    .map(([k, v]) => ` data-kg-${k}="${escHtml(v)}"`)
+    .join("");
+}
 /** The shared renderer and its stylesheet, under the docs root. */
 export const THIN_PAGE_SCRIPT = "assets/ig-artifact.js";
 export const THIN_PAGE_STYLE = "assets/ig-artifact.css";
@@ -217,32 +268,37 @@ export function thinArtifactView(ix: FhirArtifactIndex, a: FhirArtifact, view: A
   const local = localResourceHref(a, o.compiledData) ?? o.resource;
   const html = a.published.html?.url;
   const tab = view === "content" ? undefined : TAB_LABEL[view];
-  const config: Record<string, unknown> = {
-    node,
+  // The page's identity for the renderer, on the element that declares the
+  // node: what to draw and where its data is. The node itself is the head's
+  // `alternate`. Nothing of the artefact's content is written here.
+  const shows = o.tabs?.map((t) => t.view) ?? [];
+  const data = dataAttrs({
     ...(view === "content" ? {} : { view }),
     home: o.home,
-    ...(o.toc ? { toc: o.toc } : {}),
+    toc: o.toc,
     footer: "../assets/ig-footer.json",
     // The reading order runs through the artefacts' own pages, not their tabs.
-    ...(view === "content" && o.prev ? { prev: o.prev } : {}),
-    ...(view === "content" && o.next ? { next: o.next } : {}),
+    prev: view === "content" ? o.prev : undefined,
+    next: view === "content" ? o.next : undefined,
     // The resource this site serves, when the node names no local copy of it.
-    ...(o.resource && !localResourceHref(a, o.compiledData) ? { resource: o.resource } : {}),
+    resource: o.resource && !localResourceHref(a, o.compiledData) ? o.resource : undefined,
     // The AST loader and the list of this site's own pages, which it uses to
     // keep a narrative link that names one of them.
-    ...(local ? { astLoader: "../assets/ast-resource.js", pages: "../assets/ast-pages.json" } : {}),
+    "ast-loader": local ? "../assets/ast-resource.js" : undefined,
+    pages: local ? "../assets/ast-pages.json" : undefined,
     // The views this one page draws (`?view=`), and what the views beyond the
     // content need: the index for examples, the sidecars, the definitions view
     // a mapping row links its element on.
-    ...(o.tabs && o.tabs.length > 1 ? { views: o.tabs.map((t) => t.view) } : {}),
-    ...(o.index && (view === "examples" || o.tabs?.some((t) => t.view === "examples")) ? { index: o.index } : {}),
-    ...(o.sidecars && Object.keys(o.sidecars).length ? { sidecars: o.sidecars } : {}),
-    ...(o.history && o.tabs?.some((t) => t.view === "history") ? { history: { ...o.history, resourceType: a.resourceType, id: a.id } } : {}),
-    ...(view === "mappings" || o.tabs?.some((t) => t.view === "mappings") ? { definitions: artifactViewHref(a, "definitions") } : {}),
+    views: shows.length > 1 ? shows.join(" ") : undefined,
+    index: o.index && (view === "examples" || shows.includes("examples")) ? o.index : undefined,
+    "sidecar-jsonld": o.sidecars?.jsonld,
+    "sidecar-schema": o.sidecars?.schema,
+    ...(o.history && shows.includes("history") ? { "history-versions": o.history.versions, "history-repository": o.history.repository, "history-type": a.resourceType, "history-id": a.id } : {}),
+    definitions: view === "mappings" || shows.includes("mappings") ? artifactViewHref(a, "definitions") : undefined,
     // Where the narrative's other relative links go: the published IG, read
     // off this artefact's own published page. None: they lose their href.
-    ...(html ? { published: html.slice(0, html.lastIndexOf("/") + 1) } : {}),
-  };
+    published: html ? html.slice(0, html.lastIndexOf("/") + 1) : undefined,
+  });
   const noscript =
     `<p>This page draws ${tab ? `the ${escHtml(tab.toLowerCase())} of ` : ""}${escHtml(a.key)} from <a href="${escHtml(node)}">its JSON-LD node</a>` +
     (local ? ` and <a href="${escHtml(local)}">the resource's JSON</a>` : "") +
@@ -252,18 +308,19 @@ export function thinArtifactView(ix: FhirArtifactIndex, a: FhirArtifact, view: A
     jsonld: node,
     canonical: artifactTabFile(a, view),
     script: `../${THIN_PAGE_SCRIPT}`,
+    renderer: `../${THIN_PAGE_RENDERER}`,
+    node: artifactPageNode(a),
+    prefixes: ARTIFACT_PREFIXES,
     // The shared page layout (width, bar, scrolling), then the IG's look.
     layout: "../",
     stylesheet: `../${THIN_PAGE_STYLE}`,
-    configId: THIN_PAGE_CONFIG_ID,
-    config,
     // Identity only — what a link preview, a search engine and a reader
     // without JavaScript need — and the tab bar, plain links between the
     // artefact's views. Everything else is the node's and the resource's.
     body:
       `<header class="iga-top ${PAGE_BAR_CLASS}"><a class="iga-home" href="${escHtml(o.home)}">${escHtml(o.label)}</a>` +
       `<a href="${escHtml(o.all)}">all ${ix.count} artefacts</a>${o.search ? igSearchBox(o.search, o.label) : ""}</header>\n` +
-      `<main class="iga ${PAGE_MAIN_CLASS}"><h1>${escHtml(name)}${tab ? ` <span class="iga-view">— ${escHtml(tab)}</span>` : ""}</h1><p class="iga-key"><code>${escHtml(a.key)}</code></p>` +
+      `<main class="iga ${PAGE_MAIN_CLASS}"${nodeAttrs(artifactPageNode(a))}${data}><h1>${escHtml(name)}${tab ? ` <span class="iga-view">— ${escHtml(tab)}</span>` : ""}</h1><p class="iga-key"><code>${escHtml(a.key)}</code></p>` +
       tabBar(o.tabs, view) +
       `<div class="iga-body" aria-live="polite"><p class="iga-state">Loading the artefact…</p></div></main>\n` +
       `<footer id="ig-footer" class="${PAGE_FOOT_CLASS}"></footer>`,
