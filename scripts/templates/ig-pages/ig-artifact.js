@@ -144,13 +144,22 @@
     if (text !== undefined && text !== null) e.textContent = String(text);
     return e;
   }
+  /* A link target as an http(s) URL resolved against the page, or null: a
+     value read from the page (a data-kg-* attribute) never becomes a
+     javascript: or data: link. */
   function safe(href) {
-    return /^(https?:|\.{0,2}\/|[^:]*$)/i.test(href);
+    try {
+      var u = new URL(String(href), document.baseURI);
+      return u.protocol === "http:" || u.protocol === "https:" ? u.href : null;
+    } catch (_e) {
+      return null;
+    }
   }
   function link(href, text, external) {
-    if (!href || !safe(href)) return el("span", null, text);
+    var url = href ? safe(href) : null;
+    if (!url) return el("span", null, text);
     var a = el("a", null, text);
-    a.href = href;
+    a.href = url;
     if (external) a.rel = "external";
     return a;
   }
