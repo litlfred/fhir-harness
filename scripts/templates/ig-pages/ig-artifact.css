@@ -12,7 +12,7 @@
 .ig-search-top>.ig-search-home{color:#fff;text-decoration:none;font-weight:600}
 .iga h1{margin:.5rem 0 .25rem}
 .iga-key code,.iga code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;font-size:.9em;overflow-wrap:anywhere}
-.iga-inline-img{height:1.5em;width:auto;vertical-align:middle;border-radius:50%}
+.iga-inline-img{max-height:1.5em;width:auto;vertical-align:middle}
 .iga-sub{color:var(--iga-muted);margin:.25rem 0}
 .iga-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(10rem,1fr));gap:.5rem;margin:1rem 0}
 .iga-stat{border:1px solid var(--iga-line);border-radius:6px;padding:.5rem .75rem;background:var(--iga-soft)}
