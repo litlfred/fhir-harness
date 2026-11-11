@@ -24,7 +24,7 @@ exists as data, and this is how it reaches the site.
 1. **Declared** — the layer's `themes/themes.ts` exports `INSTANCE_THEMES`,
    one of which has `kind: "webpage"` and a `palette` of four roles
    (`surface`, `ink`, `edge`, `accent`). Declaring a theme is
-   [`theme-declaration`](../../../cat-harness/skills/ui/theming/theme-declaration.md)'s
+   `theme-declaration`'s (opt-in `cat-harness.platform-ui`)
    subject, not this skill's.
 2. **Resolved** — `stage-ig-sites.ts` `webpagePalette(repoRoot, instance)`
    reads it through `instanceThemes` (`cat-harness/schemas/theme-by-ref.ts`),

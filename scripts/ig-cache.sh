@@ -421,6 +421,10 @@ PY
   if [ -f "$root/output/qa.json" ] && [ ! -f "$tmp/qa.json" ]; then
     cp "$root/output/qa.json" "$tmp/qa.json"
   fi
+  # And every message it reported (output/qa.xml), as JSON (ig-qa-messages.ts).
+  if [ -f "$root/output/qa.xml" ] && [ ! -f "$tmp/qa-messages.json" ]; then
+    bun run "$(dirname "${BASH_SOURCE[0]}")/ig-qa-messages.ts" "$root/output/qa.xml" "$tmp/qa-messages.json" >&2 || true
+  fi
   # The IG API: the sidecars a layer above generates from this AST
   # (`ig-site:sidecars`), committed with it so a site reads them by raw URL at
   # this commit instead of copying them (owner, 2026-11-10, card "A";

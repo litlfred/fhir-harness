@@ -11,7 +11,7 @@
     <bpmn:participant id="Participant_Process_IgRelease" name="An IG release: the owner tags, a draft is built, the owner publishes" processRef="Process_IgRelease"/>
   </bpmn:collaboration>
   <bpmn:process id="Process_IgRelease" name="An IG release: the owner tags, a draft is built, the owner publishes" isExecutable="false">
-    <bpmn:documentation>How an IG repository's release is cut, and how a missed one is caught up (skill `ig-binary-artefacts` §"Releasing"; owner, 2026-11-10: "need to add this to process (and how to catchup if not tagged) of build").
+    <bpmn:documentation>How an IG repository's release is cut, and how a missed one is caught up (skill `ig-binary-artefacts` §"Releasing"). (Owner, 2026-11-10: "need to add this to process (and how to catchup if not tagged) of build".)
 
 THE RULE. A release is a governance decision. The owner tags the IG's CURRENT version from `sushi-config.yaml`, `v&lt;version&gt;`, on the default branch. The tag starts the IG's `ig-release.yml` caller, which builds the tag in full and makes a GitHub DRAFT release carrying `package.tgz` (and its R4/R4B variants), `ast-data.zip` and `SHA256SUMS`. The owner publishes the draft. An agent never chooses a version, never pushes a tag and never publishes a release.
 

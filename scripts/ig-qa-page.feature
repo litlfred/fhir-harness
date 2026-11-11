@@ -23,3 +23,14 @@ Feature: The IG's quality checks page
     And the FHIR QA section comes before the knowledge-graph QA section, both inside a raw block that the page ends with
     And it links every instance's QA, names the record's two findings and its writer, and links the record file
     And a pipe in a summary is escaped and Liquid-looking text in an entry is shown as written
+
+  @test:scripts/ig-qa-page.test.ts::ig-qa-page::publisherLayoutFromTheMessageList
+  Scenario: FHIR QA: the Publisher's full message list, laid out as its own qa.html
+    Given an AST holding the Publisher's QA summary and its message list: one build message, and a file with an error at line 12, column 4 and a hint
+    When the FHIR QA section is written
+    Then it carries a panel that loads the summary and the message list, and the page script beside them, in place of the counts table
+    When the page script draws the panel
+    Then it shows "Validation Results for" the IG, its FHIR version, package and version, and the summary "errors = 1, warn = 1, info = 1, broken links = 0"
+    And a file table with Filename, Errors, Warnings and Hints, the build's own messages as "Build Errors"
+    And each file's messages under Path, Severity and Message, the path with its line and column, and the message id
+    And it links as far as the site allows: the IG's package to its page, each file to its artifact page and, when tracked, its source at the built commit, each of the IG's canonical URLs in a message to its page, any other URL to itself, and each file section back to the file table
