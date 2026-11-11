@@ -135,6 +135,15 @@ Feature: An artefact's tab views on the IG site
   Scenario: the JSON view is the AST loader's JSON, alone
     Then the renderer's JSON view uses the AST loader, which recognises the JSON view
 
+  @test:scripts/ig-tab-views.test.ts::the_shared_renderer_and_the_AST_loader_draw_the_views::descriptionDrawsMarkdownSubset
+  Scenario: a markdown description draws bold, emphasis, code, links, images and lists, as text
+    Given descriptions with **strong**, *emphasis*, `code`, a link, a "-" list with a wrapped item, and a "1." list after a paragraph
+    When the renderer draws them
+    Then each becomes its element, and the list items become list elements
+    And an inline picture (a data: SVG avatar) is drawn as an image from its own bytes, and an image with any other source as its alt text only
+    And a "2023." line inside a paragraph and a lone "*" stay as written
+    And nothing in the markdown drawer sets HTML
+
   @test:scripts/ig-tab-views.test.ts::the_shared_renderer_and_the_AST_loader_draw_the_views::neitherReadsPublisherHtml
   Scenario: neither reads the Publisher's HTML
     Then neither the renderer nor the AST loader fetches an HTML file
