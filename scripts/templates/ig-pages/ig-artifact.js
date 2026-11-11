@@ -135,7 +135,6 @@
     }
   }
 
-  /* The description is the IG's markdown: paragraphs and [text](url) links, nothing else is interpreted. */
   /* An HTML line break written into a markdown description (`<br>`, `<br/>`,
      or the malformed `</br>` some IGs carry) starts a new paragraph: the
      renderer writes text, never HTML, so the tag would otherwise show as text. */
@@ -143,24 +142,112 @@
     return String(text || "").replace(/\s*<\/?br\s*\/?>\s*/gi, "\n\n");
   }
 
+  /* The description is the IG's markdown. A small, safe subset is drawn:
+     paragraphs, `-`/`*`/`+` and `1.` lists, [text](url) links, ![alt](data:image/...)
+     inline pictures, **strong**, *emphasis* and `code`. Everything goes in as text through el(); nothing
+     from the markdown is set as HTML. Anything else stays as written. */
+  var LIST_ITEM = /^\s{0,3}(?:([-*+])|(\d{1,9})[.)])\s+(.*)$/;
+  var INLINE = /!\[([^\]]*)\]\(([^)\s]+)\)|`([^`]+)`|\[([^\]]+)\]\(([^)\s]+)\)|\*\*(?=\S)([\s\S]*?\S)\*\*|\*(?=[^\s*])([^*]*?[^\s*])\*/g;
+  /* An image is drawn only from an inline picture, `data:image/<raster or
+     svg+xml>[;base64],...`, as a blob: URL made from its decoded bytes, so no
+     text from the markdown becomes the <img>'s address. In an <img>, an SVG
+     runs no script. Any other source shows its alt text. */
+  var IMAGE_DATA = /^data:(image\/(?:png|jpeg|gif|webp|svg\+xml))(;base64)?,([\s\S]*)$/i;
+  function imageUrl(src) {
+    var m = IMAGE_DATA.exec(src);
+    if (!m || typeof Blob === "undefined" || typeof URL === "undefined" || !URL.createObjectURL) return null;
+    try {
+      var raw = m[2] ? atob(m[3]) : decodeURIComponent(m[3]);
+      var bytes = new Uint8Array(raw.length);
+      for (var i = 0; i < raw.length; i++) bytes[i] = raw.charCodeAt(i) & 255;
+      return URL.createObjectURL(new Blob([bytes], { type: m[1].toLowerCase() }));
+    } catch (_e) {
+      return null;
+    }
+  }
+
+  function inline(parent, text, root) {
+    var re = new RegExp(INLINE.source, "g");
+    var last = 0;
+    var m;
+    while ((m = re.exec(text))) {
+      parent.append(text.slice(last, m.index));
+      if (m[2] !== undefined) {
+        var url = imageUrl(m[2]);
+        if (url) {
+          var img = el("img", "iga-inline-img");
+          img.alt = m[1];
+          img.src = url;
+          parent.append(img);
+        } else parent.append(m[1]);
+      } else if (m[3] !== undefined) {
+        parent.append(el("code", null, m[3]));
+      } else if (m[4] !== undefined) {
+        // An artefact page's name (`<Type>-<id>.html`, a view's too) is a
+        // neighbour of an artefact page: those live together under artifact/.
+        var href = /^[a-z][a-z0-9+.-]*:/i.test(m[5]) || m[5].charAt(0) === "/" || m[5].charAt(0) === "#" ? m[5] : (!indexView && /^[A-Z][A-Za-z]+-[^/]+\.html(#|$)/.test(m[5]) ? "" : root) + m[5];
+        parent.append(link(href, m[4]));
+      } else {
+        var em = el(m[6] !== undefined ? "strong" : "em");
+        inline(em, m[6] !== undefined ? m[6] : m[7], root);
+        parent.append(em);
+      }
+      last = re.lastIndex;
+    }
+    parent.append(text.slice(last));
+  }
+
   function description(text, root) {
     if (root === undefined) root = "../";
     var frag = document.createDocumentFragment();
-    breaks(text).split(/\n\s*\n/).forEach(function (para) {
-      var p = el("p", "iga-desc");
-      var re = /\[([^\]]+)\]\(([^)\s]+)\)/g;
-      var last = 0;
-      var m;
-      while ((m = re.exec(para))) {
-        p.append(para.slice(last, m.index));
-        // An artefact page's name (`<Type>-<id>.html`, a view's too) is a
-        // neighbour of an artefact page: those live together under artifact/.
-        var href = /^[a-z][a-z0-9+.-]*:/i.test(m[2]) || m[2].charAt(0) === "/" || m[2].charAt(0) === "#" ? m[2] : (!indexView && /^[A-Z][A-Za-z]+-[^/]+\.html(#|$)/.test(m[2]) ? "" : root) + m[2];
-        p.append(link(href, m[1]));
-        last = re.lastIndex;
+    breaks(text).split(/\n\s*\n/).forEach(function (block) {
+      var lines = block.split("\n");
+      var para = [];
+      var list = null;
+      var item = null;
+      function flushPara() {
+        if (!para.length) return;
+        var p = el("p", "iga-desc");
+        inline(p, para.join("\n").trim(), root);
+        frag.append(p);
+        para = [];
       }
-      p.append(para.slice(last));
-      frag.append(p);
+      function flushItem() {
+        if (item === null) return;
+        var li = el("li");
+        inline(li, item.join("\n").trim(), root);
+        list.append(li);
+        item = null;
+      }
+      function flushList() {
+        flushItem();
+        if (list) frag.append(list);
+        list = null;
+      }
+      lines.forEach(function (line) {
+        var m = LIST_ITEM.exec(line);
+        // An ordered item other than 1. does not interrupt a paragraph
+        // (CommonMark): "in\n2023. Then" is wrapped text, not a list.
+        if (m && m[2] && m[2] !== "1" && para.length && !list) m = null;
+        if (m) {
+          var tag = m[1] ? "ul" : "ol";
+          if (!list || list.tagName.toLowerCase() !== tag) {
+            flushPara();
+            flushList();
+            list = el(tag, "iga-desc");
+            if (m[2] && m[2] !== "1") list.start = Number(m[2]);
+          }
+          flushItem();
+          item = [m[3]];
+        } else if (item !== null && line.trim()) {
+          item.push(line.trim());
+        } else if (line.trim()) {
+          flushList();
+          para.push(line);
+        }
+      });
+      flushList();
+      flushPara();
     });
     return frag;
   }
