@@ -81,19 +81,29 @@ NO IG PUBLISHER RUNS. `build-ig-site` turns the IG's source into Jekyll source, 
   </bpmn:process>
   <bpmndi:BPMNDiagram id="Diagram_Process_IgDocsSiteCompose">
     <bpmndi:BPMNPlane id="Plane_Process_IgDocsSiteCompose" bpmnElement="Collaboration_Process_IgDocsSiteCompose">
-      <bpmndi:BPMNShape id="Shape_Participant_Process_IgDocsSiteCompose" bpmnElement="Participant_Process_IgDocsSiteCompose" isHorizontal="true"><dc:Bounds x="60" y="60" width="1300" height="200" /></bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Shape_Lane_Build" bpmnElement="Lane_Build" isHorizontal="true"><dc:Bounds x="90" y="60" width="1270" height="200" /></bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Shape_Start_Compose" bpmnElement="Start_Compose"><dc:Bounds x="152" y="142" width="36" height="36" /><bpmndi:BPMNLabel><dc:Bounds x="110" y="184" width="120" height="54" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Shape_Task_Indexes" bpmnElement="Task_Indexes"><dc:Bounds x="260" y="110" width="160" height="100" /></bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Shape_Task_Pages" bpmnElement="Task_Pages"><dc:Bounds x="490" y="110" width="160" height="100" /></bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Shape_Task_Stage" bpmnElement="Task_Stage"><dc:Bounds x="720" y="110" width="160" height="100" /></bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Shape_Task_ComposeInto" bpmnElement="Task_ComposeInto"><dc:Bounds x="950" y="110" width="160" height="100" /></bpmndi:BPMNShape>
-      <bpmndi:BPMNShape id="Shape_End_Composed" bpmnElement="End_Composed"><dc:Bounds x="1212" y="142" width="36" height="36" /><bpmndi:BPMNLabel><dc:Bounds x="1170" y="184" width="120" height="54" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
-      <bpmndi:BPMNEdge id="Edge_Flow_1" bpmnElement="Flow_1"><di:waypoint x="188" y="160" /><di:waypoint x="260" y="160" /></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Edge_Flow_2" bpmnElement="Flow_2"><di:waypoint x="420" y="160" /><di:waypoint x="490" y="160" /></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Edge_Flow_3" bpmnElement="Flow_3"><di:waypoint x="650" y="160" /><di:waypoint x="720" y="160" /></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Edge_Flow_4" bpmnElement="Flow_4"><di:waypoint x="880" y="160" /><di:waypoint x="950" y="160" /></bpmndi:BPMNEdge>
-      <bpmndi:BPMNEdge id="Edge_Flow_5" bpmnElement="Flow_5"><di:waypoint x="1110" y="160" /><di:waypoint x="1212" y="160" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="Shape_Participant_Process_IgDocsSiteCompose" bpmnElement="Participant_Process_IgDocsSiteCompose" isHorizontal="true"><dc:Bounds x="60" y="60" width="1180" height="194" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Shape_Lane_Build" bpmnElement="Lane_Build" isHorizontal="true"><dc:Bounds x="90" y="60" width="1150" height="194" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Shape_Start_Compose" bpmnElement="Start_Compose"><dc:Bounds x="192" y="139" width="36" height="36" /><bpmndi:BPMNLabel><dc:Bounds x="110" y="184" width="120" height="54" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Shape_Task_Indexes" bpmnElement="Task_Indexes"><dc:Bounds x="330" y="97" width="120" height="120" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Shape_Task_Pages" bpmnElement="Task_Pages"><dc:Bounds x="510" y="97" width="120" height="120" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Shape_Task_Stage" bpmnElement="Task_Stage"><dc:Bounds x="690" y="97" width="120" height="120" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Shape_Task_ComposeInto" bpmnElement="Task_ComposeInto"><dc:Bounds x="870" y="97" width="120" height="120" /></bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="Shape_End_Composed" bpmnElement="End_Composed"><dc:Bounds x="1092" y="139" width="36" height="36" /><bpmndi:BPMNLabel><dc:Bounds x="1170" y="184" width="120" height="54" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="Edge_Flow_1" bpmnElement="Flow_1">
+        <di:waypoint x="228" y="157" />
+        <di:waypoint x="330" y="157" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_Flow_2" bpmnElement="Flow_2">
+        <di:waypoint x="450" y="157" />
+        <di:waypoint x="510" y="157" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_Flow_3" bpmnElement="Flow_3">
+        <di:waypoint x="630" y="157" />
+        <di:waypoint x="690" y="157" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_Flow_4" bpmnElement="Flow_4">
+        <di:waypoint x="810" y="157" />
+        <di:waypoint x="870" y="157" /></bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Edge_Flow_5" bpmnElement="Flow_5">
+        <di:waypoint x="990" y="157" />
+        <di:waypoint x="1092" y="157" /></bpmndi:BPMNEdge>
     </bpmndi:BPMNPlane>
   </bpmndi:BPMNDiagram>
 </bpmn:definitions>
