@@ -147,9 +147,30 @@ export function publisherCategory(r: ResourceJson): string | undefined {
 /** The Publisher's per-resource file stem: `<Type>-<id>`. */
 const stem = (type: string, id: string): string => `${type}-${id}`;
 
-function publishedFor(base: string | undefined, type: string, id: string, hasPage: boolean): PublishedFormats {
+/**
+ * How the site at the published base lays out an artefact's files.
+ *
+ * - `publisher`: the IG Publisher's output, every format at the root
+ *   (`<Type>-<id>.html`, `.json`, `.xml`, `.ttl`). A published IG this
+ *   harness only reads.
+ * - `site`: the site this harness builds from the AST. Its artefact page is
+ *   `artifact/<Type>-<id>.html` (`ig-thin-pages.ts`), its resource the root
+ *   `<Type>-<id>.json` (`ig-repo-site.ts`, `SITE_ROOT_RESOURCES`), and it
+ *   serves no `.xml` or `.ttl`. A Publisher-shaped URL on it is a dead link:
+ *   every journey actor on smart-trust-demo linked
+ *   `/smart-trust-demo/ActorDefinition-….html`, which no build writes.
+ */
+export type PublishedLayout = "publisher" | "site";
+
+/** `ig-artifact-jsonld.ts` `artifactPageName`, here so the index does not load the page writer's schemas. */
+const pageName = (type: string, id: string): string => stem(type, id).replace(/[^A-Za-z0-9._-]/g, "_");
+
+export function publishedFor(base: string | undefined, type: string, id: string, hasPage: boolean, layout: PublishedLayout = "publisher"): PublishedFormats {
   if (!base) return {};
-  const at = (ext: string) => ({ url: `${base.replace(/\/+$/, "")}/${stem(type, id)}.${ext}` });
+  const root = base.replace(/\/+$/, "");
+  const at = (ext: string) => ({ url: `${root}/${stem(type, id)}.${ext}` });
+  // The site writes a page for every artefact its index lists (`gen-ig-pages.ts`), listed by the Publisher or not.
+  if (layout === "site") return { json: at("json"), html: { url: `${root}/artifact/${pageName(type, id)}.html` } };
   return hasPage
     ? { json: at("json"), xml: at("xml"), ttl: at("ttl"), html: at("html") }
     : { json: at("json"), xml: at("xml"), ttl: at("ttl") };
@@ -168,6 +189,8 @@ export interface AstIndexOptions {
   instanceId: string;
   /** Where the IG is PUBLISHED (not its canonical base). Optional: absent means no `published` URL is claimed. */
   publishedBase?: string;
+  /** How the site at `publishedBase` lays out an artefact's files ({@link PublishedLayout}). Default `publisher`. */
+  publishedLayout?: PublishedLayout;
   /**
    * Path of the AST as recorded in `localPath`, relative to the IG root.
    * Default `output-ast`. `""`: the AST's own tree, so each `localPath` is
@@ -251,7 +274,7 @@ export function astToArtifactIndex(ast: Ast, opts: AstIndexOptions): AstIndexRes
     if (r.resourceType === "ImplementationGuide") ig = json;
     const category = publisherCategory(json);
     const isPublished = !opts.publishedKeys || opts.publishedKeys.has(`${r.resourceType}/${r.id}`);
-    const published = isPublished ? publishedFor(opts.publishedBase, r.resourceType, r.id, category !== undefined) : {};
+    const published = isPublished ? publishedFor(opts.publishedBase, r.resourceType, r.id, category !== undefined, opts.publishedLayout) : {};
     const localPath = astPath ? `${astPath}/${r.file}` : r.file;
     const provenance = {
       ...(published.html ? { upstream: published.html.url } : {}),
@@ -536,7 +559,7 @@ if (import.meta.main) {
   if (!astDir || !instanceId) {
     console.error(
       "usage: ast-to-artifact-index.ts --ast <output-ast dir> --instance-id <id> " +
-        "[--published-base <url>] [--ast-path <recorded AST path, \"\" for the AST tree>] [--out <index.json>] [--compare <published index.json>] [--report <json>] " +
+        "[--published-base <url> [--published-layout publisher|site]] [--ast-path <recorded AST path, \"\" for the AST tree>] [--out <index.json>] [--compare <published index.json>] [--report <json>] " +
         "[--sidecars <dir> [--sidecars-local <instance-relative dir>] [--sidecars-base <url>]] [--keep-published-grouping]",
     );
     process.exit(2);
@@ -547,6 +570,7 @@ if (import.meta.main) {
   const { index, unreadable } = astToArtifactIndex(ast, {
     instanceId,
     publishedBase: arg("--published-base"),
+    ...(arg("--published-layout") === "site" ? { publishedLayout: "site" as const } : {}),
     ...(arg("--ast-path") !== undefined ? { astPath: arg("--ast-path")! } : {}),
     ...(pub ? { publishedKeys: new Set(pub.artifacts.map((a) => a.key)) } : {}),
   });

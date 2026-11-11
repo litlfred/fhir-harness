@@ -101,6 +101,20 @@ describe("astToArtifactIndex", () => {
     expect(ig.category).toBeUndefined();
   });
 
+  test("ownSiteLinksTheArtefactPage", () => {
+    // The harness's own site: the page is artifact/<Type>-<id>.html, the root holds only the JSON
+    // (smart-trust-demo's journey actors linked /ActorDefinition-….html, which no build writes).
+    const { index: ix } = astToArtifactIndex(syntheticAst(), { instanceId: "example", publishedBase: "https://alpha.github.io/ig/", publishedLayout: "site" });
+    const cs = ix.artifacts.find((a) => a.key === "CodeSystem/Colours")!;
+    expect(cs.published).toEqual({
+      json: { url: "https://alpha.github.io/ig/CodeSystem-Colours.json" },
+      html: { url: "https://alpha.github.io/ig/artifact/CodeSystem-Colours.html" },
+    });
+    // Every artefact the index lists gets a page on that site, the IG too.
+    const ig = ix.artifacts.find((a) => a.resourceType === "ImplementationGuide")!;
+    expect(ig.published.html?.url).toBe("https://alpha.github.io/ig/artifact/ImplementationGuide-example.ig.html");
+  });
+
   test("unpublishedArtefactGetsNoLink", () => {
     const { index: ix } = astToArtifactIndex(syntheticAst(), {
       instanceId: "example",
