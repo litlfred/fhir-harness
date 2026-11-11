@@ -75,7 +75,7 @@ describe("ig-qa-page", () => {
       $schema: "ig-qa-messages/v1",
       groups: [
         { messages: [{ severity: "warning", text: "The build" }] },
-        { file: "Questionnaire-A.json", messages: [{ severity: "error", text: "no linkId", path: "Questionnaire.item[0]", line: 12, col: 4, messageId: "Q_LINKID" }, { severity: "information", text: "a hint" }] },
+        { file: "input/resources/Questionnaire-A.json", messages: [{ severity: "error", text: "value set http://x/ig/ValueSet/vs-a not found; see http://hl7.org/fhir/R4/x.html.", path: "Questionnaire.item[0]", line: 12, col: 4, messageId: "Q_LINKID" }, { severity: "information", text: "a hint" }] },
       ],
     };
     const ast = dirWith({ "qa.json": JSON.stringify(qa), "qa-messages.json": JSON.stringify(messages) });
@@ -87,15 +87,18 @@ describe("ig-qa-page", () => {
 
     // The page script, over a fake DOM: the Publisher's tables, as text in order.
     const texts: string[] = [];
+    const links: string[] = [];
     const node = (tag: string): Record<string, unknown> => ({
       tag,
+      nodeType: 1,
       className: "ig-qa-publisher",
       set textContent(v: string) {
         if (v) texts.push(v);
       },
       appendChild: (c: unknown) => c,
-      setAttribute: () => {},
-      getAttribute: (k: string) => (k === "data-summary" ? "qa.json" : "qa-messages.json"),
+      setAttribute: (k: string, v: string) => (k === "href" ? links.push(v) : undefined),
+      getAttribute: (k: string) =>
+        ({ "data-summary": "qa.json", "data-messages": "qa-messages.json", "data-pages": "pages.json", "data-artifacts": "artifact/", "data-source": "https://github.com/o/r/blob/abc/" })[k],
       addEventListener: () => {},
     });
     const document = {
@@ -103,18 +106,28 @@ describe("ig-qa-page", () => {
       getElementById: () => null,
       head: node("head"),
       createElement: (t: string) => node(t),
-      createTextNode: (t: string) => (texts.push(t), {}),
+      createTextNode: (t: string) => (texts.push(t), { nodeType: 3 }),
     };
-    const fetch = async (u: string) => ({ ok: true, json: async () => (u === "qa.json" ? qa : messages) });
+    const pages = ["Questionnaire-A.html", "ValueSet-vs-a.html", "ImplementationGuide-example.an-ig.html"];
+    const fetch = async (u: string) => ({ ok: true, json: async () => (u === "qa.json" ? qa : u === "pages.json" ? pages : messages) });
     runInNewContext(QA_MESSAGES_JS, { document, fetch, Promise, Error, String, Object, Array });
     for (let i = 0; i < 20; i++) await new Promise((r) => setTimeout(r, 0));
     const out = texts.join("\n");
     expect(out).toContain("Validation Results for An IG");
-    expect(out).toContain("FHIR version 4.0.1 for example.an-ig#0.9.9");
+    expect(out).toContain("FHIR version 4.0.1 for \nexample.an-ig#0.9.9");
+    expect(out).not.toContain("[object Object]");
     expect(out).toContain("errors = 1, warn = 1, info = 1, broken links = 0");
     for (const h of ["Filename", "Errors", "Warnings", "Hints", "Path", "Severity", "Message"]) expect(texts).toContain(h);
     expect(out).toContain("Build Errors");
-    expect(out).toContain("Questionnaire-A.json  (1 errors, 0 warnings, 1 hints)");
+    expect(out).toContain("input/resources/Questionnaire-A.json");
+    expect(out).toContain("  (1 errors, 0 warnings, 1 hints) ");
+    // Linked as far as the site allows: the IG's page, each file's page and source, its canonicals to their pages, other URLs to themselves.
+    expect(links).toContain("artifact/ImplementationGuide-example.an-ig.html");
+    expect(links).toContain("artifact/Questionnaire-A.html");
+    expect(links).toContain("https://github.com/o/r/blob/abc/input/resources/Questionnaire-A.json");
+    expect(links).toContain("artifact/ValueSet-vs-a.html");
+    expect(links).toContain("http://hl7.org/fhir/R4/x.html");
+    expect(links).toContain("#qa-files");
     expect(out).toContain("Questionnaire.item[0] (l12/c4)");
     expect(out).toContain("Q_LINKID");
   });

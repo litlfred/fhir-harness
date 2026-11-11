@@ -33,3 +33,4 @@ Feature: The IG's quality checks page
     Then it shows "Validation Results for" the IG, its FHIR version, package and version, and the summary "errors = 1, warn = 1, info = 1, broken links = 0"
     And a file table with Filename, Errors, Warnings and Hints, the build's own messages as "Build Errors"
     And each file's messages under Path, Severity and Message, the path with its line and column, and the message id
+    And it links as far as the site allows: the IG's package to its page, each file to its artifact page and, when tracked, its source at the built commit, each of the IG's canonical URLs in a message to its page, any other URL to itself, and each file section back to the file table
