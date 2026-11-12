@@ -17,6 +17,8 @@ import {
   scanText,
   scannedHits,
   sidecarProblems,
+  trustedSvgHits,
+  withoutTrustedSvgs,
   withoutTrustedScripts,
 } from "./ig-content-qa.ts";
 
@@ -258,5 +260,87 @@ describe("scripts an IG trusts on its own pages (owner, 2026-11-12, Q-TRP-3 and 
     const all = { declares: () => true, reaches: () => true };
     expect(() => runGate({ ig, ast, scope: all, log: () => {} })).toThrow(/pattern hit/);
     expect(runGate({ ig, ast, scope: { ...all, section: { trustedScripts: trusted } }, log: () => {} }).state).toBe("reviewed");
+  });
+});
+
+describe("SVG drawings an IG trusts in <object> on its own pages (owner, 2026-11-12)", () => {
+  const trusted = ["GDHCN.ONB.svg", "img/aggregation.svg"];
+  const page = (text: string) => ({ kind: "page" as const, where: "input/pagecontent/onb.md", field: "page", sha: "x", text });
+  const fallback = '<img src="GDHCN.ONB.svg" alt="x"/>';
+
+  test("a listed same-site SVG object is accepted on a page; its body and closing tag stay", () => {
+    for (const tag of [
+      '<object data="GDHCN.ONB.svg" type="image/svg+xml" style="width:100%; max-width:1400px;" aria-label="Onboard a Participant (top level)">',
+      "<object data='img/aggregation.svg' type='image/svg+xml'>",
+      '<object type="image/svg+xml" data="GDHCN.ONB.svg" width="800" height="600" class="diagram" id="onb" role="img" title="ONB">',
+    ]) {
+      const text = `# ONB\n${tag}${fallback}</object>\n`;
+      expect(withoutTrustedSvgs(text, trusted)).toBe(`# ONB\n${fallback}</object>\n`);
+      expect(scannedHits(page(text), [], trusted)).toEqual([]);
+    }
+  });
+
+  test("anything else in an object element is still refused", () => {
+    for (const tag of [
+      '<object data="other.svg" type="image/svg+xml"></object>',
+      '<object data="GDHCN.ONB.svg" type="text/html"></object>',
+      '<object data="GDHCN.ONB.svg" onload="x()"></object>',
+      '<object data="GDHCN.ONB.svg" data="evil.svg"></object>',
+      '<object data="GDHCN.ONB.svg" style="width:expression(alert(1))"></object>',
+      '<object data="GDHCN.ONB.svg" codebase="https://evil.example/"></object>',
+      '<object data="GDHCN.ONB.svg" hidden></object>',
+      '<object data="https://evil.example/GDHCN.ONB.svg"></object>',
+      '<object type="image/svg+xml"></object>',
+    ])
+      expect(scannedHits(page(tag), [], trusted).map((h) => h.rule)).toContain("object-tag");
+  });
+
+  test("the body of a trusted object is still scanned", () => {
+    const text = '<object data="GDHCN.ONB.svg" type="image/svg+xml"><script>alert(1)</script></object>';
+    expect(scannedHits(page(text), [], trusted).map((h) => h.rule)).toEqual(["script-tag"]);
+  });
+
+  test("a trusted path is never accepted in a narrative or a markdown field, nor with no list", () => {
+    const tag = '<object data="GDHCN.ONB.svg" type="image/svg+xml"></object>';
+    expect(scannedHits({ ...page(tag), kind: "narrative" }, [], trusted).map((h) => h.rule)).toContain("object-tag");
+    expect(scannedHits({ ...page(tag), kind: "markdown" }, [], trusted).map((h) => h.rule)).toContain("object-tag");
+    expect(scannedHits(page(tag)).map((h) => h.rule)).toContain("object-tag");
+  });
+
+  test("the gate takes the list, and runGate reads it from the read scope's declaration", () => {
+    const items = [page('<object data="GDHCN.ONB.svg" type="image/svg+xml"></object>')];
+    const sidecar = makeSidecar({ items, reviewer: { kind: "agent", name: "t" } });
+    expect(contentGate({ items, sidecar })).toMatchObject({ ok: false, state: "pattern-hits" });
+    expect(contentGate({ items, sidecar, trustedSvgs: trusted })).toMatchObject({ ok: true, state: "reviewed" });
+    const ig = mkdtempSync(join(tmpdir(), "ig-content-qa-objects-"));
+    const ast = join(ig, "output-ast");
+    mkdirSync(join(ast, "resources"), { recursive: true });
+    mkdirSync(join(ig, "input", "pagecontent"), { recursive: true });
+    writeFileSync(join(ast, "manifest.json"), JSON.stringify({ $schema: "ig-ast/v1", resources: [] }));
+    writeFileSync(join(ig, "input", "pagecontent", "onb.md"), '# ONB\n<object data="GDHCN.ONB.svg" type="image/svg+xml"></object>\n');
+    mkdirSync(join(ig, "qa"));
+    writeFileSync(join(ig, CONTENT_QA_SIDECAR), JSON.stringify(makeSidecar({ items: collectItems({ ig, ast }), reviewer: { kind: "agent", name: "t" } })));
+    const all = { declares: () => true, reaches: () => true };
+    expect(() => runGate({ ig, ast, scope: all, log: () => {} })).toThrow(/pattern hit/);
+    // The listed file is scanned: missing, then clean, then carrying a script.
+    expect(() => runGate({ ig, ast, scope: { ...all, section: { trustedSvgs: ["GDHCN.ONB.svg"] } }, log: () => {} })).toThrow(/trusted SVG the gate cannot read/);
+    mkdirSync(join(ig, "input", "images"), { recursive: true });
+    writeFileSync(join(ig, "input", "images", "GDHCN.ONB.svg"), '<svg xmlns="http://www.w3.org/2000/svg"><a href="onb.html#apply"><rect width="9" height="9"/></a></svg>');
+    expect(runGate({ ig, ast, scope: { ...all, section: { trustedSvgs: ["GDHCN.ONB.svg"] } }, log: () => {} }).state).toBe("reviewed");
+    writeFileSync(join(ig, "input", "images", "GDHCN.ONB.svg"), '<svg xmlns="http://www.w3.org/2000/svg"><rect onclick="steal()"/></svg>');
+    expect(() => runGate({ ig, ast, scope: { ...all, section: { trustedSvgs: ["GDHCN.ONB.svg"] } }, log: () => {} })).toThrow(/input\/images\/GDHCN.ONB.svg svg: an on\* event handler/);
+  });
+
+  test("trustedSvgHits scans each listed file for every rule", () => {
+    const ig = mkdtempSync(join(tmpdir(), "ig-content-qa-svgs-"));
+    mkdirSync(join(ig, "input", "images"), { recursive: true });
+    writeFileSync(join(ig, "input", "images", "a.svg"), "<svg><script>alert(1)</script></svg>");
+    writeFileSync(join(ig, "input", "images", "b.svg"), '<svg><a href="javascript:alert(1)"><text>x</text></a></svg>');
+    writeFileSync(join(ig, "input", "images", "c.svg"), '<svg><a href="page.html#x"><text>ok</text></a></svg>');
+    expect(trustedSvgHits(ig, ["a.svg", "b.svg", "c.svg", "gone.svg"]).map((h) => `${h.where}:${h.rule}`)).toEqual([
+      "input/images/a.svg:script-tag",
+      "input/images/b.svg:script-url",
+      "input/images/gone.svg:trusted-svg-unreadable",
+    ]);
   });
 });

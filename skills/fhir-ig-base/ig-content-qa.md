@@ -52,6 +52,28 @@ narrative or markdown field are still pattern hits. Adding an entry is a
 content change the review reads like any other: the script itself is the
 IG's, and the reviewer looks at it.
 
+**SVG drawings an IG trusts** (owner, 2026-11-12). A page that embeds a
+same-site SVG with `<object>`, so the drawing's links stay live (the
+onboarding diagrams' drill-down), lists it under
+`contentTypes.ig.trustedSvgs`, as the element's `data` writes it:
+
+```json
+"contentTypes": { "ig": { "include": ["..."], "trustedSvgs": ["GDHCN.ONB.svg"] } }
+```
+
+On a page, and only there, the gate then accepts an `<object>` opening tag
+whose one `data` is on that list, whose `type`, if any, is `image/svg+xml`,
+and whose other attributes are presentational (`style`, `width`, `height`,
+`class`, `id`, `title`, `role`, `aria-*`), and which breaks no other rule.
+The element's body (such as a fallback `<img>`) is still scanned. An entry
+must be a relative path to a `.svg` file, under the same rules as a script's
+(`trustedSvgProblem` in `schemas/ig-trusted-scripts.ts`). A drawing
+embedded this way runs in the site's origin, so the gate also scans each
+listed file, read from `input/images/`, with the same rules
+(`trustedSvgHits`): a script, an `on*` handler or a script URL in it is a
+pattern hit, and a listed file the gate cannot read is refused
+(fhir-harness#393).
+
 The site's own process task panel needs no entry: the layouts load it from
 the `data-panel` sidecar a figure names (`IG_TASK_PANEL_JS` in
 `scripts/build-ig-site.ts`), not from a script tag on the page.

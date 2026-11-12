@@ -110,3 +110,20 @@ describe("trustedScripts: same-site scripts an IG's pages load", () => {
     expect(parseIgSection({ ...declared, trustedScripts: "a.js" })).toEqual({ problems: ["contentTypes.ig.trustedScripts is not a list"] });
   });
 });
+
+describe("trustedSvgs: same-site SVG drawings an IG's pages embed with <object>", () => {
+  it("readsAValidList", () => {
+    expect(parseIgSection({ ...declared, trustedSvgs: ["GDHCN.ONB.svg", "img/a-b_c.svg"] })).toEqual({
+      section: { include: declared.include, trustedSvgs: ["GDHCN.ONB.svg", "img/a-b_c.svg"] },
+    });
+    expect(parseIgSection({ ...declared, trustedSvgs: [] })).toEqual({ section: { include: declared.include } });
+  });
+
+  it("refusesAnythingNotARelativeSameSiteSvg", () => {
+    for (const bad of ["", "/a.svg", "../a.svg", "a/./b.svg", "https://x/a.svg", "a.svg?x", "a.html", "a.js", 3]) {
+      const r = parseIgSection({ ...declared, trustedSvgs: [bad] });
+      expect("problems" in r && r.problems[0]).toContain("contentTypes.ig.trustedSvgs[0]");
+    }
+    expect(parseIgSection({ ...declared, trustedSvgs: "a.svg" })).toEqual({ problems: ["contentTypes.ig.trustedSvgs is not a list"] });
+  });
+});
