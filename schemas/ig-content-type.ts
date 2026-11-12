@@ -44,7 +44,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { trustedObjectProblem, trustedScriptProblem } from "./ig-trusted-scripts.ts";
+import { trustedSvgProblem, trustedScriptProblem } from "./ig-trusted-scripts.ts";
 
 import { defaultContentTypes, INDEX_SECTION_FILE, type ContentTypeRegistry } from "@litlfred/cat-harness-tools/schemas/content/content-type.js";
 import { ownNamespace } from "@litlfred/cat-harness-tools/schemas/kg/namespaces.js";
@@ -83,7 +83,7 @@ export interface IgSection {
    * `title`, `role`, `aria-*`). The element's body is still scanned. Absent
    * means none.
    */
-  trustedObjects?: string[];
+  trustedSvgs?: string[];
 }
 
 /**
@@ -129,13 +129,13 @@ export function parseIgSection(section: unknown): { section: IgSection } | { pro
         if (p) problems.push(`contentTypes.ig.trustedScripts[${i}] ${JSON.stringify(e)}: ${p}`);
       });
   }
-  const objects = (section as { trustedObjects?: unknown }).trustedObjects;
+  const objects = (section as { trustedSvgs?: unknown }).trustedSvgs;
   if (objects !== undefined) {
-    if (!Array.isArray(objects)) problems.push("contentTypes.ig.trustedObjects is not a list");
+    if (!Array.isArray(objects)) problems.push("contentTypes.ig.trustedSvgs is not a list");
     else
       objects.forEach((e, i) => {
-        const p = trustedObjectProblem(e);
-        if (p) problems.push(`contentTypes.ig.trustedObjects[${i}] ${JSON.stringify(e)}: ${p}`);
+        const p = trustedSvgProblem(e);
+        if (p) problems.push(`contentTypes.ig.trustedSvgs[${i}] ${JSON.stringify(e)}: ${p}`);
       });
   }
   if (problems.length > 0) return { problems };
@@ -143,7 +143,7 @@ export function parseIgSection(section: unknown): { section: IgSection } | { pro
     section: {
       include: include as string[],
       ...(Array.isArray(trusted) && trusted.length ? { trustedScripts: trusted as string[] } : {}),
-      ...(Array.isArray(objects) && objects.length ? { trustedObjects: objects as string[] } : {}),
+      ...(Array.isArray(objects) && objects.length ? { trustedSvgs: objects as string[] } : {}),
     },
   };
 }

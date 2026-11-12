@@ -54,7 +54,7 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 
-import { trustedObjectProblem, trustedScriptProblem } from "../schemas/ig-trusted-scripts.ts";
+import { trustedSvgProblem, trustedScriptProblem } from "../schemas/ig-trusted-scripts.ts";
 
 /** Where the agent's review is kept in the IG repository. The IG declares it in `contentTypes.ig.include`. */
 export const CONTENT_QA_SIDECAR = "qa/ig-content-qa.json";
@@ -156,14 +156,14 @@ export function withoutTrustedScripts(text: string, trusted: readonly string[]):
  * A page's text with the opening tag of each `<object>` the IG trusts taken
  * out (owner, 2026-11-12: the onboarding diagrams keep their drill-down
  * links). A tag is taken out when its one `data` is on `trusted` (as
- * {@link trustedObjectProblem} allows: relative, same-site, `.svg`), its
+ * {@link trustedSvgProblem} allows: relative, same-site, `.svg`), its
  * `type`, if any, is `image/svg+xml`, every other attribute is presentational
  * (`style`, `width`, `height`, `class`, `id`, `title`, `role`, `aria-*`), and
  * the tag breaks no other rule (an `on*` handler, a CSS `expression()`, a
  * script URL). The element's body, and `</object>`, stay for
  * {@link scanText}. The gate applies it to `page` items only.
  */
-export function withoutTrustedObjects(text: string, trusted: readonly string[]): string {
+export function withoutTrustedSvgs(text: string, trusted: readonly string[]): string {
   if (!trusted.length) return text;
   const ok = new Set(trusted);
   const ATTR = /\s+([A-Za-z][\w:-]*)(?:\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s"'=<>`]+)))?/gy;
@@ -183,7 +183,7 @@ export function withoutTrustedObjects(text: string, trusted: readonly string[]):
       } else if (!PRESENTATIONAL.test(name) || value === undefined) return m;
     }
     if (at !== body.length) return m;
-    if (data.length !== 1 || !ok.has(data[0]!) || trustedObjectProblem(data[0])) return m;
+    if (data.length !== 1 || !ok.has(data[0]!) || trustedSvgProblem(data[0])) return m;
     return scanText(`<x-object${attrs}>`).length ? m : "";
   });
 }
@@ -265,8 +265,8 @@ const PAGE_FILE = /\.(md|markdown|html?|xml|liquid)$/i;
 export interface ReadScope {
   declares(rel: string): boolean;
   reaches(rel: string): boolean;
-  /** The IG's declaration, when it has one: its `trustedScripts` and `trustedObjects` reach the gate. */
-  section?: { trustedScripts?: string[]; trustedObjects?: string[] };
+  /** The IG's declaration, when it has one: its `trustedScripts` and `trustedSvgs` reach the gate. */
+  section?: { trustedScripts?: string[]; trustedSvgs?: string[] };
 }
 const EVERYTHING: ReadScope = { declares: () => true, reaches: () => true };
 
@@ -399,6 +399,30 @@ export interface PlacedHit extends PatternHit {
   field: string;
 }
 
+/** Where an IG keeps the pictures its pages name by a bare file name: the IG Publisher copies them to the site root. */
+export const IG_IMAGE_DIR = "input/images";
+
+/**
+ * The pattern hits in the SVG files an IG trusts (`contentTypes.ig.trustedSvgs`),
+ * read from {@link IG_IMAGE_DIR}. A drawing in `<object>` runs in the site's
+ * origin, so a listed file that carries a script, an `on*` handler or a
+ * script URL is refused like a page that does, and one that cannot be read
+ * is refused too: the gate does not trust what it has not scanned.
+ */
+export function trustedSvgHits(ig: string, trusted: readonly string[]): PlacedHit[] {
+  const out: PlacedHit[] = [];
+  for (const e of trusted) {
+    const where = `${IG_IMAGE_DIR}/${e}`;
+    const f = join(ig, where);
+    if (trustedSvgProblem(e) || !existsSync(f) || !statSync(f).isFile()) {
+      out.push({ where, field: "svg", rule: "trusted-svg-unreadable", says: "a trusted SVG the gate cannot read", excerpt: e });
+      continue;
+    }
+    for (const h of scanText(readFileSync(f, "utf-8"))) out.push({ where, field: "svg", ...h });
+  }
+  return out;
+}
+
 /** The gate's verdict, published as {@link CONTENT_QA_PUBLISHED}. */
 export interface ContentQaVerdict {
   $schema: "ig-content-qa-verdict/v1";
@@ -418,8 +442,8 @@ export interface ContentQaVerdict {
 }
 
 /** The pattern hits of one item, after the IG's trusted scripts and SVG objects are taken out of a page. */
-export function scannedHits(i: ContentItem, trusted: readonly string[] = [], trustedObjects: readonly string[] = []): PatternHit[] {
-  return scanText(i.kind === "page" ? withoutTrustedObjects(withoutTrustedScripts(i.text, trusted), trustedObjects) : i.text);
+export function scannedHits(i: ContentItem, trusted: readonly string[] = [], trustedSvgs: readonly string[] = []): PatternHit[] {
+  return scanText(i.kind === "page" ? withoutTrustedSvgs(withoutTrustedScripts(i.text, trusted), trustedSvgs) : i.text);
 }
 
 /**
@@ -428,9 +452,9 @@ export function scannedHits(i: ContentItem, trusted: readonly string[] = [], tru
  * missing or stale review through, said; it never lets a pattern hit or an
  * open finding through.
  */
-export function contentGate(o: { items: readonly ContentItem[]; sidecar: unknown; acceptUnreviewed?: boolean; trustedScripts?: readonly string[]; trustedObjects?: readonly string[] }): ContentQaVerdict {
+export function contentGate(o: { items: readonly ContentItem[]; sidecar: unknown; acceptUnreviewed?: boolean; trustedScripts?: readonly string[]; trustedSvgs?: readonly string[]; svgHits?: readonly PlacedHit[] }): ContentQaVerdict {
   const digest = contentDigest(o.items);
-  const patternHits: PlacedHit[] = o.items.flatMap((i) => scannedHits(i, o.trustedScripts, o.trustedObjects).map((h) => ({ where: i.where, field: i.field, ...h })));
+  const patternHits: PlacedHit[] = [...o.items.flatMap((i) => scannedHits(i, o.trustedScripts, o.trustedSvgs).map((h) => ({ where: i.where, field: i.field, ...h }))), ...(o.svgHits ?? [])];
   const base = { $schema: "ig-content-qa-verdict/v1" as const, items: o.items.length, contentDigest: digest, patternHits };
   const problems = o.sidecar === undefined ? undefined : sidecarProblems(o.sidecar);
   const s = problems && !problems.length ? (o.sidecar as ContentQaSidecar) : undefined;
@@ -474,8 +498,8 @@ export function runGate(o: { ig: string; ast: string; scope?: ReadScope; acceptU
   const log = o.log ?? ((s: string) => console.error(s));
   const items = collectItems({ ig: o.ig, ast: o.ast, ...(o.scope ? { scope: o.scope } : {}) });
   const trustedScripts = o.scope?.section?.trustedScripts ?? [];
-  const trustedObjects = o.scope?.section?.trustedObjects ?? [];
-  const v = contentGate({ items, sidecar: readSidecar(o.ig, o.scope), trustedScripts, trustedObjects, ...(o.acceptUnreviewed ? { acceptUnreviewed: true } : {}) });
+  const trustedSvgs = o.scope?.section?.trustedSvgs ?? [];
+  const v = contentGate({ items, sidecar: readSidecar(o.ig, o.scope), trustedScripts, trustedSvgs, svgHits: trustedSvgHits(o.ig, trustedSvgs), ...(o.acceptUnreviewed ? { acceptUnreviewed: true } : {}) });
   if (o.work) {
     mkdirSync(o.work, { recursive: true });
     writeFileSync(join(o.work, VERDICT_FILE), `${JSON.stringify(v, null, 2)}\n`);
@@ -507,7 +531,7 @@ async function main(argv: string[]): Promise<number> {
   const scope = await scopeOf(ig);
   if (cmd === "scan") {
     const items = collectItems({ ig, ast, scope });
-    const bundle = { contentDigest: contentDigest(items), items: items.map((i) => ({ ...i, patternHits: scannedHits(i, scope.section?.trustedScripts, scope.section?.trustedObjects) })) };
+    const bundle = { contentDigest: contentDigest(items), items: items.map((i) => ({ ...i, patternHits: scannedHits(i, scope.section?.trustedScripts, scope.section?.trustedSvgs) })) };
     const out = opt("out");
     if (out) {
       mkdirSync(dirname(resolve(out)), { recursive: true });
@@ -516,6 +540,7 @@ async function main(argv: string[]): Promise<number> {
     const hits = bundle.items.filter((i) => i.patternHits.length);
     console.log(`${items.length} text(s), content ${bundle.contentDigest}; ${hits.length} with pattern hits${out ? `; bundle at ${out}` : ""}`);
     for (const h of hits) console.log(`  ${h.where} ${h.field}: ${h.patternHits.map((p) => p.rule).join(", ")}`);
+    for (const h of trustedSvgHits(ig, scope.section?.trustedSvgs ?? [])) console.log(`  ${h.where} ${h.field}: ${h.rule} (a trusted SVG; the gate refuses it)`);
     return 0;
   }
   if (cmd === "record") {
@@ -528,7 +553,7 @@ async function main(argv: string[]): Promise<number> {
     const s = makeSidecar({ items, reviewer: { kind: (opt("kind") as "agent" | "person" | undefined) ?? "agent", name: reviewer, ...(session ? { session } : {}) }, findings });
     mkdirSync(join(ig, dirname(CONTENT_QA_SIDECAR)), { recursive: true });
     writeFileSync(join(ig, CONTENT_QA_SIDECAR), `${JSON.stringify(s, null, 2)}\n`);
-    const hits = items.filter((i) => scannedHits(i, scope.section?.trustedScripts, scope.section?.trustedObjects).length).length;
+    const hits = items.filter((i) => scannedHits(i, scope.section?.trustedScripts, scope.section?.trustedSvgs).length).length;
     console.log(`${CONTENT_QA_SIDECAR}: ${s.items} text(s), ${s.contentDigest}, ${s.findings.length} finding(s)${hits ? `; ${hits} text(s) still break a pattern rule, which the gate refuses whatever this review says` : ""}`);
     return 0;
   }

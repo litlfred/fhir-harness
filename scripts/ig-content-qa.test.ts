@@ -17,7 +17,8 @@ import {
   scanText,
   scannedHits,
   sidecarProblems,
-  withoutTrustedObjects,
+  trustedSvgHits,
+  withoutTrustedSvgs,
   withoutTrustedScripts,
 } from "./ig-content-qa.ts";
 
@@ -274,7 +275,7 @@ describe("SVG drawings an IG trusts in <object> on its own pages (owner, 2026-11
       '<object type="image/svg+xml" data="GDHCN.ONB.svg" width="800" height="600" class="diagram" id="onb" role="img" title="ONB">',
     ]) {
       const text = `# ONB\n${tag}${fallback}</object>\n`;
-      expect(withoutTrustedObjects(text, trusted)).toBe(`# ONB\n${fallback}</object>\n`);
+      expect(withoutTrustedSvgs(text, trusted)).toBe(`# ONB\n${fallback}</object>\n`);
       expect(scannedHits(page(text), [], trusted)).toEqual([]);
     }
   });
@@ -310,7 +311,7 @@ describe("SVG drawings an IG trusts in <object> on its own pages (owner, 2026-11
     const items = [page('<object data="GDHCN.ONB.svg" type="image/svg+xml"></object>')];
     const sidecar = makeSidecar({ items, reviewer: { kind: "agent", name: "t" } });
     expect(contentGate({ items, sidecar })).toMatchObject({ ok: false, state: "pattern-hits" });
-    expect(contentGate({ items, sidecar, trustedObjects: trusted })).toMatchObject({ ok: true, state: "reviewed" });
+    expect(contentGate({ items, sidecar, trustedSvgs: trusted })).toMatchObject({ ok: true, state: "reviewed" });
     const ig = mkdtempSync(join(tmpdir(), "ig-content-qa-objects-"));
     const ast = join(ig, "output-ast");
     mkdirSync(join(ast, "resources"), { recursive: true });
@@ -321,6 +322,25 @@ describe("SVG drawings an IG trusts in <object> on its own pages (owner, 2026-11
     writeFileSync(join(ig, CONTENT_QA_SIDECAR), JSON.stringify(makeSidecar({ items: collectItems({ ig, ast }), reviewer: { kind: "agent", name: "t" } })));
     const all = { declares: () => true, reaches: () => true };
     expect(() => runGate({ ig, ast, scope: all, log: () => {} })).toThrow(/pattern hit/);
-    expect(runGate({ ig, ast, scope: { ...all, section: { trustedObjects: trusted } }, log: () => {} }).state).toBe("reviewed");
+    // The listed file is scanned: missing, then clean, then carrying a script.
+    expect(() => runGate({ ig, ast, scope: { ...all, section: { trustedSvgs: ["GDHCN.ONB.svg"] } }, log: () => {} })).toThrow(/trusted SVG the gate cannot read/);
+    mkdirSync(join(ig, "input", "images"), { recursive: true });
+    writeFileSync(join(ig, "input", "images", "GDHCN.ONB.svg"), '<svg xmlns="http://www.w3.org/2000/svg"><a href="onb.html#apply"><rect width="9" height="9"/></a></svg>');
+    expect(runGate({ ig, ast, scope: { ...all, section: { trustedSvgs: ["GDHCN.ONB.svg"] } }, log: () => {} }).state).toBe("reviewed");
+    writeFileSync(join(ig, "input", "images", "GDHCN.ONB.svg"), '<svg xmlns="http://www.w3.org/2000/svg"><rect onclick="steal()"/></svg>');
+    expect(() => runGate({ ig, ast, scope: { ...all, section: { trustedSvgs: ["GDHCN.ONB.svg"] } }, log: () => {} })).toThrow(/input\/images\/GDHCN.ONB.svg svg: an on\* event handler/);
+  });
+
+  test("trustedSvgHits scans each listed file for every rule", () => {
+    const ig = mkdtempSync(join(tmpdir(), "ig-content-qa-svgs-"));
+    mkdirSync(join(ig, "input", "images"), { recursive: true });
+    writeFileSync(join(ig, "input", "images", "a.svg"), "<svg><script>alert(1)</script></svg>");
+    writeFileSync(join(ig, "input", "images", "b.svg"), '<svg><a href="javascript:alert(1)"><text>x</text></a></svg>');
+    writeFileSync(join(ig, "input", "images", "c.svg"), '<svg><a href="page.html#x"><text>ok</text></a></svg>');
+    expect(trustedSvgHits(ig, ["a.svg", "b.svg", "c.svg", "gone.svg"]).map((h) => `${h.where}:${h.rule}`)).toEqual([
+      "input/images/a.svg:script-tag",
+      "input/images/b.svg:script-url",
+      "input/images/gone.svg:trusted-svg-unreadable",
+    ]);
   });
 });

@@ -111,19 +111,19 @@ describe("trustedScripts: same-site scripts an IG's pages load", () => {
   });
 });
 
-describe("trustedObjects: same-site SVG drawings an IG's pages embed with <object>", () => {
+describe("trustedSvgs: same-site SVG drawings an IG's pages embed with <object>", () => {
   it("readsAValidList", () => {
-    expect(parseIgSection({ ...declared, trustedObjects: ["GDHCN.ONB.svg", "img/a-b_c.svg"] })).toEqual({
-      section: { include: declared.include, trustedObjects: ["GDHCN.ONB.svg", "img/a-b_c.svg"] },
+    expect(parseIgSection({ ...declared, trustedSvgs: ["GDHCN.ONB.svg", "img/a-b_c.svg"] })).toEqual({
+      section: { include: declared.include, trustedSvgs: ["GDHCN.ONB.svg", "img/a-b_c.svg"] },
     });
-    expect(parseIgSection({ ...declared, trustedObjects: [] })).toEqual({ section: { include: declared.include } });
+    expect(parseIgSection({ ...declared, trustedSvgs: [] })).toEqual({ section: { include: declared.include } });
   });
 
   it("refusesAnythingNotARelativeSameSiteSvg", () => {
     for (const bad of ["", "/a.svg", "../a.svg", "a/./b.svg", "https://x/a.svg", "a.svg?x", "a.html", "a.js", 3]) {
-      const r = parseIgSection({ ...declared, trustedObjects: [bad] });
-      expect("problems" in r && r.problems[0]).toContain("contentTypes.ig.trustedObjects[0]");
+      const r = parseIgSection({ ...declared, trustedSvgs: [bad] });
+      expect("problems" in r && r.problems[0]).toContain("contentTypes.ig.trustedSvgs[0]");
     }
-    expect(parseIgSection({ ...declared, trustedObjects: "a.svg" })).toEqual({ problems: ["contentTypes.ig.trustedObjects is not a list"] });
+    expect(parseIgSection({ ...declared, trustedSvgs: "a.svg" })).toEqual({ problems: ["contentTypes.ig.trustedSvgs is not a list"] });
   });
 });

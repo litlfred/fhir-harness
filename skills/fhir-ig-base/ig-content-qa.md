@@ -55,10 +55,10 @@ IG's, and the reviewer looks at it.
 **SVG drawings an IG trusts** (owner, 2026-11-12). A page that embeds a
 same-site SVG with `<object>`, so the drawing's links stay live (the
 onboarding diagrams' drill-down), lists it under
-`contentTypes.ig.trustedObjects`, as the element's `data` writes it:
+`contentTypes.ig.trustedSvgs`, as the element's `data` writes it:
 
 ```json
-"contentTypes": { "ig": { "include": ["..."], "trustedObjects": ["GDHCN.ONB.svg"] } }
+"contentTypes": { "ig": { "include": ["..."], "trustedSvgs": ["GDHCN.ONB.svg"] } }
 ```
 
 On a page, and only there, the gate then accepts an `<object>` opening tag
@@ -67,9 +67,12 @@ and whose other attributes are presentational (`style`, `width`, `height`,
 `class`, `id`, `title`, `role`, `aria-*`), and which breaks no other rule.
 The element's body (such as a fallback `<img>`) is still scanned. An entry
 must be a relative path to a `.svg` file, under the same rules as a script's
-(`trustedObjectProblem` in `schemas/ig-trusted-scripts.ts`). A drawing
-embedded this way runs in the site's origin, so the reviewer reads the SVG
-file too.
+(`trustedSvgProblem` in `schemas/ig-trusted-scripts.ts`). A drawing
+embedded this way runs in the site's origin, so the gate also scans each
+listed file, read from `input/images/`, with the same rules
+(`trustedSvgHits`): a script, an `on*` handler or a script URL in it is a
+pattern hit, and a listed file the gate cannot read is refused
+(fhir-harness#393).
 
 The site's own process task panel needs no entry: the layouts load it from
 the `data-panel` sidecar a figure names (`IG_TASK_PANEL_JS` in
