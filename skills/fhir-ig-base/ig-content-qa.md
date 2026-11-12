@@ -122,7 +122,11 @@ any changed, added or removed text makes it stale.
    must list it in `contentTypes.ig.include` (`qa/ig-content-qa.json`), or the
    gate refuses to read it.
 6. `bun run fhir-harness/scripts/ig-content-qa.ts gate` judges as the root
-   publish does.
+   publish does. It judges an IG checkout only: one that declares
+   `contentTypes.ig` or carries `sushi-config.yaml`. Any other checkout (a
+   document folio, an index root) passes with "nothing to judge", since the
+   check is owed only where an IG is built. An IG checkout with no AST still
+   fails.
 
 An open finding is resolved by fixing the text (the review is then stale:
 review again) or, for a false alarm, by setting `status: "cleared"` with a

@@ -520,6 +520,38 @@ async function scopeOf(ig: string): Promise<ReadScope> {
   return igReadScope(ig);
 }
 
+/**
+ * Why `ig` is not an IG checkout, or `undefined` when it is one.
+ *
+ * An IG checkout declares `contentTypes.ig` in its `index.config.json` (a
+ * section that is there but unusable still counts: the read scope refuses
+ * it), or, as a legacy IG, carries `sushi-config.yaml`. Anything else (a
+ * document folio, an index root) has no IG texts to judge: the IG-only check
+ * is owed only where an IG is built (the owner, 2026-10-30, smart-ra#103).
+ */
+export async function notAnIgCheckout(ig: string): Promise<string | undefined> {
+  if (existsSync(join(ig, "sushi-config.yaml"))) return undefined;
+  // Loaded here, not at the top: the functions above need no mounted layer.
+  const { readIgSection } = await import("../schemas/ig-content-type.ts");
+  if (readIgSection(ig) !== undefined) return undefined;
+  return `${ig} declares no contentTypes.ig and carries no sushi-config.yaml: not an IG checkout, no IG texts to judge`;
+}
+
+/**
+ * The `gate` command: judge an IG checkout, and pass a checkout that is not
+ * an IG with the reason said. An IG checkout is judged exactly as
+ * {@link runGate} judges it; a missing AST still refuses.
+ */
+export async function gateCheckout(o: { ig: string; ast: string; log?: (s: string) => void }): Promise<ContentQaVerdict | undefined> {
+  const log = o.log ?? ((s: string) => console.error(s));
+  const not = await notAnIgCheckout(o.ig);
+  if (not) {
+    log(`injection QA: nothing to judge: ${not}`);
+    return undefined;
+  }
+  return runGate({ ig: o.ig, ast: o.ast, scope: await scopeOf(o.ig), log });
+}
+
 async function main(argv: string[]): Promise<number> {
   const [cmd, ...args] = argv;
   const opt = (k: string): string | undefined => {
@@ -528,6 +560,12 @@ async function main(argv: string[]): Promise<number> {
   };
   const ig = resolve(opt("ig") ?? ".");
   const ast = resolve(opt("ast") ?? join(ig, "output-ast"));
+  if (cmd === "gate") {
+    // As the root judges: only a reviewed, clean set of texts passes. A
+    // checkout that is not an IG is not judged (see notAnIgCheckout).
+    await gateCheckout({ ig, ast });
+    return 0;
+  }
   const scope = await scopeOf(ig);
   if (cmd === "scan") {
     const items = collectItems({ ig, ast, scope });
@@ -555,11 +593,6 @@ async function main(argv: string[]): Promise<number> {
     writeFileSync(join(ig, CONTENT_QA_SIDECAR), `${JSON.stringify(s, null, 2)}\n`);
     const hits = items.filter((i) => scannedHits(i, scope.section?.trustedScripts, scope.section?.trustedSvgs).length).length;
     console.log(`${CONTENT_QA_SIDECAR}: ${s.items} text(s), ${s.contentDigest}, ${s.findings.length} finding(s)${hits ? `; ${hits} text(s) still break a pattern rule, which the gate refuses whatever this review says` : ""}`);
-    return 0;
-  }
-  if (cmd === "gate") {
-    // As the root judges: only a reviewed, clean set of texts passes.
-    runGate({ ig, ast, scope });
     return 0;
   }
   console.error(
