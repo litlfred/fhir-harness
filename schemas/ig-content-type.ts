@@ -44,6 +44,8 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
+import { trustedScriptProblem } from "./ig-trusted-scripts.ts";
+
 import { defaultContentTypes, INDEX_SECTION_FILE, type ContentTypeRegistry } from "@litlfred/cat-harness-tools/schemas/content/content-type.js";
 import { ownNamespace } from "@litlfred/cat-harness-tools/schemas/kg/namespaces.js";
 
@@ -62,6 +64,15 @@ export const IG_TYPE = `${ownNamespace("fhir-harness-ig-ast")}IgRepository`;
 export interface IgSection {
   /** Repository-relative POSIX paths. A trailing `/` marks a directory. */
   include: string[];
+  /**
+   * Same-site scripts the IG's own pages load, as each page's script `src`
+   * writes them (owner, 2026-11-12, cards Q-TRP-3 and Q-RAIL-2). The injection
+   * gate (`scripts/ig-content-qa.ts`) accepts, on a page and only there, a
+   * script element whose `src` is on this list and that has no body; every
+   * other script, and any script in a resource's narrative or markdown, is
+   * still refused. Absent means none.
+   */
+  trustedScripts?: string[];
 }
 
 /**
@@ -98,7 +109,17 @@ export function parseIgSection(section: unknown): { section: IgSection } | { pro
     const p = includeEntryProblem(e);
     if (p) problems.push(`contentTypes.ig.include[${i}] ${JSON.stringify(e)}: ${p}`);
   });
-  return problems.length > 0 ? { problems } : { section: { include: include as string[] } };
+  const trusted = (section as { trustedScripts?: unknown }).trustedScripts;
+  if (trusted !== undefined) {
+    if (!Array.isArray(trusted)) problems.push("contentTypes.ig.trustedScripts is not a list");
+    else
+      trusted.forEach((e, i) => {
+        const p = trustedScriptProblem(e);
+        if (p) problems.push(`contentTypes.ig.trustedScripts[${i}] ${JSON.stringify(e)}: ${p}`);
+      });
+  }
+  if (problems.length > 0) return { problems };
+  return { section: { include: include as string[], ...(Array.isArray(trusted) && trusted.length ? { trustedScripts: trusted as string[] } : {}) } };
 }
 
 /**

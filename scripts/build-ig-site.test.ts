@@ -1609,6 +1609,22 @@ describe("relinkPublisherTemplateAssets — staged input/images HTML pages point
   });
 });
 
+describe("the process task panel on an IG's pages (owner, 2026-11-12, Q-RAIL-2)", () => {
+  test("bothLayoutsCarryTheLoader", async () => {
+    const m = await import("./build-ig-site.ts");
+    for (const l of [m.thinIgLayout("/x/"), m.harnessLayout("", "")]) expect(l).toContain(`<script>{% raw %}${m.IG_TASK_PANEL_JS}{% endraw %}</script>`);
+    expect(m.IG_TASK_PANEL_JS).not.toMatch(/\{\{|\{%/);
+  });
+  test("loadsOnlyFromASameSiteSidecar", async () => {
+    const { IG_TASK_PANEL_JS } = await import("./build-ig-site.ts");
+    const re = new RegExp(IG_TASK_PANEL_JS.match(/if\(!\/(.+?)\/\.test\(p\)/)![1]!);
+    const ok = (p: string) => re.test(p) && !p.includes("//");
+    expect(ok("en/cat-harness/processes/j1.tasks.json")).toBe(true);
+    expect(ok("../processes/j1.tasks.json")).toBe(true);
+    for (const bad of ["https://evil.example/x.tasks.json", "//evil.example/x.tasks.json", "/abs/x.tasks.json", "javascript:alert(1)//.tasks.json", "en/x.json", "en/x.tasks.json?y", "data:text/javascript,1.tasks.json"]) expect(ok(bad)).toBe(false);
+  });
+});
+
 describe("the Contents card on an IG's narrative pages (owner, 2026-11-10)", () => {
   test("bothLayoutsCarryTheCard", async () => {
     const m = await import("./build-ig-site.ts");

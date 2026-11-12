@@ -562,6 +562,30 @@ var h1=main.querySelector("h1");
 if(h1&&h1.parentNode===main)h1.insertAdjacentElement("afterend",nav);else main.insertBefore(nav,main.firstChild);
 })();`;
 
+/**
+ * The process task panel on an IG's pages (owner, 2026-11-12, Q-RAIL-2 = C).
+ * The injection QA gate (`ig-content-qa.ts`, fhir-harness#332) refuses a
+ * `<script>` in an IG's page text, so a page can no longer load the panel's
+ * client itself. A BPMN figure that wants the panel says so as data: a
+ * `.pt-diagram` with `data-panel` naming its `<stem>.tasks.json` sidecar. The
+ * layout then loads `task-panel.js` and `task-panel.css` from the sidecar's
+ * own directory, where the processes viewer publishes them beside it.
+ *
+ * The path comes from page text, so it is held to a same-site relative path
+ * ending in `.tasks.json`: no scheme, no `//`, no leading `/`. Anything else
+ * loads nothing, and the figure stays a plain drawing.
+ */
+export const IG_TASK_PANEL_JS = `(function(){
+var f=document.querySelector("#main-content .pt-diagram[data-panel]");
+if(!f||window.__igTaskPanel)return;
+var p=f.getAttribute("data-panel")||"";
+if(!/^[A-Za-z0-9._-][A-Za-z0-9._\/-]*\.tasks\.json$/.test(p)||p.indexOf("//")>=0)return;
+window.__igTaskPanel=1;
+var dir=p.replace(/[^\/]*$/,"");
+var l=document.createElement("link");l.rel="stylesheet";l.href=dir+"task-panel.css";document.head.appendChild(l);
+var s=document.createElement("script");s.src=dir+"task-panel.js";document.body.appendChild(s);
+})();`;
+
 /** The card's style, read from the thin stylesheet between its markers, for the standalone layout that does not link that sheet. */
 export const IG_CONTENTS_CSS = (() => {
   const css = readFileSync(join(import.meta.dir, "templates", "ig-pages", "ig-artifact.css"), "utf-8");
@@ -609,6 +633,7 @@ export function harnessLayout(topBar: string, tocNav: string, sectionLabel?: str
     IG_FIGURE_IMAGES_STAMP,
     "{{ content }}",
     ...igEditLines(),
+    `<script>${liquidInertScript(IG_TASK_PANEL_JS)}</script>`,
     `<script>${liquidInertScript(IG_CONTENTS_JS)}</script>`,
     "</main>",
     // Last on the page, as on the Publisher's. Only on pages that flag it
@@ -814,6 +839,7 @@ export function thinIgLayout(assetsAt: string, tocNav = "", sectionLabel?: strin
     ...(topBar ? [topBar] : []),
     `<main class="ig-main main-content ${PAGE_MAIN_CLASS}" id="main-content">`,
     "{{ content }}",
+    `<script>${liquidInertScript(IG_TASK_PANEL_JS)}</script>`,
     `<script>${liquidInertScript(IG_CONTENTS_JS)}</script>`,
     "</main>",
     // The IG's footer after the column, as `harnessLayout` places it.

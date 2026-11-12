@@ -34,6 +34,28 @@ publish, previews included (owner, 2026-11-10, card Q-INJ-1 "B: previews
 refuse too"). `IG_CONTENT_QA_ACCEPT_UNREVIEWED=1` accepts one for a local
 build only, and its QA page says so.
 
+**Scripts an IG trusts** (owner, 2026-11-12, cards Q-TRP-3 and Q-RAIL-2). An
+IG whose own pages load a same-site script lists it in its `index.config.json`
+under `contentTypes.ig.trustedScripts`, as the page's `src` writes it:
+
+```json
+"contentTypes": { "ig": { "include": ["..."], "trustedScripts": ["demo/widget.js"] } }
+```
+
+On a page, and only there, the gate then accepts a script element whose one
+`src` is on that list, with at most a `type` of `module` or `text/javascript`
+and `defer`/`async`, and nothing between its tags. An entry must be a
+relative path to a `.js` or `.mjs` file: no scheme, host, leading `/`, `.` or
+`..` segment, query or fragment (`schemas/ig-trusted-scripts.ts`). An inline
+body, an `on*` attribute, a second `src`, another `type`, and any script in a
+narrative or markdown field are still pattern hits. Adding an entry is a
+content change the review reads like any other: the script itself is the
+IG's, and the reviewer looks at it.
+
+The site's own process task panel needs no entry: the layouts load it from
+the `data-panel` sidecar a figure names (`IG_TASK_PANEL_JS` in
+`scripts/build-ig-site.ts`), not from a script tag on the page.
+
 ## What is read
 
 `collectItems`: every resource in the AST (`output-ast/manifest.json`), its

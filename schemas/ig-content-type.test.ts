@@ -93,3 +93,20 @@ describe("the section declares what the harness reads", () => {
     expect(readIgSection(repo("{ not json"))).toEqual({ problems: [expect.stringMatching(/does not parse/)] });
   });
 });
+
+describe("trustedScripts: same-site scripts an IG's pages load", () => {
+  it("readsAValidList", () => {
+    expect(parseIgSection({ ...declared, trustedScripts: ["demo/widget.js", "a.mjs"] })).toEqual({
+      section: { include: declared.include, trustedScripts: ["demo/widget.js", "a.mjs"] },
+    });
+    expect(parseIgSection({ ...declared, trustedScripts: [] })).toEqual({ section: { include: declared.include } });
+  });
+
+  it("refusesAnythingNotARelativeSameSiteScript", () => {
+    for (const bad of ["https://x.org/a.js", "//x.org/a.js", "/a.js", "../a.js", "a/./b.js", "a.css", "a.js?x=1", "a b.js", "", 3]) {
+      const r = parseIgSection({ ...declared, trustedScripts: [bad] });
+      expect("problems" in r && r.problems[0]).toContain("contentTypes.ig.trustedScripts[0]");
+    }
+    expect(parseIgSection({ ...declared, trustedScripts: "a.js" })).toEqual({ problems: ["contentTypes.ig.trustedScripts is not a list"] });
+  });
+});
