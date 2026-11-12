@@ -537,16 +537,21 @@ export async function notAnIgCheckout(ig: string): Promise<string | undefined> {
   return `${ig} declares no contentTypes.ig and carries no sushi-config.yaml: not an IG checkout, no IG texts to judge`;
 }
 
+/** The runner's "not applicable; not counted" exit (cat-harness-tools `lib/not-applicable.ts`). */
+export const NOT_APPLICABLE_EXIT = 78;
+
 /**
- * The `gate` command: judge an IG checkout, and pass a checkout that is not
- * an IG with the reason said. An IG checkout is judged exactly as
- * {@link runGate} judges it; a missing AST still refuses.
+ * The `gate` command: judge an IG checkout. A checkout that is not an IG is
+ * not judged: `undefined`, with a NOT APPLICABLE line, and the command exits
+ * {@link NOT_APPLICABLE_EXIT}, so the skip cannot be mistaken for a pass. An
+ * IG checkout is judged exactly as {@link runGate} judges it; a missing AST
+ * still refuses.
  */
 export async function gateCheckout(o: { ig: string; ast: string; log?: (s: string) => void }): Promise<ContentQaVerdict | undefined> {
   const log = o.log ?? ((s: string) => console.error(s));
   const not = await notAnIgCheckout(o.ig);
   if (not) {
-    log(`injection QA: nothing to judge: ${not}`);
+    log(`injection QA: NOT APPLICABLE: ${not}; nothing was judged; this is not a pass`);
     return undefined;
   }
   return runGate({ ig: o.ig, ast: o.ast, scope: await scopeOf(o.ig), log });
@@ -563,8 +568,7 @@ async function main(argv: string[]): Promise<number> {
   if (cmd === "gate") {
     // As the root judges: only a reviewed, clean set of texts passes. A
     // checkout that is not an IG is not judged (see notAnIgCheckout).
-    await gateCheckout({ ig, ast });
-    return 0;
+    return (await gateCheckout({ ig, ast, log: (s) => console.log(s) })) ? 0 : NOT_APPLICABLE_EXIT;
   }
   const scope = await scopeOf(ig);
   if (cmd === "scan") {

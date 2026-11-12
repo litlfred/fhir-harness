@@ -124,7 +124,8 @@ any changed, added or removed text makes it stale.
 6. `bun run fhir-harness/scripts/ig-content-qa.ts gate` judges as the root
    publish does. It judges an IG checkout only: one that declares
    `contentTypes.ig` or carries `sushi-config.yaml`. Any other checkout (a
-   document folio, an index root) passes with "nothing to judge", since the
+   document folio, an index root) is not judged: it prints NOT APPLICABLE and
+   exits 78, the runner's "not applicable; not counted", never 0, since the
    check is owed only where an IG is built. An IG checkout with no AST still
    fails.
 

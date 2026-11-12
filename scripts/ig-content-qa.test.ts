@@ -12,6 +12,7 @@ import {
   decoded,
   gateCheckout,
   makeSidecar,
+  NOT_APPLICABLE_EXIT,
   notAnIgCheckout,
   readSidecar,
   resourceItems,
@@ -356,7 +357,21 @@ describe("the gate command judges IG checkouts only", () => {
     expect(await notAnIgCheckout(folio)).toMatch(/not an IG checkout/);
     const said: string[] = [];
     expect(await gateCheckout({ ig: folio, ast: join(folio, "output-ast"), log: (s) => said.push(s) })).toBeUndefined();
-    expect(said.join("\n")).toMatch(/nothing to judge/);
+    expect(said.join("\n")).toMatch(/NOT APPLICABLE.*nothing was judged; this is not a pass/);
+  });
+
+  test("the command exits 78 (not applicable) at a non-IG root, never 0, and 1 for an IG with no AST", () => {
+    const script = join(import.meta.dir, "ig-content-qa.ts");
+    const folio = empty();
+    const na = Bun.spawnSync(["bun", "run", script, "gate", "--ig", folio]);
+    expect(NOT_APPLICABLE_EXIT).toBe(78);
+    expect(na.exitCode).toBe(78);
+    expect(na.stdout.toString()).toMatch(/NOT APPLICABLE.*this is not a pass/);
+    const ig = empty();
+    writeFileSync(join(ig, "sushi-config.yaml"), "id: x\n");
+    const red = Bun.spawnSync(["bun", "run", script, "gate", "--ig", ig]);
+    expect(red.exitCode).toBe(1);
+    expect(red.stderr.toString()).toMatch(/no AST at/);
   });
 
   test("an IG declared by contentTypes.ig with no AST still fails", async () => {
