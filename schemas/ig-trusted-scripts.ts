@@ -4,7 +4,7 @@
  * (`scripts/ig-content-qa.ts`) can use it without a mounted layer.
  *
  * @module fhir-harness/schemas/ig-trusted-scripts
- * @covers none — a path check
+ * @graphNode none — a helper of the ig content type (ig-content-type.ts), kept import-free for the injection gate
  */
 
 /**

@@ -1621,7 +1621,7 @@ describe("the process task panel on an IG's pages (owner, 2026-11-12, Q-RAIL-2)"
     const ok = (p: string) => re.test(p) && !p.includes("//");
     expect(ok("en/cat-harness/processes/j1.tasks.json")).toBe(true);
     expect(ok("../processes/j1.tasks.json")).toBe(true);
-    for (const bad of ["https://evil.example/x.tasks.json", "//evil.example/x.tasks.json", "/abs/x.tasks.json", "javascript:alert(1)//.tasks.json", "en/x.json", "en/x.tasks.json?y", "data:text/javascript,1.tasks.json"]) expect(ok(bad)).toBe(false);
+    for (const bad of ["https://evil.example/x.tasks.json", "//evil.example/x.tasks.json", "/abs/x.tasks.json", "javascript:alert(1)//.tasks.json", "en/x.json", "en/x.tasks.json?y", "data:text/javascript,1.tasks.json", "en/j1Xtasks.json", "en/j1.tasksXjson"]) expect(ok(bad)).toBe(false);
   });
 });
 

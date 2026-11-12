@@ -579,9 +579,9 @@ export const IG_TASK_PANEL_JS = `(function(){
 var f=document.querySelector("#main-content .pt-diagram[data-panel]");
 if(!f||window.__igTaskPanel)return;
 var p=f.getAttribute("data-panel")||"";
-if(!/^[A-Za-z0-9._-][A-Za-z0-9._\/-]*\.tasks\.json$/.test(p)||p.indexOf("//")>=0)return;
+if(!/^[A-Za-z0-9._-][A-Za-z0-9._/-]*[.]tasks[.]json$/.test(p)||p.indexOf("//")>=0)return;
 window.__igTaskPanel=1;
-var dir=p.replace(/[^\/]*$/,"");
+var dir=p.replace(/[^/]*$/,"");
 var l=document.createElement("link");l.rel="stylesheet";l.href=dir+"task-panel.css";document.head.appendChild(l);
 var s=document.createElement("script");s.src=dir+"task-panel.js";document.body.appendChild(s);
 })();`;
