@@ -5,7 +5,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: l3-fhir-pipeline\n"
-"POT-Creation-Date: 2026-11-07T08:27:00.819Z\n"
+"POT-Creation-Date: 2026-11-11T12:38:31.359Z\n"
 "PO-Revision-Date: \n"
 "Last-Translator: \n"
 "Language: zh\n"
@@ -84,7 +84,7 @@ msgstr ""
 msgid "L3 FHIR IG pipeline"
 msgstr ""
 
-#: ../fhir-harness/processes/content/l3-fhir-pipeline.bpmn:158
+#: ../fhir-harness/processes/content/l3-fhir-pipeline.bpmn:159
 #. Diagram label
 msgid "no"
 msgstr ""
@@ -104,7 +104,7 @@ msgstr ""
 msgid "Publish the IG site"
 msgstr ""
 
-#: ../fhir-harness/processes/content/l3-fhir-pipeline.bpmn:151
+#: ../fhir-harness/processes/content/l3-fhir-pipeline.bpmn:152
 #. Diagram label
 msgid "Published IG site"
 msgstr ""
@@ -126,7 +126,7 @@ msgstr ""
 
 #: ../fhir-harness/processes/content/l3-fhir-pipeline.bpmn:142
 #. Diagram element documentation
-msgid "Release authorisation and review follow draft-to-publication.bpmn."
+msgid "Release authorisation and review follow draft-to-publication.bpmn. The site is published from the AST on the IG's cache branch (ig-ast-cache.bpmn). A release is started by the owner pushing a `v*` tag of the current version (`ig-release.bpmn`, which also holds the catch-up when a version was not tagged): the IG's `ig-release.yml` runs a full AST build, then `ig-release.ts` makes a GitHub DRAFT release carrying `package.tgz` (and its R4/R4B variants), `ast-data.zip` and `SHA256SUMS`; the owner publishing that draft is Task_AuthorizeRelease (skill `ig-binary-artefacts` §\"Releasing\"). The site serves each resource as a reduced `<Type>-<id>.json` at its root; the full copies are the release's and the AST cache's."
 msgstr ""
 
 #: ../fhir-harness/processes/content/l3-fhir-pipeline.bpmn:134
@@ -194,7 +194,7 @@ msgstr ""
 msgid "Write the FSH profiles, value sets and definitions the source model calls for. This is the stage where profiles, slicing and invariants belong — a decision that can only be expressed in FHIR comes here, not back into the source model."
 msgstr ""
 
-#: ../fhir-harness/processes/content/l3-fhir-pipeline.bpmn:159
+#: ../fhir-harness/processes/content/l3-fhir-pipeline.bpmn:160
 #. Diagram label
 msgid "yes"
 msgstr ""

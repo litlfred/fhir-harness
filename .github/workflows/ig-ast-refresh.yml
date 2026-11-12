@@ -340,7 +340,16 @@ jobs:
             targs=()
             for m in $TEMPLATE_REPOS; do targs+=(--template-repo "$m"); done
             echo "::group::seed the template $tpl from its repository"
-            python3 -I "$RUNNER_TEMP/igp/ast-export/scripts/seed-fhir-cache-from-npm.py" --cache "$HOME/.fhir/packages" "${targs[@]}" "$tpl" \
+            # The seeder lives in the exporter's repository. A published
+            # bundle carries only classes/ and lib/, and then that repository
+            # was never cloned: check out the seeder alone, at the same pin.
+            seeder="$RUNNER_TEMP/igp/ast-export/scripts/seed-fhir-cache-from-npm.py"
+            if [ ! -f "$seeder" ]; then
+              { [ -d "$RUNNER_TEMP/igp/.git" ] || git clone -q --filter=blob:none --no-checkout https://github.com/litlfred/fhir-ig-publisher "$RUNNER_TEMP/igp"; } \
+                && git -C "$RUNNER_TEMP/igp" checkout -q "$AST_EXPORT_REF" -- ast-export/scripts/seed-fhir-cache-from-npm.py \
+                || echo "::warning::could not check out the template seeder at $AST_EXPORT_REF"
+            fi
+            python3 -I "$seeder" --cache "$HOME/.fhir/packages" "${targs[@]}" "$tpl" \
               || echo "::warning::could not seed the template $tpl from its repository: the Publisher tries the CI build server"
             echo "::endgroup::"
           fi
