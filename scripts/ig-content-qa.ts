@@ -54,6 +54,8 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 
+import { trustedScriptProblem } from "../schemas/ig-trusted-scripts.ts";
+
 /** Where the agent's review is kept in the IG repository. The IG declares it in `contentTypes.ig.include`. */
 export const CONTENT_QA_SIDECAR = "qa/ig-content-qa.json";
 /** The sidecar's format tag. */
@@ -127,6 +129,27 @@ export function scanText(text: string): PatternHit[] {
     }
   }
   return out;
+}
+
+/**
+ * A page's text with each script element the IG trusts taken out
+ * (owner, 2026-11-12, cards Q-TRP-3 and Q-RAIL-2): an element whose only
+ * attributes are a `src` on `trusted` (as {@link trustedScriptProblem}
+ * allows: relative, same-site, `.js`), at most a `type` of `module` or
+ * `text/javascript`, and `defer`/`async`, with nothing between its tags.
+ * Anything else, an inline body, an `on*` attribute, another `src`, is left
+ * for {@link scanText} to refuse. The gate applies it to `page` items only;
+ * a narrative or markdown field never loads a script.
+ */
+export function withoutTrustedScripts(text: string, trusted: readonly string[]): string {
+  if (!trusted.length) return text;
+  const ok = new Set(trusted);
+  const attr = String.raw`\s+(?:src\s*=\s*(?:"([^"]*)"|'([^']*)')|type\s*=\s*(?:"(?:module|text/javascript)"|'(?:module|text/javascript)')|defer|async)`;
+  const el = new RegExp(String.raw`<script((?:${attr})+)\s*>\s*</script\s*>`, "gi");
+  return text.replace(el, (m: string, attrs: string) => {
+    const srcs = [...attrs.matchAll(/\bsrc\s*=\s*(?:"([^"]*)"|'([^']*)')/gi)].map((x) => x[1] ?? x[2] ?? "");
+    return srcs.length === 1 && ok.has(srcs[0]!) && !trustedScriptProblem(srcs[0]) ? "" : m;
+  });
 }
 
 // ── what is a text ─────────────────────────────────────────────────────────
@@ -206,6 +229,8 @@ const PAGE_FILE = /\.(md|markdown|html?|xml|liquid)$/i;
 export interface ReadScope {
   declares(rel: string): boolean;
   reaches(rel: string): boolean;
+  /** The IG's declaration, when it has one: its `trustedScripts` reach the gate. */
+  section?: { trustedScripts?: string[] };
 }
 const EVERYTHING: ReadScope = { declares: () => true, reaches: () => true };
 
@@ -356,15 +381,20 @@ export interface ContentQaVerdict {
   said: string;
 }
 
+/** The pattern hits of one item, after the IG's trusted scripts are taken out of a page. */
+export function scannedHits(i: ContentItem, trusted: readonly string[] = []): PatternHit[] {
+  return scanText(i.kind === "page" ? withoutTrustedScripts(i.text, trusted) : i.text);
+}
+
 /**
  * Judge the texts against the review. `sidecar` is the parsed file, or
  * `undefined` when there is none. `acceptUnreviewed` (a local build's) lets a
  * missing or stale review through, said; it never lets a pattern hit or an
  * open finding through.
  */
-export function contentGate(o: { items: readonly ContentItem[]; sidecar: unknown; acceptUnreviewed?: boolean }): ContentQaVerdict {
+export function contentGate(o: { items: readonly ContentItem[]; sidecar: unknown; acceptUnreviewed?: boolean; trustedScripts?: readonly string[] }): ContentQaVerdict {
   const digest = contentDigest(o.items);
-  const patternHits: PlacedHit[] = o.items.flatMap((i) => scanText(i.text).map((h) => ({ where: i.where, field: i.field, ...h })));
+  const patternHits: PlacedHit[] = o.items.flatMap((i) => scannedHits(i, o.trustedScripts).map((h) => ({ where: i.where, field: i.field, ...h })));
   const base = { $schema: "ig-content-qa-verdict/v1" as const, items: o.items.length, contentDigest: digest, patternHits };
   const problems = o.sidecar === undefined ? undefined : sidecarProblems(o.sidecar);
   const s = problems && !problems.length ? (o.sidecar as ContentQaSidecar) : undefined;
@@ -407,7 +437,8 @@ export function readSidecar(ig: string, scope: ReadScope = EVERYTHING): unknown 
 export function runGate(o: { ig: string; ast: string; scope?: ReadScope; acceptUnreviewed?: boolean; work?: string; log?: (s: string) => void }): ContentQaVerdict {
   const log = o.log ?? ((s: string) => console.error(s));
   const items = collectItems({ ig: o.ig, ast: o.ast, ...(o.scope ? { scope: o.scope } : {}) });
-  const v = contentGate({ items, sidecar: readSidecar(o.ig, o.scope), ...(o.acceptUnreviewed ? { acceptUnreviewed: true } : {}) });
+  const trustedScripts = o.scope?.section?.trustedScripts ?? [];
+  const v = contentGate({ items, sidecar: readSidecar(o.ig, o.scope), trustedScripts, ...(o.acceptUnreviewed ? { acceptUnreviewed: true } : {}) });
   if (o.work) {
     mkdirSync(o.work, { recursive: true });
     writeFileSync(join(o.work, VERDICT_FILE), `${JSON.stringify(v, null, 2)}\n`);
@@ -439,7 +470,7 @@ async function main(argv: string[]): Promise<number> {
   const scope = await scopeOf(ig);
   if (cmd === "scan") {
     const items = collectItems({ ig, ast, scope });
-    const bundle = { contentDigest: contentDigest(items), items: items.map((i) => ({ ...i, patternHits: scanText(i.text) })) };
+    const bundle = { contentDigest: contentDigest(items), items: items.map((i) => ({ ...i, patternHits: scannedHits(i, scope.section?.trustedScripts) })) };
     const out = opt("out");
     if (out) {
       mkdirSync(dirname(resolve(out)), { recursive: true });
@@ -460,7 +491,7 @@ async function main(argv: string[]): Promise<number> {
     const s = makeSidecar({ items, reviewer: { kind: (opt("kind") as "agent" | "person" | undefined) ?? "agent", name: reviewer, ...(session ? { session } : {}) }, findings });
     mkdirSync(join(ig, dirname(CONTENT_QA_SIDECAR)), { recursive: true });
     writeFileSync(join(ig, CONTENT_QA_SIDECAR), `${JSON.stringify(s, null, 2)}\n`);
-    const hits = items.filter((i) => scanText(i.text).length).length;
+    const hits = items.filter((i) => scannedHits(i, scope.section?.trustedScripts).length).length;
     console.log(`${CONTENT_QA_SIDECAR}: ${s.items} text(s), ${s.contentDigest}, ${s.findings.length} finding(s)${hits ? `; ${hits} text(s) still break a pattern rule, which the gate refuses whatever this review says` : ""}`);
     return 0;
   }

@@ -15,7 +15,9 @@ import {
   resourceItems,
   runGate,
   scanText,
+  scannedHits,
   sidecarProblems,
+  withoutTrustedScripts,
 } from "./ig-content-qa.ts";
 
 const rules = (t: string) => scanText(t).map((h) => h.rule);
@@ -199,5 +201,62 @@ describe("pageItems: translated page catalogues (fhir-harness#382)", () => {
     expect(pageItems(ig).map((i) => i.where)).toEqual(["input/pagecontent/index.md", "translations/fr/pagecontent/index.po"]);
     const notDeclared = { declares: (r: string) => !r.startsWith("translations/"), reaches: () => true };
     expect(pageItems(ig, notDeclared).map((i) => i.where)).toEqual(["input/pagecontent/index.md"]);
+  });
+});
+
+describe("scripts an IG trusts on its own pages (owner, 2026-11-12, Q-TRP-3 and Q-RAIL-2)", () => {
+  const trusted = ["demo/widget.js"];
+  const page = (text: string) => ({ kind: "page" as const, where: "input/pagecontent/qr.md", field: "page", sha: "x", text });
+
+  test("a bare external script on the list is accepted on a page, with a module or classic type, defer or async", () => {
+    for (const tag of [
+      '<script type="module" src="demo/widget.js"></script>',
+      "<script src='demo/widget.js' defer></script>",
+      '<script src="demo/widget.js" type="text/javascript" async>\n</script>',
+    ]) {
+      expect(withoutTrustedScripts(`# QR\n${tag}\n`, trusted)).toBe("# QR\n\n");
+      expect(scannedHits(page(tag), trusted)).toEqual([]);
+    }
+  });
+
+  test("anything else in a script element is still refused", () => {
+    for (const tag of [
+      '<script src="other.js"></script>',
+      '<script src="demo/widget.js">alert(1)</script>',
+      '<script src="demo/widget.js" onload="x()"></script>',
+      '<script src="demo/widget.js" src="evil.js"></script>',
+      '<script type="text/html" src="demo/widget.js"></script>',
+      '<script src="https://evil.example/demo/widget.js"></script>',
+      "<script>fetch('x')</script>",
+    ])
+      expect(scannedHits(page(tag), trusted).map((h) => h.rule)).toContain("script-tag");
+  });
+
+  test("a trusted path is never accepted in a narrative or a markdown field, nor with no list", () => {
+    const tag = '<script src="demo/widget.js"></script>';
+    expect(scannedHits({ ...page(tag), kind: "narrative" }, trusted).map((h) => h.rule)).toContain("script-tag");
+    expect(scannedHits({ ...page(tag), kind: "markdown" }, trusted).map((h) => h.rule)).toContain("script-tag");
+    expect(scannedHits(page(tag)).map((h) => h.rule)).toContain("script-tag");
+  });
+
+  test("the gate takes the list; the review still reads the page as written", () => {
+    const items = [page('<script type="module" src="demo/widget.js"></script>')];
+    const sidecar = makeSidecar({ items, reviewer: { kind: "agent", name: "t" } });
+    expect(contentGate({ items, sidecar })).toMatchObject({ ok: false, state: "pattern-hits" });
+    expect(contentGate({ items, sidecar, trustedScripts: trusted })).toMatchObject({ ok: true, state: "reviewed" });
+  });
+
+  test("runGate reads the list from the read scope's declaration", () => {
+    const ig = mkdtempSync(join(tmpdir(), "ig-content-qa-trusted-"));
+    const ast = join(ig, "output-ast");
+    mkdirSync(join(ast, "resources"), { recursive: true });
+    mkdirSync(join(ig, "input", "pagecontent"), { recursive: true });
+    writeFileSync(join(ast, "manifest.json"), JSON.stringify({ $schema: "ig-ast/v1", resources: [] }));
+    writeFileSync(join(ig, "input", "pagecontent", "qr.md"), '# QR\n<script type="module" src="demo/widget.js"></script>\n');
+    mkdirSync(join(ig, "qa"));
+    writeFileSync(join(ig, CONTENT_QA_SIDECAR), JSON.stringify(makeSidecar({ items: collectItems({ ig, ast }), reviewer: { kind: "agent", name: "t" } })));
+    const all = { declares: () => true, reaches: () => true };
+    expect(() => runGate({ ig, ast, scope: all, log: () => {} })).toThrow(/pattern hit/);
+    expect(runGate({ ig, ast, scope: { ...all, section: { trustedScripts: trusted } }, log: () => {} }).state).toBe("reviewed");
   });
 });
