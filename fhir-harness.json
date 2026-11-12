@@ -240,7 +240,7 @@
       {
         "script": "check:ig-content-qa",
         "kind": "covered-by",
-        "reason": "RUNS AT EVERY IG SITE PUBLISH, not as a step of its own: `ig-site:compose` (`ig-repo-site.ts` `contentQaGate`) calls the same `runGate` before anything is staged, so a pattern hit, an open finding, or a missing or stale review refuses the publish, previews included (fhir-harness#330, card Q-INJ-1). It judges ONE IG checkout and its AST cache; at a platform or index root there is no IG, so there it can only fail with `no AST at output-ast`. Kept as a script to run the gate by hand on an IG checkout (skill `ig-content-qa`)"
+        "reason": "RUNS AT EVERY IG SITE PUBLISH, not as a step of its own: `ig-site:compose` (`ig-repo-site.ts` `contentQaGate`) calls the same `runGate` before anything is staged, so a pattern hit, an open finding, or a missing or stale review refuses the publish, previews included (fhir-harness#330, card Q-INJ-1). It judges ONE IG checkout and its AST cache; at a checkout that is not an IG (a document folio, a platform or index root: no `contentTypes.ig`, no `sushi-config.yaml`) it exits 78 (NOT APPLICABLE, not counted, never a pass); an IG checkout with no AST still fails with `no AST at output-ast`. Kept as a script to run the gate by hand on an IG checkout (skill `ig-content-qa`)"
       }
     ]
   },

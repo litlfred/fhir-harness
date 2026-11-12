@@ -10,7 +10,10 @@ import {
   contentDigest,
   contentGate,
   decoded,
+  gateCheckout,
   makeSidecar,
+  NOT_APPLICABLE_EXIT,
+  notAnIgCheckout,
   readSidecar,
   resourceItems,
   runGate,
@@ -342,5 +345,53 @@ describe("SVG drawings an IG trusts in <object> on its own pages (owner, 2026-11
       "input/images/b.svg:script-url",
       "input/images/gone.svg:trusted-svg-unreadable",
     ]);
+  });
+});
+
+describe("the gate command judges IG checkouts only", () => {
+  const empty = () => mkdtempSync(join(tmpdir(), "ig-content-qa-kind-"));
+
+  test("a document folio (no contentTypes.ig, no sushi-config.yaml) is not judged, even with no AST", async () => {
+    const folio = empty();
+    writeFileSync(join(folio, "index.config.json"), JSON.stringify({ $schema: "folio-index-config/v1", contentTypes: { document: {} } }));
+    expect(await notAnIgCheckout(folio)).toMatch(/not an IG checkout/);
+    const said: string[] = [];
+    expect(await gateCheckout({ ig: folio, ast: join(folio, "output-ast"), log: (s) => said.push(s) })).toBeUndefined();
+    expect(said.join("\n")).toMatch(/NOT APPLICABLE.*nothing was judged; this is not a pass/);
+  });
+
+  test("the command exits 78 (not applicable) at a non-IG root, never 0, and 1 for an IG with no AST", () => {
+    const script = join(import.meta.dir, "ig-content-qa.ts");
+    const folio = empty();
+    const na = Bun.spawnSync(["bun", "run", script, "gate", "--ig", folio]);
+    expect(NOT_APPLICABLE_EXIT).toBe(78);
+    expect(na.exitCode).toBe(78);
+    expect(na.stdout.toString()).toMatch(/NOT APPLICABLE.*this is not a pass/);
+    const ig = empty();
+    writeFileSync(join(ig, "sushi-config.yaml"), "id: x\n");
+    const red = Bun.spawnSync(["bun", "run", script, "gate", "--ig", ig]);
+    expect(red.exitCode).toBe(1);
+    expect(red.stderr.toString()).toMatch(/no AST at/);
+  });
+
+  test("an IG declared by contentTypes.ig with no AST still fails", async () => {
+    const ig = empty();
+    writeFileSync(join(ig, "index.config.json"), JSON.stringify({ contentTypes: { ig: { include: ["sushi-config.yaml", "input/"] } } }));
+    expect(await notAnIgCheckout(ig)).toBeUndefined();
+    await expect(gateCheckout({ ig, ast: join(ig, "output-ast"), log: () => {} })).rejects.toThrow(/no AST at/);
+  });
+
+  test("a legacy IG (sushi-config.yaml, no declaration) with no AST still fails", async () => {
+    const ig = empty();
+    writeFileSync(join(ig, "sushi-config.yaml"), "id: x\n");
+    expect(await notAnIgCheckout(ig)).toBeUndefined();
+    await expect(gateCheckout({ ig, ast: join(ig, "output-ast"), log: () => {} })).rejects.toThrow(/no AST at/);
+  });
+
+  test("an unusable contentTypes.ig is an IG, and is refused rather than passed", async () => {
+    const ig = empty();
+    writeFileSync(join(ig, "index.config.json"), JSON.stringify({ contentTypes: { ig: { include: [] } } }));
+    expect(await notAnIgCheckout(ig)).toBeUndefined();
+    await expect(gateCheckout({ ig, ast: join(ig, "output-ast"), log: () => {} })).rejects.toThrow();
   });
 });
