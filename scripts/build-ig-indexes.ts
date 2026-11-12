@@ -79,6 +79,13 @@
  * `ig-ast-site.sh` follows), else the layer declaration's `iriBase`, else
  * none, and the run says which.
  *
+ * The two are laid out differently. A committed copy's site is a Publisher's
+ * output: `<Type>-<id>.html` at its root. An `iriBase` is the layer's own
+ * site, which this harness builds: the page is `artifact/<Type>-<id>.html`
+ * and the root holds only the `.json`. The index's links follow the site
+ * they name (`PublishedLayout`); a Publisher-shaped link on the harness's own
+ * site is a dead link (every journey actor on smart-trust-demo, 2026-11-11).
+ *
  * The SITE decides the owner, not the declaration. A declaration names one
  * repository and one `iriBase`, and both travel with every copy of the
  * layer. A checkout that mounts the layer from a different repository
@@ -117,6 +124,7 @@ import { igReadScope } from "./ig-read-scope.ts";
 import { annotateReleases, readAstHistory } from "./ig-ast-history.ts";
 import { realPathWithin, safeSegment } from "../../cat-harness-tools/src/core/safe-path.js";
 import { astPinsIn, IG_AST_LOCK_FILE, type IgAstPin } from "../schemas/ig-ast-lock.ts";
+import type { PublishedLayout } from "./ast-to-artifact-index.ts";
 
 const HERE = import.meta.dir;
 
@@ -303,14 +311,15 @@ export function referenceAbsent(index: Record<string, unknown>, instanceRoot: st
  * declaration's `iriBase` (re-based on the mounted repository, {@link
  * rebaseOnMount}), else none.
  */
-export function publishedBase(committed: Record<string, unknown> | undefined, declaration: Record<string, unknown> | undefined, mounted?: string): { base?: string; from: string } {
+export function publishedBase(committed: Record<string, unknown> | undefined, declaration: Record<string, unknown> | undefined, mounted?: string): { base?: string; layout?: PublishedLayout; from: string } {
   const src = committed?.["source"] as { kind?: unknown; of?: unknown } | undefined;
-  if ((src?.kind === "gh-pages" || src?.kind === "url") && typeof src.of === "string" && src.of.length > 0) return { base: src.of.replace(/\/+$/, ""), from: "the committed copy's source" };
+  if ((src?.kind === "gh-pages" || src?.kind === "url") && typeof src.of === "string" && src.of.length > 0) return { base: src.of.replace(/\/+$/, ""), layout: "publisher", from: "the committed copy's source" };
   const iri = declaration?.["iriBase"];
   if (typeof iri === "string" && /^https?:\/\//.test(iri)) {
     const declared = typeof declaration?.["repository"] === "string" ? (declaration["repository"] as string) : undefined;
     const base = rebaseOnMount(iri, declared, mounted).replace(/\/+$/, "");
-    return { base, from: base === iri.replace(/\/+$/, "") ? "the declaration's iriBase" : `the declaration's iriBase, re-based on ${mounted}, the repository this checkout mounts` };
+    // The layer's own site, which this harness builds: its pages are `artifact/…` (`PublishedLayout` "site").
+    return { base, layout: "site", from: base === iri.replace(/\/+$/, "") ? "the declaration's iriBase" : `the declaration's iriBase, re-based on ${mounted}, the repository this checkout mounts` };
   }
   return { from: "nowhere: no published links" };
 }
@@ -579,7 +588,7 @@ export function buildOne(t: IgTarget, work: string, log: (s: string) => void, ch
   const pub = publishedBase(committedIx, declarationOf(t.root), t.repository);
   log(`  published at: ${pub.base ?? "unknown"} (from ${pub.from})`);
   const built = join(work, `${t.name}.index.json`);
-  const ix = run("bun", ["run", join(HERE, "ast-to-artifact-index.ts"), "--ast", ast, "--instance-id", t.name, "--out", built, ...grouping, ...sidecars, ...(pub.base ? ["--published-base", pub.base] : [])]);
+  const ix = run("bun", ["run", join(HERE, "ast-to-artifact-index.ts"), "--ast", ast, "--instance-id", t.name, "--out", built, ...grouping, ...sidecars, ...(pub.base ? ["--published-base", pub.base, "--published-layout", pub.layout ?? "publisher"] : [])]);
   if (!ix.ok) problems.push(`index: ${ix.out}`);
   else {
     const next = JSON.parse(readFileSync(built, "utf-8")) as Record<string, unknown>;

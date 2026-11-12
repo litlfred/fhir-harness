@@ -72,6 +72,13 @@ describe("publishedBase", () => {
     expect(publishedBase(undefined, undefined).base).toBeUndefined();
   });
 
+  it("namesTheLayoutOfTheSiteItLinks", () => {
+    // A committed copy's site is a Publisher's output; an iriBase is the harness's own site (`artifact/…`).
+    expect(publishedBase({ source: { kind: "gh-pages", of: "https://example.org/ig/" } }, undefined).layout).toBe("publisher");
+    expect(publishedBase(undefined, { iriBase: "https://alpha.github.io/ig/" }).layout).toBe("site");
+    expect(publishedBase(undefined, undefined).layout).toBeUndefined();
+  });
+
   it("rebasesPagesOnMountedRepo", () => {
     const decl = { repository: "alpha/ig", iriBase: "https://alpha.github.io/ig/" };
     expect(publishedBase(undefined, decl, "beta/ig").base).toBe("https://beta.github.io/ig");
