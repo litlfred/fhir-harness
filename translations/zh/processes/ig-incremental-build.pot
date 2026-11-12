@@ -5,7 +5,7 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: ig-incremental-build\n"
-"POT-Creation-Date: 2026-11-05T13:40:27.504Z\n"
+"POT-Creation-Date: 2026-11-11T12:38:31.356Z\n"
 "PO-Revision-Date: \n"
 "Last-Translator: \n"
 "Language: zh\n"
@@ -106,7 +106,7 @@ msgstr ""
 
 #: ../fhir-harness/processes/content/ig-incremental-build.bpmn:301
 #. Diagram element documentation
-msgid "Deploy the site built from main or a release. Deploying is release-management, after a human authorised the release — an agent never records that authorisation. Report the published URL only once it answers: a returned deploy is not a serving site."
+msgid "Deploy the site built from main or a release. Deploying is release-management, after a human authorised the release — an agent never records that authorisation. A release's files are not deployed to the site: a `v*` tag makes a GitHub draft release carrying them (`ig-release.yml`; skill `ig-binary-artefacts` §\"Releasing\"), which the owner publishes. Report the published URL only once it answers: a returned deploy is not a serving site."
 msgstr ""
 
 #: ../fhir-harness/processes/content/ig-incremental-build.bpmn:328
