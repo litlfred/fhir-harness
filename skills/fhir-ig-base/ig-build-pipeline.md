@@ -397,7 +397,8 @@ raw URL at that commit, and the root copy is **reduced**
 (`ig-repo-site.ts` `reduceForSite`): minified, without `text` (the pages
 render the narrative from the full copy), and each Library attachment whose
 contentType names `elm` without its `data`, its `url` set to the full
-resource in the cache; the CQL stays. Measured on one IG of 756 resources: 47 MB
+resource in the cache; the CQL likewise becomes a `url` (the IG's `.cql`
+source, or else the full resource). Measured on one IG of 756 resources: 47 MB
 verbatim, 13 MB reduced. The JSON-LD graph names the root file first (each
 node's `local` encoding, each `artifact/index.jsonld` entry's
 `schema:contentUrl`) and the cache copy second (`mirror`); `ig-artifact-jsonld.ts

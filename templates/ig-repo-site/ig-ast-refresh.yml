@@ -21,12 +21,22 @@
 # AST export and records the AST against the clean commit. Write it in this
 # file, never as a dispatch input. Without one, nothing is run.
 #
-# Manual trigger only (owner decision, 2026-10-06): add `push` on the default
-# branch to a copy only if that repository's owner asks for every change of
-# the IG source to rebuild the cache.
-name: IG AST refresh (by hand)
+# It runs on every push to main that changes the IG's inputs, and by hand
+# (owner, 2026-11-11: "i want that it publishes once merge to main",
+# litlfred/cat-harness-tools#1879; it replaces the by-hand rule of
+# 2026-10-06). The site publish on the same push waits for it
+# (`site.publishAfter`), so the site is built from the new AST. A push that
+# changes no input leaves the cache valid (`ig-ast.ts` `sameSourceAs`), so
+# nothing runs.
+name: IG AST refresh
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - sushi-config.yaml
+      - ig.ini
+      - "input/**"
   workflow_dispatch:
     inputs:
       ref:
@@ -45,6 +55,6 @@ jobs:
   refresh:
     uses: litlfred/fhir-harness/.github/workflows/ig-ast-refresh.yml@main
     with:
-      ref: ${{ inputs.ref }}
-      force: ${{ inputs.force }}
+      ref: ${{ inputs.ref || github.sha }}
+      force: ${{ inputs.force || false }}
       # pre-export: bash <overlay>/scripts/<prepare-inputs>.sh

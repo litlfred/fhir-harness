@@ -35,11 +35,12 @@
  * @module fhir-harness/scripts/ig-qa-page
  * @covers none — it publishes QA records other checks wrote, and judges nothing
  */
+import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { copyKgQaRecords, kgQaMarkdown, kgQaReport, type KgQaReport } from "../../cat-harness-tools/scripts/kg-qa-report.ts";
 import { readDeclaration } from "../../cat-harness-tools/schemas/kg/cat-harness.ts";
-import { execFileSync } from "node:child_process";
+import { CONTENT_QA_PUBLISHED, CONTENT_QA_SIDECAR, type ContentQaVerdict } from "./ig-content-qa.ts";
 import { QA_MESSAGES_FILE, QA_MESSAGES_SCHEMA } from "./ig-qa-messages.ts";
 import { markdownQaMarkdown, scanDir, type MarkdownFinding } from "./ig-markdown-qa.ts";
 import { pageRenderQaMarkdown } from "./ig-page-render-qa.ts";
@@ -71,6 +72,8 @@ export interface FhirQa {
   validity?: { verdict?: string; detail?: Json; recorded?: Json; current?: Json };
   /** The AST's markdown fields drawn by the pages' own renderer, and what they leave as text (`ig-markdown-qa.ts`). */
   markdown?: { scanned: number; findings: MarkdownFinding[] };
+  /** The injection gate's verdict (`ig-content-qa.ts`), when the build ran it. */
+  content?: ContentQaVerdict;
 }
 
 function readJson(file: string | undefined): Json | undefined {
@@ -162,6 +165,29 @@ export function fhirQaMarkdown(q: FhirQa, o: { up?: string } = {}): string[] {
   } else lines.push("This build recorded no validity verdict for the AST.", "");
   if (q.markdown) lines.push(...markdownQaMarkdown(q.markdown));
   lines.push(...pageRenderQaMarkdown({ up }));
+  lines.push("### Injection scan", "");
+  const c = q.content;
+  if (c) {
+    const by = c.reviewer ? `${c.reviewer.kind} ${code(c.reviewer.name)}${c.reviewedAt ? ` at ${code(c.reviewedAt)}` : ""}` : "nobody";
+    const state: Record<ContentQaVerdict["state"], string> = {
+      reviewed: "reviewed, no pattern hit and no open finding",
+      missing: "**not reviewed**: there is no review of these texts",
+      stale: "**not reviewed**: the review read other texts than these",
+      unusable: "the review file is not usable",
+      "open-findings": "the review holds open findings",
+      "pattern-hits": "texts break a pattern rule",
+    };
+    lines.push(
+      `Every resource narrative, markdown field and IG page this site publishes (${c.items} text(s)) is checked for injection attempts before publication: a pattern scan, and an agent's review kept in the IG's ${code(CONTENT_QA_SIDECAR)}. The browser checks each narrative again before drawing it. [Verdict (JSON)](${up}${CONTENT_QA_PUBLISHED})`,
+      "",
+      "| field | value |",
+      "|---|---|",
+      `| state | ${state[c.state]}${c.accepted ? " — accepted for this local build only; a publish refuses it" : ""} |`,
+      `| content | ${code(c.contentDigest)} |`,
+      `| reviewed | ${c.reviewedDigest ? code(c.reviewedDigest) : "—"} by ${by} |`,
+      "",
+    );
+  } else lines.push("This build ran no injection scan.", "");
   return lines;
 }
 
@@ -203,9 +229,9 @@ export function githubBlobBase(root: string): string | undefined {
 }
 
 /** The page for the checkout at `root`: its text, and what it links that must be published beside it ({@link publishQaAssets}). */
-export function buildQaPage(o: { root: string; ast?: string; validity?: string; title?: string }): { page: string; fhir: FhirQa; kg: KgQaReport } {
+export function buildQaPage(o: { root: string; ast?: string; validity?: string; title?: string; content?: ContentQaVerdict }): { page: string; fhir: FhirQa; kg: KgQaReport } {
   const root = resolve(o.root);
-  const fhir = readFhirQa(o.ast, o.validity);
+  const fhir: FhirQa = { ...readFhirQa(o.ast, o.validity), ...(o.content ? { content: o.content } : {}) };
   const sourceBase = githubBlobBase(root);
   if (sourceBase) fhir.sourceBase = sourceBase;
   const kg = kgQaReport(root, readDeclaration(root)?.name);
@@ -221,6 +247,10 @@ export function publishQaAssets(r: { fhir: FhirQa; kg: KgQaReport }, site: strin
   if (r.fhir.publisher && r.fhir.messages) {
     writeFileSync(join(site, FHIR_QA_ASSETS, QA_MESSAGES_FILE), `${JSON.stringify(r.fhir.messages)}\n`);
     writeFileSync(join(site, FHIR_QA_ASSETS, QA_MESSAGES_SCRIPT), QA_MESSAGES_JS);
+  }
+  if (r.fhir.content) {
+    mkdirSync(join(site, FHIR_QA_ASSETS), { recursive: true });
+    writeFileSync(join(site, CONTENT_QA_PUBLISHED), `${JSON.stringify(r.fhir.content, null, 2)}\n`);
   }
   return copyKgQaRecords(r.kg, site, KG_QA_ASSETS);
 }
