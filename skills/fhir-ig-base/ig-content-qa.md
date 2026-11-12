@@ -126,8 +126,16 @@ any changed, added or removed text makes it stale.
    `contentTypes.ig` or carries `sushi-config.yaml`. Any other checkout (a
    document folio, an index root) is not judged: it prints NOT APPLICABLE and
    exits 78, the runner's "not applicable; not counted", never 0, since the
-   check is owed only where an IG is built. An IG checkout with no AST still
-   fails.
+   check is owed only where an IG is built. An IG checkout whose run built
+   no AST (no `manifest.json` at the default `output-ast`; a PR gate that
+   does not build the IG, as for a document folio that is also an IG,
+   smart-ra#244) is judged as far as it can be without one: its pages and
+   trusted SVGs are pattern-scanned and a hit fails, and a review file the
+   gate may not read fails. Then it prints NOT APPLICABLE and exits 78,
+   never 0: the review's digest names the AST's texts, so only a run holding
+   the AST can clear it. That run is the IG publish, whose `ig-site:compose`
+   calls the gate directly and still refuses a missing AST. An AST named
+   with `--ast` that is not there still fails.
 
 An open finding is resolved by fixing the text (the review is then stale:
 review again) or, for a false alarm, by setting `status: "cleared"` with a
