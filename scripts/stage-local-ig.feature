@@ -135,6 +135,11 @@ Feature: Staging an IG repository locally, the way its publish workflow does
     Then with a layer providing the IG bar, it is the final step
     And without one there is no final step and a note says the pages keep no IG bar
 
+  @test:scripts/stage-local-ig.test.ts::an_IG_repository's_folio_site_(owner,_2026-10-14)::igPageScanLastFinalStep
+  Scenario: the QA report's page scan is the last final step
+    Then with layers providing the IG bar and the page scan, the page scan runs after the bar
+    And without the page scan a note says the QA report's page scan has no results
+
   @test:scripts/stage-local-ig.test.ts::an_IG_repository's_folio_site_(owner,_2026-10-14)::parityExcusesRuledDrops
   Scenario: the root's parity guard excuses exactly what the owner ruled dropped: the comparisons, schemas/ and the theme's side bar
     Then the dropped list is the comparison directories, schemas and the siteNav feature, each citing its ruling

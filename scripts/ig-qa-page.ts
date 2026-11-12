@@ -42,6 +42,8 @@ import { copyKgQaRecords, kgQaMarkdown, kgQaReport, type KgQaReport } from "../.
 import { readDeclaration } from "../../cat-harness-tools/schemas/kg/cat-harness.ts";
 import { CONTENT_QA_PUBLISHED, CONTENT_QA_SIDECAR, type ContentQaVerdict } from "./ig-content-qa.ts";
 import { QA_MESSAGES_FILE, QA_MESSAGES_SCHEMA } from "./ig-qa-messages.ts";
+import { markdownQaMarkdown, scanDir, type MarkdownFinding } from "./ig-markdown-qa.ts";
+import { pageRenderQaMarkdown } from "./ig-page-render-qa.ts";
 
 /** Where the KG records are published under the site root. */
 export const KG_QA_ASSETS = "assets/kg-qa";
@@ -68,6 +70,8 @@ export interface FhirQa {
   manifest?: Json;
   /** `ig-ast-validity.json`, as `ig-repo-site ast` wrote it. */
   validity?: { verdict?: string; detail?: Json; recorded?: Json; current?: Json };
+  /** The AST's markdown fields drawn by the pages' own renderer, and what they leave as text (`ig-markdown-qa.ts`). */
+  markdown?: { scanned: number; findings: MarkdownFinding[] };
   /** The injection gate's verdict (`ig-content-qa.ts`), when the build ran it. */
   content?: ContentQaVerdict;
 }
@@ -89,7 +93,9 @@ export function readFhirQa(ast: string | undefined, validityFile?: string): Fhir
   const validity = readJson(validityFile) as FhirQa["validity"];
   const read = ast ? readJson(join(ast, QA_MESSAGES_FILE)) : undefined;
   const messages = read && read.$schema === QA_MESSAGES_SCHEMA && Array.isArray(read.groups) && read.groups.length > 0 ? read : undefined;
-  return { ...(publisher ? { publisher } : {}), ...(messages ? { messages } : {}), ...(manifest ? { manifest } : {}), ...(validity ? { validity } : {}) };
+  const scan = ast && existsSync(ast) ? scanDir(ast) : undefined;
+  const markdown = scan && scan.scanned > 0 ? scan : undefined;
+  return { ...(publisher ? { publisher } : {}), ...(messages ? { messages } : {}), ...(manifest ? { manifest } : {}), ...(validity ? { validity } : {}), ...(markdown ? { markdown } : {}) };
 }
 
 const code = (v: unknown): string => `\`${String(v).replace(/`/g, "'")}\``;
@@ -157,6 +163,8 @@ export function fhirQaMarkdown(q: FhirQa, o: { up?: string } = {}): string[] {
       lines.push("");
     }
   } else lines.push("This build recorded no validity verdict for the AST.", "");
+  if (q.markdown) lines.push(...markdownQaMarkdown(q.markdown));
+  lines.push(...pageRenderQaMarkdown({ up }));
   lines.push("### Injection scan", "");
   const c = q.content;
   if (c) {

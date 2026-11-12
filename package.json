@@ -12,7 +12,8 @@
   },
   "devDependencies": {
     "@types/fhir": "0.0.44",
-    "ajv": "^6.15.0"
+    "ajv": "^6.15.0",
+    "playwright": "1.63.0"
   },
   "peerDependencies": {
     "@litlfred/cat-harness-tools": "*"
@@ -38,6 +39,7 @@
     "ig-site:compose": "bun run fhir-harness/scripts/ig-repo-site.ts compose",
     "ig-site:publisher-pages": "bun run fhir-harness/scripts/ig-repo-site.ts publisher-pages",
     "ig-site:bar": "bun run fhir-harness/scripts/ig-repo-site.ts bar",
+    "ig-site:page-render-qa": "bun run fhir-harness/scripts/ig-page-render-qa.ts",
     "ig-ast:pages": "bun run fhir-harness/scripts/gen-ig-ast-pages.ts",
     "ig-index:build": "bun run fhir-harness/scripts/build-ig-indexes.ts",
     "ig-ast:pin": "bun run fhir-harness/scripts/ig-ast-pin.ts",

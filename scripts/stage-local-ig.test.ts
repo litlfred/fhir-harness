@@ -421,6 +421,12 @@ describe("an IG repository's folio site (owner, 2026-10-14)", () => {
     expect(without.notes.join("\n")).toMatch(/keep no IG bar/);
   });
 
+  test("igPageScanLastFinalStep", () => {
+    const both = new Map([...scripts, [IG_SITE_OPTIONAL.bar, { manifest: "fhir-harness/package.json" }], [IG_SITE_OPTIONAL.pageScan, { manifest: "fhir-harness/package.json" }]]);
+    expect(igFolioSite({ hasIndexConfig: true, scripts: both, landing, identity }).site!.finalSteps).toEqual([IG_SITE_OPTIONAL.bar, IG_SITE_OPTIONAL.pageScan]);
+    expect(igFolioSite({ hasIndexConfig: true, scripts, landing, identity }).site!.notes.join("\n")).toMatch(/page scan says it has no results/);
+  });
+
   test("parityExcusesRuledDrops", () => {
     expect(IG_DROPPED.map((d) => d.dir ?? `feature:${d.feature}`)).toEqual(["comparison-v*", "schemas", "ast-data", "feature:siteNav"]);
     expect(IG_DROPPED[0]!.ruling).toContain("2a");
