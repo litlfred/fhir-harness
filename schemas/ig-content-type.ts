@@ -44,7 +44,7 @@
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { trustedScriptProblem } from "./ig-trusted-scripts.ts";
+import { trustedObjectProblem, trustedScriptProblem } from "./ig-trusted-scripts.ts";
 
 import { defaultContentTypes, INDEX_SECTION_FILE, type ContentTypeRegistry } from "@litlfred/cat-harness-tools/schemas/content/content-type.js";
 import { ownNamespace } from "@litlfred/cat-harness-tools/schemas/kg/namespaces.js";
@@ -73,6 +73,17 @@ export interface IgSection {
    * still refused. Absent means none.
    */
   trustedScripts?: string[];
+  /**
+   * Same-site SVG drawings the IG's own pages embed with `<object>`, as each
+   * element's `data` writes them, so the drawing's links work (owner,
+   * 2026-11-12: the onboarding diagrams' drill-down). The injection gate
+   * accepts, on a page and only there, an `<object>` opening tag whose `data`
+   * is on this list, whose `type` (if any) is `image/svg+xml`, and whose other
+   * attributes are presentational (`style`, `width`, `height`, `class`, `id`,
+   * `title`, `role`, `aria-*`). The element's body is still scanned. Absent
+   * means none.
+   */
+  trustedObjects?: string[];
 }
 
 /**
@@ -118,8 +129,23 @@ export function parseIgSection(section: unknown): { section: IgSection } | { pro
         if (p) problems.push(`contentTypes.ig.trustedScripts[${i}] ${JSON.stringify(e)}: ${p}`);
       });
   }
+  const objects = (section as { trustedObjects?: unknown }).trustedObjects;
+  if (objects !== undefined) {
+    if (!Array.isArray(objects)) problems.push("contentTypes.ig.trustedObjects is not a list");
+    else
+      objects.forEach((e, i) => {
+        const p = trustedObjectProblem(e);
+        if (p) problems.push(`contentTypes.ig.trustedObjects[${i}] ${JSON.stringify(e)}: ${p}`);
+      });
+  }
   if (problems.length > 0) return { problems };
-  return { section: { include: include as string[], ...(Array.isArray(trusted) && trusted.length ? { trustedScripts: trusted as string[] } : {}) } };
+  return {
+    section: {
+      include: include as string[],
+      ...(Array.isArray(trusted) && trusted.length ? { trustedScripts: trusted as string[] } : {}),
+      ...(Array.isArray(objects) && objects.length ? { trustedObjects: objects as string[] } : {}),
+    },
+  };
 }
 
 /**
