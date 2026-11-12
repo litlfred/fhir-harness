@@ -211,7 +211,7 @@
         
       <bpmndi:BPMNLabel><dc:Bounds x="1345" y="634" width="110" height="17" /></bpmndi:BPMNLabel></bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Task_QcBeans_di" bpmnElement="Task_QcBeans">
-        <dc:Bounds x="1495" y="260" width="130" height="90" />
+        <dc:Bounds x="1500" y="245" width="120" height="120" />
       </bpmndi:BPMNShape>
       <bpmndi:BPMNShape id="Task_IgPublisher_di" bpmnElement="Task_IgPublisher">
         <dc:Bounds x="1660" y="395" width="120" height="120" />
@@ -263,13 +263,13 @@
       <bpmndi:BPMNEdge id="C09_di" bpmnElement="C09">
         <di:waypoint x="1400" y="580" />
         <di:waypoint x="1400" y="305" />
-        <di:waypoint x="1495" y="305" />
+        <di:waypoint x="1500" y="305" />
         <bpmndi:BPMNLabel>
           <dc:Bounds x="1372" y="540" width="25" height="27" />
         </bpmndi:BPMNLabel>
       </bpmndi:BPMNEdge>
       <bpmndi:BPMNEdge id="C10_di" bpmnElement="C10">
-        <di:waypoint x="1560" y="260" />
+        <di:waypoint x="1560" y="245" />
         <di:waypoint x="1560" y="100" />
         <di:waypoint x="600" y="100" />
         <di:waypoint x="600" y="110" />
