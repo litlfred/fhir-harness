@@ -868,7 +868,8 @@ export function thinIgLayout(assetsAt: string, tocNav = "", sectionLabel?: strin
     ...(topBar ? [topBar] : []),
     `<main class="ig-main main-content ${PAGE_MAIN_CLASS}" id="main-content">`,
     // First thing in the content: the notice on a page with translated words no person reviewed.
-    unreviewedNoticeLiquid(),
+    // Its style is in the linked `IG_THIN_CSS_FILE`, like every rule of this layout.
+    unreviewedNoticeLiquid({ inlineStyle: false }),
     "{{ content }}",
     `<script>${liquidInertScript(IG_TASK_PANEL_JS)}</script>`,
     `<script>${liquidInertScript(IG_CONTENTS_JS)}</script>`,
