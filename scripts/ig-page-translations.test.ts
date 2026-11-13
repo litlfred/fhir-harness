@@ -2,7 +2,7 @@ import { describe, expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { dirFor, hasTranslation, localesFor, pageLocales, relinkForLocale, signedOff, translatePage, translateWithIncludes } from "./ig-page-translations.ts";
+import { dirFor, fragmentFor, hasTranslation, localesFor, pageLocales, relinkForLocale, resolveLangFragments, signedOff, translatePage, translateWithIncludes } from "./ig-page-translations.ts";
 
 const po = (pairs: [string, string][]) => pairs.map(([i, s]) => `msgid "${i}"\nmsgstr "${s}"`).join("\n\n") + "\n";
 
@@ -69,5 +69,28 @@ describe("ig-page-translations (fhir-harness#382)", () => {
     const t = translateWithIncludes("home", fr!, sourceOf, pages);
     expect(t.md).toContain("Bonjour le monde.");
     expect(t.md).toContain("{% include other.md %}");
+  });
+});
+
+describe("lang-fragment: a translated page reads its locale's own fragment", () => {
+  test("names the fragment as the IG Publisher does", () => {
+    expect(fragmentFor("journey-cards.html", "ar")).toBe("journey-cards-ar.html");
+    expect(fragmentFor("ip-statements.xhtml", "zh")).toBe("ip-statements-zh.xhtml");
+    expect(fragmentFor("notes", "fr")).toBe("notes-fr");
+  });
+
+  test("the locale's fragment when the IG has it, the source's otherwise; the source page always the source's", () => {
+    const has = (n: string) => n === "journey-cards-ar.html";
+    const md = "<div>{% lang-fragment journey-cards.html %}</div>\n{%- lang-fragment journey-hero.html -%}";
+    expect(resolveLangFragments(md, "ar", has)).toBe("<div>{% include journey-cards-ar.html %}</div>\n{% include journey-hero.html %}");
+    expect(resolveLangFragments(md, "fr", has)).toBe("<div>{% include journey-cards.html %}</div>\n{% include journey-hero.html %}");
+    expect(resolveLangFragments(md, undefined, () => true)).toBe("<div>{% include journey-cards.html %}</div>\n{% include journey-hero.html %}");
+  });
+
+  test("a translated page keeps its lang-fragment for the build to resolve", () => {
+    const md = "{% lang-fragment journey-hero.html %}\n\nThis guide supports pilgrims.\n";
+    const t = translatePage(md, new Map([["This guide supports pilgrims.", "Ce guide aide les pèlerins."]]));
+    expect(t.md).toContain("{% lang-fragment journey-hero.html %}");
+    expect(t.md).toContain("Ce guide aide les pèlerins.");
   });
 });
