@@ -59,7 +59,7 @@
       "prefLabel": "Diff the two ASTs",
       "definition": "`ig-ast.ts diff <base> <head> --plan plan.json --site <site>/ast-delta/`: resources added, removed, changed (with an element-level differential) and version-changed; edges added and removed; the plan's decision. Every page opens with the provisional mark and is wrapped in raw so narrative Liquid is not executed.",
       "notation": "Task_Diff",
-      "source": "fhir-harness/processes/content/ig-ast-delta-review.bpmn#Task_Diff",
+      "source": "fhir-harness/collab/processes/content/ig-ast-delta-review.bpmn#Task_Diff",
       "status": "candidate"
     },
     {
@@ -67,7 +67,7 @@
       "prefLabel": "Note the missed coupling on the work plan",
       "definition": "Append to the IG AST work-plan item: the resource key, the differential path, and why it is unexplained. A note on the existing item, not a new one unless the owner asks; creating an item is not idempotent, so check before creating.",
       "notation": "Task_FileCoupling",
-      "source": "fhir-harness/processes/content/ig-ast-delta-review.bpmn#Task_FileCoupling",
+      "source": "fhir-harness/collab/processes/content/ig-ast-delta-review.bpmn#Task_FileCoupling",
       "status": "candidate"
     },
     {
@@ -75,7 +75,7 @@
       "prefLabel": "Read the delta",
       "definition": "Start at the delta index; open each changed resource's page. Check `builtAt` before judging: a resource carried from the base was not rebuilt, so a difference there is the change itself or a missed coupling, never noise. The differential is structural: a reordered repeating element shows at every index.",
       "notation": "Task_Review",
-      "source": "fhir-harness/processes/content/ig-ast-delta-review.bpmn#Task_Review",
+      "source": "fhir-harness/collab/processes/content/ig-ast-delta-review.bpmn#Task_Review",
       "status": "candidate"
     },
     {
@@ -83,7 +83,7 @@
       "prefLabel": "Check the base AST against the inputs",
       "definition": "`ig-ast.ts validity <base> --ig <root>`: folio-assistant-core's compiledValidity on the manifest's inputs, with the input digest recomputed by the same algorithm as the Java writer. Exit 0 valid, 1 stale-inputs (names which input), 2 cannot-tell. Run against the BASE revision's checkout.",
       "notation": "Task_Validity",
-      "source": "fhir-harness/processes/content/ig-ast-delta-review.bpmn#Task_Validity",
+      "source": "fhir-harness/collab/processes/content/ig-ast-delta-review.bpmn#Task_Validity",
       "status": "candidate"
     },
     {
@@ -123,7 +123,7 @@
       "prefLabel": "Restricted checkout of the backward cone",
       "definition": "git sparse-checkout of the cone's files plus sushi-config.yaml, ig.ini and the alias files — a median of three files, p90 eleven, measured on the SMART Immunizations IG.",
       "notation": "Task_Checkout",
-      "source": "fhir-harness/processes/content/ig-incremental-build.bpmn#Task_Checkout",
+      "source": "fhir-harness/collab/processes/content/ig-incremental-build.bpmn#Task_Checkout",
       "status": "candidate"
     },
     {
@@ -131,7 +131,7 @@
       "prefLabel": "Compute the cone of the change",
       "definition": "`fsh-cone --changed` (scripts/fsh-cone.ts) over the changed files: the forward cone is what to rebuild, the backward cone is what to check out.",
       "notation": "Task_Cone",
-      "source": "fhir-harness/processes/content/ig-incremental-build.bpmn#Task_Cone",
+      "source": "fhir-harness/collab/processes/content/ig-incremental-build.bpmn#Task_Cone",
       "status": "candidate"
     },
     {
@@ -139,7 +139,7 @@
       "prefLabel": "Post the cone report on the PR",
       "definition": "Review path: the reviewer sees what this change rebuilds — how many artefacts, and whether a hub (a shared RuleSet, CQL library or value set) is touched — before the build finishes. On main it is a log line.",
       "notation": "Task_ConeReport",
-      "source": "fhir-harness/processes/content/ig-incremental-build.bpmn#Task_ConeReport",
+      "source": "fhir-harness/collab/processes/content/ig-incremental-build.bpmn#Task_ConeReport",
       "status": "candidate"
     },
     {
@@ -147,7 +147,7 @@
       "prefLabel": "Load or reuse the warm context",
       "definition": "The validator's server mode holds the loaded dependency packages, snapshots and expansions in its session cache. Cold start loads the restored derived FHIR rather than regenerating it.",
       "notation": "Task_ContextLoad",
-      "source": "fhir-harness/processes/content/ig-incremental-build.bpmn#Task_ContextLoad",
+      "source": "fhir-harness/collab/processes/content/ig-incremental-build.bpmn#Task_ContextLoad",
       "status": "candidate"
     },
     {
@@ -155,7 +155,7 @@
       "prefLabel": "Deploy the site",
       "definition": "Deploy the site built from main or a release. Deploying is release-management, after a human authorised the release — an agent never records that authorisation. Report the published URL only once it answers: a returned deploy is not a serving site.",
       "notation": "Task_Deploy",
-      "source": "fhir-harness/processes/content/ig-incremental-build.bpmn#Task_Deploy",
+      "source": "fhir-harness/collab/processes/content/ig-incremental-build.bpmn#Task_Deploy",
       "status": "candidate"
     },
     {
@@ -163,7 +163,7 @@
       "prefLabel": "Deploy the preview site",
       "definition": "A preview never seeds the shared cache.",
       "notation": "Task_DeployPreview",
-      "source": "fhir-harness/processes/content/ig-incremental-build.bpmn#Task_DeployPreview",
+      "source": "fhir-harness/collab/processes/content/ig-incremental-build.bpmn#Task_DeployPreview",
       "status": "candidate"
     },
     {
@@ -171,7 +171,7 @@
       "prefLabel": "Full publisher build",
       "definition": "Exit 1 or 3 from restore: the whole IG is built. Its outputs become the records the next seed writes.",
       "notation": "Task_FullBuild",
-      "source": "fhir-harness/processes/content/ig-incremental-build.bpmn#Task_FullBuild",
+      "source": "fhir-harness/collab/processes/content/ig-incremental-build.bpmn#Task_FullBuild",
       "status": "candidate"
     },
     {
@@ -179,7 +179,7 @@
       "prefLabel": "Rebuild the meta-index (ig_metaindex_rebuild)",
       "definition": "The whole-IG aggregates only — artifacts, TOC, canonicals, expansions, package, QA aggregate. Never re-derives an artefact: a missing record is a miss (exit 1), not a silent rebuild.",
       "notation": "Task_Index",
-      "source": "fhir-harness/processes/content/ig-incremental-build.bpmn#Task_Index",
+      "source": "fhir-harness/collab/processes/content/ig-incremental-build.bpmn#Task_Index",
       "status": "candidate"
     },
     {
@@ -187,7 +187,7 @@
       "prefLabel": "Log the environment error on the bean",
       "definition": "Exit 2 from restore: the cache store or the toolchain could not be reached. Record that on the change's bean, with the restore output, so the work plan says the build did not run and why. Check before creating — beans create is not idempotent.",
       "notation": "Task_LogEnvError",
-      "source": "fhir-harness/processes/content/ig-incremental-build.bpmn#Task_LogEnvError",
+      "source": "fhir-harness/collab/processes/content/ig-incremental-build.bpmn#Task_LogEnvError",
       "status": "candidate"
     },
     {
@@ -195,7 +195,7 @@
       "prefLabel": "Log findings on the bean",
       "definition": "Validation failed: record the findings on the change's bean, so the work plan says what blocks it. Check before creating — beans create is not idempotent.",
       "notation": "Task_LogFindings",
-      "source": "fhir-harness/processes/content/ig-incremental-build.bpmn#Task_LogFindings",
+      "source": "fhir-harness/collab/processes/content/ig-incremental-build.bpmn#Task_LogFindings",
       "status": "candidate"
     },
     {
@@ -203,7 +203,7 @@
       "prefLabel": "Merge restored and rebuilt records",
       "definition": "Combine the restored per-artefact records with the cone's freshly rendered ones into one complete set, so the meta-index rebuild that follows has every artefact's record and never re-derives one.",
       "notation": "Task_Merge",
-      "source": "fhir-harness/processes/content/ig-incremental-build.bpmn#Task_Merge",
+      "source": "fhir-harness/collab/processes/content/ig-incremental-build.bpmn#Task_Merge",
       "status": "candidate"
     },
     {
@@ -211,7 +211,7 @@
       "prefLabel": "Run QC gates on the aggregate QA",
       "definition": "qa.json is the aggregate of per-artefact outcomes; the reviewer reads the cone's rows first.",
       "notation": "Task_Qa",
-      "source": "fhir-harness/processes/content/ig-incremental-build.bpmn#Task_Qa",
+      "source": "fhir-harness/collab/processes/content/ig-incremental-build.bpmn#Task_Qa",
       "status": "candidate"
     },
     {
@@ -219,7 +219,7 @@
       "prefLabel": "File QC findings as beans",
       "definition": "QC failed on the aggregate: file each finding as a bean, so it is tracked on the work plan rather than lost in qa.json. Check for an existing bean before creating one.",
       "notation": "Task_QcBeans",
-      "source": "fhir-harness/processes/content/ig-incremental-build.bpmn#Task_QcBeans",
+      "source": "fhir-harness/collab/processes/content/ig-incremental-build.bpmn#Task_QcBeans",
       "status": "candidate"
     },
     {
@@ -227,7 +227,7 @@
       "prefLabel": "Re-render the cone's records (fhir_narrative · skip lists)",
       "definition": "Narrative and fragments for the cone only: the publisher's -no-validate / -no-narrative complements today, Rapido's differential build once its tracker is persisted.",
       "notation": "Task_Render",
-      "source": "fhir-harness/processes/content/ig-incremental-build.bpmn#Task_Render",
+      "source": "fhir-harness/collab/processes/content/ig-incremental-build.bpmn#Task_Render",
       "status": "candidate"
     },
     {
@@ -235,7 +235,7 @@
       "prefLabel": "Restore derived state",
       "definition": "`ig-cache restore`: the IG's AST and the Publisher's terminology cache (`input-cache/txcache/`). Exit 0 usable, 1 miss, 2 environment error, 3 present but unusable (corrupt or mismatched, such as a moved toolchain).",
       "notation": "Task_Restore",
-      "source": "fhir-harness/processes/content/ig-incremental-build.bpmn#Task_Restore",
+      "source": "fhir-harness/collab/processes/content/ig-incremental-build.bpmn#Task_Restore",
       "status": "candidate"
     },
     {
@@ -243,7 +243,7 @@
       "prefLabel": "Seed the cache from the green build",
       "definition": "Only a green build of main or a release seeds. Seed writes to the -test branch, verifies a restore from a clean clone, then promotes.",
       "notation": "Task_Seed",
-      "source": "fhir-harness/processes/content/ig-incremental-build.bpmn#Task_Seed",
+      "source": "fhir-harness/collab/processes/content/ig-incremental-build.bpmn#Task_Seed",
       "status": "candidate"
     },
     {
@@ -251,7 +251,7 @@
       "prefLabel": "Assemble the site",
       "definition": "Assemble the site from the merged records: the IG template and a Jekyll build over output/. Only site assembly happens here — every artefact record already exists.",
       "notation": "Task_Site",
-      "source": "fhir-harness/processes/content/ig-incremental-build.bpmn#Task_Site",
+      "source": "fhir-harness/collab/processes/content/ig-incremental-build.bpmn#Task_Site",
       "status": "candidate"
     },
     {
@@ -259,7 +259,7 @@
       "prefLabel": "SUSHI on the restricted tank",
       "definition": "Compile the restricted checkout with SUSHI — the cone's FSH, not the whole IG. A build optimisation, not a validation shortcut: SUSHI compiling is not conformance, so a green compile goes on to validation rather than standing in for it.",
       "notation": "Task_Sushi",
-      "source": "fhir-harness/processes/content/ig-incremental-build.bpmn#Task_Sushi",
+      "source": "fhir-harness/collab/processes/content/ig-incremental-build.bpmn#Task_Sushi",
       "status": "candidate"
     },
     {
@@ -267,7 +267,7 @@
       "prefLabel": "Validate the cone (fhir_validate)",
       "definition": "Validate the cone's resources against the warm validator and report the cone that was checked. A validator that could not start is could-not-determine, never a pass with no findings. A green cone is not a green IG: a profile the change did not touch can still be broken by it.",
       "notation": "Task_Validate",
-      "source": "fhir-harness/processes/content/ig-incremental-build.bpmn#Task_Validate",
+      "source": "fhir-harness/collab/processes/content/ig-incremental-build.bpmn#Task_Validate",
       "status": "candidate"
     },
     {
@@ -275,7 +275,7 @@
       "prefLabel": "Author FSH profiles",
       "definition": "Write the FSH profiles, value sets and definitions the source model calls for. This is the stage where profiles, slicing and invariants belong — a decision that can only be expressed in FHIR comes here, not back into the source model.",
       "notation": "Task_AuthorFsh",
-      "source": "fhir-harness/processes/content/l3-fhir-pipeline.bpmn#Task_AuthorFsh",
+      "source": "fhir-harness/collab/processes/content/l3-fhir-pipeline.bpmn#Task_AuthorFsh",
       "status": "candidate"
     },
     {
@@ -283,7 +283,7 @@
       "prefLabel": "IG Publisher build",
       "definition": "Run the IG Publisher: it renders output/, writes each resource's JSON, the package, canonicals and qa.json, and does the two things no cache can — validates every resource against its profiles and resolves the dependency closure with terminology expansion.",
       "notation": "Task_IgPublisher",
-      "source": "fhir-harness/processes/content/l3-fhir-pipeline.bpmn#Task_IgPublisher",
+      "source": "fhir-harness/collab/processes/content/l3-fhir-pipeline.bpmn#Task_IgPublisher",
       "status": "candidate"
     },
     {
@@ -291,7 +291,7 @@
       "prefLabel": "Publish the IG site",
       "definition": "Release authorisation and review follow draft-to-publication.bpmn.",
       "notation": "Task_PublishIg",
-      "source": "fhir-harness/processes/content/l3-fhir-pipeline.bpmn#Task_PublishIg",
+      "source": "fhir-harness/collab/processes/content/l3-fhir-pipeline.bpmn#Task_PublishIg",
       "status": "candidate"
     },
     {
@@ -299,7 +299,7 @@
       "prefLabel": "File QC findings as beans",
       "definition": "Each QC finding becomes a bean on the work plan, which the modeller and the agents both see.",
       "notation": "Task_QcBeans",
-      "source": "fhir-harness/processes/content/l3-fhir-pipeline.bpmn#Task_QcBeans",
+      "source": "fhir-harness/collab/processes/content/l3-fhir-pipeline.bpmn#Task_QcBeans",
       "status": "candidate"
     },
     {
@@ -307,7 +307,7 @@
       "prefLabel": "QC gates",
       "definition": "The QC reviewer rules on the aggregate QA against the publication gates. Emitting the QA report is mechanical; ruling on it is the reviewer's decision.",
       "notation": "Task_QcGates",
-      "source": "fhir-harness/processes/content/l3-fhir-pipeline.bpmn#Task_QcGates",
+      "source": "fhir-harness/collab/processes/content/l3-fhir-pipeline.bpmn#Task_QcGates",
       "status": "candidate"
     },
     {
@@ -315,7 +315,7 @@
       "prefLabel": "Compile FSH to FHIR JSON",
       "definition": "Compile the FSH to FHIR JSON with SUSHI. Compiling is not conformance: a green SUSHI result goes on to validation and never stands in for it.",
       "notation": "Task_Sushi",
-      "source": "fhir-harness/processes/content/l3-fhir-pipeline.bpmn#Task_Sushi",
+      "source": "fhir-harness/collab/processes/content/l3-fhir-pipeline.bpmn#Task_Sushi",
       "status": "candidate"
     },
     {
@@ -323,7 +323,7 @@
       "prefLabel": "Validate against profiles",
       "definition": "Validate the compiled resources against their profiles and the packages they constrain. A validator that could not start is could-not-determine, never a pass with an empty findings list. Failures return to authoring.",
       "notation": "Task_Validate",
-      "source": "fhir-harness/processes/content/l3-fhir-pipeline.bpmn#Task_Validate",
+      "source": "fhir-harness/collab/processes/content/l3-fhir-pipeline.bpmn#Task_Validate",
       "status": "candidate"
     },
     {
