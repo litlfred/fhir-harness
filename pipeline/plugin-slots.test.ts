@@ -3,10 +3,9 @@
  *
  * Run in a fresh process: inside `bun test` another file may already have
  * loaded `ig-content-type.ts`, and the default registry would answer yes for
- * the wrong reason. Not calibrated against the explicit import alone: the
- * IG readers `stage-local-ig.ts` loads now import the schema as well (through
- * `ig-read-scope.ts`), so removing only the import in `plugin-slots.ts` still
- * passes. The import is kept so registration does not depend on that chain.
+ * the wrong reason. `plugin-slots.ts` now loads the publisher's registration
+ * (`ig-publisher.ts`), not the IG readers behind `stage-local-ig.ts`, so its
+ * own import of the schema is the one this test sees.
  */
 import { describe, expect, it } from "bun:test";
 import { spawnSync } from "node:child_process";
