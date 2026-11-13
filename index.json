@@ -344,6 +344,10 @@
     "404": {
       "sha": "b56e548157886e9b2f629330ee3caf283b3c7d1f",
       "written_at": "2026-11-13T15:03:34.189Z"
+    },
+    "405": {
+      "sha": "c5c42078270754ac160272f525530a243af32507",
+      "written_at": "2026-11-13T17:20:12.435Z"
     }
   },
   "skipped": {
@@ -518,7 +522,9 @@
     "b56e548157886e9b2f629330ee3caf283b3c7d1f": "5627fcb1f3f8e40824ecfd370dae4a23af1b8839",
     "pr/404/b56e548157886e9b2f629330ee3caf283b3c7d1f": "main/5627fcb1f3f8e40824ecfd370dae4a23af1b8839",
     "e615e7b4b2f09ed6c14971b5dc63ce3830f4f8ca": "5627fcb1f3f8e40824ecfd370dae4a23af1b8839",
-    "main/e615e7b4b2f09ed6c14971b5dc63ce3830f4f8ca": "main/5627fcb1f3f8e40824ecfd370dae4a23af1b8839"
+    "main/e615e7b4b2f09ed6c14971b5dc63ce3830f4f8ca": "main/5627fcb1f3f8e40824ecfd370dae4a23af1b8839",
+    "c5c42078270754ac160272f525530a243af32507": "b721f0ffcfeecdfe86850b4f0f307936581cff9a",
+    "pr/405/c5c42078270754ac160272f525530a243af32507": "main/b721f0ffcfeecdfe86850b4f0f307936581cff9a"
   },
   "main": {
     "sha": "b721f0ffcfeecdfe86850b4f0f307936581cff9a",
