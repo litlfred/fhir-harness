@@ -1,0 +1,235 @@
+{
+  "$schema": "kg-qa/v1",
+  "subject": {
+    "kind": "process",
+    "id": "Process_IgRelease",
+    "path": "processes/content/ig-release.bpmn"
+  },
+  "source_hash": "sha256:b64ade50ebe0b85824c4ce2f19b114b899c8d5210bc2589e95f440e0513365b9",
+  "criteria": {
+    "raci-role-resolves": {
+      "result": "n/a",
+      "findings": []
+    },
+    "raci-single-accountable": {
+      "result": "n/a",
+      "findings": []
+    },
+    "raci-accountable-not-consulted": {
+      "result": "n/a",
+      "findings": []
+    },
+    "convention-ref-resolves": {
+      "result": "n/a",
+      "findings": []
+    },
+    "skill-ref-resolves": {
+      "result": "pass",
+      "findings": []
+    },
+    "skill-servable": {
+      "result": "pass",
+      "findings": []
+    },
+    "activity-skill-has-tool": {
+      "result": "fail",
+      "findings": [
+        {
+          "where": "Task_Tag",
+          "detail": "names skill \"ig-publication\", which no Tool declares `satisfies` for — the step's mechanism is still prose."
+        }
+      ]
+    },
+    "decision-ref-resolves": {
+      "result": "n/a",
+      "findings": []
+    },
+    "role-ref-resolves": {
+      "result": "pass",
+      "findings": []
+    },
+    "activity-in-lane": {
+      "result": "pass",
+      "findings": []
+    },
+    "lane-binds-role": {
+      "result": "pass",
+      "findings": []
+    },
+    "variable-performer-declared-alone": {
+      "result": "n/a",
+      "findings": []
+    },
+    "role-carries-activity-skill": {
+      "result": "fail",
+      "findings": [
+        {
+          "where": "Task_ReleaseBuild",
+          "detail": "needs skill \"ig-binary-artefacts\", but its lane's role \"ig-publisher-service\" does not carry it."
+        }
+      ]
+    },
+    "lane-role-legacy-binding": {
+      "result": "fail",
+      "findings": [
+        {
+          "where": "Lane_Check",
+          "detail": "lane \"Lane_Check\" binds role \"build-pipeline\" with the deprecated <bootstrap.processes:role ref>; declare <bpmn:resource id=\"build-pipeline\"/> and set partitionElementRef=\"build-pipeline\" on the lane."
+        },
+        {
+          "where": "Lane_Owner",
+          "detail": "lane \"Lane_Owner\" binds role \"publication-manager\" with the deprecated <bootstrap.processes:role ref>; declare <bpmn:resource id=\"publication-manager\"/> and set partitionElementRef=\"publication-manager\" on the lane."
+        },
+        {
+          "where": "Lane_Runner",
+          "detail": "lane \"Lane_Runner\" binds role \"ig-publisher-service\" with the deprecated <bootstrap.processes:role ref>; declare <bpmn:resource id=\"ig-publisher-service\"/> and set partitionElementRef=\"ig-publisher-service\" on the lane."
+        }
+      ]
+    },
+    "task-skill-outside-lane-role": {
+      "result": "fail",
+      "findings": [
+        {
+          "where": "Task_ReleaseBuild",
+          "detail": "task \"Build the tag in full and make the draft release\" requires skill \"ig-binary-artefacts\", which role \"ig-publisher-service\" (named by lane \"IG release (GitHub runner: full build, draft release)\") does not list, directly or through `inherits`."
+        }
+      ]
+    },
+    "activity-names-skill": {
+      "result": "pass",
+      "findings": []
+    },
+    "activity-fulfilment-kind": {
+      "result": "pass",
+      "findings": []
+    },
+    "call-activity-resolves": {
+      "result": "n/a",
+      "findings": []
+    },
+    "process-diagram-published": {
+      "result": "fail",
+      "findings": [
+        {
+          "where": "Process_IgRelease",
+          "detail": "no rendered diagram at ig-release.svg — run `bun run cat render:bpmn`."
+        }
+      ]
+    },
+    "activity-documented": {
+      "result": "pass",
+      "findings": []
+    },
+    "activity-calls-skill-process": {
+      "result": "pass",
+      "findings": []
+    },
+    "gateway-documented": {
+      "result": "pass",
+      "findings": []
+    },
+    "gateway-branches-named": {
+      "result": "pass",
+      "findings": []
+    },
+    "node-reachable": {
+      "result": "pass",
+      "findings": []
+    },
+    "node-has-exit": {
+      "result": "pass",
+      "findings": []
+    },
+    "activity-implicit-split": {
+      "result": "pass",
+      "findings": []
+    },
+    "gateway-mixed": {
+      "result": "pass",
+      "findings": []
+    },
+    "process-size": {
+      "result": "pass",
+      "findings": []
+    },
+    "process-decompose": {
+      "result": "pass",
+      "findings": []
+    },
+    "process-single-start": {
+      "result": "fail",
+      "findings": [
+        {
+          "where": "Process_IgRelease",
+          "detail": "2 start events (Start_VersionSet, Start_Check). One entry point per process level, or a call activity per entry."
+        }
+      ]
+    },
+    "decision-label-question": {
+      "result": "pass",
+      "findings": []
+    },
+    "activity-label-verb-first": {
+      "result": "pass",
+      "findings": []
+    },
+    "edge-rectilinear": {
+      "result": "pass",
+      "findings": []
+    },
+    "edge-crossing": {
+      "result": "pass",
+      "findings": []
+    },
+    "edge-through-node": {
+      "result": "pass",
+      "findings": []
+    },
+    "diagram-too-wide": {
+      "result": "pass",
+      "findings": []
+    },
+    "diagram-too-tall": {
+      "result": "pass",
+      "findings": []
+    },
+    "label-overlap": {
+      "result": "pass",
+      "findings": []
+    },
+    "label-on-edge": {
+      "result": "pass",
+      "findings": []
+    },
+    "label-on-shape": {
+      "result": "pass",
+      "findings": []
+    },
+    "label-on-lane-line": {
+      "result": "pass",
+      "findings": []
+    },
+    "shape-overlap": {
+      "result": "pass",
+      "findings": []
+    },
+    "lane-order": {
+      "result": "pass",
+      "findings": []
+    },
+    "prose-reviewed-since-code-changed": {
+      "result": "n/a",
+      "findings": []
+    },
+    "prose-claims-resolve": {
+      "result": "n/a",
+      "findings": []
+    }
+  },
+  "totals": {
+    "pass": 30,
+    "fail": 6,
+    "n/a": 9,
+    "unknown": 0
+  }
+}
