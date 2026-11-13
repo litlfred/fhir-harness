@@ -57,7 +57,7 @@ import { wrapRaw } from "../../cat-harness-tools/scripts/lib/liquid-raw.ts";
 import type { IgReleases } from "../schemas/ig-releases.ts";
 import { astFooterData, IG_QA_PAGE, igSiteFooter, sushiFooterData, type IgFooterData, type IgSiteFooter } from "./ig-footer.ts";
 import { thinIndexPage } from "./ig-thin-pages.ts";
-import { dirFor, hasTranslation, localeFrontMatter, pageLocales, relinkForLocale, resolveLangFragments, SOURCE_LOCALE, translateWithIncludes, TRANSLATION_META_LIQUID } from "./ig-page-translations.ts";
+import { dirFor, hasTranslation, localeFrontMatter, pageLocales, pageReview, relinkForLocale, resolveLangFragments, SOURCE_LOCALE, translateWithIncludes, TRANSLATION_META_LIQUID, unreviewedLabel, unreviewedNoticeLiquid } from "./ig-page-translations.ts";
 import { IG_SEARCH_CSS, IG_SEARCH_INDEX_FILE, IG_SEARCH_SCRIPT_FILE, igSearchBox, igSearchScript, type IgSearchRef } from "./ig-search.ts";
 import { withRenderedBy } from "../../cat-harness-tools/scripts/viewer-declarations.js";
 import { NAVBAR_LINKED } from "../../cat-harness-tools/scripts/lib/harness-rail.ts";
@@ -632,6 +632,7 @@ export function harnessLayout(topBar: string, tocNav: string, sectionLabel?: str
     topBar,
     '<main class="ig-main main-content" id="main-content">',
     IG_FIGURE_IMAGES_STAMP,
+    unreviewedNoticeLiquid(),
     "{{ content }}",
     ...igEditLines(),
     `<script>${liquidInertScript(IG_TASK_PANEL_JS)}</script>`,
@@ -839,6 +840,8 @@ export function thinIgLayout(assetsAt: string, tocNav = "", sectionLabel?: strin
     // The bar OUTSIDE the content column, so it spans the page beside the rail.
     ...(topBar ? [topBar] : []),
     `<main class="ig-main main-content ${PAGE_MAIN_CLASS}" id="main-content">`,
+    // First thing in the content: the notice on a page with translated words no person reviewed.
+    unreviewedNoticeLiquid(),
     "{{ content }}",
     `<script>${liquidInertScript(IG_TASK_PANEL_JS)}</script>`,
     `<script>${liquidInertScript(IG_CONTENTS_JS)}</script>`,
@@ -2031,13 +2034,21 @@ function stageDeclaredSource(igSrc: string, out: string, opts: StageOptions): St
     pages.push(f);
     for (const l of pageLocs) {
       if (!available.includes(l.locale)) continue;
-      const t = translateWithIncludes(name, l, sourceOf, pageStems);
+      // Reviewed only when a record says a person reviewed EVERY catalogue whose
+      // words are on the page; anything else, including no record, is not (fail closed).
+      const review = new Map<string, boolean>();
+      const unreviewed = (stem: string): boolean => {
+        if (!review.has(stem)) review.set(stem, !pageReview(l, stem, sourceOf(stem)).reviewed);
+        return review.get(stem)!;
+      };
+      const t = translateWithIncludes(name, l, sourceOf, pageStems, 0, { unreviewed, label: unreviewedLabel(l.locale) });
+      const reviewed = t.contributors.length > 0 && t.contributors.every((c) => !unreviewed(c));
       const here = new Set([...pageStems].filter((k) => hasTranslation(k, l, sourceOf, pageStems)).map((k) => `${k}.html`));
       const tr = render(t.md, false, l.locale);
       const body = relinkForLocale(tr.body, here);
       const data = {
         ...tr.data,
-        ...localeFrontMatter({ lang: l.locale, available, status: l.status, source: `${name}.html` }),
+        ...localeFrontMatter({ lang: l.locale, available, status: reviewed ? "verified" : "unverified", source: `${name}.html`, reviewed }),
         dir: dirFor(l.locale),
         translated_spans: `${t.translated}/${t.total}`,
       };
