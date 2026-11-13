@@ -15,7 +15,7 @@
 import { join, resolve } from "node:path";
 
 import { checkoutRootFor } from "@litlfred/cat-harness-tools/schemas/kg/cat-harness.js";
-import { mountedInstances, readPathFor } from "@litlfred/cat-harness-tools/scripts/lib/layer-output.js";
+import { mountedInstances, outputPathFor, readPathFor } from "@litlfred/cat-harness-tools/scripts/lib/layer-output.js";
 
 /** The instance-relative directory an IG layer's artefact index is in. */
 export const INDEX_DIR = "fhir-artifact-index";
@@ -40,4 +40,37 @@ export function indexReadPath(instanceRoot: string, ...rel: string[]): string {
     if (resolve(root, path) === at) return readPathFor(root, { instance, path }, join(INDEX_DIR, ...rel), mounted);
   }
   return own;
+}
+
+/**
+ * The path to WRITE `fhir-artifact-index/<rel…>` of the IG layer at
+ * `instanceRoot`: `build/layers/<instance>/…` for a layer the checkout mounts,
+ * else in place. `ig-index:build` still writes in place: cat-harness-tools'
+ * readers of a mounted layer's served index read it there until they move
+ * onto the overlay, and then the writer switches to this.
+ */
+export function indexWritePath(instanceRoot: string, ...rel: string[]): string {
+  const at = resolve(instanceRoot);
+  const own = join(at, INDEX_DIR, ...rel);
+  let root: string;
+  try {
+    root = checkoutRootFor(at);
+  } catch {
+    return own;
+  }
+  const mounted = mountedInstances(root);
+  for (const [instance, path] of mounted) {
+    if (resolve(root, path) === at) return outputPathFor(root, { instance, path }, join(INDEX_DIR, ...rel), mounted);
+  }
+  return own;
+}
+
+/**
+ * Where to read a path an index records relative to its LAYER (a
+ * `localPath` such as `fhir-artifact-index/package.tgz`): through the overlay
+ * when it is under the index directory, else in the layer.
+ */
+export function layerFileReadPath(instanceRoot: string, localPath: string): string {
+  const norm = localPath.replace(/^\.\//, "");
+  return norm.startsWith(`${INDEX_DIR}/`) ? indexReadPath(instanceRoot, norm.slice(INDEX_DIR.length + 1)) : join(resolve(instanceRoot), localPath);
 }
