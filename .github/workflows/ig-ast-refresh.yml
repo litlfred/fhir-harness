@@ -110,7 +110,7 @@ jobs:
       kind: ${{ steps.build.outputs.kind }}
       seeded: ${{ steps.seed.outputs.seeded }}
     steps:
-      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           ref: ${{ inputs.ref }}
           # Full history: validity accepts a later commit that changes no IG
@@ -122,7 +122,7 @@ jobs:
           bun-version: 1.4.4  # the platform's CI version
 
       - name: Cache remote mounts (bean cis1)
-        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: /home/runner/.cache/cat-mount
           key: cat-mount-v1-${{ hashFiles('index.lock.json') }}
@@ -220,7 +220,7 @@ jobs:
       - name: Restore FHIR packages and IG tooling (bean cis5)
         id: tooling-cache
         if: steps.ast.outputs.rebuild == 'true'
-        uses: actions/cache/restore@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             ~/.fhir/packages
@@ -233,15 +233,16 @@ jobs:
 
       - name: Java for the IG Publisher
         if: steps.ast.outputs.rebuild == 'true'
-        uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4.9.1
+        uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78 # v6.2.0
         with:
           distribution: temurin
           java-version: ${{ steps.toolchain.outputs.JAVA_VERSION }}
 
       - name: Node for SUSHI
         if: steps.ast.outputs.rebuild == 'true'
-        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
+          package-manager-cache: false
           node-version: ${{ steps.toolchain.outputs.NODE_VERSION }}
 
       - name: Ruby for the Publisher's Jekyll
@@ -511,7 +512,7 @@ jobs:
           steps.ast.outputs.rebuild == 'true' && steps.build.outcome == 'success'
           && steps.tooling-cache.outputs.cache-hit != 'true'
           && github.ref == format('refs/heads/{0}', github.event.repository.default_branch)
-        uses: actions/cache/save@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: |
             ~/.fhir/packages
@@ -522,7 +523,7 @@ jobs:
 
       - name: Keep the AST build log
         if: always() && steps.ast.outputs.rebuild == 'true'
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ast-build-log
           path: ${{ runner.temp }}/ast-build.log
@@ -566,7 +567,7 @@ jobs:
 
       - name: Keep the AST when it was not seeded
         if: steps.ast.outputs.rebuild == 'true' && steps.seed.outputs.seeded != 'true'
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: output-ast
           path: output-ast
@@ -577,7 +578,7 @@ jobs:
       # assets` refuses the set when package.tgz is missing.
       - name: Keep the release's files
         if: inputs.release && steps.build.outcome == 'success'
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: ig-release
           path: |
