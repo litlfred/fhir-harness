@@ -1,8 +1,8 @@
-<!-- GENERATED from fhir-harness/processes/content/ig-ast-delta-review.bpmn by cat-harness-tools/scripts/bpmn-checklist.ts. Do not edit: change the diagram and regenerate (bun run cat bpmn:checklist). -->
+<!-- GENERATED from fhir-harness/collab/processes/content/ig-ast-delta-review.bpmn by cat-harness-tools/scripts/bpmn-checklist.ts. Do not edit: change the diagram and regenerate (bun run cat bpmn:checklist). -->
 
 # Checklist — Is the incremental IG AST what a full build would have produced?
 
-> **Generated, and not the authority.** This is `fhir-harness/processes/content/ig-ast-delta-review.bpmn` (process `Process_IgAstDeltaReview`) walked as a state machine. The diagram and the workflow engine decide; this list only reads them. Follow the `next:` line of each step rather than the order on the page, and record each step with the call it names, so the engine's committed state — not this list — says which edge was taken.
+> **Generated, and not the authority.** This is `fhir-harness/collab/processes/content/ig-ast-delta-review.bpmn` (process `Process_IgAstDeltaReview`) walked as a state machine. The diagram and the workflow engine decide; this list only reads them. Follow the `next:` line of each step rather than the order on the page, and record each step with the call it names, so the engine's committed state — not this list — says which edge was taken.
 
 The review step of an incremental FHIR IG build, as its own subprocess: list and inspect the differences between the incremental IG AST and what a full build would have produced, then accept them or raise a finding.
 
