@@ -133,6 +133,7 @@ export interface ScratchInstance {
  * `repoRootFor` requires. Returns the root; the caller removes it.
  */
 export function scratchRepo(instances: Record<string, Omit<ScratchInstance, "dir">>): string {
+  // input-site: inert #262fa049 — a scratch repository under the temp dir, removed by the caller; its name never reaches an answer
   const root = mkdtempSync(join(tmpdir(), "fhir-harness-ig-"));
   for (const [name, inst] of Object.entries(instances)) {
     const ix = join(root, name, "fhir-artifact-index");
