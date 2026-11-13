@@ -57,6 +57,7 @@ import { wrapRaw } from "../../cat-harness-tools/scripts/lib/liquid-raw.ts";
 import type { IgReleases } from "../schemas/ig-releases.ts";
 import { astFooterData, IG_QA_PAGE, igSiteFooter, sushiFooterData, type IgFooterData, type IgSiteFooter } from "./ig-footer.ts";
 import { thinIndexPage } from "./ig-thin-pages.ts";
+import { localiseMenu, menuLabels, menuLocales, type MenuLocale } from "./ig-menu-translations.ts";
 import { dirFor, hasTranslation, localeFrontMatter, pageLocales, pageReview, relinkForLocale, resolveLangFragments, SOURCE_LOCALE, translateWithIncludes, TRANSLATION_META_LIQUID, unreviewedLabel, unreviewedNoticeLiquid } from "./ig-page-translations.ts";
 import { IG_SEARCH_CSS, IG_SEARCH_INDEX_FILE, IG_SEARCH_SCRIPT_FILE, igSearchBox, igSearchScript, type IgSearchRef } from "./ig-search.ts";
 import { withRenderedBy } from "../../cat-harness-tools/scripts/viewer-declarations.js";
@@ -479,21 +480,46 @@ export function igTocNav(menu: IgMenu, baseurl: string, extra: ReadonlyArray<{ l
  * serve every page of the site, which is how `publisher-pages` gives this one
  * bar to the pages other generators wrote (`ig-search.ts` `withIgBar`).
  */
-export function igTopBar(menu: IgMenu, baseurl: string, title: string, search?: IgSearchRef): string {
-  const groups = menu.groups
-    .map((g) =>
-      g.items?.length
-        ? `<details class="ig-topbar-group"><summary>${escHtml(g.label)}</summary><ul>${g.items
-            .map((it) => `<li><a href="${escHtml(siteHref(baseurl, it.href))}">${escHtml(it.label)}</a></li>`)
-            .join("")}</ul></details>`
-        : isMenuPage(g)
-          ? `<a class="ig-topbar-group ig-topbar-link" href="${escHtml(siteHref(baseurl, g.href))}">${escHtml(g.label)}</a>`
-          : `<span class="ig-topbar-group">${escHtml(g.label)}</span>`,
-    )
-    .join("");
+export function igTopBar(menu: IgMenu, baseurl: string, title: string, search?: IgSearchRef, locales: ReadonlyArray<LocalisedBar> = []): string {
+  // With translated menus the labels are Liquid-inert: a `{` in a label must not start a tag.
+  const esc = (s: string) => (locales.length ? escHtml(s).replace(/\{/g, "&#123;").replace(/\}/g, "&#125;") : escHtml(s));
+  const inner = (m: IgMenu, t: string, home: string) =>
+    `<a class="ig-topbar-home" href="${escHtml(siteHref(baseurl, home))}">${esc(t)}</a>` +
+    m.groups
+      .map((g) =>
+        g.items?.length
+          ? `<details class="ig-topbar-group"><summary>${esc(g.label)}</summary><ul>${g.items
+              .map((it) => `<li><a href="${escHtml(siteHref(baseurl, it.href))}">${esc(it.label)}</a></li>`)
+              .join("")}</ul></details>`
+          : isMenuPage(g)
+            ? `<a class="ig-topbar-group ig-topbar-link" href="${escHtml(siteHref(baseurl, g.href))}">${esc(g.label)}</a>`
+            : `<span class="ig-topbar-group">${esc(g.label)}</span>`,
+      )
+      .join("");
+  // One bar for every page, in the page's language when the IG translates its
+  // menu (fhir-harness#417): a Liquid `case` on `page.lang`, inside the one
+  // `<div>` so `IG_TOPBAR_RE` still lifts the whole bar into a composed layout.
+  const body = locales.length
+    ? `{% case page.lang %}${locales
+        .map((l) => `{% when "${l.locale}" %}${inner(l.menu, l.title, l.home)}${l.unreviewed ? `<span class="${UNREVIEWED_MENU_CLASS}" lang="${l.locale}">\u26A0\uFE0F ${esc(l.unreviewed)}</span>` : ""}`)
+        .join("")}{% else %}${inner(menu, title, "index.html")}{% endcase %}`
+    : inner(menu, title, "index.html");
   const box = search ? `${igSearchBox(search, title)}${igSearchScript(search)}` : "";
-  return `<div class="ig-topbar ${PAGE_BAR_CLASS}" role="navigation" aria-label="${escHtml(title)} menu"><a class="ig-topbar-home" href="${escHtml(siteHref(baseurl, "index.html"))}">${escHtml(title)}</a>${groups}${box}</div>`;
+  return `<div class="ig-topbar ${PAGE_BAR_CLASS}" role="navigation" aria-label="${escHtml(title)} menu">${body}${box}</div>`;
 }
+
+/** One locale's bar: its menu, title and home link, and the mark when no person reviewed the labels. */
+export interface LocalisedBar {
+  locale: string;
+  menu: IgMenu;
+  title: string;
+  home: string;
+  /** The "not reviewed by a person" label, in the locale, when the menu's translation is unreviewed. */
+  unreviewed?: string;
+}
+
+/** The mark on a bar whose translated labels no person reviewed. */
+export const UNREVIEWED_MENU_CLASS = "ig-topbar-tr-unreviewed";
 
 /**
  * The top bar's style: the IG's title on a line of its own, its menu on the
@@ -516,6 +542,7 @@ export function igTopBar(menu: IgMenu, baseurl: string, title: string, search?: 
  * it reserves the row at every width.
  */
 export const IG_TOPBAR_CSS = `
+.ig-topbar-tr-unreviewed{font-size:.8rem;font-weight:700;padding:.1rem .5rem;border:2px dashed #f59e0b;border-radius:4px;color:#fff}
 .ig-topbar{display:flex;flex-wrap:wrap;align-items:center;gap:.25rem 1rem;padding:.5rem 1.5rem;background:var(--ig-topbar-bg,#2d4271);color:#fff;font-size:var(--fa-text-base,1rem)}
 .ig-topbar a{color:#fff;text-decoration:none}
 .ig-topbar-home{flex:0 0 100%;font-weight:600}
@@ -1965,6 +1992,15 @@ function stageDeclaredSource(igSrc: string, out: string, opts: StageOptions): St
   const pageStems = new Set(files(pagecontent).filter((f) => f.endsWith(".md")).map((f) => basename(f, ".md")));
   const sourceOf = (stem: string): string | undefined => (pageStems.has(stem) ? readFileSync(join(pagecontent, `${stem}.md`), "utf-8") : undefined);
   const localesOf = (stem: string): string[] => [SOURCE_LOCALE, ...pageLocs.filter((l) => hasTranslation(stem, l, sourceOf, pageStems)).map((l) => l.locale)];
+  // The IG's menu in each locale that translates it (fhir-harness#417). Its
+  // labels are on every page, so a locale whose menu no person reviewed makes
+  // every page in that locale "not reviewed" (fail closed).
+  const igTitle = typeof sushi.title === "string" ? sushi.title : String(sushi.id ?? "IG");
+  const menuLocs: Map<string, MenuLocale> = opts.menu ? menuLocales(join(src, "translations"), menuLabels(opts.menu, igTitle)) : new Map();
+  const translatedHere = (locale: string): Set<string> => {
+    const l = pageLocs.find((x) => x.locale === locale);
+    return new Set(l ? [...pageStems].filter((k) => hasTranslation(k, l, sourceOf, pageStems)).map((k) => `${k}.html`) : []);
+  };
   for (const f of files(pagecontent).filter((f) => f.endsWith(".md"))) {
     const name = basename(f, ".md");
     const raw = readFileSync(join(pagecontent, f), "utf-8");
@@ -2042,7 +2078,7 @@ function stageDeclaredSource(igSrc: string, out: string, opts: StageOptions): St
         return review.get(stem)!;
       };
       const t = translateWithIncludes(name, l, sourceOf, pageStems, 0, { unreviewed, label: unreviewedLabel(l.locale) });
-      const reviewed = t.contributors.length > 0 && t.contributors.every((c) => !unreviewed(c));
+      const reviewed = t.contributors.length > 0 && t.contributors.every((c) => !unreviewed(c)) && (menuLocs.get(l.locale)?.reviewed ?? true);
       const here = new Set([...pageStems].filter((k) => hasTranslation(k, l, sourceOf, pageStems)).map((k) => `${k}.html`));
       const tr = render(t.md, false, l.locale);
       const body = relinkForLocale(tr.body, here);
@@ -2378,7 +2414,17 @@ function stageDeclaredSource(igSrc: string, out: string, opts: StageOptions): St
       })),
     };
     mkdirSync(join(out, "_layouts"), { recursive: true });
-    writeFileSync(join(out, "_layouts", "default.html"), harnessLayout(igTopBar(menu, baseurl, title, opts.search ? igSearchAt(baseurl) : undefined), igTocNav(menu, baseurl, extra), title));
+    const bars: LocalisedBar[] = [...menuLocs.values()].map((ml) => {
+      const here = translatedHere(ml.locale);
+      return {
+        locale: ml.locale,
+        menu: localiseMenu(menu, ml, here),
+        title: ml.labels.get(title) ?? title,
+        home: here.has("index.html") ? `${ml.locale}/index.html` : "index.html",
+        ...(ml.reviewed ? {} : { unreviewed: unreviewedLabel(ml.locale) }),
+      };
+    });
+    writeFileSync(join(out, "_layouts", "default.html"), harnessLayout(igTopBar(menu, baseurl, title, opts.search ? igSearchAt(baseurl) : undefined, bars), igTocNav(menu, baseurl, extra), title));
   }
   writeFileSync(
     join(out, "_config.yml"),
