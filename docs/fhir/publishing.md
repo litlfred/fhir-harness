@@ -31,8 +31,12 @@ runner and pushed to the IG repository's `gh-pages` branch. There is no
 separate recipe: the workflow runs the same `stage-local.ts` command that
 you run by hand.
 
-GitHub workflows here are **started by hand** (`workflow_dispatch`). Nothing
-publishes on push.
+**A merged pull request publishes.** In an IG repository set up from the
+templates, a push to `main` that changes the IG's inputs refreshes its AST,
+and every push to `main` republishes the site once that refresh has
+finished. Previews of other branches, and re-runs, are started by hand
+(`workflow_dispatch`). A **release** is cut from a version tag and is
+published by a person.
 
 ## The publishing pipeline
 {: #the-pipeline data-fa-label="sec:publishing-the-pipeline" }
@@ -44,7 +48,8 @@ input/, sushi-config.yaml, ig.ini
    │  ig-ast-refresh.yml      (reusable; the only writer of the AST cache)
    ▼
 cat/fhir-harness/fhir-ast/<package id>    the AST cache branch
-   │  site-publish.yml → stage-local.ts   (no Publisher runs here)
+   │  site-publish.yml → cat-harness-tools folio-site-publish.yml
+   │                   → stage-local.ts   (no Publisher runs here)
    ▼
 gh-pages:  /                   from the default branch
            /branches/<branch>/ from any other branch (a preview)
@@ -56,8 +61,10 @@ https://<owner>.github.io/<repo>/
 | Workflow | Where it lives | What it does |
 |---|---|---|
 | [`ig-ast-refresh.yml`](https://github.com/litlfred/fhir-harness/blob/main/.github/workflows/ig-ast-refresh.yml) | this layer (reusable, `workflow_call`) | restores the cache and judges it (`valid`, `stale`, `cannot-tell` or `missing`). If it is not valid, it builds the AST: incrementally when it can, in full otherwise. It seeds the cache branch only from a default-branch commit; otherwise it uploads the AST as an `output-ast` run artifact |
-| [`templates/ig-repo-site/ig-ast-refresh.yml`](https://github.com/litlfred/fhir-harness/blob/main/templates/ig-repo-site/ig-ast-refresh.yml) | copied into the IG repository | the caller. A layer above adds its own `pre-export:` step and `template-repos:` here |
-| [`templates/ig-repo-site/site-publish.yml`](https://github.com/litlfred/fhir-harness/blob/main/templates/ig-repo-site/site-publish.yml) | copied into the IG repository, unchanged | job `ast` calls the refresh. Job `publish` mounts the layers from `index.lock.json` and runs `stage-local.ts --repo .`; the `plan` input adds `--plan` |
+| [`templates/ig-repo-site/ig-ast-refresh.yml`](https://github.com/litlfred/fhir-harness/blob/main/templates/ig-repo-site/ig-ast-refresh.yml) | copied into the IG repository | the caller. Runs on a push to `main` that touches `sushi-config.yaml`, `ig.ini` or `input/`, and by hand. A layer above adds its own `pre-export:` step and `template-repos:` here |
+| [`templates/ig-repo-site/site-publish.yml`](https://github.com/litlfred/fhir-harness/blob/main/templates/ig-repo-site/site-publish.yml) | copied into the IG repository, unchanged, then pinned with `bun run cat workflow-pins` | runs on every push to `main`, and by hand for a preview. It calls cat-harness-tools' reusable `folio-site-publish.yml`, which mounts the layers and runs `stage-local.ts --repo .`. With `"publishAfter": ["ig-ast-refresh.yml"]` in the IG's `site`, the publish waits for that commit's AST refresh. The `plan` input adds `--plan`. `check:site-publish-caller` reports a copy that differs from the template |
+| [`ig-release.yml`](https://github.com/litlfred/fhir-harness/blob/main/.github/workflows/ig-release.yml) and its [caller template](https://github.com/litlfred/fhir-harness/blob/main/templates/ig-repo-site/ig-release.yml) | this layer (reusable), and a short caller in the IG repository | on a `v*` tag: a full build of the tag, then a GitHub **draft** release with the IG's files. See [Releasing](#releasing) |
+| [`ast-export-bundle.yml`](https://github.com/litlfred/fhir-harness/blob/main/.github/workflows/ast-export-bundle.yml) | this layer | publishes the compiled AST exporter once per pinned commit, as the release `ast-export-<commit>`. The refresh downloads it when its sha256 matches `scripts/ast-export-bundles.tsv`, and builds from source otherwise, so no IG repository runs Maven in CI |
 | [`publish-qa.yml`](https://github.com/litlfred/fhir-harness/blob/main/.github/workflows/publish-qa.yml) | this layer | publishes this layer's QA results to `cat/cat-harness/qa-reports` |
 
 The rules (when an AST is valid, who may seed the cache, what a stale AST
@@ -76,11 +83,49 @@ refuses) are in the `ig-build-pipeline` skill, §"The AST cache lifecycle".
 | the artefact index | `<site>/fhir-artifact-index/` | `index.json`, `menu.json`, `ig-identity.json`, `releases.json`, and `package.tgz` |
 | per-artefact data | `<site>/artifact/<Type>-<id>.{html,jsonld,json}`, `<site>/<Type>-<id>.json` | the thin pages load these |
 | build stamp | `<site>/folio-build.json` | which commit and toolchain built the site |
-| release binaries | GitHub **release assets** | `package.tgz`, `full-ig.zip` and the like are never put on `gh-pages`; `releases.json` records each asset's URL and SHA-256 |
+| release files | GitHub **release assets** of the tag's release | `package.tgz` (and `package.r4.tgz`, `package.r4b.tgz` when built), `ast-data.zip` and `SHA256SUMS`. They are never put on `gh-pages`; `releases.json` records each asset's URL and SHA-256 |
+| QA reports | `<site>/assets/fhir-qa/` and the QA report page | includes the content scan and the page scan (below) |
 
 Why binaries stay off `gh-pages`: GitHub Pages serves at most 1 GB. On one
 measured IG, 966.5 MB of its `gh-pages` was Publisher binaries copied into
 branch previews. See the `ig-binary-artefacts` skill.
+
+## Releasing
+{: #releasing data-fa-label="sec:publishing-releasing" }
+
+[✎ Edit](https://github.com/litlfred/fhir-harness/edit/main/docs/source/fhir-publishing/releasing.md){: .fa-node-edit title="Edit docs/source/fhir-publishing/releasing.md" data-fa-link="edit" data-src="docs/source/fhir-publishing/releasing.md" data-repo="litlfred/fhir-harness" } <span class="fa-qa-badges"><button type="button" class="fa-qa-badge fa-qa-pending fa-qa-fam-block" lang="en" dir="ltr" data-qa-family="block" data-qa-key="releasing.block" data-qa-label="Content QA" data-qa-noun="block" data-qa-src="{{ '/assets/qa/fhir-harness/fhir-publishing/releasing.block.json' | relative_url }}" data-qa-index="{{ '/assets/qa/fhir-harness/fhir-publishing/qa-index.json' | relative_url }}" aria-expanded="false" aria-busy="true" title="Content QA: loading the verdict…" aria-label="Content QA: loading the verdict…"><span class="fa-qa-tag">QA</span><span class="fa-qa-glyph" aria-hidden="true">…</span></button> <button type="button" class="fa-qa-badge fa-qa-pending fa-qa-fam-translation" lang="en" dir="ltr" data-qa-family="translation" data-qa-key="releasing.translation" data-qa-label="Translation QA" data-qa-noun="block" data-qa-src="{{ '/assets/qa/fhir-harness/fhir-publishing/releasing.translation.json' | relative_url }}" data-qa-index="{{ '/assets/qa/fhir-harness/fhir-publishing/qa-index.json' | relative_url }}" aria-expanded="false" aria-busy="true" title="Translation QA: loading the verdict…" aria-label="Translation QA: loading the verdict…"><span class="fa-qa-tag">TR</span><span class="fa-qa-glyph" aria-hidden="true">…</span></button></span>
+
+A release is cut from a tag and published by a person. The full process is
+the `ig-binary-artefacts` skill, §"Releasing".
+
+1. **The owner tags the version.** The tag is `v<version>`, for the version
+   in `sushi-config.yaml`, on the default branch. An agent never picks a
+   version, pushes a tag or publishes a release.
+2. **The tag starts `ig-release.yml`.** It can also be started by hand for a
+   tag that already exists.
+3. **The build is full.** The refresh runs with `force` and `release`; a
+   release is never cut from an incremental AST.
+4. **Every release carries the same files:** the packages, `ast-data.zip`
+   (the IG's AST, with each `Library`'s ELM) and `SHA256SUMS`.
+5. **It stops at a draft.** Whether it is a pre-release is read from
+   `sushi-config.yaml`. The owner reviews the draft and publishes it on
+   GitHub. A tag whose release is already published is refused.
+
+The caller is short:
+
+```yaml
+on:
+  push:
+    tags: ["v*"]
+jobs:
+  release:
+    uses: litlfred/fhir-harness/.github/workflows/ig-release.yml@main
+    with:
+      tag: ${{ inputs.tag || github.ref_name }}
+```
+
+Copy the full file from
+[`templates/ig-repo-site/ig-release.yml`](https://github.com/litlfred/fhir-harness/blob/main/templates/ig-repo-site/ig-release.yml).
 
 ## What is published now
 {: #what-is-published data-fa-label="sec:publishing-what-is-published" }
