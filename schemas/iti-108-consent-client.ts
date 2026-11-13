@@ -27,6 +27,7 @@
  * @graphNode schema
  * @conformsTo hl7-fhir
  */
+import { inputSiteReached } from "../../cat-harness-tools/schemas/sdlc/input-trace.ts";
 import {
   FhirCodeableConceptSchema,
   FhirCodingSchema,
@@ -237,7 +238,11 @@ export function buildIti108SearchUrl(query: Iti108Query): URL {
 }
 
 function resolveNowMs(now?: string | Date): number {
-  if (now === undefined) return Date.now();
+  if (now === undefined) {
+    // input-site: traced #c1d486be — the clock, when a caller names no time; a run that reaches it is not cached
+    inputSiteReached("iti-108: clock");
+    return Date.now();
+  }
   if (now instanceof Date) return now.getTime();
   return Date.parse(now);
 }

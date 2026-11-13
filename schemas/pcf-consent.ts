@@ -29,6 +29,8 @@ import { existsSync, readFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+
+import { inputSiteReached } from "../../cat-harness-tools/schemas/sdlc/input-trace.ts";
 import type * as fhir4 from "fhir/r4";
 import { z } from "zod";
 import {
@@ -175,17 +177,24 @@ export type PcfBasicPurpose = (typeof PCF_BASIC_PURPOSES)[number];
 const HERE = dirname(fileURLToPath(import.meta.url));
 const SUPPORT_PCF_DIR = resolve(HERE, "..", "test", "support", "pcf");
 
+/**
+ * The file `relativePath` of the published package `packageId`: the vendored
+ * copy under `test/support/pcf` when there is one (unmodified, its sha-256 in
+ * `provenance.json`), else the FHIR package cache in `~/.fhir/packages`.
+ *
+ * The vendored copy comes first so that loading this module reads only the
+ * tree: every file the module reads at load is vendored, and the bytes are the
+ * same exact-version package either way. The cache is outside the tree, so
+ * reaching it is a traced input site, and a run that reaches it is not cached.
+ */
 export function resolvePublishedFhirPackageFile(packageId: string, relativePath: string): string {
-  const candidates = [
-    join(homedir(), ".fhir", "packages", packageId, "package", relativePath),
-    join(SUPPORT_PCF_DIR, packageId, relativePath),
-  ];
-  for (const candidate of candidates) {
-    if (existsSync(candidate)) return candidate;
-  }
-  throw new Error(
-    `Cannot locate ${relativePath} in published package ${packageId} (checked ${candidates.join(", ")})`,
-  );
+  const vendored = join(SUPPORT_PCF_DIR, packageId, relativePath);
+  if (existsSync(vendored)) return vendored;
+  // input-site: traced #062dde05 — the FHIR package cache outside the tree, read only for a file not vendored under test/support/pcf
+  inputSiteReached("pcf-consent: ~/.fhir package cache");
+  const cached = join(homedir(), ".fhir", "packages", packageId, "package", relativePath);
+  if (existsSync(cached)) return cached;
+  throw new Error(`Cannot locate ${relativePath} in published package ${packageId} (checked ${vendored}, ${cached})`);
 }
 
 /**
