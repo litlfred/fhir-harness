@@ -1,0 +1,414 @@
+{
+  "$schema": "kg-qa/v1",
+  "subject": {
+    "kind": "process",
+    "id": "Process_IgIncremental",
+    "path": "processes/content/ig-incremental-build.bpmn"
+  },
+  "source_hash": "sha256:1beeefb414e279c15cf3cbb8059ba4cd8aa524569271f46d0517b707dd2f80df",
+  "criteria": {
+    "raci-role-resolves": {
+      "result": "n/a",
+      "findings": []
+    },
+    "raci-single-accountable": {
+      "result": "n/a",
+      "findings": []
+    },
+    "raci-accountable-not-consulted": {
+      "result": "n/a",
+      "findings": []
+    },
+    "convention-ref-resolves": {
+      "result": "n/a",
+      "findings": []
+    },
+    "skill-ref-resolves": {
+      "result": "pass",
+      "findings": []
+    },
+    "skill-servable": {
+      "result": "pass",
+      "findings": []
+    },
+    "activity-skill-has-tool": {
+      "result": "fail",
+      "findings": [
+        {
+          "where": "Task_Restore",
+          "detail": "names skill \"ig-publication\", which no Tool declares `satisfies` for — the step's mechanism is still prose."
+        },
+        {
+          "where": "Task_FullBuild",
+          "detail": "names skill \"ig-publication\", which no Tool declares `satisfies` for — the step's mechanism is still prose."
+        },
+        {
+          "where": "Task_Cone",
+          "detail": "names skill \"ig-publication\", which no Tool declares `satisfies` for — the step's mechanism is still prose."
+        },
+        {
+          "where": "Task_Cone",
+          "detail": "names skill \"ig-publication\", which no Tool declares `satisfies` for — the step's mechanism is still prose."
+        },
+        {
+          "where": "Task_Cone",
+          "detail": "names skill \"ig-publication\", which no Tool declares `satisfies` for — the step's mechanism is still prose."
+        },
+        {
+          "where": "Task_ConeReport",
+          "detail": "names skill \"quality-control\", which no Tool declares `satisfies` for — the step's mechanism is still prose."
+        },
+        {
+          "where": "Task_ConeReport",
+          "detail": "names skill \"quality-control\", which no Tool declares `satisfies` for — the step's mechanism is still prose."
+        },
+        {
+          "where": "Task_ConeReport",
+          "detail": "names skill \"quality-control\", which no Tool declares `satisfies` for — the step's mechanism is still prose."
+        },
+        {
+          "where": "Task_Checkout",
+          "detail": "names skill \"ig-publication\", which no Tool declares `satisfies` for — the step's mechanism is still prose."
+        },
+        {
+          "where": "Task_Checkout",
+          "detail": "names skill \"ig-publication\", which no Tool declares `satisfies` for — the step's mechanism is still prose."
+        },
+        {
+          "where": "Task_Checkout",
+          "detail": "names skill \"ig-publication\", which no Tool declares `satisfies` for — the step's mechanism is still prose."
+        },
+        {
+          "where": "Task_Sushi",
+          "detail": "names skill \"l3-fhir-authoring\", which no Tool declares `satisfies` for — the step's mechanism is still prose."
+        },
+        {
+          "where": "Task_ContextLoad",
+          "detail": "names skill \"ig-publication\", which no Tool declares `satisfies` for — the step's mechanism is still prose."
+        },
+        {
+          "where": "Task_ContextLoad",
+          "detail": "names skill \"ig-publication\", which no Tool declares `satisfies` for — the step's mechanism is still prose."
+        },
+        {
+          "where": "Task_ContextLoad",
+          "detail": "names skill \"ig-publication\", which no Tool declares `satisfies` for — the step's mechanism is still prose."
+        },
+        {
+          "where": "Task_Render",
+          "detail": "names skill \"ig-publication\", which no Tool declares `satisfies` for — the step's mechanism is still prose."
+        },
+        {
+          "where": "Task_Render",
+          "detail": "names skill \"ig-publication\", which no Tool declares `satisfies` for — the step's mechanism is still prose."
+        },
+        {
+          "where": "Task_Render",
+          "detail": "names skill \"ig-publication\", which no Tool declares `satisfies` for — the step's mechanism is still prose."
+        },
+        {
+          "where": "Task_Merge",
+          "detail": "names skill \"ig-publication\", which no Tool declares `satisfies` for — the step's mechanism is still prose."
+        },
+        {
+          "where": "Task_Index",
+          "detail": "names skill \"ig-publication\", which no Tool declares `satisfies` for — the step's mechanism is still prose."
+        },
+        {
+          "where": "Task_Index",
+          "detail": "names skill \"ig-publication\", which no Tool declares `satisfies` for — the step's mechanism is still prose."
+        },
+        {
+          "where": "Task_Index",
+          "detail": "names skill \"ig-publication\", which no Tool declares `satisfies` for — the step's mechanism is still prose."
+        },
+        {
+          "where": "Task_Site",
+          "detail": "names skill \"ig-publication\", which no Tool declares `satisfies` for — the step's mechanism is still prose."
+        },
+        {
+          "where": "Task_Qa",
+          "detail": "names skill \"quality-control\", which no Tool declares `satisfies` for — the step's mechanism is still prose."
+        },
+        {
+          "where": "Task_DeployPreview",
+          "detail": "names skill \"content-publish\", which no Tool declares `satisfies` for — the step's mechanism is still prose."
+        },
+        {
+          "where": "Task_Deploy",
+          "detail": "names skill \"content-publish\", which no Tool declares `satisfies` for — the step's mechanism is still prose."
+        },
+        {
+          "where": "Task_Deploy",
+          "detail": "names skill \"ig-publication\", which no Tool declares `satisfies` for — the step's mechanism is still prose."
+        },
+        {
+          "where": "Task_Seed",
+          "detail": "names skill \"ig-publication\", which no Tool declares `satisfies` for — the step's mechanism is still prose."
+        },
+        {
+          "where": "Task_Seed",
+          "detail": "names skill \"ig-publication\", which no Tool declares `satisfies` for — the step's mechanism is still prose."
+        },
+        {
+          "where": "Task_Seed",
+          "detail": "names skill \"ig-publication\", which no Tool declares `satisfies` for — the step's mechanism is still prose."
+        }
+      ]
+    },
+    "decision-ref-resolves": {
+      "result": "n/a",
+      "findings": []
+    },
+    "role-ref-resolves": {
+      "result": "pass",
+      "findings": []
+    },
+    "activity-in-lane": {
+      "result": "pass",
+      "findings": []
+    },
+    "lane-binds-role": {
+      "result": "pass",
+      "findings": []
+    },
+    "variable-performer-declared-alone": {
+      "result": "n/a",
+      "findings": []
+    },
+    "role-carries-activity-skill": {
+      "result": "fail",
+      "findings": [
+        {
+          "where": "Task_LogEnvError",
+          "detail": "needs skill \"todo-manager\", but its lane's role \"fhir-modeller\" does not carry it."
+        },
+        {
+          "where": "Task_LogFindings",
+          "detail": "needs skill \"todo-manager\", but its lane's role \"fhir-modeller\" does not carry it."
+        },
+        {
+          "where": "Task_QcBeans",
+          "detail": "needs skill \"todo-manager\", but its lane's role \"fhir-modeller\" does not carry it."
+        }
+      ]
+    },
+    "lane-role-legacy-binding": {
+      "result": "fail",
+      "findings": [
+        {
+          "where": "Lane_Author",
+          "detail": "lane \"Lane_Author\" binds role \"fhir-modeller\" with the deprecated <bootstrap.processes:role ref>; declare <bpmn:resource id=\"fhir-modeller\"/> and set partitionElementRef=\"fhir-modeller\" on the lane."
+        },
+        {
+          "where": "Lane_Build",
+          "detail": "lane \"Lane_Build\" binds role \"build-pipeline\" with the deprecated <bootstrap.processes:role ref>; declare <bpmn:resource id=\"build-pipeline\"/> and set partitionElementRef=\"build-pipeline\" on the lane."
+        },
+        {
+          "where": "Lane_Services",
+          "detail": "lane \"Lane_Services\" binds role \"ig-publisher-service\" with the deprecated <bootstrap.processes:role ref>; declare <bpmn:resource id=\"ig-publisher-service\"/> and set partitionElementRef=\"ig-publisher-service\" on the lane."
+        },
+        {
+          "where": "Lane_Review",
+          "detail": "lane \"Lane_Review\" binds role \"qc-reviewer\" with the deprecated <bootstrap.processes:role ref>; declare <bpmn:resource id=\"qc-reviewer\"/> and set partitionElementRef=\"qc-reviewer\" on the lane."
+        },
+        {
+          "where": "Lane_PubMgr",
+          "detail": "lane \"Lane_PubMgr\" binds role \"publication-manager\" with the deprecated <bootstrap.processes:role ref>; declare <bpmn:resource id=\"publication-manager\"/> and set partitionElementRef=\"publication-manager\" on the lane."
+        }
+      ]
+    },
+    "task-skill-outside-lane-role": {
+      "result": "fail",
+      "findings": [
+        {
+          "where": "Task_LogEnvError",
+          "detail": "task \"Log the environment error on the bean\" requires skill \"todo-manager\", which role \"fhir-modeller\" (named by lane \"FHIR modeller / PR author (person + authoring agent)\") does not list, directly or through `inherits`."
+        },
+        {
+          "where": "Task_LogFindings",
+          "detail": "task \"Log findings on the bean\" requires skill \"todo-manager\", which role \"fhir-modeller\" (named by lane \"FHIR modeller / PR author (person + authoring agent)\") does not list, directly or through `inherits`."
+        },
+        {
+          "where": "Task_QcBeans",
+          "detail": "task \"File QC findings as beans\" requires skill \"todo-manager\", which role \"fhir-modeller\" (named by lane \"FHIR modeller / PR author (person + authoring agent)\") does not list, directly or through `inherits`."
+        }
+      ]
+    },
+    "activity-names-skill": {
+      "result": "pass",
+      "findings": []
+    },
+    "activity-fulfilment-kind": {
+      "result": "pass",
+      "findings": []
+    },
+    "call-activity-resolves": {
+      "result": "n/a",
+      "findings": []
+    },
+    "process-diagram-published": {
+      "result": "fail",
+      "findings": [
+        {
+          "where": "Process_IgIncremental",
+          "detail": "no rendered diagram at ig-incremental-build.svg — run `bun run cat render:bpmn`."
+        }
+      ]
+    },
+    "activity-documented": {
+      "result": "pass",
+      "findings": []
+    },
+    "activity-calls-skill-process": {
+      "result": "pass",
+      "findings": []
+    },
+    "gateway-documented": {
+      "result": "pass",
+      "findings": []
+    },
+    "gateway-branches-named": {
+      "result": "pass",
+      "findings": []
+    },
+    "node-reachable": {
+      "result": "pass",
+      "findings": []
+    },
+    "node-has-exit": {
+      "result": "pass",
+      "findings": []
+    },
+    "activity-implicit-split": {
+      "result": "pass",
+      "findings": []
+    },
+    "gateway-mixed": {
+      "result": "pass",
+      "findings": []
+    },
+    "process-size": {
+      "result": "fail",
+      "findings": [
+        {
+          "where": "Process_IgIncremental",
+          "detail": "29 flow nodes, past the 20 at which bpmn-authoring asks for a split by phase into call activities."
+        }
+      ]
+    },
+    "process-decompose": {
+      "result": "pass",
+      "findings": []
+    },
+    "process-single-start": {
+      "result": "pass",
+      "findings": []
+    },
+    "decision-label-question": {
+      "result": "pass",
+      "findings": []
+    },
+    "activity-label-verb-first": {
+      "result": "pass",
+      "findings": []
+    },
+    "edge-rectilinear": {
+      "result": "pass",
+      "findings": []
+    },
+    "edge-crossing": {
+      "result": "fail",
+      "findings": [
+        {
+          "where": "F11×F13",
+          "detail": "flows F11 and F13 cross."
+        }
+      ]
+    },
+    "edge-through-node": {
+      "result": "pass",
+      "findings": []
+    },
+    "diagram-too-wide": {
+      "result": "fail",
+      "findings": [
+        {
+          "where": "diagram",
+          "detail": "4680 wide, budget 1400: text shows at 4.1px in a 1200px band. Close the gaps between columns, stack steps of different lanes in one column, or split by phase."
+        }
+      ]
+    },
+    "diagram-too-tall": {
+      "result": "fail",
+      "findings": [
+        {
+          "where": "diagram",
+          "detail": "1590 tall, budget 900: a reader scrolls to see it whole. Shrink lanes to their content, or split by phase."
+        }
+      ]
+    },
+    "label-overlap": {
+      "result": "pass",
+      "findings": []
+    },
+    "label-on-edge": {
+      "result": "fail",
+      "findings": [
+        {
+          "where": "EndEvent_Published/F17",
+          "detail": "label \"IG site published,&#10;cache seeded\" sits on flow F17. Move the label off the line (`bpmn:detangle --write` does it)."
+        }
+      ]
+    },
+    "label-on-shape": {
+      "result": "fail",
+      "findings": [
+        {
+          "where": "StartEvent_SourceChanged/StartEvent_SourceChanged",
+          "detail": "label \"Source changed\" covers \"Source changed\"."
+        },
+        {
+          "where": "Gateway_Valid/Task_Sushi",
+          "detail": "label \"Valid?\" covers \"SUSHI on the restricted tank\"."
+        }
+      ]
+    },
+    "label-on-lane-line": {
+      "result": "fail",
+      "findings": [
+        {
+          "where": "Gateway_QcPass/Lane_Build",
+          "detail": "label \"QC clean?\" is drawn across the edge of \"Incremental build (system)\". Move it inside one lane (`bpmn:detangle --write` does it)."
+        }
+      ]
+    },
+    "shape-overlap": {
+      "result": "pass",
+      "findings": []
+    },
+    "lane-order": {
+      "result": "fail",
+      "findings": [
+        {
+          "where": "lanes",
+          "detail": "flows cross 19 lane boundaries; ordering the lanes FHIR modeller / PR author (person + authoring agent) / Publisher + validator services (JVM) / Incremental build (system) / PR reviewer / QC reviewer / Publication manager — deploy and seed makes it 18. Run `bun run cat bpmn:detangle <file> --write`."
+        }
+      ]
+    },
+    "prose-reviewed-since-code-changed": {
+      "result": "n/a",
+      "findings": []
+    },
+    "prose-claims-resolve": {
+      "result": "n/a",
+      "findings": []
+    }
+  },
+  "totals": {
+    "pass": 23,
+    "fail": 13,
+    "n/a": 9,
+    "unknown": 0
+  }
+}
