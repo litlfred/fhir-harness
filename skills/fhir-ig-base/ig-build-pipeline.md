@@ -136,6 +136,13 @@ builds or renders an IG restores it** (owner, 2026-11-05: *"not all
 rendering/CI/merge processes need all caches. be optimal"*). A test shard,
 a gate or a merge job never does.
 
+The incremental build ([`ig-incremental-build.bpmn`](../../processes/content/ig-incremental-build.bpmn))
+does not restore the AST itself: its `Task_Restore` calls the harness's
+cache process, `Process_Cache` (cat-harness, skill `cache-first-ci`), whose
+plan restores the layers ref and then this cache for an IG target. That
+process draws this cache as a task in its own lane, since a layer below this
+one cannot call into it; `ig-ast-cache.bpmn` stays the component's steps.
+
 The node's `materializes` (`output-ast/`, `input-cache/txcache/`) is how a
 plan decides that: a target needs this cache when what it reads touches those
 paths. Its `needs` is `layers-ref`, so the layers are restored first. Every
