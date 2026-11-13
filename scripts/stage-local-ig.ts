@@ -86,10 +86,10 @@ import type { Composed, PublisherHost, PublisherRun, SitePublisher, StagePlan, S
 // here, not imported, so this layer does not wait on that module's release.
 const PREVIEW_PREFIXES: readonly string[] = ["branches", "STAGING"];
 
-/** The reusable workflows an IG calls: this layer's, which upstream IG repositories call. */
-export const IG_WORKFLOWS = ["fhirbuild.yml", "ghbuild.yml"] as const;
-/** Where an IG workflow with no deploy step finds its Pages build: the sibling beside it. */
-export const PAGES_SIBLING = "ghbuild.yml";
+// The publisher's registration data lives in `ig-publisher.ts`, which loads
+// no network or spawn, so the plugin table stays out of the gates' closures.
+import { IG_PUBLISHER, IG_WORKFLOWS, PAGES_SIBLING } from "./ig-publisher.ts";
+export { IG_PUBLISHER, IG_WORKFLOWS, PAGES_SIBLING };
 
 /**
  * What marks a publish root as a folio's: `publish-main`'s manifest, the
@@ -964,7 +964,7 @@ export function applyIgChrome(repo: string, site: string, c: IgChrome, log: (s: 
   return cov;
 }
 
-async function stageIg(a: PublisherRun, h: PublisherHost): Promise<StageResult> {
+export async function stageIg(a: PublisherRun, h: PublisherHost): Promise<StageResult> {
   const { o, log, repo, detected, branch, sha, ownerRepo, pagesRoot, runUrl, target } = a;
   const u = detected.uses;
   let path = u.path;
@@ -1211,16 +1211,3 @@ async function stageIgFolio(a: PublisherRun, b: IgBuilt, site: IgFolioSite, h: P
   });
   return done({ pushed: publish, site: r.site });
 }
-
-// ── The publisher, as the slot holds it ────────────────────────────────────
-
-/**
- * The FHIR-IG site publisher: what `site-publisher-ig` holds. Its kind is the
- * slot's suffix, and it is what `stage-local.ts --publisher ig` names.
- */
-export const IG_PUBLISHER: SitePublisher = {
-  kind: "ig",
-  workflows: IG_WORKFLOWS,
-  preferred: PAGES_SIBLING,
-  stage: (run, host) => stageIg(run, host),
-};
