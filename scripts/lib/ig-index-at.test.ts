@@ -5,7 +5,7 @@
  * mount; a layer the checkout does not mount is read in place.
  */
 import { afterEach, beforeEach, describe, expect, test } from "bun:test";
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -78,5 +78,16 @@ describe("a reader of a mounted IG's index (p2-refusals, bean sm8r's finding)", 
     expect(r.stderr).not.toContain("does not exist");
     expect(r.status).toBe(0);
     expect(r.stdout).toContain("across 2 IGs");
+  });
+});
+
+describe("a writer of a mounted IG's index (ingest-ig-releases, bean sm8r item 4)", () => {
+  test("writes releases.json under build/layers/<instance>/ and nothing inside the mount", () => {
+    const from = join(root, "releases.github.json");
+    writeFileSync(from, "[]");
+    const r = spawnSync("bun", ["run", join(import.meta.dir, "..", "ingest-ig-releases.ts"), "--instance", join(root, "some-ig"), "--repo", "example/some-ig", "--from", from], { encoding: "utf-8" });
+    expect(r.status).toBe(0);
+    expect(existsSync(join(root, "build", "layers", "some-ig", "fhir-artifact-index", "releases.json"))).toBe(true);
+    expect(existsSync(join(root, "some-ig", "fhir-artifact-index", "releases.json"))).toBe(false);
   });
 });
