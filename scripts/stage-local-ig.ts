@@ -79,7 +79,7 @@ import { igPreviewData, openPrFor, proseRenderer } from "./ig-review-data.ts";
 import { NAVBAR_ROW_ID } from "../../cat-harness-tools/scripts/lib/harness-rail.ts";
 import { callerInputs, type UsesRef } from "../../cat-harness-tools/scripts/site-publisher.ts";
 import { type DroppedByRuling, parityShortfall, siteFeatures } from "../../cat-harness-tools/scripts/site-parity.ts";
-import type { Composed, PublisherHost, PublisherRun, SitePublisher, StagePlan, StageResult } from "../../cat-harness-tools/scripts/stage-local.ts";
+import type { Composed, PublisherHost, PublisherRun, StagePlan, StageResult } from "../../cat-harness-tools/scripts/stage-local.ts";
 
 // The preview directories (cat-harness-tools `schemas/sdlc/preview-prefix.ts`):
 // `branches/` since 2026-11-05, and the legacy `STAGING/` still read. Named

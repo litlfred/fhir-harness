@@ -25,7 +25,7 @@
 import { readFileSync } from "node:fs";
 import { hasJsonView } from "./resource-views.ts";
 import { hasIgApi, igApiHubNodeFill, sidecarHref } from "./ig-api-hub.ts";
-import { basename, join } from "node:path";
+import { basename } from "node:path";
 import { artifactPageName, type FhirArtifact, type FhirArtifactIndex } from "../schemas/fhir-artifact-index.js";
 import { declarationPathIn } from "@litlfred/cat-harness-tools/schemas/kg/cat-harness.js";
 import { indexReadPath } from "./lib/ig-index-at.ts";
