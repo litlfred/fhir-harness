@@ -74,9 +74,12 @@ Feature: Thin artefact pages and their JSON-LD nodes
   Scenario: links the rail rather than inlining it
     Then it links the navbar rail and does not inline it
 
-  @test:scripts/ig-thin-pages.test.ts::thinArtifactPage:_identity_and_a_pointer,_nothing_of_the_artefact's_content::pageConfigNodeLoadersOrder
-  Scenario: its config names the node, the loaders and the reading order
-    Then its config names the node, the AST loader, the previous and next pages and the published base
+  @test:scripts/ig-thin-pages.test.ts::thinArtifactPage:_identity_and_a_pointer,_nothing_of_the_artefact's_content::pageDeclaresNodeLoadersOrder
+  Scenario: the page declares its node, the loaders and the reading order, with no private config block
+    Then the page declares its node with no problems, as the profile's IRI typed as a StructureDefinition, and is an artefact page
+    And it carries no private thin-page config block
+    And it loads kg-render.js before ig-artifact.js
+    And it names the AST loader, the previous and next pages and the published base
 
   @test:scripts/ig-thin-pages.test.ts::thinArtifactPage:_identity_and_a_pointer,_nothing_of_the_artefact's_content::noscriptLinksNodeAndResource
   Scenario: a reader without JavaScript is sent to the node and the resource
@@ -95,7 +98,7 @@ Feature: Thin artefact pages and their JSON-LD nodes
     Given the shared renderer script
     Then it parses as a script and reads the page config block by its id
 
-  @test:scripts/ig-thin-pages.test.ts::gen-ig-pages:_thin_by_default,_end_to_end_(owner,_2026-10-12:_\"make_thin_default\")::thinByDefault
+  @test:scripts/ig-thin-pages.test.ts::gen-ig-pages:_thin_by_default,_end_to_end_(owner,_2026-10-12:_"make_thin_default")::thinByDefault
   Scenario: with no flag, writes each artefact page as a thin .html at the full page's address, its node beside it, and the index node
     Given pages generated with no flag
     Then the artifact directory holds each page as thin HTML, the profile's tab views, the nodes, their JSON twins and the index files
@@ -103,21 +106,21 @@ Feature: Thin artefact pages and their JSON-LD nodes
     And a page starts with a doctype, is under 3000 characters and its next page is the second artefact
     And the index node is titled "IPS"
 
-  @test:scripts/ig-thin-pages.test.ts::gen-ig-pages:_thin_by_default,_end_to_end_(owner,_2026-10-12:_\"make_thin_default\")::thinFlagSamePages
+  @test:scripts/ig-thin-pages.test.ts::gen-ig-pages:_thin_by_default,_end_to_end_(owner,_2026-10-12:_"make_thin_default")::thinFlagSamePages
   Scenario: --thin, the old opt-in, is still accepted and writes the same pages
     Then pages generated with --thin are the same as with no flag
 
-  @test:scripts/ig-thin-pages.test.ts::gen-ig-pages:_thin_by_default,_end_to_end_(owner,_2026-10-12:_\"make_thin_default\")::nodesPassCheckWhenServed
+  @test:scripts/ig-thin-pages.test.ts::gen-ig-pages:_thin_by_default,_end_to_end_(owner,_2026-10-12:_"make_thin_default")::nodesPassCheckWhenServed
   Scenario: its nodes pass the kind's QA once the resource is served
     Given the generated index and its compiled resource served on the site
     Then the check has no findings
 
-  @test:scripts/ig-thin-pages.test.ts::gen-ig-pages:_thin_by_default,_end_to_end_(owner,_2026-10-12:_\"make_thin_default\")::fullPagesOldPath
+  @test:scripts/ig-thin-pages.test.ts::gen-ig-pages:_thin_by_default,_end_to_end_(owner,_2026-10-12:_"make_thin_default")::fullPagesOldPath
   Scenario: --full-pages keeps the old path: full .md pages, no nodes, no renderer
     Given pages generated with --full-pages
     Then every artefact page is Markdown and no renderer is copied
 
-  @test:scripts/ig-thin-pages.test.ts::gen-ig-pages:_thin_by_default,_end_to_end_(owner,_2026-10-12:_\"make_thin_default\")::thinAndFullRefused
+  @test:scripts/ig-thin-pages.test.ts::gen-ig-pages:_thin_by_default,_end_to_end_(owner,_2026-10-12:_"make_thin_default")::thinAndFullRefused
   Scenario: --thin and --full-pages together are refused
     When the generator runs with --thin and --full-pages
     Then it exits 2 and says to pick one
@@ -237,6 +240,14 @@ Feature: Thin artefact pages and their JSON-LD nodes
   @test:scripts/ig-thin-pages.test.ts::the_shared_renderer_draws_both_page_families::rendererFilledColumnsOnly
   Scenario: draws only the columns a table's rows fill, and sub-heads a category that mixes types
     Then the renderer chooses columns from the rows, draws description only when filled, and sub-heads a category by type
+
+  @test:scripts/ig-thin-pages.test.ts::the_shared_renderer_draws_both_page_families::rendererContentsCardBesideGuide
+  Scenario: draws a Contents card beside This guide, not the dotted jump line
+    Then the renderer has a drawContents function, draws an igi-head block, and has no igi-jump
+
+  @test:scripts/ig-thin-pages.test.ts::the_shared_renderer_draws_both_page_families::rendererHtmlBreaksAreParagraphs
+  Scenario: an HTML break in a description is split into paragraphs, not drawn as text
+    Then the renderer has a breaks function and splits a description's text on it
 
   @test:scripts/ig-thin-pages.test.ts::the_shared_renderer_draws_both_page_families::rendererCategoriesOpen
   Scenario: draws every category OPEN: no <details> (the owner could not find artefacts behind collapsed ones)

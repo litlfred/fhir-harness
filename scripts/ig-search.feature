@@ -163,32 +163,32 @@ Feature: Searching an IG site
     And the page with its own block is unchanged
     And a second run stamps nothing, and the data file is left alone
 
-  @test:scripts/ig-search.test.ts::publisher-pages_gives_every_built_page_the_IG's_one_bar_and_the_shared_layout_(owner,_2026-10-15:_\"please_consolidate_behaviours/appearance\")::noBarGetsSearchBar
+  @test:scripts/ig-search.test.ts::publisher-pages_gives_every_built_page_the_IG's_one_bar_and_the_shared_layout_(owner,_2026-10-15:_"please_consolidate_behaviours/appearance")::noBarGetsSearchBar
   Scenario: with no IG bar to give, a fallback bar at the top of the body, the layout then the IG's sheet in the head, the client before </body>
     When a built page with no IG bar is given the bar
     Then its body opens with a search header linking home, holding the form and the locale slot
     And its head links the shared layout stylesheet and script, before the IG stylesheet
     And it has no style element, loads the search script at the end of the body and has one search input
 
-  @test:scripts/ig-search.test.ts::publisher-pages_gives_every_built_page_the_IG's_one_bar_and_the_shared_layout_(owner,_2026-10-15:_\"please_consolidate_behaviours/appearance\")::igBarUsedWhenGiven
+  @test:scripts/ig-search.test.ts::publisher-pages_gives_every_built_page_the_IG's_one_bar_and_the_shared_layout_(owner,_2026-10-15:_"please_consolidate_behaviours/appearance")::igBarUsedWhenGiven
   Scenario: the IG's bar, given: its scripts dropped, the client linked once
     When a built page is given the IG's own bar
     Then it carries that bar with its dropdowns
     And the search script is loaded once, at the page's relative path
 
-  @test:scripts/ig-search.test.ts::publisher-pages_gives_every_built_page_the_IG's_one_bar_and_the_shared_layout_(owner,_2026-10-15:_\"please_consolidate_behaviours/appearance\")::thinPageHeaderReplaced
+  @test:scripts/ig-search.test.ts::publisher-pages_gives_every_built_page_the_IG's_one_bar_and_the_shared_layout_(owner,_2026-10-15:_"please_consolidate_behaviours/appearance")::thinPageHeaderReplaced
   Scenario: a thin page's own header is REPLACED by the IG's bar, its client and stylesheets kept, not doubled
     When a thin artefact page is given the IG's bar
     Then its own header is gone and the bar comes before its main content
     And it has one search input, one search script, one shared layout link and one IG stylesheet link
 
-  @test:scripts/ig-search.test.ts::publisher-pages_gives_every_built_page_the_IG's_one_bar_and_the_shared_layout_(owner,_2026-10-15:_\"please_consolidate_behaviours/appearance\")::alreadyBarredUnchanged
+  @test:scripts/ig-search.test.ts::publisher-pages_gives_every_built_page_the_IG's_one_bar_and_the_shared_layout_(owner,_2026-10-15:_"please_consolidate_behaviours/appearance")::alreadyBarredUnchanged
   Scenario: a page that holds the IG's bar, that has a box in a bar of its own, or that has no head and body, is left as it is
     Then a page given the bar twice is the same as once
     And a page with its own search input is unchanged
     And an HTML fragment is unchanged
 
-  @test:scripts/ig-search.test.ts::publisher-pages_gives_every_built_page_the_IG's_one_bar_and_the_shared_layout_(owner,_2026-10-15:_\"please_consolidate_behaviours/appearance\")::stampIgBarNeedsIndex
+  @test:scripts/ig-search.test.ts::publisher-pages_gives_every_built_page_the_IG's_one_bar_and_the_shared_layout_(owner,_2026-10-15:_"please_consolidate_behaviours/appearance")::stampIgBarNeedsIndex
   Scenario: stampIgBar: the slim bar, never the menu; paths relative to each page, nothing under assets/, nothing without an index
     Given a site whose index page has the bar, a hub page, an OpenAPI page, a vendor page and a page with its own search box
     Then with no search index nothing is stamped

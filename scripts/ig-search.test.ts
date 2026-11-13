@@ -331,7 +331,7 @@ describe("compose writes the search; publisher-pages writes the language picker'
   });
 });
 
-describe("publisher-pages gives every built page the IG's one bar and the shared layout (owner, 2026-10-15: \"please consolidate behaviours/appearance\")", () => {
+describe(`publisher-pages gives every built page the IG's one bar and the shared layout (owner, 2026-10-15: "please consolidate behaviours/appearance")`, () => {
   const REF2 = { index: "../assets/ig-search.json", script: "../assets/ig-search.js" };
   const PAGE = '<!doctype html><html><head><title>Hub</title></head>\n<body><script type="application/json" id="x">{}</script><main><h1>Hub</h1></main>\n</body>\n</html>\n';
   const BAR = '<div class="ig-topbar fa-page-bar" role="navigation" aria-label="ACME IG menu"><a class="ig-topbar-home" href="/b/index.html">ACME IG</a><details class="ig-topbar-group"><summary>Home</summary><ul><li><a href="/b/x.html">X</a></li></ul></details><form class="ig-search" role="search" data-ig-search-index="/b/assets/ig-search.json"><input type="search" id="search-input"></form><span class="ig-locale-slot" data-fa-slot="locale"></span><script src="/b/assets/ig-search.js" defer></script></div>';

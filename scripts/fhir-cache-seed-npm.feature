@@ -107,3 +107,54 @@ Feature: Seeding the FHIR package cache from npm, a site repository and a mirror
     When the cache is seeded from that config
     Then the exit code is 1
     And the terminology, cql, crmi and sdc packages are missing, and each is listed in the missing-out file
+
+  @test:scripts/fhir-cache-seed-npm.test.ts::fhir-cache-seed-npm_--lock::parses_the_format,_sha512_integrity_or_hex_sha256,_and_refuses_what_it_cannot_pin
+  Scenario: the package lock is parsed with a hex sha256 or a sha512 integrity, and what it cannot pin is refused
+    Then an entry with a sha256 keeps that sha256, and one with a sha512 integrity keeps that integrity
+    And an entry with no hash, a plain-http tarball, a version range or tag, a path-like name, or a non-sha512 integrity is refused
+    And a lock with no packages list is refused
+
+  @test:scripts/fhir-cache-seed-npm.test.ts::fhir-cache-seed-npm_--lock::a_sha256_match_installs_the_package_from_the_lock's_URL_and_records_it
+  Scenario: a sha256 match installs the package from the lock's URL and records its provenance
+    Given a lock pinning a package's tarball by sha256
+    When the cache is seeded from the lock
+    Then only the lock's URL is fetched, and the package is installed at its version, without following its dependencies
+    And its provenance records the lock as the source, with the tarball URL and the sha256
+    And a second run fetches nothing and still succeeds
+
+  @test:scripts/fhir-cache-seed-npm.test.ts::fhir-cache-seed-npm_--lock::an_sha512_integrity_match_installs,_as_in_this_layer's_own_lock_format
+  Scenario: a sha512 integrity match installs the package
+    Given a lock pinning the tarball by its sha512 integrity
+    When the cache is seeded from the lock
+    Then it succeeds and the package is in the cache
+
+  @test:scripts/fhir-cache-seed-npm.test.ts::fhir-cache-seed-npm_--lock::a_mismatch_is_refused,_installs_nothing,_and_falls_back_to_no_other_source
+  Scenario: a hash mismatch is refused, installs nothing, and tries no other source
+    Given a served tarball whose content differs from the one the lock pins, by sha256 or by integrity
+    When the cache is seeded from the lock
+    Then it fails, the package is missing with a lock mismatch as the reason, and nothing is installed
+    And npm is never asked
+    And the mismatch check names a sha256 mismatch
+
+  @test:scripts/fhir-cache-seed-npm.test.ts::fhir-cache-seed-npm_--lock::a_tarball_that_names_another_package_is_refused_even_when_its_hash_is_pinned
+  Scenario: a tarball that names another package is refused even when its hash is the pinned one
+    Given a lock whose pinned hash is of a tarball for another package
+    When the cache is seeded from the lock
+    Then it fails, and the reason names the other package
+
+  @test:scripts/fhir-cache-seed-npm.test.ts::fhir-cache-seed-npm_--lock::a_cache_entry_the_lock_did_not_install_is_replaced_by_the_pinned_one
+  Scenario: a cache entry the lock did not install is replaced by the pinned one
+    Given a cache already holding the package, fetched by something else
+    When the cache is seeded from the lock
+    Then the lock's URL is fetched and the stale entry's extra file is gone
+
+  @test:scripts/fhir-cache-seed-npm.test.ts::fhir-cache-seed-npm_--lock::an_unreadable_lock_is_a_usage_error,_before_anything_is_fetched
+  Scenario: an unusable lock is a usage error, before anything is fetched
+    Given a lock whose entry pins no hash
+    When the cache is seeded from it
+    Then the exit code is 2 and nothing is fetched
+
+  @test:scripts/fhir-cache-seed-npm.test.ts::fhir-cache-seed-npm_--lock::with_no_lock,_nothing_changes:_--lock_is_unset_and_a_cached_package_is_used_as_before
+  Scenario: with no lock, nothing changes
+    Then --lock is unset unless given, and is read when given
+    And with no lock, a package already in the cache is used as before, without fetching

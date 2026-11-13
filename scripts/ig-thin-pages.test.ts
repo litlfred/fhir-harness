@@ -225,7 +225,7 @@ describe("the shared renderer", () => {
   });
 });
 
-describe("gen-ig-pages: thin by default, end to end (owner, 2026-10-12: \"make thin default\")", () => {
+describe('gen-ig-pages: thin by default, end to end (owner, 2026-10-12: "make thin default")', () => {
   const repo = scratchRepo({ thin: { index: compiledIndex("thin") }, legacy: { index: compiledIndex("legacy") }, fat: { index: compiledIndex("fat") }, both: { index: compiledIndex("both") } });
   afterAll(() => rmSync(repo, { recursive: true, force: true }));
   const spawn = (instance: string, ...args: string[]) =>

@@ -85,3 +85,9 @@ Feature: A live form page for each Questionnaire in an IG
     Then it has no type annotation and no Node import
     When it is loaded as a module
     Then a suggestion "{" has one error
+
+  @test:scripts/questionnaire-form.test.ts::the_worker's_configuration::swUrlNamesTheBundleBesideTheBuilder
+  Scenario: the service worker's URL names the form builder bundle beside the builder
+    Given the service worker URL for index.json
+    Then its bundle parameter is the versioned formbuilder bundle two folders up
+    And the value is percent-encoded in the URL
