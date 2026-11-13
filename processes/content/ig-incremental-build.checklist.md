@@ -15,9 +15,9 @@ An incremental build for a FHIR Implementation Guide: compile, validate and re-r
 ### 1. Restore derived state (`Task_Restore`)
 
 - Who: the `Incremental build (system)` lane (role `build-pipeline`).
-- Skill: `ig-publication`.
-- What: `ig-cache restore`: the IG's AST and the Publisher's terminology cache (`input-cache/txcache/`).
-- Record it: `workflow_complete` with `node: "Task_Restore"`.
+- Skill: `cache-first-ci`.
+- What: Calls the harness's one cache process, `Process_Cache` (cat-harness, skill `cache-first-ci`), with this IG build as its consumer.
+- A subprocess (`Process_Cache`): `workflow_next` reports its own steps; complete those — this call activity itself is not completable.
 - next: → `Gateway_Restore` (Cache usable?)
 
 ### Decide — Cache usable? (`Gateway_Restore`)
