@@ -153,6 +153,7 @@ import {
   type FhirArtifact,
   type FhirArtifactIndex,
 } from "../schemas/fhir-artifact-index.js";
+import { indexReadPath } from "./lib/ig-index-at.ts";
 
 /** `--name value`, or undefined. */
 function arg(name: string): string | undefined {
@@ -184,7 +185,7 @@ const INSTANCE_NAME = readDeclaration(INSTANCE)?.name ?? basename(INSTANCE);
  * chrome; only the artefact list comes from the named file.
  */
 const INDEX_ARG = arg("--index");
-const INDEX = INDEX_ARG ? resolve(process.cwd(), INDEX_ARG) : join(INSTANCE, "fhir-artifact-index", "index.json");
+const INDEX = INDEX_ARG ? resolve(process.cwd(), INDEX_ARG) : indexReadPath(INSTANCE, "index.json");
 /**
  * The IG's OWN navigation, ingested from its `sushi-config.yaml`.
  *
@@ -194,7 +195,7 @@ const INDEX = INDEX_ARG ? resolve(process.cwd(), INDEX_ARG) : join(INSTANCE, "fh
  * SAYS so; it does not quietly render a site with no navigation and call it
  * complete.
  */
-const MENU = join(INSTANCE, "fhir-artifact-index", "menu.json");
+const MENU = indexReadPath(INSTANCE, "menu.json");
 /**
  * `--compiled-data <dir>`: where a COMPILED index's files are served, as a
  * path from the docs root (e.g. `../ast-data` beside `docs/`), or `.`
