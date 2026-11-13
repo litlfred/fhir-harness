@@ -34,6 +34,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { artifactPageName, type FhirArtifactIndex } from "../schemas/fhir-artifact-index.js";
 import { sourceHashOf, type QaResult } from "../../cat-harness-tools/scripts/qa-results.ts";
+import { indexReadPath } from "./ig-index-output.ts";
 
 const REPO = resolve(import.meta.dir, "..", "..");
 const REASON =
@@ -150,7 +151,7 @@ function writeOrCheck(out: string, text: string, check: boolean, done: string): 
 }
 
 function readIndex(inst: string): FhirArtifactIndex {
-  const indexPath = join(resolve(process.cwd(), inst), "fhir-artifact-index", "index.json");
+  const indexPath = indexReadPath(resolve(process.cwd(), inst), "index.json");
   if (!existsSync(indexPath)) {
     console.error(`${relative(REPO, indexPath)} does not exist — no IG, so nothing to refuse (not a pass)`);
     process.exit(1);
@@ -185,7 +186,7 @@ if (import.meta.main && process.argv.includes("--combine")) {
     process.exit(2);
   }
   const root = resolve(process.cwd(), inst);
-  const indexPath = join(root, "fhir-artifact-index", "index.json");
+  const indexPath = indexReadPath(root, "index.json");
   if (!existsSync(indexPath)) {
     console.error(`${relative(REPO, indexPath)} does not exist — no IG, so nothing to refuse (not a pass)`);
     process.exit(1);

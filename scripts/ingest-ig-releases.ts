@@ -21,6 +21,7 @@ import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { type GitHubRelease, releasesAsOf, releasesFromGitHub } from "../schemas/ig-releases.ts";
 import { declarationPathIn } from "@litlfred/cat-harness-tools/schemas/kg/cat-harness.js";
+import { indexReadPath } from "./ig-index-output.ts";
 
 /** `owner/repo` from a GitHub URL or an `owner/repo` string. */
 export function repoSlug(s: string): string | undefined {
@@ -30,7 +31,7 @@ export function repoSlug(s: string): string | undefined {
 
 /** Where a layer's IG source lives: its menu's recorded source, else its declaration. */
 export function instanceRepo(root: string): string | undefined {
-  const menu = join(root, "fhir-artifact-index", "menu.json");
+  const menu = indexReadPath(root, "menu.json");
   if (existsSync(menu)) {
     const of = (JSON.parse(readFileSync(menu, "utf-8")) as { source?: { of?: string } }).source?.of;
     if (of && repoSlug(of)) return repoSlug(of);
