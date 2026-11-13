@@ -57,13 +57,14 @@ import { wrapRaw } from "../../cat-harness-tools/scripts/lib/liquid-raw.ts";
 import type { IgReleases } from "../schemas/ig-releases.ts";
 import { astFooterData, IG_QA_PAGE, igSiteFooter, sushiFooterData, type IgFooterData, type IgSiteFooter } from "./ig-footer.ts";
 import { thinIndexPage } from "./ig-thin-pages.ts";
-import { dirFor, hasTranslation, localeFrontMatter, pageLocales, relinkForLocale, SOURCE_LOCALE, translateWithIncludes, TRANSLATION_META_LIQUID } from "./ig-page-translations.ts";
+import { dirFor, hasTranslation, localeFrontMatter, pageLocales, relinkForLocale, resolveLangFragments, SOURCE_LOCALE, translateWithIncludes, TRANSLATION_META_LIQUID } from "./ig-page-translations.ts";
 import { IG_SEARCH_CSS, IG_SEARCH_INDEX_FILE, IG_SEARCH_SCRIPT_FILE, igSearchBox, igSearchScript, type IgSearchRef } from "./ig-search.ts";
 import { withRenderedBy } from "../../cat-harness-tools/scripts/viewer-declarations.js";
 import { NAVBAR_LINKED } from "../../cat-harness-tools/scripts/lib/harness-rail.ts";
 import { MARKER as FOLIO_MOUNT_MARKER } from "../../cat-harness-tools/scripts/folio-mount.ts";
 import { DEFAULT_ICON } from "../../cat-harness-tools/scripts/thin-page.ts";
 import { PAGE_BAR_CLASS, PAGE_LAYOUT_CSS_FILE, PAGE_LAYOUT_CSS_SOURCE, PAGE_LAYOUT_JS_FILE, PAGE_LAYOUT_JS_SOURCE, PAGE_LAYOUT_MARK, PAGE_MAIN_CLASS } from "../../cat-harness-tools/scripts/page-layout.ts";
+import { indexReadPath } from "./lib/ig-index-at.ts";
 
 /** One page's navigation, from `sushi-config.yaml` `pages:`. */
 export interface PageNav {
@@ -515,7 +516,7 @@ export function igTopBar(menu: IgMenu, baseurl: string, title: string, search?: 
  * it reserves the row at every width.
  */
 export const IG_TOPBAR_CSS = `
-.ig-topbar{display:flex;flex-wrap:wrap;align-items:center;gap:.25rem 1rem;padding:.5rem 1.5rem;background:var(--ig-topbar-bg,#2d4271);color:#fff;font-size:.95rem}
+.ig-topbar{display:flex;flex-wrap:wrap;align-items:center;gap:.25rem 1rem;padding:.5rem 1.5rem;background:var(--ig-topbar-bg,#2d4271);color:#fff;font-size:var(--fa-text-base,1rem)}
 .ig-topbar a{color:#fff;text-decoration:none}
 .ig-topbar-home{flex:0 0 100%;font-weight:600}
 body:has(> .fa-glass-handle) .ig-topbar.fa-page-bar{padding-top:2.25rem}
@@ -531,7 +532,7 @@ html:not([data-fa-scheme="light"]) .ig-topbar-group ul{background:#2f2e35;border
 html:not([data-fa-scheme="light"]) .ig-topbar-group li a{color:#cfe0f7}
 html:not([data-fa-scheme="light"]) .ig-topbar-group li a:hover{background:#3a3943}
 .ig-main{max-width:none;padding:1rem 1.5rem 3rem}
-.ig-edit{margin-top:2rem;font-size:.85rem}
+.ig-edit{margin-top:2rem;font-size:var(--fa-text-sm,0.875rem)}
 ${IG_SEARCH_CSS.trim()}
 `;
 
@@ -1972,15 +1973,16 @@ function stageDeclaredSource(igSrc: string, out: string, opts: StageOptions): St
       n = { title: name, navOrder: 1000 + unlisted.length, ...(fromMenu ? { navExclude: true } : {}) };
     }
     // One page's Markdown, English or translated, through the same steps.
-    const render = (md: string, collect: boolean): { body: string; data: Record<string, unknown> } => {
+    const render = (md: string, collect: boolean, locale?: string): { body: string; data: Record<string, unknown> } => {
     let body = relink(md);
     if (cellLookup) {
       const c = linkTableCells(body, cellLookup);
       body = c.text;
       relinked += c.count;
     }
-    // Standard HL7 IG Publisher macro for localized includes: {% lang-fragment <file> %}
-    body = body.replace(/\{%-?\s*lang-fragment\s+([^\s%]+)\s*-?%\}/g, "{% include $1 %}");
+    // Standard HL7 IG Publisher macro for localized includes: {% lang-fragment <file> %},
+    // the locale's own `<file>-<locale>` on a translated page when the IG has one.
+    body = resolveLangFragments(body, locale, (n) => isSafeIncludeName(n) && ["input/includes", "input/pagecontent"].some((d) => existsSync(join(src, d, n))));
     let data: Record<string, unknown> = opts.editBase
       ? {
           ig_edit_url: `${opts.editBase.replace(/\/$/, "")}/input/pagecontent/${f}`,
@@ -2031,7 +2033,7 @@ function stageDeclaredSource(igSrc: string, out: string, opts: StageOptions): St
       if (!available.includes(l.locale)) continue;
       const t = translateWithIncludes(name, l, sourceOf, pageStems);
       const here = new Set([...pageStems].filter((k) => hasTranslation(k, l, sourceOf, pageStems)).map((k) => `${k}.html`));
-      const tr = render(t.md, false);
+      const tr = render(t.md, false, l.locale);
       const body = relinkForLocale(tr.body, here);
       const data = {
         ...tr.data,
@@ -2499,8 +2501,8 @@ if (import.meta.main) {
   let artifactsOpt: StageOptions["artifacts"];
   if (artifactsDir) {
     const artResolved = resolve(artifactsDir);
-    const ixPath = existsSync(join(artResolved, "fhir-artifact-index", "index.json"))
-      ? join(artResolved, "fhir-artifact-index", "index.json")
+    const ixPath = existsSync(indexReadPath(artResolved, "index.json"))
+      ? indexReadPath(artResolved, "index.json")
       : existsSync(join(artResolved, "index.json"))
         ? join(artResolved, "index.json")
         : undefined;

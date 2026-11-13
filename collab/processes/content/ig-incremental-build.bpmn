@@ -97,14 +97,14 @@
       <bpmn:documentation>A push to a PR branch (review path) or to main / a release (publish path). Both run this process; only the publish path may seed the cache.</bpmn:documentation>
       <bpmn:outgoing>F01</bpmn:outgoing>
     </bpmn:startEvent>
-    <bpmn:serviceTask id="Task_Restore" name="Restore derived state">
-      <bpmn:documentation>`ig-cache restore`: the IG's AST and the Publisher's terminology cache (`input-cache/txcache/`). Exit 0 usable, 1 miss, 2 environment error, 3 present but unusable (corrupt or mismatched, such as a moved toolchain). The cache restored is the declared `fhir-ast` cache (`caches/fhir-ast.cache.json`), whose component process is `ig-ast-cache.bpmn`: this task is that component's verify, run inside the incremental build.</bpmn:documentation>
+    <bpmn:callActivity id="Task_Restore" name="Restore derived state" calledElement="Process_Cache">
+      <bpmn:documentation>Calls the harness's one cache process, `Process_Cache` (cat-harness, skill `cache-first-ci`), with this IG build as its consumer. Its plan restores only the caches this target needs: the layers ref first, then this IG's AST and the Publisher's terminology cache (`input-cache/txcache/`) as the declared `fhir-ast` cache (`caches/fhir-ast.cache.json`), whose component process is `ig-ast-cache.bpmn` and whose verify is that process's "valid for this commit?". Under it, `ig-cache restore` still answers 0 usable, 1 miss, 2 environment error, 3 present but unusable (corrupt or mismatched, such as a moved toolchain), and the component prints its `cached-step` line (hit, warm or miss).</bpmn:documentation>
       <bpmn:extensionElements>
-        <bootstrap.processes:skill ref="ig-publication" />
+        <bootstrap.processes:skill ref="cache-first-ci" />
       </bpmn:extensionElements>
       <bpmn:incoming>F01</bpmn:incoming>
       <bpmn:outgoing>F02</bpmn:outgoing>
-    </bpmn:serviceTask>
+    </bpmn:callActivity>
     <bpmn:exclusiveGateway id="Gateway_Restore" name="Cache usable?">
       <bpmn:documentation>Answered by the exit code of `ig-cache restore` (Task_Restore): 0 is a usable cache and takes `yes`, into the cone machinery. 1 (a miss) or 3 (present but unusable) takes `no`, to the full publisher build, whose outputs become the records the next seed writes. Exit 2 (an environment error — the cache could not be read, which says nothing about whether it is usable) takes `environment error`: the run stops and the error is logged, so a broken cache store is not hidden behind a slow full build.</bpmn:documentation>
       <bpmn:incoming>F02</bpmn:incoming>

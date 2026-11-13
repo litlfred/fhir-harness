@@ -142,6 +142,29 @@ export function translateWithIncludes(
   return { md, translated, total };
 }
 
+const LANG_FRAGMENT_RE = /\{%-?\s*lang-fragment\s+([^\s%]+)\s*-?%\}/g;
+
+/** A fragment's name in one locale, as the IG Publisher names it: `x.html` → `x-fr.html`. */
+export function fragmentFor(name: string, locale: string): string {
+  const slash = name.lastIndexOf("/");
+  const dot = name.lastIndexOf(".");
+  return dot > slash + 1 ? `${name.slice(0, dot)}-${locale}${name.slice(dot)}` : `${name}-${locale}`;
+}
+
+/**
+ * The HL7 IG Publisher's `{% lang-fragment x %}` as a plain include: on a page
+ * in `locale`, the locale's own fragment (`x-<locale>.<ext>`) when the IG has
+ * one, otherwise `x` itself, so a page in a language with no fragment reads
+ * the source's (owner, 2026-11-13: "translate ... the cards"). With no locale
+ * (the source page), always `x`.
+ */
+export function resolveLangFragments(md: string, locale: string | undefined, has: (name: string) => boolean): string {
+  return md.replace(LANG_FRAGMENT_RE, (_w, name: string) => {
+    const own = locale ? fragmentFor(name, locale) : undefined;
+    return `{% include ${own && has(own) ? own : name} %}`;
+  });
+}
+
 const SKIP_URL = /^(?:[a-z][a-z0-9+.-]*:|\/|#|\{\{|\{%|\.\.\/)/i;
 
 /**

@@ -66,9 +66,10 @@ want the Publisher's own pages.
 |---|---|---|
 | `bun` | every step | the harness's runtime; use the version in `cat-harness/.bun-version` |
 | `git`, `bash`, `curl` | every step | |
-| Java 17, `mvn` | building the AST | Maven compiles `AstExportCli` from the Publisher fork |
+| Java 17, `mvn` | building the AST | on your machine Maven compiles `AstExportCli` from the Publisher fork; CI downloads the precompiled bundle instead |
 | Node 20, `npm` | building the AST | for SUSHI `3.21.0`, which the build script installs if missing |
-| Ruby, `gem` | building the AST and rendering | Jekyll, which the build script installs if missing |
+| Ruby 3.3, `gem` | building the AST and rendering | for Jekyll `4.4.1`, which the build script installs if missing |
+| a browser (Playwright's Chromium) | rendering, optional | for the page scan; without one the scan records why and the build goes on |
 | `python3` with `venv` | rendering | checked by `stage-local.ts` before it starts |
 | Docker | bare route only | when the IG's own workflow runs the Publisher in a container image |
 
@@ -76,6 +77,13 @@ Building the AST also needs network access to `packages.fhir.org`, the
 terminology server (default `http://tx.fhir.org`) and Maven Central. If
 `packages.fhir.org` is refused, see the `fhir-validation` skill, §"When a
 package host refuses you".
+
+The versions are pinned in `fhir-harness/scripts/ig-toolchain.env` (Java,
+Node, SUSHI, Ruby, Jekyll). **FHIR packages** can be pinned too: when the IG
+has a `fhir-packages.lock.json` at its root, `ig-ast-build.sh` installs every
+package it lists from the URL it names and checks each hash first, so neither
+SUSHI nor the Publisher fetches a package. A hash that does not match stops
+the build. `--package-lock FILE` names another lock.
 
 The layers come from the IG's `index.lock.json`, and you do not mount them by
 hand. The IG's `cat` script is `bun .github/cat.ts`: on a fresh clone, the
@@ -141,10 +149,27 @@ you can also run any one of them on its own with `bun run cat <step>`:
 | 1 | `ig-site:ast` | `ig-repo-site.ts ast` | restores the AST from the cache branch `cat/fhir-harness/fhir-ast/<package id>` (or keeps a valid `output-ast/`), and refuses a stale one |
 | 2 | `ig-site:sidecars` | the landing layer's own | *optional*: API sidecars from the AST, when the landing layer has this step |
 | 3 | `ig-index:build` | `build-ig-indexes.ts` | the artefact index, menu and releases in `fhir-artifact-index/` |
-| 4 | `ig-site:compose` | `ig-repo-site.ts compose` | the thin artefact pages, with the IG's own pages composed at the site root |
-| 5 | `ig-site:openapi` | cat-harness-tools | *optional*: a page per OpenAPI operation, when the IG has `openapi/cat-openapi.config.json` |
-| 6 | `ig-site:publisher-pages` | `ig-repo-site.ts publisher-pages` | serves the AST's data, guards against leftover Publisher chrome, stamps the build |
-| 7 | `ig-site:bar` | `ig-repo-site.ts bar` | the language picker and the IG's slim bar |
+| 4 | `render:bpmn` | cat-harness-tools | *optional*: draws the site's process diagrams, which are built at publish and not committed |
+| 5 | `ig-site:compose` | `ig-repo-site.ts compose` | first the **content gate** (below), then the thin artefact pages, with the IG's own pages composed at the site root |
+| 6 | `ig-site:openapi` | cat-harness-tools | *optional*: a page per OpenAPI operation, when the IG has `openapi/cat-openapi.config.json` |
+| 7 | `ig-site:publisher-pages` | `ig-repo-site.ts publisher-pages` | serves the AST's data, guards against leftover Publisher chrome, stamps the build |
+| 8 | `ig-site:bar` | `ig-repo-site.ts bar` | the language picker and the IG's slim bar |
+| 9 | `ig-site:page-render-qa` | `ig-page-render-qa.ts` | *optional*: opens every page in a headless browser and lists markup shown as plain text, for the QA report. It never fails the build |
+
+**The content gate.** Before anything is staged, `ig-site:compose` checks the
+IG's narratives, markdown fields and pages for injection attempts. It needs a
+review recorded by an agent in `qa/ig-content-qa.json` for exactly the
+content being published, and that file must be listed in
+`contentTypes.ig.include`. It refuses a missing or stale review, an open
+finding, or any hit of its fixed pattern list. Record a review with:
+
+```bash
+bun run cat ig-content-qa:scan                       # what the reviewer reads
+bun run cat ig-content-qa:record --reviewer <who>    # write qa/ig-content-qa.json
+bun run cat check:ig-content-qa                      # the gate on its own
+```
+
+How to do the review is the `ig-content-qa` skill.
 
 The scripts' own usage lines:
 
@@ -174,6 +199,7 @@ bash fhir-harness/scripts/ig-cache.sh seed --ig-root . --push
 | `SITE_WORK` | `ig-repo-site.ts` | working directory; the default for `--work` |
 | `FOLIO_SITE_BASEURL` | `ig-repo-site.ts compose` | the site's base URL when `--baseurl` is not given |
 | `SITE_ACCEPT_STALE_AST=1` | `ig-repo-site.ts ast` | accept a stale AST. Use it **for a preview only**; never for the site root |
+| `IG_CONTENT_QA_ACCEPT_UNREVIEWED=1` | the content gate in `ig-site:compose` | accept a missing or stale content review for a **local** build; the QA page says so. A pattern hit or an open finding is refused anyway |
 | `IG_TEMPLATE_REPOS` | `ig-ast-build.sh` | extra `--template-repo ID=OWNER/REPO` values, for an IG template that is not on the CI build server |
 | `TMPDIR` | `ig-ast-build.sh` | where the work directory goes (default `$TMPDIR/ig-ast-build`) |
 
@@ -189,6 +215,9 @@ bash fhir-harness/scripts/ig-cache.sh seed --ig-root . --push
 |---|---|---|
 | `cat: mounting failed` | the mounter could not fetch a layer, or a layer's bytes did not match the lock | run `bash .github/mount-from-lock.sh` to see which layer and why |
 | the AST is stale, cannot-tell, or missing | no AST matches your commit's inputs | run `bun run cat prepare:fhir-harness`, or the `ig-ast-refresh` workflow |
+| no review, or a stale review, in `qa/ig-content-qa.json` | the content gate has no agent review for this exact content | record one (`ig-content-qa:scan`, then `ig-content-qa:record`); for a local look only, `IG_CONTENT_QA_ACCEPT_UNREVIEWED=1` |
+| `qa/ig-content-qa.json exists but is not in contentTypes.ig.include` | the IG does not let the harness read the file | add `qa/ig-content-qa.json` to `include` in the IG's `index.config.json` |
+| a content pattern hit or an open finding | text that looks like an injection attempt | fix the text in the IG's source; nothing overrides this |
 | `index.config.json` has no `site.landing` | the IG is harnessed but does not say which layer's chrome it wears | add `"site": { "landing": "<layer>" }` |
 | a prerequisite is missing | `docker`, `python3 -m venv`, `bash` or `curl` was not found | install it; the plan names which one |
 | `ig-ast-build: the AST just built is not valid` | the inputs changed during the build | commit or stash, then build again |

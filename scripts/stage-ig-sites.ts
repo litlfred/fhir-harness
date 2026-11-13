@@ -69,6 +69,7 @@ import { IG_ANNEX_KIND, IG_ANNEXES_FILE, IgAnnexesSchema, IgAnnexRecordSchema } 
 import { readChangedFiles, siteFilter } from "../../cat-harness-tools/scripts/staging-cone.ts";
 import { sourceHashOf } from "../../cat-harness-tools/scripts/qa-results.ts";
 import { ARTIFACT_INDEX_FILE, artifactPageName } from "./ig-artifact-jsonld.ts";
+import { indexReadPath } from "./lib/ig-index-at.ts";
 
 interface MenuFile extends IgMenu {
   source?: { kind?: string; of?: string; ref?: string };
@@ -164,7 +165,7 @@ export function instanceNeeds(repoRoot: string, name: string): string[] {
  * layer with an index and no artefact pages gets no `artifacts` page.
  */
 export function artifactsFor(root: string, pagesHref = "../artifact/", opts: { fullPages?: boolean } = {}): StageOptions["artifacts"] {
-  const index = join(root, "fhir-artifact-index", "index.json");
+  const index = indexReadPath(root, "index.json");
   // declared-path-literal: the staged IG layer's own docs/artifact/ under `root`, not folio-assistant's docs/
   if (!existsSync(index) || !existsSync(join(root, "docs", "artifact"))) return undefined;
   const ix = JSON.parse(readFileSync(index, "utf-8")) as { artifacts: IndexedArtifact[] };
@@ -247,7 +248,7 @@ export function annexDirsFor(root: string, log: (s: string) => void = (s) => con
  * an annex.
  */
 export function annexesFor(root: string, log?: (s: string) => void): StageOptions["annexes"] {
-  const all = [...annexDirsFor(root, log), join(root, "fhir-artifact-index")].flatMap((d) => annexesIn(d) ?? []);
+  const all = [...annexDirsFor(root, log), indexReadPath(root)].flatMap((d) => annexesIn(d) ?? []);
   return all.length ? all : undefined;
 }
 
@@ -400,7 +401,7 @@ export function copyDocsInto(docs: string, site: string): { copied: number; merg
  * worse than none.
  */
 export function releasesFor(root: string): IgReleases | undefined {
-  const at = join(root, "fhir-artifact-index", "releases.json");
+  const at = indexReadPath(root, "releases.json");
   return existsSync(at) ? IgReleasesSchema.parse(JSON.parse(readFileSync(at, "utf-8"))) : undefined;
 }
 
@@ -439,7 +440,7 @@ export function igsToBuild(repoRoot: string): { build: IgToBuild[]; skipped: str
   const build: IgToBuild[] = [];
   const skipped: string[] = [];
   for (const root of instanceRootsIn(repoRoot)) {
-    const menuPath = join(root, "fhir-artifact-index", "menu.json");
+    const menuPath = indexReadPath(root, "menu.json");
     if (!existsSync(menuPath)) continue;
     const m = JSON.parse(readFileSync(menuPath, "utf-8")) as MenuFile;
     const instance = basename(root);

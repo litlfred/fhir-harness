@@ -62,6 +62,7 @@ import { dirname, join, resolve } from "node:path";
 import { parse as parseYaml } from "yaml";
 import { readAst } from "./ig-ast.ts";
 import { igReadScope } from "./ig-read-scope.ts";
+import { indexReadPath } from "./lib/ig-index-at.ts";
 
 /** The ImplementationGuide resource fields the Publisher exposes as `site.data.fhir.ig`. */
 export interface IgResourceFields {
@@ -161,7 +162,7 @@ export function igSiteData(igRoot: string, opts: { ast?: string } = {}): IgSiteD
   };
 
   const sushiPath = join(igRoot, "sushi-config.yaml");
-  const indexPath = join(igRoot, "fhir-artifact-index", "index.json");
+  const indexPath = indexReadPath(igRoot, "index.json");
   const astDir = opts.ast ?? join(igRoot, "output-ast");
 
   const fromAst = astImplementationGuide(astDir);
@@ -215,7 +216,7 @@ export function igSiteData(igRoot: string, opts: { ast?: string } = {}): IgSiteD
     // Status is THIS IG's own fact, read from its own sushi-config into
     // `ig-identity.json` beside the index. The chrome is the template chain's
     // (`folio-ig-chrome/v2`) and states no IG's status at all.
-    const identity = readIgIdentity(join(igRoot, "fhir-artifact-index"));
+    const identity = readIgIdentity(indexReadPath(igRoot));
     if (identity) {
       const status = statusOf(identity, data.packageId);
       if (status !== undefined) {
