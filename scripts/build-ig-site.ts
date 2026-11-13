@@ -515,7 +515,7 @@ export function igTopBar(menu: IgMenu, baseurl: string, title: string, search?: 
  * it reserves the row at every width.
  */
 export const IG_TOPBAR_CSS = `
-.ig-topbar{display:flex;flex-wrap:wrap;align-items:center;gap:.25rem 1rem;padding:.5rem 1.5rem;background:var(--ig-topbar-bg,#2d4271);color:#fff;font-size:.95rem}
+.ig-topbar{display:flex;flex-wrap:wrap;align-items:center;gap:.25rem 1rem;padding:.5rem 1.5rem;background:var(--ig-topbar-bg,#2d4271);color:#fff;font-size:var(--fa-text-base,1rem)}
 .ig-topbar a{color:#fff;text-decoration:none}
 .ig-topbar-home{flex:0 0 100%;font-weight:600}
 body:has(> .fa-glass-handle) .ig-topbar.fa-page-bar{padding-top:2.25rem}
@@ -531,7 +531,7 @@ html:not([data-fa-scheme="light"]) .ig-topbar-group ul{background:#2f2e35;border
 html:not([data-fa-scheme="light"]) .ig-topbar-group li a{color:#cfe0f7}
 html:not([data-fa-scheme="light"]) .ig-topbar-group li a:hover{background:#3a3943}
 .ig-main{max-width:none;padding:1rem 1.5rem 3rem}
-.ig-edit{margin-top:2rem;font-size:.85rem}
+.ig-edit{margin-top:2rem;font-size:var(--fa-text-sm,0.875rem)}
 ${IG_SEARCH_CSS.trim()}
 `;
 
