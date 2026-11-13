@@ -98,7 +98,7 @@ Feature: Thin artefact pages and their JSON-LD nodes
     Given the shared renderer script
     Then it parses as a script and reads the page config block by its id
 
-  @test:scripts/ig-thin-pages.test.ts::gen-ig-pages:_thin_by_default,_end_to_end_(owner,_2026-10-12:_\"make_thin_default\")::thinByDefault
+  @test:scripts/ig-thin-pages.test.ts::gen-ig-pages:_thin_by_default,_end_to_end_(owner,_2026-10-12:_"make_thin_default")::thinByDefault
   Scenario: with no flag, writes each artefact page as a thin .html at the full page's address, its node beside it, and the index node
     Given pages generated with no flag
     Then the artifact directory holds each page as thin HTML, the profile's tab views, the nodes, their JSON twins and the index files
@@ -106,21 +106,21 @@ Feature: Thin artefact pages and their JSON-LD nodes
     And a page starts with a doctype, is under 3000 characters and its next page is the second artefact
     And the index node is titled "IPS"
 
-  @test:scripts/ig-thin-pages.test.ts::gen-ig-pages:_thin_by_default,_end_to_end_(owner,_2026-10-12:_\"make_thin_default\")::thinFlagSamePages
+  @test:scripts/ig-thin-pages.test.ts::gen-ig-pages:_thin_by_default,_end_to_end_(owner,_2026-10-12:_"make_thin_default")::thinFlagSamePages
   Scenario: --thin, the old opt-in, is still accepted and writes the same pages
     Then pages generated with --thin are the same as with no flag
 
-  @test:scripts/ig-thin-pages.test.ts::gen-ig-pages:_thin_by_default,_end_to_end_(owner,_2026-10-12:_\"make_thin_default\")::nodesPassCheckWhenServed
+  @test:scripts/ig-thin-pages.test.ts::gen-ig-pages:_thin_by_default,_end_to_end_(owner,_2026-10-12:_"make_thin_default")::nodesPassCheckWhenServed
   Scenario: its nodes pass the kind's QA once the resource is served
     Given the generated index and its compiled resource served on the site
     Then the check has no findings
 
-  @test:scripts/ig-thin-pages.test.ts::gen-ig-pages:_thin_by_default,_end_to_end_(owner,_2026-10-12:_\"make_thin_default\")::fullPagesOldPath
+  @test:scripts/ig-thin-pages.test.ts::gen-ig-pages:_thin_by_default,_end_to_end_(owner,_2026-10-12:_"make_thin_default")::fullPagesOldPath
   Scenario: --full-pages keeps the old path: full .md pages, no nodes, no renderer
     Given pages generated with --full-pages
     Then every artefact page is Markdown and no renderer is copied
 
-  @test:scripts/ig-thin-pages.test.ts::gen-ig-pages:_thin_by_default,_end_to_end_(owner,_2026-10-12:_\"make_thin_default\")::thinAndFullRefused
+  @test:scripts/ig-thin-pages.test.ts::gen-ig-pages:_thin_by_default,_end_to_end_(owner,_2026-10-12:_"make_thin_default")::thinAndFullRefused
   Scenario: --thin and --full-pages together are refused
     When the generator runs with --thin and --full-pages
     Then it exits 2 and says to pick one
