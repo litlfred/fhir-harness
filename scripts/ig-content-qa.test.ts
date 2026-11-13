@@ -360,7 +360,7 @@ describe("the gate command judges IG checkouts only", () => {
     expect(said.join("\n")).toMatch(/NOT APPLICABLE.*nothing was judged; this is not a pass/);
   });
 
-  test("the command exits 78 (not applicable) at a non-IG root, never 0, and 1 for an IG with no AST", () => {
+  test("the command exits 78 (not applicable) at a non-IG root and at an IG whose run built no AST, never 0; 1 for a named AST that is missing", () => {
     const script = join(import.meta.dir, "ig-content-qa.ts");
     const folio = empty();
     const na = Bun.spawnSync(["bun", "run", script, "gate", "--ig", folio]);
@@ -369,23 +369,49 @@ describe("the gate command judges IG checkouts only", () => {
     expect(na.stdout.toString()).toMatch(/NOT APPLICABLE.*this is not a pass/);
     const ig = empty();
     writeFileSync(join(ig, "sushi-config.yaml"), "id: x\n");
-    const red = Bun.spawnSync(["bun", "run", script, "gate", "--ig", ig]);
-    expect(red.exitCode).toBe(1);
-    expect(red.stderr.toString()).toMatch(/no AST at/);
+    const noAst = Bun.spawnSync(["bun", "run", script, "gate", "--ig", ig]);
+    expect(noAst.exitCode).toBe(78);
+    expect(noAst.stdout.toString()).toMatch(/NOT APPLICABLE: no AST at .*this is not a pass/);
+    const named = Bun.spawnSync(["bun", "run", script, "gate", "--ig", ig, "--ast", join(ig, "output-ast")]);
+    expect(named.exitCode).toBe(1);
+    expect(named.stderr.toString()).toMatch(/no AST at/);
   });
 
-  test("an IG declared by contentTypes.ig with no AST still fails", async () => {
+  test("an IG declared by contentTypes.ig whose run built no AST is not applicable, not passed", async () => {
     const ig = empty();
     writeFileSync(join(ig, "index.config.json"), JSON.stringify({ contentTypes: { ig: { include: ["sushi-config.yaml", "input/"] } } }));
     expect(await notAnIgCheckout(ig)).toBeUndefined();
-    await expect(gateCheckout({ ig, ast: join(ig, "output-ast"), log: () => {} })).rejects.toThrow(/no AST at/);
+    const said: string[] = [];
+    expect(await gateCheckout({ ig, ast: join(ig, "output-ast"), log: (s) => said.push(s) })).toBeUndefined();
+    expect(said.join("\n")).toMatch(/NOT APPLICABLE: no AST at .*this is not a pass/);
   });
 
-  test("a legacy IG (sushi-config.yaml, no declaration) with no AST still fails", async () => {
+  test("an IG with an AST named explicitly that is missing still fails", async () => {
     const ig = empty();
     writeFileSync(join(ig, "sushi-config.yaml"), "id: x\n");
-    expect(await notAnIgCheckout(ig)).toBeUndefined();
-    await expect(gateCheckout({ ig, ast: join(ig, "output-ast"), log: () => {} })).rejects.toThrow(/no AST at/);
+    await expect(gateCheckout({ ig, ast: join(ig, "output-ast"), astGiven: true, log: () => {} })).rejects.toThrow(/no AST at/);
+  });
+
+  test("with no AST, a pattern hit in a page still refuses", async () => {
+    const ig = empty();
+    writeFileSync(join(ig, "sushi-config.yaml"), "id: x\n");
+    mkdirSync(join(ig, "input", "pagecontent"), { recursive: true });
+    writeFileSync(join(ig, "input", "pagecontent", "index.md"), '<img src=x onerror="alert(1)">\n');
+    await expect(gateCheckout({ ig, ast: join(ig, "output-ast"), log: () => {} })).rejects.toThrow(/pattern hit/);
+  });
+
+  test("with no AST, a hit in a trusted SVG still refuses", async () => {
+    const ig = empty();
+    writeFileSync(join(ig, "index.config.json"), JSON.stringify({ contentTypes: { ig: { include: ["sushi-config.yaml", "input/"], trustedSvgs: ["a.svg"] } } }));
+    mkdirSync(join(ig, "input", "images"), { recursive: true });
+    writeFileSync(join(ig, "input", "images", "a.svg"), '<svg onload="alert(1)"></svg>');
+    await expect(gateCheckout({ ig, ast: join(ig, "output-ast"), log: () => {} })).rejects.toThrow(/pattern hit/);
+  });
+
+  test("the publish's runGate still refuses an IG with no AST", () => {
+    const ig = empty();
+    writeFileSync(join(ig, "sushi-config.yaml"), "id: x\n");
+    expect(() => runGate({ ig, ast: join(ig, "output-ast"), log: () => {} })).toThrow(/no AST at/);
   });
 
   test("an unusable contentTypes.ig is an IG, and is refused rather than passed", async () => {

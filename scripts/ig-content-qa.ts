@@ -544,17 +544,42 @@ export const NOT_APPLICABLE_EXIT = 78;
  * The `gate` command: judge an IG checkout. A checkout that is not an IG is
  * not judged: `undefined`, with a NOT APPLICABLE line, and the command exits
  * {@link NOT_APPLICABLE_EXIT}, so the skip cannot be mistaken for a pass. An
- * IG checkout is judged exactly as {@link runGate} judges it; a missing AST
- * still refuses.
+ * IG checkout is judged exactly as {@link runGate} judges it.
+ *
+ * An IG checkout whose run built no AST (`astGiven` false and no
+ * `manifest.json` at the default `output-ast`) is judged only as far as the
+ * texts it holds without one: its pages and trusted SVGs are pattern-scanned
+ * and a hit refuses, and a review file it may not read refuses. Then it is
+ * NOT APPLICABLE (`undefined`), never a pass: the review's digest names the
+ * AST's texts, so only a run holding the AST can clear it. That run is the
+ * IG publish, whose `ig-site:compose` calls {@link runGate} directly and
+ * refuses a missing AST (smart-ra#244: a document folio
+ * that is also an IG, whose PR gate builds no AST). An AST named with
+ * `--ast` that is not there still fails.
  */
-export async function gateCheckout(o: { ig: string; ast: string; log?: (s: string) => void }): Promise<ContentQaVerdict | undefined> {
+export async function gateCheckout(o: { ig: string; ast: string; astGiven?: boolean; log?: (s: string) => void }): Promise<ContentQaVerdict | undefined> {
   const log = o.log ?? ((s: string) => console.error(s));
   const not = await notAnIgCheckout(o.ig);
   if (not) {
     log(`injection QA: NOT APPLICABLE: ${not}; nothing was judged; this is not a pass`);
     return undefined;
   }
-  return runGate({ ig: o.ig, ast: o.ast, scope: await scopeOf(o.ig), log });
+  const scope = await scopeOf(o.ig);
+  if (!o.astGiven && !existsSync(join(o.ast, "manifest.json"))) {
+    const trustedScripts = scope.section?.trustedScripts ?? [];
+    const trustedSvgs = scope.section?.trustedSvgs ?? [];
+    const pages = pageItems(o.ig, scope);
+    readSidecar(o.ig, scope);
+    const v = contentGate({ items: pages, sidecar: undefined, trustedScripts, trustedSvgs, svgHits: trustedSvgHits(o.ig, trustedSvgs) });
+    if (v.state === "pattern-hits") throw new Error(`injection QA refused: ${v.said}`);
+    log(
+      `injection QA: NOT APPLICABLE: no AST at ${o.ast} in this run, so the resources' texts and the review's digest cannot be judged; ` +
+        `${pages.length} page text(s) and ${trustedSvgs.length} trusted SVG(s) were pattern-scanned with no hit; ` +
+        "the IG publish (ig-site:compose) judges the whole set and refuses a missing AST; this is not a pass",
+    );
+    return undefined;
+  }
+  return runGate({ ig: o.ig, ast: o.ast, scope, log });
 }
 
 async function main(argv: string[]): Promise<number> {
@@ -567,8 +592,9 @@ async function main(argv: string[]): Promise<number> {
   const ast = resolve(opt("ast") ?? join(ig, "output-ast"));
   if (cmd === "gate") {
     // As the root judges: only a reviewed, clean set of texts passes. A
-    // checkout that is not an IG is not judged (see notAnIgCheckout).
-    return (await gateCheckout({ ig, ast, log: (s) => console.log(s) })) ? 0 : NOT_APPLICABLE_EXIT;
+    // checkout that is not an IG, or an IG whose run built no AST, is not
+    // passed (see gateCheckout).
+    return (await gateCheckout({ ig, ast, astGiven: opt("ast") !== undefined, log: (s) => console.log(s) })) ? 0 : NOT_APPLICABLE_EXIT;
   }
   const scope = await scopeOf(ig);
   if (cmd === "scan") {
