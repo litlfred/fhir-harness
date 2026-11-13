@@ -28,6 +28,7 @@ import { hasIgApi, igApiHubNodeFill, sidecarHref } from "./ig-api-hub.ts";
 import { basename, join } from "node:path";
 import { artifactPageName, type FhirArtifact, type FhirArtifactIndex } from "../schemas/fhir-artifact-index.js";
 import { declarationPathIn } from "@litlfred/cat-harness-tools/schemas/kg/cat-harness.js";
+import { indexReadPath } from "./lib/ig-index-at.ts";
 
 /** The two sidecars the Publisher renders a page for, in its tab order. */
 export const IG_API_VIEW_KINDS = [
@@ -153,7 +154,7 @@ export const IG_API_PLACEHOLDER = "<!-- IG_API_CONTENT -->";
 export function igApiHubFill(instanceRoot: string, prefix = "../"): { marker: string; body: string; data: Record<string, unknown> } | undefined {
   let ix: FhirArtifactIndex;
   try {
-    ix = JSON.parse(readFileSync(join(instanceRoot, "fhir-artifact-index", "index.json"), "utf8"));
+    ix = JSON.parse(readFileSync(indexReadPath(instanceRoot, "index.json"), "utf8"));
   } catch {
     return undefined;
   }

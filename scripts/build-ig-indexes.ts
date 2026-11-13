@@ -125,6 +125,7 @@ import { annotateReleases, readAstHistory } from "./ig-ast-history.ts";
 import { realPathWithin, safeSegment } from "../../cat-harness-tools/src/core/safe-path.js";
 import { astPinsIn, IG_AST_LOCK_FILE, type IgAstPin } from "../schemas/ig-ast-lock.ts";
 import type { PublishedLayout } from "./ast-to-artifact-index.ts";
+import { INDEX_DIR, indexReadPath } from "./lib/ig-index-at.ts";
 
 const HERE = import.meta.dir;
 
@@ -577,14 +578,19 @@ export function buildOne(t: IgTarget, work: string, log: (s: string) => void, ch
     log(`  ! AST is from ${t.repository}@${vs.sourceRevision!.slice(0, 7)}, not the pin ${pin!.slice(0, 7)}: the index describes that commit's resources until the AST cache is re-seeded at the pin`);
   } else if (vs.matchesPin) log(`  AST: compiled from the pin ${pin!.slice(0, 7)}`);
 
-  const dir = join(t.root, "fhir-artifact-index");
+  // Still written in place: cat-harness-tools' readers of a mounted layer's
+  // served index read it there. It moves to `indexWritePath` once they read
+  // through the overlay (bean `sm8r` item 4, step 2).
+  const dir = join(t.root, INDEX_DIR);
   mkdirSync(dir, { recursive: true });
   const indexPath = join(dir, "index.json");
-  const grouping = existsSync(indexPath) ? ["--compare", indexPath, "--keep-published-grouping"] : [];
+  // The index a previous run left, read through the overlay, for its grouping.
+  const previous = indexReadPath(t.root, "index.json");
+  const grouping = existsSync(previous) ? ["--compare", previous, "--keep-published-grouping"] : [];
   const sc = sidecarsFor(checkout, clone, join(work, `${t.name}.site-work`), dir, log);
   if ("error" in sc) return [`sidecars: ${sc.error}`];
   const sidecars = sc.at ? ["--sidecars", sc.at, "--sidecars-local", "fhir-artifact-index/sidecars"] : [];
-  const committedIx = existsSync(indexPath) ? (JSON.parse(readFileSync(indexPath, "utf-8")) as Record<string, unknown>) : undefined;
+  const committedIx = existsSync(previous) ? (JSON.parse(readFileSync(previous, "utf-8")) as Record<string, unknown>) : undefined;
   const pub = publishedBase(committedIx, declarationOf(t.root), t.repository);
   log(`  published at: ${pub.base ?? "unknown"} (from ${pub.from})`);
   const built = join(work, `${t.name}.index.json`);

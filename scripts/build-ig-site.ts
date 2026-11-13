@@ -64,6 +64,7 @@ import { NAVBAR_LINKED } from "../../cat-harness-tools/scripts/lib/harness-rail.
 import { MARKER as FOLIO_MOUNT_MARKER } from "../../cat-harness-tools/scripts/folio-mount.ts";
 import { DEFAULT_ICON } from "../../cat-harness-tools/scripts/thin-page.ts";
 import { PAGE_BAR_CLASS, PAGE_LAYOUT_CSS_FILE, PAGE_LAYOUT_CSS_SOURCE, PAGE_LAYOUT_JS_FILE, PAGE_LAYOUT_JS_SOURCE, PAGE_LAYOUT_MARK, PAGE_MAIN_CLASS } from "../../cat-harness-tools/scripts/page-layout.ts";
+import { indexReadPath } from "./lib/ig-index-at.ts";
 
 /** One page's navigation, from `sushi-config.yaml` `pages:`. */
 export interface PageNav {
@@ -2500,8 +2501,8 @@ if (import.meta.main) {
   let artifactsOpt: StageOptions["artifacts"];
   if (artifactsDir) {
     const artResolved = resolve(artifactsDir);
-    const ixPath = existsSync(join(artResolved, "fhir-artifact-index", "index.json"))
-      ? join(artResolved, "fhir-artifact-index", "index.json")
+    const ixPath = existsSync(indexReadPath(artResolved, "index.json"))
+      ? indexReadPath(artResolved, "index.json")
       : existsSync(join(artResolved, "index.json"))
         ? join(artResolved, "index.json")
         : undefined;
