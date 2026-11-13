@@ -165,8 +165,8 @@ reviewer keeps the site's navigation.
 ## Where this sits in a process
 
 The review is drawn as its own subprocess,
-`fhir-harness/processes/content/ig-ast-delta-review.bpmn`. In
-`fhir-harness/processes/content/ig-incremental-build.bpmn` it belongs between
+`fhir-harness/collab/processes/content/ig-ast-delta-review.bpmn`. In
+`fhir-harness/collab/processes/content/ig-incremental-build.bpmn` it belongs between
 **Task_Merge** (restored and rebuilt records merged) and **Task_Qa** (QC
 gates on the aggregate), which that diagram does not yet show: it is what
 the QC reviewer reads to decide whether the incremental result is what a

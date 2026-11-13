@@ -1,8 +1,8 @@
-<!-- GENERATED from fhir-harness/processes/content/ig-incremental-build.bpmn by cat-harness-tools/scripts/bpmn-checklist.ts. Do not edit: change the diagram and regenerate (bun run cat bpmn:checklist). -->
+<!-- GENERATED from fhir-harness/collab/processes/content/ig-incremental-build.bpmn by cat-harness-tools/scripts/bpmn-checklist.ts. Do not edit: change the diagram and regenerate (bun run cat bpmn:checklist). -->
 
 # Checklist — Incremental IG build
 
-> **Generated, and not the authority.** This is `fhir-harness/processes/content/ig-incremental-build.bpmn` (process `Process_IgIncremental`) walked as a state machine. The diagram and the workflow engine decide; this list only reads them. Follow the `next:` line of each step rather than the order on the page, and record each step with the call it names, so the engine's committed state — not this list — says which edge was taken.
+> **Generated, and not the authority.** This is `fhir-harness/collab/processes/content/ig-incremental-build.bpmn` (process `Process_IgIncremental`) walked as a state machine. The diagram and the workflow engine decide; this list only reads them. Follow the `next:` line of each step rather than the order on the page, and record each step with the call it names, so the engine's committed state — not this list — says which edge was taken.
 
 An incremental build for a FHIR Implementation Guide: compile, validate and re-render only the dependency cone of a change, then gate on QA and deploy.
 
