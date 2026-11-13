@@ -153,6 +153,7 @@ import {
   type FhirArtifact,
   type FhirArtifactIndex,
 } from "../schemas/fhir-artifact-index.js";
+import { indexReadPath, layerFileReadPath } from "./lib/ig-index-at.ts";
 
 /** `--name value`, or undefined. */
 function arg(name: string): string | undefined {
@@ -184,7 +185,7 @@ const INSTANCE_NAME = readDeclaration(INSTANCE)?.name ?? basename(INSTANCE);
  * chrome; only the artefact list comes from the named file.
  */
 const INDEX_ARG = arg("--index");
-const INDEX = INDEX_ARG ? resolve(process.cwd(), INDEX_ARG) : join(INSTANCE, "fhir-artifact-index", "index.json");
+const INDEX = INDEX_ARG ? resolve(process.cwd(), INDEX_ARG) : indexReadPath(INSTANCE, "index.json");
 /**
  * The IG's OWN navigation, ingested from its `sushi-config.yaml`.
  *
@@ -194,7 +195,7 @@ const INDEX = INDEX_ARG ? resolve(process.cwd(), INDEX_ARG) : join(INSTANCE, "fh
  * SAYS so; it does not quietly render a site with no navigation and call it
  * complete.
  */
-const MENU = join(INSTANCE, "fhir-artifact-index", "menu.json");
+const MENU = indexReadPath(INSTANCE, "menu.json");
 /**
  * `--compiled-data <dir>`: where a COMPILED index's files are served, as a
  * path from the docs root (e.g. `../ast-data` beside `docs/`), or `.`
@@ -1517,7 +1518,7 @@ function servedResource(a: FhirArtifact): string | undefined {
   return file ? posix.normalize(`../${PUBLISHER_DATA}/${file}`) : undefined;
 }
 if (ix.package?.localPath && igApiServing.ok) {
-  const entries = packageEntries(join(INSTANCE, ix.package.localPath));
+  const entries = packageEntries(layerFileReadPath(INSTANCE, ix.package.localPath));
   const resources = [...entries.values()].map((b) => JSON.parse(b.toString("utf8")) as Record<string, unknown>);
   const hasTests = resources.some((r) => r.resourceType === "TestPlan" || r.resourceType === "TestScript");
   const claimed = new Set(resources.flatMap((r) => ((r.meta as { profile?: string[] } | undefined)?.profile ?? [])));
@@ -1615,7 +1616,7 @@ if (existsSync(MENU)) {
   // Held means ON DISK: an index can name a package its checkout does not
   // carry (a scratch copy, a sparse clone), and then the footer says less
   // rather than the run failing.
-  const pkgPath = ix.package?.localPath ? join(INSTANCE, ix.package.localPath) : undefined;
+  const pkgPath = ix.package?.localPath ? layerFileReadPath(INSTANCE, ix.package.localPath) : undefined;
   const held = pkgPath && existsSync(pkgPath) ? packageEntries(pkgPath) : undefined;
   const json = (name: string | undefined) => (name && held?.has(name) ? (JSON.parse(held.get(name)!.toString("utf8")) as Record<string, unknown>) : undefined);
   const igEntry = held ? [...held.keys()].find((k) => /^package\/ImplementationGuide-[^/]+\.json$/.test(k)) : undefined;

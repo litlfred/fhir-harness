@@ -22,10 +22,18 @@
  * repository what it is. Until this import, `ig` was registered only when some
  * module happened to load the schema.
  *
+ * ## It loads no network and no spawn
+ *
+ * cat-harness-tools fingerprints a check through the declared plugin tables,
+ * so this module's import closure is in every such gate's input hash. It
+ * imports the publisher's registration (`scripts/ig-publisher.ts`), not its
+ * work (`scripts/stage-local-ig.ts`), which that registration loads when a
+ * publish stages.
+ *
  * @module fhir-harness/pipeline/plugin-slots
  */
 import type { SitePublisher } from "../../cat-harness-tools/scripts/stage-local.ts";
-import { IG_PUBLISHER } from "../scripts/stage-local-ig.ts";
+import { IG_PUBLISHER } from "../scripts/ig-publisher.ts";
 import "../schemas/ig-content-type.ts";
 
 export const PIPELINE_IMPLEMENTATIONS: Record<`site-publisher-${string}`, SitePublisher> = {

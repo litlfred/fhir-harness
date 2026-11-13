@@ -33,12 +33,13 @@ import { join, resolve } from "node:path";
 
 import { declarationPathIn } from "@litlfred/cat-harness-tools/schemas/kg/cat-harness.js";
 import { readChangedFiles, siteFilter } from "../../cat-harness-tools/scripts/staging-cone.ts";
+import { indexReadPath } from "./lib/ig-index-at.ts";
 
 const ROOT = resolve(import.meta.dir, "..", "..");
 
 /** Which layer owns the template chrome for `instance`, or undefined. */
 export function chromeOwnerFor(root: string, instance: string, all: string[]): string | undefined {
-  const has = (i: string) => existsSync(join(root, i, "fhir-artifact-index", "chrome.json"));
+  const has = (i: string) => existsSync(indexReadPath(join(root, i), "chrome.json"));
   if (has(instance)) return instance;
   const holders = all.filter(has);
   return holders.length === 1 ? holders[0] : undefined;
@@ -50,7 +51,7 @@ export function igInstances(root: string): { instance: string; repository: strin
   for (const e of readdirSync(root, { withFileTypes: true })) {
     if (!e.isDirectory() || e.name.startsWith(".") || e.name === "node_modules") continue;
     const dir = join(root, e.name);
-    const index = join(dir, "fhir-artifact-index", "index.json");
+    const index = indexReadPath(dir, "index.json");
     if (!existsSync(index)) continue;
     const decl = declarationPathIn(dir);
     if (!decl || !existsSync(decl)) continue;
