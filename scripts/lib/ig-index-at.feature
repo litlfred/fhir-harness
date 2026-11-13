@@ -50,3 +50,9 @@ Feature: The artefact index is read and written through the layer-output overlay
     Given an index lock mounting a-ig and b-ig, whose index.json files exist only under build/layers/<instance>/fhir-artifact-index/
     When p2-refusals combines a-ig and b-ig into one file
     Then it exits 0, reports nothing as missing, and says it combined across 2 IGs
+
+  @test:scripts/lib/ig-index-at.test.ts::a_writer_of_a_mounted_IG's_index_(ingest-ig-releases,_bean_sm8r_item_4)::writes_releases.json_under_build/layers/<instance>/_and_nothing_inside_the_mount
+  Scenario: ingest-ig-releases writes releases.json under build/layers/<instance>/ and nothing inside the mount
+    Given an index lock mounting some-ig, and a GitHub releases fixture
+    When ingest-ig-releases runs for the mounted some-ig
+    Then it exits 0, writes releases.json under build/layers/some-ig/fhir-artifact-index/, and writes nothing inside the mount

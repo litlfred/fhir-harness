@@ -17,11 +17,11 @@
  *
  * @covers fhir-artifact-index
  */
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
 import { type GitHubRelease, releasesAsOf, releasesFromGitHub } from "../schemas/ig-releases.ts";
 import { declarationPathIn } from "@litlfred/cat-harness-tools/schemas/kg/cat-harness.js";
-import { indexReadPath } from "./lib/ig-index-at.ts";
+import { indexReadPath, indexWritePath } from "./lib/ig-index-at.ts";
 
 /** `owner/repo` from a GitHub URL or an `owner/repo` string. */
 export function repoSlug(s: string): string | undefined {
@@ -79,7 +79,9 @@ if (import.meta.main) {
   const list = opt("--from") ? (JSON.parse(readFileSync(opt("--from")!, "utf-8")) as GitHubRelease[]) : await fetchReleases(repo);
   const asOf = opt("--as-of");
   const rec = asOf ? releasesAsOf(repo, asOf, list) : releasesFromGitHub(repo, new Date().toISOString().slice(0, 10), list);
-  const at = join(root, "fhir-artifact-index", "releases.json");
+  // The layer's output root: build/layers/<instance>/ for a mounted layer (bean `sm8r` item 4).
+  const at = indexWritePath(root, "releases.json");
+  mkdirSync(dirname(at), { recursive: true });
   writeFileSync(at, `${JSON.stringify(rec, null, 2)}\n`);
   const assets = rec.releases.reduce((n, r) => n + r.assets.length, 0);
   console.log(`${repo}: ${rec.releases.length} release(s), ${assets} asset pointer(s) → ${at}`);

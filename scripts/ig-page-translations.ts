@@ -99,21 +99,31 @@ export interface PageReview {
  */
 export function pageReview(l: Pick<PageLocale, "dir">, stem: string, sourceMd: string | undefined): PageReview {
   if (sourceMd === undefined) return { reviewed: false, why: "no source page to check a sign-off against" };
-  const full = createHash("sha256").update(sourceMd).digest("hex");
+  return catalogueReview(l.dir, `pagecontent/${stem}`, sourceMd, `input/pagecontent/${stem}.md`);
+}
+
+/**
+ * {@link pageReview} for any catalogue of a locale: its translation node is
+ * `<dir>/<rel>.json`, and its source is `sourceText`. The locale's
+ * `status.json` counts only when `sourceFile` is given and is the file it
+ * names. Fails closed exactly as {@link pageReview} does.
+ */
+export function catalogueReview(dir: string, rel: string, sourceText: string, sourceFile?: string): PageReview {
+  const full = createHash("sha256").update(sourceText).digest("hex");
   const current = (h: unknown): boolean => filled(h) && h.length >= 8 && full.startsWith(h.toLowerCase());
   let stale = false;
-  const node = readJson(join(l.dir, "pagecontent", `${stem}.json`));
+  const node = readJson(join(dir, `${rel}.json`));
   const st = node?.status && typeof node.status === "object" ? (node.status as Record<string, unknown>) : undefined;
   if (st?.official === true && st.flaggedForReview !== true) {
     const by = [st.signedOffBy, st.adjudicatedBy, st.reviewedBy].find(filled);
     const at = [st.signedOffAt, st.adjudicatedAt, st.reviewedAt].find(filled);
     if (by && at) {
-      if (current(node!.sourceHash)) return { reviewed: true, by, why: `signed off by ${by} (page record)` };
+      if (current(node!.sourceHash)) return { reviewed: true, by, why: `signed off by ${by} (catalogue record)` };
       stale = true;
     }
   }
-  const s = readJson(join(l.dir, "status.json"));
-  if (s && signedOff(l.dir) && s.flaggedForReview !== true && s.sourceFile === `input/pagecontent/${stem}.md`) {
+  const s = readJson(join(dir, "status.json"));
+  if (sourceFile && s && signedOff(dir) && s.flaggedForReview !== true && s.sourceFile === sourceFile) {
     if (current(s.sourceHash)) return { reviewed: true, by: s.signedOffBy as string, why: `signed off by ${s.signedOffBy as string} (locale record)` };
     stale = true;
   }

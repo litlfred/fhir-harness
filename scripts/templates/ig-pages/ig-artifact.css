@@ -96,6 +96,7 @@ body>#ig-footer{margin-top:0}
 .iga-only{display:block;margin:.5rem 0}
 .iga-constraints{margin:0;padding-left:1.1rem}
 /* The IG's top bar (build-ig-site.ts IG_TOPBAR_CSS, kept identical by its test): the title on its own line, the menu as dropdowns below it. */
+.ig-topbar-tr-unreviewed{font-size:.8rem;font-weight:700;padding:.1rem .5rem;border:2px dashed #f59e0b;border-radius:4px;color:#fff}
 .ig-topbar{display:flex;flex-wrap:wrap;align-items:center;gap:.25rem 1rem;padding:.5rem 1.5rem;background:var(--ig-topbar-bg,#2d4271);color:#fff;font-size:var(--fa-text-base,1rem)}
 .ig-topbar a{color:#fff;text-decoration:none}
 .ig-topbar-home{flex:0 0 100%;font-weight:600}

@@ -125,7 +125,7 @@ import { annotateReleases, readAstHistory } from "./ig-ast-history.ts";
 import { realPathWithin, safeSegment } from "../../cat-harness-tools/src/core/safe-path.js";
 import { astPinsIn, IG_AST_LOCK_FILE, type IgAstPin } from "../schemas/ig-ast-lock.ts";
 import type { PublishedLayout } from "./ast-to-artifact-index.ts";
-import { INDEX_DIR, indexReadPath } from "./lib/ig-index-at.ts";
+import { indexReadPath, indexWritePath } from "./lib/ig-index-at.ts";
 
 const HERE = import.meta.dir;
 
@@ -578,10 +578,10 @@ export function buildOne(t: IgTarget, work: string, log: (s: string) => void, ch
     log(`  ! AST is from ${t.repository}@${vs.sourceRevision!.slice(0, 7)}, not the pin ${pin!.slice(0, 7)}: the index describes that commit's resources until the AST cache is re-seeded at the pin`);
   } else if (vs.matchesPin) log(`  AST: compiled from the pin ${pin!.slice(0, 7)}`);
 
-  // Still written in place: cat-harness-tools' readers of a mounted layer's
-  // served index read it there. It moves to `indexWritePath` once they read
-  // through the overlay (bean `sm8r` item 4, step 2).
-  const dir = join(t.root, INDEX_DIR);
+  // The layer's output root (bean `sm8r` item 4): `build/layers/<instance>/`
+  // for a mounted layer, so no run writes inside a mount; in place for the
+  // checkout's own layer. Every reader reads through the same overlay.
+  const dir = indexWritePath(t.root);
   mkdirSync(dir, { recursive: true });
   const indexPath = join(dir, "index.json");
   // The index a previous run left, read through the overlay, for its grouping.
@@ -637,7 +637,7 @@ export function buildOne(t: IgTarget, work: string, log: (s: string) => void, ch
   else {
     log("  releases: written");
     // Each release's AST commit, read off the cache branch's history (#329), so a page never asks the GitHub API.
-    const releases = join(t.root, "fhir-artifact-index", "releases.json");
+    const releases = indexReadPath(t.root, "releases.json");
     const commit = existsSync(astRecord) ? (JSON.parse(readFileSync(astRecord, "utf-8")) as { commit?: string }).commit : undefined;
     const history = commit && /^[0-9a-f]{40}$/.test(commit) ? readAstHistory({ ig: clone, commit, repository: t.repository }) : undefined;
     if (history && existsSync(releases)) log(`  releases: ${annotateReleases(releases, history)} name the AST commit compiled from their tag`);
