@@ -18,6 +18,8 @@
     "scripts/build-ig-site.test.ts",
     "scripts/ig-dependencies.test.ts",
     "scripts/ig-globals.test.ts",
+    "scripts/ig-menu-translations.test.ts",
+    "scripts/ig-page-translations.test.ts",
     "scripts/ig-repo-site.test.ts"
   ]
 }

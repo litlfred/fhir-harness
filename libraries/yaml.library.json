@@ -20,6 +20,7 @@
     "scripts/check-translation-supplements.ts",
     "scripts/fhir-cache-seed-npm.ts",
     "scripts/ig-footer-parity.test.ts",
+    "scripts/ig-menu-translations.ts",
     "scripts/ig-nav-diff.ts",
     "scripts/ig-release.ts",
     "scripts/ig-repo-site.ts",
