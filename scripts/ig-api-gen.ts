@@ -644,7 +644,7 @@ export function swaggerPage(urls: ReadonlyArray<{ url: string; name: string }>, 
     <link rel="stylesheet" type="text/css"
           href="https://unpkg.com/swagger-ui-dist@5.11.0/swagger-ui.css">
     <style>
-      body { margin: 0; padding: 0; font-family: Arial, Helvetica, sans-serif; }
+      body { margin: 0; padding: 0; font-family: var(--fa-font-sans,system-ui,sans-serif); }
       /* Definition selector bar below the header */
       #definition-selector-bar {
         background-color: #0070a1;
