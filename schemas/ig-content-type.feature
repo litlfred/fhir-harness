@@ -45,3 +45,31 @@ Feature: The ig content type and the contentTypes.ig section of index.config.jso
     Then a repository declaring contentTypes.ig reads back that section
     And a repository with empty contentTypes reads as undefined
     And an index.config.json that is not JSON reads as a problem saying it does not parse
+
+  @test:schemas/ig-content-type.test.ts::trustedScripts:_same-site_scripts_an_IG's_pages_load::readsAValidList
+  Scenario: reads a valid trustedScripts list, and drops an empty one
+    Given a section whose trustedScripts are "demo/widget.js" and "a.mjs"
+    When the section is parsed
+    Then the section carries the include and those trustedScripts
+    And a section with an empty trustedScripts list parses to the include alone
+
+  @test:schemas/ig-content-type.test.ts::trustedScripts:_same-site_scripts_an_IG's_pages_load::refusesAnythingNotARelativeSameSiteScript
+  Scenario: refuses a trusted script that is not a relative same-site script
+    Given trustedScripts entries that are an absolute or protocol-relative URL, a rooted or climbing path, a "./" segment, a stylesheet, a query, a space, empty, or not a string
+    When each is parsed
+    Then each is a problem naming contentTypes.ig.trustedScripts[0]
+    And a trustedScripts that is not a list is the problem "contentTypes.ig.trustedScripts is not a list"
+
+  @test:schemas/ig-content-type.test.ts::trustedSvgs:_same-site_SVG_drawings_an_IG's_pages_embed_with_<object>::readsAValidList
+  Scenario: reads a valid trustedSvgs list, and drops an empty one
+    Given a section whose trustedSvgs are "GDHCN.ONB.svg" and "img/a-b_c.svg"
+    When the section is parsed
+    Then the section carries the include and those trustedSvgs
+    And a section with an empty trustedSvgs list parses to the include alone
+
+  @test:schemas/ig-content-type.test.ts::trustedSvgs:_same-site_SVG_drawings_an_IG's_pages_embed_with_<object>::refusesAnythingNotARelativeSameSiteSvg
+  Scenario: refuses a trusted SVG that is not a relative same-site SVG
+    Given trustedSvgs entries that are empty, a rooted or climbing path, a "./" segment, an absolute URL, a query, an HTML or script file, or not a string
+    When each is parsed
+    Then each is a problem naming contentTypes.ig.trustedSvgs[0]
+    And a trustedSvgs that is not a list is the problem "contentTypes.ig.trustedSvgs is not a list"

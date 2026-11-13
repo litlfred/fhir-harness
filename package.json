@@ -27,6 +27,7 @@
     "check:artifact-index": "bun run fhir-harness/scripts/check-artifact-index.ts",
     "check:ig-annex-links": "bun run fhir-harness/scripts/check-ig-annex-links.ts",
     "check:ig-content-qa": "bun run fhir-harness/scripts/ig-content-qa.ts gate",
+    "check:test-gherkin:fhir-harness": "bun run cat-harness-tools/scripts/check-test-gherkin.ts --root fhir-harness",
     "ig-content-qa:scan": "bun run fhir-harness/scripts/ig-content-qa.ts scan",
     "ig-content-qa:record": "bun run fhir-harness/scripts/ig-content-qa.ts record",
     "ingest:ig-chrome": "bun run fhir-harness/scripts/ingest-ig-chrome.ts",

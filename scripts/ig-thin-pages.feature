@@ -74,9 +74,12 @@ Feature: Thin artefact pages and their JSON-LD nodes
   Scenario: links the rail rather than inlining it
     Then it links the navbar rail and does not inline it
 
-  @test:scripts/ig-thin-pages.test.ts::thinArtifactPage:_identity_and_a_pointer,_nothing_of_the_artefact's_content::pageConfigNodeLoadersOrder
-  Scenario: its config names the node, the loaders and the reading order
-    Then its config names the node, the AST loader, the previous and next pages and the published base
+  @test:scripts/ig-thin-pages.test.ts::thinArtifactPage:_identity_and_a_pointer,_nothing_of_the_artefact's_content::pageDeclaresNodeLoadersOrder
+  Scenario: the page declares its node, the loaders and the reading order, with no private config block
+    Then the page declares its node with no problems, as the profile's IRI typed as a StructureDefinition, and is an artefact page
+    And it carries no private thin-page config block
+    And it loads kg-render.js before ig-artifact.js
+    And it names the AST loader, the previous and next pages and the published base
 
   @test:scripts/ig-thin-pages.test.ts::thinArtifactPage:_identity_and_a_pointer,_nothing_of_the_artefact's_content::noscriptLinksNodeAndResource
   Scenario: a reader without JavaScript is sent to the node and the resource
@@ -237,6 +240,14 @@ Feature: Thin artefact pages and their JSON-LD nodes
   @test:scripts/ig-thin-pages.test.ts::the_shared_renderer_draws_both_page_families::rendererFilledColumnsOnly
   Scenario: draws only the columns a table's rows fill, and sub-heads a category that mixes types
     Then the renderer chooses columns from the rows, draws description only when filled, and sub-heads a category by type
+
+  @test:scripts/ig-thin-pages.test.ts::the_shared_renderer_draws_both_page_families::rendererContentsCardBesideGuide
+  Scenario: draws a Contents card beside This guide, not the dotted jump line
+    Then the renderer has a drawContents function, draws an igi-head block, and has no igi-jump
+
+  @test:scripts/ig-thin-pages.test.ts::the_shared_renderer_draws_both_page_families::rendererHtmlBreaksAreParagraphs
+  Scenario: an HTML break in a description is split into paragraphs, not drawn as text
+    Then the renderer has a breaks function and splits a description's text on it
 
   @test:scripts/ig-thin-pages.test.ts::the_shared_renderer_draws_both_page_families::rendererCategoriesOpen
   Scenario: draws every category OPEN: no <details> (the owner could not find artefacts behind collapsed ones)

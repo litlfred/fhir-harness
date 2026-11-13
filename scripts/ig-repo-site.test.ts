@@ -705,7 +705,7 @@ describe("another IG layer's artefact index is not copied into this IG's site (o
   });
 });
 
-describe("the IG API read from the AST cache commit (owner, 2026-11-10, card \"A\")", () => {
+describe('the IG API read from the AST cache commit (owner, 2026-11-10, card "A")', () => {
   const sha = "0123456789abcdef0123456789abcdef01234567";
   const raw = `https://raw.githubusercontent.com/o/ig/${sha}`;
   /** A work directory where `ast` recorded the cache commit, an AST whose cache holds an IG API, and the step's own output. */
@@ -765,7 +765,7 @@ describe("the IG API read from the AST cache commit (owner, 2026-11-10, card \"A
   });
 });
 
-describe("the artefact index read from the AST cache commit (owner, 2026-11-10, card \"A\")", () => {
+describe('the artefact index read from the AST cache commit (owner, 2026-11-10, card "A")', () => {
   const sha = "0123456789abcdef0123456789abcdef01234567";
   const raw = `https://raw.githubusercontent.com/o/ig/${sha}`;
 

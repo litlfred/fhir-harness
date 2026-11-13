@@ -26,6 +26,12 @@ Feature: Building an IG instance's artifact index at publish
     And a committed copy from sushi-config gives the declaration's iriBase
     And with neither there is no base
 
+  @test:scripts/build-ig-indexes.test.ts::publishedBase::namesTheLayoutOfTheSiteItLinks
+  Scenario: names the layout of the site the base links
+    Then a committed copy from gh-pages is a Publisher layout
+    And a declaration's iriBase is the harness's own site layout
+    And with neither, no layout is named
+
   @test:scripts/build-ig-indexes.test.ts::publishedBase::rebasesPagesOnMountedRepo
   Scenario: re-bases the declared repository's own Pages address on the repository the checkout mounts
     Given a declaration for "alpha/ig" whose iriBase is its Pages address

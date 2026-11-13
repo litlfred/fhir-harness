@@ -670,3 +670,24 @@ Feature: Staging an IG as one just-the-docs site
     When it is composed into a host site under "x" with no collisions
     Then its pages do not include the footer themselves
     And the IG's own thin layout includes the footer after </main>, only on pages that ask for it
+
+  @test:scripts/build-ig-site.test.ts::the_process_task_panel_on_an_IG's_pages_(owner,_2026-11-12,_Q-RAIL-2)::bothLayoutsCarryTheLoader
+  Scenario: both IG layouts carry the process task panel's loader, raw
+    Then the thin IG layout and the standalone harness layout each hold the task panel script inside a raw block
+    And the task panel script holds no Liquid tag or output
+
+  @test:scripts/build-ig-site.test.ts::the_process_task_panel_on_an_IG's_pages_(owner,_2026-11-12,_Q-RAIL-2)::loadsOnlyFromASameSiteSidecar
+  Scenario: the task panel loads only a same-site .tasks.json sidecar
+    Given the path test the task panel script applies before it loads a sidecar
+    Then a relative path to a .tasks.json file, down or up the site, is accepted
+    And an absolute or protocol-relative URL, a rooted path, a javascript: or data: URL, a plain .json, a query, or a name that only resembles .tasks.json is refused
+
+  @test:scripts/build-ig-site.test.ts::the_Contents_card_on_an_IG's_narrative_pages_(owner,_2026-11-10)::bothLayoutsCarryTheCard
+  Scenario: both IG layouts carry the Contents card's script at the end of main
+    Then the thin IG layout and the standalone harness layout each hold the Contents script, raw, just before </main>
+    And the standalone layout carries the card's own style, floated right
+
+  @test:scripts/build-ig-site.test.ts::the_Contents_card_on_an_IG's_narrative_pages_(owner,_2026-11-10)::cardNeedsTwoHeadings
+  Scenario: the Contents card needs at least two headings
+    Then the Contents script draws no card with fewer than two headings
+    And it holds no Liquid tag or output

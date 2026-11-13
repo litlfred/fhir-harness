@@ -57,6 +57,22 @@ Feature: The IG AST: its input digest, validity, diff, pages, formats and build 
     Then an AST with no inputs is cannot-tell
     And an AST with a legacy prefixed digest is cannot-tell
 
+  @test:scripts/ig-ast.test.ts::cachedStepLine_—_the_fhir-ast_cache's_summary,_in_cached-step's_format::a_valid_AST_restored_as_it_was_is_a_hit,_keyed_by_the_input_digest
+  Scenario: the cache summary calls a valid AST restored as it was a hit, keyed by the input digest
+    Given a valid AST and an input digest
+    Then the summary line is an exact hit, built from the inputs this tree has, with the digest as its key
+
+  @test:scripts/ig-ast.test.ts::cachedStepLine_—_the_fhir-ast_cache's_summary,_in_cached-step's_format::a_valid_AST_the_refresh_made_from_a_delta_is_warm
+  Scenario: the cache summary calls a valid AST the refresh made from a delta warm
+    Given a valid AST that the refresh made by applying a delta
+    Then the summary line is an exact warm entry saying a delta was applied
+
+  @test:scripts/ig-ast.test.ts::cachedStepLine_—_the_fhir-ast_cache's_summary,_in_cached-step's_format::stale_and_cannot-tell_are_misses_that_say_why;_warm_never_turns_a_miss_into_a_hit
+  Scenario: stale and cannot-tell are misses that say why, and warm never turns a miss into a hit
+    Given a stale AST whose inputDigest differs, marked warm
+    Then the summary line is a miss saying it is stale because inputDigest differs, keyed by the digest
+    And an AST whose validity cannot be told, with no digest, is a miss saying why, keyed as unknown
+
   @test:scripts/ig-ast.test.ts::source-inputs_—_an_AST_exported_after_a_pre-export_command::preparedTreeRecordsSource
   Scenario: recorded against the prepared tree it is stale once the tree is put back; against the source, valid
     Given an IG whose pre-export command rewrites an input and adds a page, and an AST recorded against that prepared tree

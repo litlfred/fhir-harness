@@ -28,6 +28,12 @@ Feature: Building the FHIR artifact index from an IG AST
     Then the code system's published page is under the published base
     And the ImplementationGuide has no published page and no category
 
+  @test:scripts/ast-to-artifact-index.test.ts::astToArtifactIndex::ownSiteLinksTheArtefactPage
+  Scenario: on the harness's own site, the page is under artifact/ and the root holds only the JSON
+    Given the artifact index built with a published base whose layout is the harness's own site
+    Then the code system's JSON is at the root of the base and its page is artifact/CodeSystem-Colours.html
+    And the ImplementationGuide also gets a page under artifact/
+
   @test:scripts/ast-to-artifact-index.test.ts::astToArtifactIndex::unpublishedArtefactGetsNoLink
   Scenario: an artefact the published IG does not have yet gets no published link
     Given a published IG that has only the code system
