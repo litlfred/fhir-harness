@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createHash } from "node:crypto";
-import { dirFor, fragmentFor, hasTranslation, localeFrontMatter, localesFor, pageLocales, pageReview, relinkForLocale, resolveLangFragments, signedOff, translatePage, translateWithIncludes, UN_LOCALES, UNREVIEWED_BLOCK_CLASS, UNREVIEWED_NOTICE, unreviewedLabel, unreviewedNoticeLiquid } from "./ig-page-translations.ts";
+import { dirFor, fragmentFor, hasTranslation, localeFrontMatter, localesFor, pageLocales, pageReview, relinkForLocale, resolveLangFragments, signedOff, translatePage, translateWithIncludes, UN_LOCALES, UNREVIEWED_BLOCK_CLASS, UNREVIEWED_NOTICE, UNREVIEWED_NOTICE_CSS, unreviewedLabel, unreviewedNoticeLiquid } from "./ig-page-translations.ts";
 
 const po = (pairs: [string, string][]) => pairs.map(([i, s]) => `msgid "${i}"\nmsgstr "${s}"`).join("\n\n") + "\n";
 
@@ -167,5 +167,15 @@ describe("unreviewed translations are announced (fail closed)", () => {
     expect(await liquid.parseAndRender(tpl, { page: { lang: "fr", translation_source: "index.html", translation_reviewed: true } })).not.toContain("ig-tr-notice");
     expect(await liquid.parseAndRender(tpl, { page: { lang: "en" } })).not.toContain("ig-tr-notice");
     for (const l of Object.keys(UNREVIEWED_NOTICE)) expect(UN_LOCALES as readonly string[]).toContain(l);
+  });
+
+  test("the thin layout's stylesheet carries the notice's rules verbatim, so that layout inlines none", async () => {
+    // Owner, 2026-11-13: the IG's ONE stylesheet. The thin layout links
+    // `ig-artifact.css` and inlines no <style>; this keeps the two copies equal.
+    const { readFileSync } = await import("node:fs");
+    const css = readFileSync(join(import.meta.dir, "templates", "ig-pages", "ig-artifact.css"), "utf-8");
+    expect(css).toContain(UNREVIEWED_NOTICE_CSS);
+    expect(unreviewedNoticeLiquid({ inlineStyle: false })).not.toContain("<style");
+    expect(unreviewedNoticeLiquid()).toContain(`<style>${UNREVIEWED_NOTICE_CSS}</style>`);
   });
 });

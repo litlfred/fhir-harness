@@ -312,12 +312,14 @@ function noticeHtml(locale: string, href: string): string {
  * English, linking to the source page. It carries `fa-translation-warning` so
  * `docs-ui.js` does not add its one-line notice beside it.
  */
-export function unreviewedNoticeLiquid(): string {
+export function unreviewedNoticeLiquid(o: { inlineStyle?: boolean } = {}): string {
   const href = "../{{ page.translation_source }}";
   const others = Object.keys(UNREVIEWED_NOTICE).filter((k) => k !== SOURCE_LOCALE);
   return [
     "{% if page.translation_source and page.translation_reviewed != true %}",
-    `<style>${UNREVIEWED_NOTICE_CSS}</style>`,
+    // A layout that links `ig-artifact.css` gets these rules from it (owner,
+    // 2026-11-13: the IG's one stylesheet); one that links none inlines them.
+    ...(o.inlineStyle === false ? [] : [`<style>${UNREVIEWED_NOTICE_CSS}</style>`]),
     '<div class="ig-tr-notice fa-translation-warning" role="note" aria-label="Machine translation, not reviewed by a person">',
     "{% case page.lang %}",
     ...others.map((k) => `{% when "${k}" %}${noticeHtml(k, href)}`),
@@ -418,8 +420,10 @@ export function dirFor(locale: string): "rtl" | "ltr" {
 }
 
 /**
- * The notice's and the marked blocks' styles, inlined by both layouts so the
- * notice stands out even when a linked stylesheet fails to load. The compound
+ * The notice's and the marked blocks' styles. The thin layout reads them from
+ * `templates/ig-pages/ig-artifact.css`, the IG's one stylesheet (owner,
+ * 2026-11-13), which carries this string verbatim; a test holds the two
+ * equal. The layout that links no `ig-artifact.css` inlines them. The compound
  * selector outranks `docs-ui.css`'s one-line `.fa-translation-warning`.
  */
 export const UNREVIEWED_NOTICE_CSS = [
