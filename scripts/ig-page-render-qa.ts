@@ -109,19 +109,25 @@ async function launch(): Promise<{ browser: import("playwright").Browser } | { u
   } catch {
     return { unavailable: "playwright is not installed here" };
   }
-  const tries: (string | undefined)[] = [undefined];
-  const base = process.env.PLAYWRIGHT_BROWSERS_PATH;
-  if (base && existsSync(base))
+  // Playwright's own pick first: for headless that is chrome-headless-shell of the
+  // build it pins. A CI image or cache can ship that build's full Chromium without
+  // the headless shell, so the full build of the same revision (`channel: "chromium"`)
+  // is tried next, then any build found under the browser directories, newest first.
+  const tries: { channel?: string; executablePath?: string }[] = [{}, { channel: "chromium" }];
+  const roots = [process.env.PLAYWRIGHT_BROWSERS_PATH, process.env.HOME && join(process.env.HOME, ".cache", "ms-playwright")];
+  for (const base of new Set(roots.filter((r): r is string => !!r && r !== "0" && existsSync(r))))
     for (const d of readdirSync(base).sort().reverse())
-      for (const rel of ["chrome-linux/chrome", "chrome-linux/headless_shell", "chrome-linux64/chrome"]) if (existsSync(join(base, d, rel))) tries.push(join(base, d, rel));
-  let last = "";
-  for (const executablePath of tries) {
+      for (const rel of ["chrome-headless-shell-linux64/chrome-headless-shell", "chrome-linux64/chrome", "chrome-linux/headless_shell", "chrome-linux/chrome"])
+        if (existsSync(join(base, d, rel))) tries.push({ executablePath: join(base, d, rel) });
+  const errors: string[] = [];
+  for (const t of tries) {
     try {
-      return { browser: await pw.chromium.launch({ ...(executablePath ? { executablePath } : {}), args: ["--no-sandbox"] }) };
+      return { browser: await pw.chromium.launch({ ...t, args: ["--no-sandbox"] }) };
     } catch (e) {
-      last = (e as Error).message.split("\n")[0]!;
+      errors.push((e as Error).message.split("\n")[0]!);
     }
   }
+  const last = [...new Set(errors)].join("; ");
   return { unavailable: `no Chromium could be launched (${last})` };
 }
 
