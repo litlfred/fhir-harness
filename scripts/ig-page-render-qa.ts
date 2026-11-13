@@ -17,6 +17,8 @@
  * @covers none — it judges how built pages read, not a declared graph
  */
 import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { createServer } from "node:http";
+import type { AddressInfo } from "node:net";
 import { extname, join, resolve, sep } from "node:path";
 import { LEFTOVERS } from "./ig-markdown-qa.ts";
 
@@ -86,20 +88,31 @@ const COLLECT = `(() => {
 
 const TYPES: Record<string, string> = { ".html": "text/html", ".js": "text/javascript", ".css": "text/css", ".json": "application/json", ".jsonld": "application/ld+json", ".svg": "image/svg+xml", ".png": "image/png", ".webp": "image/webp", ".woff2": "font/woff2" };
 
-/** Serve the built site on a free local port. */
-function serve(site: string): { url: string; stop: () => void } {
+/**
+ * Serve the built site on a free local port. `node:http`, not `Bun.serve`, so the
+ * scan runs under Bun (the CLI) and under Node (Playwright, `ig-page-render-qa.e2e.ts`).
+ */
+async function serve(site: string): Promise<{ url: string; stop: () => void }> {
   const root = resolve(site);
-  const server = Bun.serve({
-    port: 0,
-    fetch(req) {
-      let p = decodeURIComponent(new URL(req.url).pathname);
-      if (p.endsWith("/")) p += "index.html";
-      const f = resolve(join(root, p));
-      if (!(f === root || f.startsWith(root + sep)) || !existsSync(f) || !statSync(f).isFile()) return new Response("not found", { status: 404 });
-      return new Response(Bun.file(f), { headers: { "content-type": TYPES[extname(f)] ?? "application/octet-stream" } });
-    },
+  const server = createServer((req, res) => {
+    let p = decodeURIComponent(new URL(req.url ?? "/", "http://127.0.0.1").pathname);
+    if (p.endsWith("/")) p += "index.html";
+    const f = resolve(join(root, p));
+    if (!(f === root || f.startsWith(root + sep)) || !existsSync(f) || !statSync(f).isFile()) {
+      res.writeHead(404).end("not found");
+      return;
+    }
+    res.writeHead(200, { "content-type": TYPES[extname(f)] ?? "application/octet-stream" }).end(readFileSync(f));
   });
-  return { url: `http://127.0.0.1:${server.port}/`, stop: () => server.stop(true) };
+  await new Promise<void>((ok) => server.listen(0, "127.0.0.1", ok));
+  const { port } = server.address() as AddressInfo;
+  return {
+    url: `http://127.0.0.1:${port}/`,
+    stop: () => {
+      server.closeAllConnections();
+      server.close();
+    },
+  };
 }
 
 async function launch(): Promise<{ browser: import("playwright").Browser } | { unavailable: string }> {
@@ -138,7 +151,7 @@ export async function scanSite(site: string, o: { limit?: number; concurrency?: 
   if (!pages.length) return { ...out, unavailable: "the site has no pages to scan" };
   const l = await launch();
   if ("unavailable" in l) return { ...out, unavailable: l.unavailable };
-  const srv = serve(site);
+  const srv = await serve(site);
   try {
     const ctx = await l.browser.newContext();
     // Only the site itself: the platform's rail and other hosts are not this IG's pages.

@@ -2,7 +2,8 @@ import { describe, expect, test } from "bun:test";
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { dirFor, fragmentFor, hasTranslation, localesFor, pageLocales, relinkForLocale, resolveLangFragments, signedOff, translatePage, translateWithIncludes } from "./ig-page-translations.ts";
+import { createHash } from "node:crypto";
+import { dirFor, fragmentFor, hasTranslation, localeFrontMatter, localesFor, pageLocales, pageReview, relinkForLocale, resolveLangFragments, signedOff, translatePage, translateWithIncludes, UN_LOCALES, UNREVIEWED_BLOCK_CLASS, UNREVIEWED_NOTICE, unreviewedLabel, unreviewedNoticeLiquid } from "./ig-page-translations.ts";
 
 const po = (pairs: [string, string][]) => pairs.map(([i, s]) => `msgid "${i}"\nmsgstr "${s}"`).join("\n\n") + "\n";
 
@@ -92,5 +93,79 @@ describe("lang-fragment: a translated page reads its locale's own fragment", () 
     const t = translatePage(md, new Map([["This guide supports pilgrims.", "Ce guide aide les pèlerins."]]));
     expect(t.md).toContain("{% lang-fragment journey-hero.html %}");
     expect(t.md).toContain("Ce guide aide les pèlerins.");
+  });
+});
+
+describe("unreviewed translations are announced (fail closed)", () => {
+  const sha = (s: string) => createHash("sha256").update(s).digest("hex");
+  const SRC = "# Title\n\nHello world.\n";
+  function locale(sidecar?: Record<string, unknown>, status?: Record<string, unknown>): string {
+    const d = mkdtempSync(join(tmpdir(), "ig-tr-rev-"));
+    mkdirSync(join(d, "fr", "pagecontent"), { recursive: true });
+    writeFileSync(join(d, "fr", "pagecontent", "index.po"), po([["Hello world.", "Bonjour le monde."]]));
+    if (sidecar) writeFileSync(join(d, "fr", "pagecontent", "index.json"), JSON.stringify(sidecar));
+    if (status) writeFileSync(join(d, "fr", "status.json"), JSON.stringify(status));
+    return d;
+  }
+  const signed = (hash: string) => ({ sourceHash: hash, status: { official: true, signedOffBy: "A. Reviewer", signedOffAt: "2026-11-13T00:00:00Z" } });
+
+  test("no review record means not reviewed", () => {
+    const [fr] = pageLocales(locale());
+    expect(pageReview(fr!, "index", SRC)).toMatchObject({ reviewed: false, why: "no record that a person reviewed it" });
+  });
+
+  test("an agent translation marked unofficial is not reviewed", () => {
+    const [fr] = pageLocales(locale({ sourceHash: sha(SRC).slice(0, 12), status: { official: false, generatedBy: "agent" } }));
+    expect(pageReview(fr!, "index", SRC).reviewed).toBe(false);
+  });
+
+  test("a page sign-off against the current source is reviewed", () => {
+    const [fr] = pageLocales(locale(signed(sha(SRC).slice(0, 12))));
+    expect(pageReview(fr!, "index", SRC)).toMatchObject({ reviewed: true, by: "A. Reviewer" });
+  });
+
+  test("a sign-off against an earlier source is not reviewed", () => {
+    const [fr] = pageLocales(locale(signed(sha("older").slice(0, 12))));
+    expect(pageReview(fr!, "index", SRC)).toMatchObject({ reviewed: false, why: "signed off against an earlier source" });
+  });
+
+  test("a locale sign-off counts only for the source file it names", () => {
+    const rec = { official: true, signedOffBy: "B", signedOffAt: "t", sourceFile: "input/pagecontent/index.md", sourceHash: sha(SRC) };
+    expect(pageReview(pageLocales(locale(undefined, rec))[0]!, "index", SRC).reviewed).toBe(true);
+    expect(pageReview(pageLocales(locale(undefined, { ...rec, sourceFile: "input/pagecontent/other.md" }))[0]!, "index", SRC).reviewed).toBe(false);
+    expect(pageReview(pageLocales(locale(undefined, { ...rec, flaggedForReview: true }))[0]!, "index", SRC).reviewed).toBe(false);
+  });
+
+  test("unreviewed words are fenced as a marked block, reviewed ones are not", () => {
+    const [fr] = pageLocales(locale());
+    const pages = new Set(["index"]);
+    const mark = { unreviewed: () => true, label: unreviewedLabel("fr") };
+    const t = translateWithIncludes("index", fr!, () => SRC, pages, 0, mark);
+    expect(t.contributors).toEqual(["index"]);
+    expect(t.md).toContain(`<div class="${UNREVIEWED_BLOCK_CLASS}" data-tr-catalogue="index" data-tr-label="Non relu par une personne" markdown="1">`);
+    expect(translateWithIncludes("index", fr!, () => SRC, pages, 0, { ...mark, unreviewed: () => false }).md).not.toContain(UNREVIEWED_BLOCK_CLASS);
+  });
+
+  test("the front matter says reviewed only when told so", () => {
+    expect(localeFrontMatter({ lang: "fr", available: ["en", "fr"], source: "index.html" }).translation_reviewed).toBe(false);
+    expect(localeFrontMatter({ lang: "fr", available: ["en", "fr"], source: "index.html", reviewed: true }).translation_reviewed).toBe(true);
+    expect(localeFrontMatter({ lang: "en", available: ["en", "fr"] })).not.toHaveProperty("translation_reviewed");
+  });
+
+  test("the notice renders in the page language and English, linking to the source, and only when unreviewed", async () => {
+    const { Liquid } = await import("liquidjs");
+    const liquid = new Liquid();
+    const tpl = unreviewedNoticeLiquid();
+    const fr = await liquid.parseAndRender(tpl, { page: { lang: "fr", translation_source: "index.html" } });
+    expect(fr).toContain("Traduction automatique");
+    expect(fr).toContain("Machine translation");
+    expect(fr).toContain('href="../index.html"');
+    expect(fr).toContain("fa-translation-warning");
+    const other = await liquid.parseAndRender(tpl, { page: { lang: "de", translation_source: "index.html" } });
+    expect(other).toContain("Machine translation");
+    expect(other).not.toContain("Traduction automatique");
+    expect(await liquid.parseAndRender(tpl, { page: { lang: "fr", translation_source: "index.html", translation_reviewed: true } })).not.toContain("ig-tr-notice");
+    expect(await liquid.parseAndRender(tpl, { page: { lang: "en" } })).not.toContain("ig-tr-notice");
+    for (const l of Object.keys(UNREVIEWED_NOTICE)) expect(UN_LOCALES as readonly string[]).toContain(l);
   });
 });
