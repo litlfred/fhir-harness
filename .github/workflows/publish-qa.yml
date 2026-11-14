@@ -14,8 +14,129 @@ on:
   workflow_dispatch:
 permissions:
   contents: write
+concurrency:
+  group: layer-qa-publish-${{ github.repository }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
+env:
+  INSTANCE: fhir-harness
 jobs:
   publish:
-    uses: litlfred/cat-harness-tools/.github/workflows/layer-qa-publish.yml@f14a21207e6ede9057df031af3bc3aa3d6268a6a # main at litlfred/cat-harness-tools#1427; trails index.lock.json until this layer re-pins cat-harness-tools
-    with:
-      instance: fhir-harness
+    name: Publish this layer's QA results
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    permissions:
+      contents: write
+    steps:
+      - name: Decide the store key
+        id: key
+        env:
+          EVENT: ${{ github.event_name }}
+          PR: ${{ github.event.pull_request.number }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          HEAD_REPO: ${{ github.event.pull_request.head.repo.full_name }}
+          REPO: ${{ github.repository }}
+          SHA: ${{ github.sha }}
+          REF: ${{ github.ref }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT" = "pull_request" ]; then
+            if [ "$HEAD_REPO" != "$REPO" ]; then
+              echo "::notice::a fork's pull request has a read-only token: nothing is published for $HEAD_REPO"
+              echo "skip=true" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+            echo "ref=pr/$PR/$HEAD_SHA" >> "$GITHUB_OUTPUT"
+            echo "sha=$HEAD_SHA" >> "$GITHUB_OUTPUT"
+          elif [ "$REF" = "refs/heads/main" ]; then
+            echo "ref=main/$SHA" >> "$GITHUB_OUTPUT"
+            echo "sha=$SHA" >> "$GITHUB_OUTPUT"
+          else
+            echo "::notice::$REF is neither main nor a pull request: nothing is published"
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+      - name: Check out the folio-assistant index
+        if: steps.key.outputs.skip != 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          repository: litlfred/folio-assistant
+          ref: d766113f28da6dfcab98939d4b02cfcd45e3e603
+          path: fa
+      - uses: oven-sh/setup-bun@0c5077e51419868618aeaa5fe8019c62421857d6 # v2
+        if: steps.key.outputs.skip != 'true'
+        with:
+          bun-version: 1.4.4
+      - name: Mount every instance from the index's lock
+        if: steps.key.outputs.skip != 'true'
+        run: bash fa/.github/mount-from-lock.sh --root fa
+      - name: Check out the caller
+        if: steps.key.outputs.skip != 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          ref: ${{ steps.key.outputs.sha }}
+          path: src
+      - name: Put the caller in place of its locked mount
+        if: steps.key.outputs.skip != 'true'
+        run: |
+          set -euo pipefail
+          rm -rf "fa/$INSTANCE"
+          mv src "fa/$INSTANCE"
+          rm -rf "fa/$INSTANCE/.git"
+          test -f "fa/$INSTANCE/$INSTANCE.json" || { echo "::error::fa/$INSTANCE/$INSTANCE.json is missing"; exit 2; }
+      - name: Install
+        if: steps.key.outputs.skip != 'true'
+        working-directory: fa
+        run: bun install
+      - name: Find this instance's declared QA home
+        if: steps.key.outputs.skip != 'true'
+        id: home
+        working-directory: fa
+        run: |
+          set -euo pipefail
+          read -r by home < <(bun -e '
+            const { kgQaHomeFor } = await import("./cat-harness-tools/schemas/kg/cat-harness.ts");
+            const { relative, resolve } = await import("node:path");
+            const h = kgQaHomeFor(resolve(process.argv[1]), resolve("cat-harness"));
+            console.log(`${h.by} ${relative(process.cwd(), h.root)}`);
+          ' "$INSTANCE")
+          if [ "$by" != "own" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+          echo "home=$home" >> "$GITHUB_OUTPUT"
+          echo "QA home: $home"
+      - name: Run the knowledge-graph audit for this instance
+        if: steps.key.outputs.skip != 'true' && steps.home.outputs.skip != 'true'
+        working-directory: fa
+        run: |
+          set +e
+          bun run cat-harness-tools/scripts/kg-audit.ts --instance "./$INSTANCE" | tail -25
+          mkdir -p "${{ steps.home.outputs.home }}"
+          if [ -d "build/layers/${{ steps.home.outputs.home }}" ]; then
+            cp -R "build/layers/${{ steps.home.outputs.home }}/." "${{ steps.home.outputs.home }}/"
+          fi
+          n="$(find "${{ steps.home.outputs.home }}" -name '*.kg-qa.json' 2>/dev/null | wc -l)"
+          set -e
+          echo "kg-audit sidecars written: $n"
+          [ "$n" -gt 0 ] || { echo "::error::kg-audit wrote no sidecar under ${{ steps.home.outputs.home }}: nothing to publish"; exit 1; }
+      - name: Publish to this repository's qa-reports branch
+        if: steps.key.outputs.skip != 'true' && steps.home.outputs.skip != 'true'
+        working-directory: fa
+        env:
+          QA_STORE_REMOTE: https://github.com/${{ github.repository }}.git
+          REF: ${{ steps.key.outputs.ref }}
+          HOME_DIR: ${{ steps.home.outputs.home }}
+        run: |
+          set -euo pipefail
+          bun run cat qa:publish --ref "$REF" --root "$HOME_DIR"
+      - name: Summary
+        if: always() && steps.key.outputs.skip != 'true' && steps.home.outputs.skip != 'true'
+        run: |
+          {
+            echo "### QA results: $INSTANCE"
+            echo
+            echo "Published as \`${{ steps.key.outputs.ref }}\` on \`cat/cat-harness/qa-reports\` of \`${{ github.repository }}\` (from \`${{ steps.home.outputs.home }}\`)."
+            echo "An index reads it at the commit its lock pins (\`scripts/layer-qa.ts\`)."
+          } >> "$GITHUB_STEP_SUMMARY"

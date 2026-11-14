@@ -50,13 +50,13 @@ declared `ig-annex` directory) are hand-authored source.
 
 | Authoritative source (edit here) | Compiled, cached or rendered output (never hand-edit; overwritten on build or publish) | Basis |
 |---|---|---|
-| `sushi-config.yaml` (`id`, `canonical`, `version`, `status`, `releaseLabel`, `fhirVersion`, `dependencies`, `pages`, `menu`), `ig.ini`, `publication-request.json` | `fsh-generated/resources/ImplementationGuide-*.json`, `output/`, `fhir-artifact-index/ig-identity.json`, `fhir-artifact-index/menu.json`, `fhir-artifact-index/releases.json`, `site.data.fhir` | `schemas/ig-content-type.ts` (`IG_DEFAULT_INCLUDE`), [`ig-render-jekyll`](ig-render-jekyll.md) |
+| `sushi-config.yaml` (`id`, `canonical`, `version`, `status`, `releaseLabel`, `fhirVersion`, `dependencies`, `pages`, `menu`), `ig.ini`, `publication-request.json` | `fsh-generated/resources/ImplementationGuide-*.json`, `output/`, `fhir-artifact-index/menu.json`, `fhir-artifact-index/releases.json`, `site.data.fhir` | `schemas/ig-content-type.ts` (`IG_DEFAULT_INCLUDE`), [`ig-render-jekyll`](ig-render-jekyll.md) |
 | `input/fsh/**/*.fsh` | `fsh-generated/resources/*.json`, `fsh-generated/data/fsh-index.json`, `fsh-generated/includes/fsh-link-references.md` (even when `fsh-generated/` is committed in a legacy checkout, it is SUSHI's compiler output — edit the `.fsh` source, never the generated JSON) | `schemas/ig-content-type.ts` (`IG_DEFAULT_EXCLUDE`), [`ig-ast-delta`](ig-ast-delta.md) §"`fsh-index.json`" |
 | `input/cql/**/*.cql` and `input/maps/**/*.fml` | Compiled `Library` (base64 ELM/CQL `content[]`) and `StructureMap` resources in `output/` and `output-ast/` | [`l3-fhir-authoring`](../content/fhir-ig-authoring/l3-fhir-authoring.md), [`ig-ast-delta`](ig-ast-delta.md) |
 | `input/pagecontent/**/*.md`, `input/includes/**`, `input/translations/**/*.po`, and declared `ig-annex` directories (`annexes.json`) | Rendered HTML in `output/`, composed thin pages in `$SITE_WORK/` / `docs/`, and copied `assets/annex/*` | [`ig-render-jekyll`](ig-render-jekyll.md) §"Thin pages, the default"; §"The IG repository's site route" below |
 | `input/images-source/*.plantuml` | `input/images/*.svg` written by the Publisher when a same-stem `.plantuml` exists in `input/images-source/` (hand-placed static assets under `input/images/` with no `.plantuml` stem are source) | [`ig-ast-delta`](ig-ast-delta.md) §"`validity`" |
 | `input/**` + `sushi-config.yaml` + `ig.ini` | `output-ast/` and the AST cache branch `cat/fhir-harness/fhir-ast/<package id>` (`manifest.json` with `"authority": "cache"`, `dependencies.json`, `fsh-index.json`, `expansions.json`, `txcache/`), written only by `ig-ast-refresh.yml` | §"The AST cache lifecycle", [`ig-ast-delta`](ig-ast-delta.md) |
-| The AST + `sushi-config.yaml` | `fhir-artifact-index/` (`index.json`, `menu.json`, `ig-identity.json`, `releases.json`, `sidecars/`), `<Type>-<id>.json`, `artifact/<Type>-<id>.{html,jsonld,json}`, `assets/ig-search.json`, `folio-build.json`, and the published site on `gh-pages` (root and `branches/<branch>/`) | §"The IG repository's site route" |
+| The AST + `sushi-config.yaml` | `fhir-artifact-index/` (`index.json`, `menu.json`, `releases.json`, `sidecars/`), `<Type>-<id>.json`, `artifact/<Type>-<id>.{html,jsonld,json}`, `assets/ig-search.json`, `folio-build.json`, and the published site on `gh-pages` (root and `branches/<branch>/`) | §"The IG repository's site route" |
 
 An overlay using `pre-export` or `ig-site:sidecars` documents its own
 authority table in its own skill. This layer puts back everything
@@ -299,7 +299,7 @@ the marker: a repository is an IG source because it declares the section.
 **Every IG reader here honours it.** Each one asks `scripts/ig-read-scope.ts`
 (`igReadScope(root)`) before it touches a path: `build-ig-indexes`,
 `ig-repo-site`, `build-ig-site`, `fsh-cone`, `ingest-ig-menu`,
-`ingest-ig-chrome`, `ig-api-hub`, `ig-site-data`, `ig-review-data`,
+`ig-api-hub`, `ig-site-data`, `ig-review-data`,
 `measure-logic-layer-edges` and `check-translation-supplements`. An undeclared optional directory (`input/images/`,
 say) reads as absent; an undeclared file a reader cannot work without
 (`sushi-config.yaml`) is refused with the path named. `ig-repo-site compose`

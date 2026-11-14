@@ -401,7 +401,7 @@
     {
       "id": "ig-chrome.igchromeschema.id",
       "prefLabel": "IgChromeSchema.id",
-      "definition": "The chain's TOP layer — the template package an IG names — e.g. `who.template.root`. v1 put the id of the IG it was ingested beside here; v2 keys the chrome by the template, because every IG building with that chain wears it. An IG's own id and status are `ig-identity.json`'s.",
+      "definition": "The chain's TOP layer — the template package an IG names — e.g. `who.template.root`. v1 put the id of the IG it was ingested beside here; v2 keys the chrome by the template, because every IG building with that chain wears it. An IG's own id and status are its artefact index's.",
       "source": "fhir-harness/schemas/ig-chrome.ts#IgChromeSchema.id",
       "status": "candidate"
     },
@@ -452,34 +452,6 @@
       "prefLabel": "IgSection.include",
       "definition": "Repository-relative POSIX paths. A trailing `/` marks a directory.",
       "source": "fhir-harness/schemas/ig-content-type.ts#IgSection.include",
-      "status": "candidate"
-    },
-    {
-      "id": "ig-identity.igidentityschema.id",
-      "prefLabel": "IgIdentitySchema.id",
-      "definition": "The IG's `id` from `sushi-config.yaml`; SUSHI's `packageId` defaults to it.",
-      "source": "fhir-harness/schemas/ig-identity.ts#IgIdentitySchema.id",
-      "status": "candidate"
-    },
-    {
-      "id": "ig-identity.igidentityschema.readat",
-      "prefLabel": "IgIdentitySchema.readAt",
-      "definition": "When it was read. A status is a fact at a moment, not forever.",
-      "source": "fhir-harness/schemas/ig-identity.ts#IgIdentitySchema.readAt",
-      "status": "candidate"
-    },
-    {
-      "id": "ig-identity.igidentityschema.readfrom",
-      "prefLabel": "IgIdentitySchema.readFrom",
-      "definition": "Where it was read: a repository and file, so the claim can be re-checked.",
-      "source": "fhir-harness/schemas/ig-identity.ts#IgIdentitySchema.readFrom",
-      "status": "candidate"
-    },
-    {
-      "id": "ig-identity.igidentityschema.status",
-      "prefLabel": "IgIdentitySchema.status",
-      "definition": "`draft`, `active`, `retired` … — what selects the template's watermark.",
-      "source": "fhir-harness/schemas/ig-identity.ts#IgIdentitySchema.status",
       "status": "candidate"
     },
     {

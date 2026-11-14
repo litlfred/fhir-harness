@@ -18,7 +18,6 @@ Part of [FHIR IG Harness](../README.md) 0.1.0, declared as `fhir-harness-validat
 | [`ig-artifact-index-jsonld.json`](ig-artifact-index-jsonld.json) | data |  |
 | [`ig-artifact-jsonld.json`](ig-artifact-jsonld.json) | data |  |
 | [`ig-chrome.json`](ig-chrome.json) | data |  |
-| [`ig-identity.json`](ig-identity.json) | data |  |
 | [`ig-menu.json`](ig-menu.json) | data |  |
 | [`ig-metadata-index.json`](ig-metadata-index.json) | data |  |
 | [`ig-releases.json`](ig-releases.json) | data |  |

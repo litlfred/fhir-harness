@@ -135,7 +135,7 @@ list is not read: a harness reads only what it declares.
 
 Every IG reader here asks `scripts/ig-read-scope.ts` before it touches a
 path: `build-ig-indexes`, `ig-repo-site`, `build-ig-site`, `fsh-cone`,
-`ingest-ig-menu`, `ingest-ig-chrome`, `ig-api-hub`, `ig-site-data`,
+`ingest-ig-menu`, `ig-api-hub`, `ig-site-data`,
 `ig-review-data`, `measure-logic-layer-edges` and
 `check-translation-supplements`. A repository that declares
 the section is read only within `include`; `ig-repo-site compose` and

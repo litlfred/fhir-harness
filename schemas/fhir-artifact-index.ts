@@ -354,6 +354,8 @@ export const FhirArtifactIndexSchema = z
     /** NPM-style package id, e.g. `hl7.fhir.uv.ips`. */
     packageId: z.string().min(1).optional(),
     version: z.string().min(1).optional(),
+    /** The IG's own publication status (`draft`, `active`, `retired`), from its ImplementationGuide resource. */
+    status: z.string().min(1).optional(),
     fhirVersion: z.array(z.string().min(1)).optional(),
     /** The canonical base every artefact's canonical URL extends, e.g. `http://hl7.org/fhir/uv/ips`. */
     canonicalBase: z.string().min(1).optional(),

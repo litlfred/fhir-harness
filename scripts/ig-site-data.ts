@@ -42,13 +42,10 @@
  *    and the reader of the log learns the cache and the source have parted.
  * 1. `sushi-config.yaml` at the IG root — what the Publisher itself reads.
  * 2. `fhir-artifact-index/index.json` — read from a published IG; carries
- *    `packageId`, `version`, `fhirVersion`, `canonicalBase`, but not `id`,
- *    `name` or `publisher`.
- *    `fhir-artifact-index/ig-identity.json` supplies `status` ONLY when it
- *    names the same package. It used to come from `chrome.json`, which
- *    measured 2026-09-30 described `smart.who.int.trust` 1.8.0 under
- *    the WHO SMART Base IG's `smart.who.int.base` 0.3.0; stage D (#1767) keyed the chrome
- *    by its template and gave each IG an identity file of its own.
+ *    `packageId`, `version`, `status`, `fhirVersion`, `canonicalBase`, but
+ *    not `id`, `name` or `publisher`. The status once came from a separate,
+ *    hand-copied identity file beside the index, which drifted from the IG's
+ *    own sushi-config; owner 2026-11-14: "excise ig-identy.json".
  *
  * Usage:
  *   bun run fhir-harness/scripts/ig-site-data.ts --ig <IG root> --out <site>/_data/fhir.json [--ast <AST dir>] [--check]
@@ -56,7 +53,6 @@
  * @module fhir-harness/scripts/ig-site-data
  */
 
-import { IG_IDENTITY_FILENAME, readIgIdentity, statusOf } from "../schemas/ig-identity.js";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { parse as parseYaml } from "yaml";
@@ -213,21 +209,9 @@ export function igSiteData(igRoot: string, opts: { ast?: string } = {}): IgSiteD
     set("canonical", str(idx.canonicalBase), from);
     set("ig.version", str(idx.version), from);
     if (Array.isArray(idx.fhirVersion)) set("ig.fhirVersion", idx.fhirVersion.map(String), from);
-    // Status is THIS IG's own fact, read from its own sushi-config into
-    // `ig-identity.json` beside the index. The chrome is the template chain's
-    // (`folio-ig-chrome/v2`) and states no IG's status at all.
-    const identity = readIgIdentity(indexReadPath(igRoot));
-    if (identity) {
-      const status = statusOf(identity, data.packageId);
-      if (status !== undefined) {
-        set("ig.status", status, `fhir-artifact-index/${IG_IDENTITY_FILENAME}`);
-      } else {
-        refused.push(
-          `fhir-artifact-index/${IG_IDENTITY_FILENAME} names ${identity.id} ${identity.version ?? ""}`.trim() +
-            `, not ${data.packageId ?? "this IG"} — its status is another IG's`,
-        );
-      }
-    }
+    // Status is THIS IG's own fact, from its own ImplementationGuide, which
+    // the index records beside its version.
+    set("ig.status", str(idx.status), from);
   } else if (!fromAst || "why" in fromAst) {
     throw new Error(`no FHIR AST, sushi-config.yaml or fhir-artifact-index/index.json under ${igRoot}: nothing to populate site.data.fhir from`);
   }
