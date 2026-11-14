@@ -31,6 +31,7 @@
  * Exit codes: 0 ok, 1 a failure, 2 usage or could not determine.
  *
  * @module fhir-harness/scripts/fhir-core
+ * @covers fhir-core-definitions
  */
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from "node:fs";
