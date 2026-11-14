@@ -62,7 +62,7 @@ Nav position is a layout setting; nav contents are derived per build.
 ## What the render reads in the IG repository
 
 Only what the repository declares. Every reader on this path (`build-ig-site`,
-`ig-site-data`, `ingest-ig-menu`, `ingest-ig-chrome`, `ig-repo-site`) goes
+`ig-site-data`, `ingest-ig-menu`, `ig-repo-site`) goes
 through `scripts/ig-read-scope.ts`, which honours `contentTypes.ig.include` in
 the repository's `index.config.json`; anything outside it is not rendered. A
 repository with no section is read whole, with a warning. See

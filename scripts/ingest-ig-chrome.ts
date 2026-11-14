@@ -9,7 +9,6 @@
  *
  * ```sh
  * bun run cat-harness/scripts/ingest-ig-chrome.ts \
- *   --ig /path/to/<ig> \
  *   --layer /path/to/HL7/ig-template-base \
  *   --layer /path/to/WorldHealthOrganization/smart-ig-template \
  *   --out <chrome-owner>/fhir-artifact-index
@@ -45,10 +44,6 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 
-import { parse as parseYaml } from "yaml";
-
-import { igReadScope } from "./ig-read-scope.ts";
-
 import {
   IG_CHROME_SCHEMA_TAG,
   IgChromeSchema,
@@ -59,7 +54,6 @@ import {
   type IgChromeRule,
   type IgChromeToken,
 } from "../schemas/ig-chrome.js";
-import { IG_IDENTITY_FILENAME, IG_IDENTITY_SCHEMA_TAG, IgIdentitySchema, type IgIdentity } from "../schemas/ig-identity.js";
 
 const CHROME_FILENAME = "chrome.json";
 
@@ -359,8 +353,8 @@ export function overlay(layers: RawLayer[]): {
  * The chrome of a template chain, keyed by its TOP layer (`folio-ig-chrome/v2`).
  *
  * No IG is read: every IG building with this chain wears this chrome, so an
- * IG's identity is not the chrome's to state — {@link buildIdentity} reads it
- * into a file of its own.
+ * IG's identity is not the chrome's to state — it is the IG's own
+ * `sushi-config.yaml`, which its artefact index records.
  */
 export function buildChrome(layerRoots: string[], readAt: string): IgChrome {
   const read = layerRoots.map((r) => readLayer(resolve(r), readAt));
@@ -385,41 +379,12 @@ export function buildChrome(layerRoots: string[], readAt: string): IgChrome {
   return parsed.data;
 }
 
-/** One IG's identity and status, read from its own `sushi-config.yaml`. */
-export function buildIdentity(igRepo: string, readAt: string): IgIdentity {
-  const configPath = igReadScope(igRepo).path("sushi-config.yaml");
-  const raw = parseYaml(readFileSync(configPath, "utf-8")) as Record<string, unknown>;
-  const origin = gitRemote(igRepo);
-  const identity = {
-    $schema: IG_IDENTITY_SCHEMA_TAG,
-    id: String(raw.id ?? ""),
-    canonical: String(raw.canonical ?? ""),
-    status: String(raw.status ?? ""),
-    ...(raw.version ? { version: String(raw.version) } : {}),
-    readFrom: `${origin ?? igRepo} sushi-config.yaml`,
-    readAt,
-  };
-  const parsed = IgIdentitySchema.safeParse(identity);
-  if (!parsed.success) {
-    throw new Error(
-      `the identity read from ${configPath} does not validate:\n` +
-        parsed.error.issues.map((i) => `  ${i.path.join(".")}: ${i.message}`).join("\n"),
-    );
-  }
-  return parsed.data;
-}
-
 if (import.meta.main) {
-  const ig = arg("ig");
   const layerRoots = args("layer");
   const out = arg("out");
-  const identityOut = arg("identity-out");
   const check = process.argv.includes("--check");
-  if (!out && !identityOut) {
-    console.error(
-      "usage: ingest-ig-chrome.ts --layer <base> [--layer <next> …] --out <dir> [--check]\n" +
-        "       ingest-ig-chrome.ts --ig <ig-repo> --identity-out <ig's index dir> [--check]",
-    );
+  if (!out) {
+    console.error("usage: ingest-ig-chrome.ts --layer <base> [--layer <next> …] --out <dir> [--check]");
     process.exit(2);
   }
   const readAt = new Date().toISOString().slice(0, 10);
@@ -471,16 +436,6 @@ if (import.meta.main) {
         console.log(`  ⚠ ${c.kind} ${c.token}: ${c.sites.map((s) => `${s.package}="${s.value}"`).join(" vs ")}`);
       }
     }
-  }
-
-  if (identityOut) {
-    const target = join(resolve(identityOut), IG_IDENTITY_FILENAME);
-    if (!ig) {
-      console.error("could not determine: no --ig checkout, so there is no sushi-config.yaml to read the identity from.");
-      console.error(`  ${existsSync(target) ? "The committed identity was NOT verified." : "No identity is committed either."}`);
-      process.exit(2);
-    }
-    emit(target, buildIdentity(resolve(ig), readAt), "identity");
   }
 
   process.exit(failed ? 1 : 0);

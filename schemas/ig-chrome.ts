@@ -60,8 +60,8 @@
  * chrome, so that identity became a claim about IGs it did not describe: the
  * one committed chrome sat in the WHO SMART Base IG and said `smart.who.int.trust` 1.8.0,
  * `draft` (stage A, #1767). v2 is keyed by the chain's top layer, and an IG's
- * own identity and status are read into `ig-identity.json` beside its index
- * ({@link "./ig-identity"}). Stage D of the smart-* separation, bean `kg83`.
+ * own identity and status are its own `sushi-config.yaml`'s, which its
+ * artefact index records. Stage D of the smart-* separation, bean `kg83`.
  *
  * @graphNode schema
  * @module schemas/ig-chrome
@@ -183,7 +183,7 @@ export const IgChromeSchema = z.object({
    * The chain's TOP layer — the template package an IG names — e.g.
    * `who.template.root`. v1 put the id of the IG it was ingested beside here;
    * v2 keys the chrome by the template, because every IG building with that
-   * chain wears it. An IG's own id and status are `ig-identity.json`'s.
+   * chain wears it. An IG's own id and status are its artefact index's.
    */
   id: z.string().min(1),
   /** The top layer's version, e.g. `0.5.0`. */

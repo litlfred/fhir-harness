@@ -3,8 +3,8 @@
  * ingested from ANOTHER IG.
  *
  * The chrome is the TEMPLATE's (`folio-ig-chrome/v2`) and states no IG's
- * status; each IG's status is its own `ig-identity.json`. Here two IGs share
- * one chrome: IPS carries an identity, IPA does not. The runs write real
+ * status; each IG's status is its own, recorded in its artefact index. Here
+ * two IGs share one chrome: IPS's index records a status, IPA's does not. The runs write real
  * pages into a scratch repository, so these tests assert what a reader would
  * be served, not what a function returns.
  *
@@ -12,11 +12,8 @@
  * about WHO (`ig-build-pipeline.md`). The same assertions about the COMMITTED
  * WHO pages live in `smart-base/scripts/ig-pages-committed.test.ts`.
  *
- * Calibrated: making `statusFor` ignore the identity's package (returning
- * `IDENTITY.status` for any IG) still leaves IPA bare, because it has no
- * identity file — so the identity-mismatch rule is pinned in
- * `ig-identity.test.ts` instead, and here dropping IPS's identity fails the
- * first test.
+ * Calibrated: dropping the status from IPS's index fails the first test;
+ * giving `statusFor` any value but the index's own fails the second.
  *
  * @module fhir-harness/scripts/gen-ig-pages.test
  */
@@ -25,7 +22,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, 
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
-import { IPA, IPS, IPS_IDENTITY, artifactIndex, scratchRepo } from "../test/support/ig-fixture";
+import { IPA, IPS, artifactIndex, scratchRepo } from "../test/support/ig-fixture";
 
 const ROOT = resolve(import.meta.dir, "..", "..");
 const SCRIPT = join(ROOT, "fhir-harness/scripts/gen-ig-pages.ts");
@@ -82,10 +79,10 @@ function builtIndex(id: string, revision: string, other: string): Record<string,
 }
 
 const repo = scratchRepo({
-  ips: { index: artifactIndex(IPS, "ips"), identity: IPS_IDENTITY },
+  ips: { index: artifactIndex(IPS, "ips", "active") },
   ipa: { index: artifactIndex(IPA, "ipa") },
-  plain: { index: artifactIndex(IPS, "plain"), identity: IPS_IDENTITY },
-  prefixed: { index: artifactIndex(IPS, "prefixed"), identity: IPS_IDENTITY },
+  plain: { index: artifactIndex(IPS, "plain", "active") },
+  prefixed: { index: artifactIndex(IPS, "prefixed", "active") },
   compiled: { index: compiledIndex("compiled") },
   uncompiled: { index: compiledIndex("uncompiled") },
   built1: { index: builtIndex("built1", "1".repeat(40), "9".repeat(40)) },
@@ -98,7 +95,7 @@ function generate(instance: string, ...args: string[]): void {
   if (run.exitCode !== 0) throw new Error(`gen-ig-pages failed for ${instance}:\n${run.stderr.toString()}`);
 }
 
-// IPS: the IG's own identity, no --summary. IPA: no identity, --summary.
+// IPS: its index records a status, no --summary. IPA: no status, --summary.
 // Both name a WHO-free publish note and sidecar label, as a WHO caller names its own.
 generate("ips", "--label", "International Patient Summary", "--chrome-owner", "chrome-owner",
   "--publish-note", "This page mirrors a published HL7 Implementation Guide.", "--sidecar-label", "HL7 sidecars");
