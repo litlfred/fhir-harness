@@ -1,0 +1,8 @@
+{
+  "$schema": "kg-qa-manifest/v1",
+  "auditor": {
+    "script": "scripts/kg-audit.ts",
+    "script_hash": "sha256:de6e95b4be73807779dd1515f5c13214c7f035978bdec4d1df437d4a588c5610",
+    "engine_version": "1"
+  }
+}
