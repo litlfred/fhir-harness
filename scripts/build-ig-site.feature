@@ -235,9 +235,9 @@ Feature: Staging an IG as one just-the-docs site
 
   @test:scripts/build-ig-site.test.ts::every_IG_site:_the_IG's_top_bar,_and_its_TOC_declared_for_the_navbar::tocNavDeclaration
   Scenario: the TOC is a visualiser declaration the navbar reads, rows under each group, hrefs under the baseurl
-    When the TOC navigation is declared for a menu under a baseurl with an extra TOC row
+    When the TOC navigation is declared for a menu under a baseurl with a leading Table of Contents row and a trailing Releases row
     Then it is a JSON script the navbar reads
-    And its rows are the groups with their items under the baseurl, an absolute href unchanged, and the Table of Contents row
+    And its rows are the Table of Contents first, where the Publisher's breadcrumb starts, then the groups with their items under the baseurl, an absolute href unchanged, then the Releases row
 
   @test:scripts/build-ig-site.test.ts::every_IG_site:_the_IG's_top_bar,_and_its_TOC_declared_for_the_navbar::topBarDropdownNotFolioNav
   Scenario: the top bar is one dropdown per group, and never reads as the folio navbar
@@ -649,6 +649,14 @@ Feature: Staging an IG as one just-the-docs site
     Then 2 links are relinked
     And the template assets point at the canonical and the page's own stylesheet is unchanged
 
+  @test:scripts/build-ig-site.test.ts::the_Publisher's_page_footer_on_the_IG_site's_own_pages_(#1901)::qaReportWrittenInEachLocaleWithTheNotice
+  Scenario: the QA report is written in each locale with the machine-translation notice and its text direction
+    Given the QA page in English, French and Arabic
+    When the site is staged
+    Then fr/qa.md and ar/qa.md are written, unverified and not reviewed, ltr and rtl
+    And the English page names every locale it is available in
+    And no layout reads Jekyll's own page.dir for the text direction
+
   @test:scripts/build-ig-site.test.ts::the_Publisher's_page_footer_on_the_IG_site's_own_pages_(#1901)::qaReportWrittenAsQaMd
   Scenario: the QA report: written as qa.md, linked as the Publisher's qa.html, and the AST's build day stands in for the package's
     Given an IG whose AST manifest was generated on 2026-11-05 and whose index page links the QA report as qa.html
@@ -691,3 +699,12 @@ Feature: Staging an IG as one just-the-docs site
   Scenario: the Contents card needs at least two headings
     Then the Contents script draws no card with fewer than two headings
     And it holds no Liquid tag or output
+
+  @test:scripts/build-ig-site.test.ts::the_Contents_card_on_an_IG's_narrative_pages_(owner,_2026-11-10)::shallowestLevelWithOneNested
+  Scenario: the card lists the page's shallowest heading level with the next level nested
+    Given a page whose sections start at h3, as a markdown IG page's do
+    Then the card lists the h3 headings with their h4 headings nested, and nothing deeper
+    And on a page with h2 headings the h2 are the top level
+
+  @test:scripts/build-ig-site.test.ts::the_Contents_card_on_an_IG's_narrative_pages_(owner,_2026-11-10)::cardPrintsAsABlock
+  Scenario: on paper the card is a plain block, not a float

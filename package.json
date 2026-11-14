@@ -44,7 +44,11 @@
     "ig-ast:pages": "bun run fhir-harness/scripts/gen-ig-ast-pages.ts",
     "ig-index:build": "bun run fhir-harness/scripts/build-ig-indexes.ts",
     "ig-ast:pin": "bun run fhir-harness/scripts/ig-ast-pin.ts",
-    "ig-ast:lock:check": "bun run fhir-harness/scripts/ig-ast-pin.ts --check"
+    "ig-ast:lock:check": "bun run fhir-harness/scripts/ig-ast-pin.ts --check",
+    "fhir-core:index": "bun run fhir-harness/scripts/fhir-core.ts index",
+    "fhir-core:materialise": "bun run fhir-harness/scripts/fhir-core.ts materialise",
+    "fhir-core:check": "bun run fhir-harness/scripts/fhir-core.ts check",
+    "fhir-core:resolve": "bun run fhir-harness/scripts/fhir-core.ts resolve"
   },
   "overrides": {
     "node-forge": "^1.4.2",

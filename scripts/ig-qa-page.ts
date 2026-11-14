@@ -44,6 +44,8 @@ import { CONTENT_QA_PUBLISHED, CONTENT_QA_SIDECAR, type ContentQaVerdict } from 
 import { QA_MESSAGES_FILE, QA_MESSAGES_SCHEMA } from "./ig-qa-messages.ts";
 import { markdownQaMarkdown, scanDir, type MarkdownFinding } from "./ig-markdown-qa.ts";
 import { pageRenderQaMarkdown } from "./ig-page-render-qa.ts";
+import { fetchPublisherBundles, readBundle, readOwnCatalogue, translateMessages, usageReport } from "./ig-publisher-i18n.ts";
+import { HARNESS_TRANSLATIONS, qaScriptLabels, qaStrings, type Tr } from "./ig-qa-page-i18n.ts";
 
 /** Where the KG records are published under the site root. */
 export const KG_QA_ASSETS = "assets/kg-qa";
@@ -55,6 +57,10 @@ export const PUBLISHER_QA_FILE = "qa.json";
 const ARTIFACT_DIR = "artifact";
 /** The page script that draws the Publisher's messages in its own layout, published beside them. */
 export const QA_MESSAGES_SCRIPT = "qa-messages.js";
+/** One locale's messages, published beside the English ones. */
+export const qaMessagesFile = (locale: string): string => (locale === "en" ? QA_MESSAGES_FILE : QA_MESSAGES_FILE.replace(/\.json$/, `.${locale}.json`));
+/** Where each translated message string is used, per locale (`ig-publisher-i18n.ts` usageReport). */
+export const QA_I18N_USAGE_FILE = "i18n-usage.json";
 
 type Json = Record<string, unknown>;
 
@@ -98,101 +104,107 @@ export function readFhirQa(ast: string | undefined, validityFile?: string): Fhir
   return { ...(publisher ? { publisher } : {}), ...(messages ? { messages } : {}), ...(manifest ? { manifest } : {}), ...(validity ? { validity } : {}), ...(markdown ? { markdown } : {}) };
 }
 
+const escHtml = (s: string): string => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+const escAttr = (s: string): string => escHtml(s).replace(/"/g, "&quot;");
 const code = (v: unknown): string => `\`${String(v).replace(/`/g, "'")}\``;
 const num = (v: unknown): number | undefined => (typeof v === "number" && Number.isFinite(v) ? v : undefined);
 
 /** The FHIR half as Markdown lines. */
-export function fhirQaMarkdown(q: FhirQa, o: { up?: string } = {}): string[] {
+export function fhirQaMarkdown(q: FhirQa, o: { up?: string; t?: Tr; locale?: string; translated?: boolean; translationsDir?: string } = {}): string[] {
   const up = o.up ?? "";
+  const t = o.t ?? qaStrings("en");
+  const locale = o.locale ?? "en";
+  const englishOnly = (md: string[]): string[] => (locale === "en" || !md.length ? md : [`<div lang="en" dir="ltr" markdown="1">`, "", `*${t("englishOnly")}*`, "", ...md, "</div>", ""]);
   const lines: string[] = [];
-  lines.push("### IG Publisher", "");
+  lines.push(`### ${t("publisher")}`, "");
   const p = q.publisher;
   if (p) {
     const rows: [string, number | undefined][] = [
-      ["errors", num(p.errs)],
-      ["warnings", num(p.warnings)],
-      ["hints", num(p.hints)],
-      ["suppressed warnings", num(p["suppressed-warnings"])],
-      ["suppressed hints", num(p["suppressed-hints"])],
+      [t("errors"), num(p.errs)],
+      [t("warnings"), num(p.warnings)],
+      [t("hints"), num(p.hints)],
+      [t("suppressedWarnings"), num(p["suppressed-warnings"])],
+      [t("suppressedHints"), num(p["suppressed-hints"])],
     ];
     const run = [p.tool ? `IG Publisher ${String(p.tool)}` : undefined, p.version ? `FHIR ${String(p.version)}` : undefined, p.date ?? p.dateISO8601 ? `on ${String(p.date ?? p.dateISO8601)}` : undefined].filter(Boolean);
-    lines.push(`The Publisher's own QA summary for the run this AST came from${run.length ? ` (${run.join(", ")})` : ""}. [Summary (JSON)](${up}${FHIR_QA_ASSETS}/${PUBLISHER_QA_FILE})`, "");
+    lines.push(`${t("publisherSummary", { run: run.length ? ` (${run.join(", ")})` : "" })} [${t("summaryJson")}](${up}${FHIR_QA_ASSETS}/${PUBLISHER_QA_FILE})`, "");
     const held = rows.filter(([, n]) => n !== undefined);
     if (q.messages) {
       lines.push(
-        `Every message the Publisher reported, laid out as its own \`qa.html\` lays them out. [Messages (JSON)](${up}${FHIR_QA_ASSETS}/${QA_MESSAGES_FILE})`,
+        `${t("messagesIntro")} [${t("messagesJson")}](${up}${FHIR_QA_ASSETS}/${qaMessagesFile(o.translated ? locale : "en")})`,
         "",
-        `<div class="ig-qa-publisher" markdown="0" data-summary="${up}${FHIR_QA_ASSETS}/${PUBLISHER_QA_FILE}" data-messages="${up}${FHIR_QA_ASSETS}/${QA_MESSAGES_FILE}" data-pages="${up}assets/ast-pages.json" data-artifacts="${up}${ARTIFACT_DIR}/"${q.sourceBase ? ` data-source="${q.sourceBase}"` : ""}><p>Loading the Publisher's messages…</p><noscript><p>The messages are drawn in the browser; without JavaScript, read the JSON above.</p></noscript></div>`,
+        ...(o.translated ? [`${t("messagesTranslated")} [${t("whereUsed")}](${up}${FHIR_QA_ASSETS}/${QA_I18N_USAGE_FILE})`, ""] : []),
+        `<div class="ig-qa-publisher" markdown="0" data-summary="${up}${FHIR_QA_ASSETS}/${PUBLISHER_QA_FILE}" data-messages="${up}${FHIR_QA_ASSETS}/${qaMessagesFile(o.translated ? locale : "en")}" data-pages="${up}assets/ast-pages.json" data-artifacts="${up}${ARTIFACT_DIR}/"${q.sourceBase ? ` data-source="${q.sourceBase}"` : ""} data-labels="${escAttr(JSON.stringify(qaScriptLabels(locale, o.translationsDir)))}"><p>${escHtml(t("loading"))}</p><noscript><p>${escHtml(t("noscript"))}</p></noscript></div>`,
         `<script src="${up}${FHIR_QA_ASSETS}/${QA_MESSAGES_SCRIPT}"></script>`,
         "",
       );
     } else if (held.length) {
-      lines.push("| messages | count |", "|---|---|");
+      lines.push(`| ${t("messages")} | ${t("count")} |`, "|---|---|");
       for (const [k, n] of held) lines.push(`| ${k} | ${n} |`);
       lines.push("");
     }
   } else {
-    lines.push(
-      "This build holds no Publisher QA summary (`qa.json`): the AST it was built from was cached without one. The Publisher's message list is not published here; an AST cached from a newer build carries its summary.",
-      "",
-    );
+    lines.push(t("noSummary"), "");
   }
-  lines.push("### The IG's AST", "");
+  lines.push(`### ${t("ast")}`, "");
   const m = q.manifest;
   if (m) {
     const tc = (m.toolchain ?? {}) as Json;
     const prov = Array.isArray(m.provisional) ? (m.provisional as unknown[]).map(String) : [];
-    lines.push("| field | value |", "|---|---|");
+    lines.push(`| ${t("field")} | ${t("value")} |`, "|---|---|");
     if (m.generatedAt) lines.push(`| generated | ${code(m.generatedAt)} |`);
     if (m.authority) lines.push(`| authority | ${code(m.authority)} |`);
     for (const k of ["publisher", "core", "sushi", "java"]) if (tc[k]) lines.push(`| ${k} | ${code(tc[k])} |`);
     if (Array.isArray(m.resources)) lines.push(`| resources | ${m.resources.length} |`);
     if (prov.length) lines.push(`| provisional | ${prov.map(code).join(", ")}${m.provisionalUntil ? `, until ${String(m.provisionalUntil)}` : ""} |`);
     lines.push("");
-  } else lines.push("This build holds no AST manifest.", "");
+  } else lines.push(t("noManifest"), "");
   const v = q.validity;
   if (v?.verdict) {
     const why = typeof v.detail?.why === "string" ? ` ${v.detail.why}` : "";
-    lines.push(`**Validity for this checkout:** ${code(v.verdict)}.${why}`, "");
+    lines.push(`${t("validity", { verdict: code(v.verdict) })}${why}`, "");
     const rec = (v.recorded ?? {}) as Json;
     const cur = (v.current ?? {}) as Json;
     const keys = ["toolchain", "sourceRevision", "inputDigest"].filter((k) => rec[k] !== undefined || cur[k] !== undefined);
     if (keys.length) {
-      lines.push("| | recorded in the AST | this checkout |", "|---|---|---|");
+      lines.push(`| | ${t("recorded")} | ${t("thisCheckout")} |`, "|---|---|---|");
       for (const k of keys) lines.push(`| ${k} | ${rec[k] !== undefined ? code(rec[k]) : "—"} | ${cur[k] !== undefined ? code(cur[k]) : "—"} |`);
       lines.push("");
     }
-  } else lines.push("This build recorded no validity verdict for the AST.", "");
-  if (q.markdown) lines.push(...markdownQaMarkdown(q.markdown));
-  lines.push(...pageRenderQaMarkdown({ up }));
-  lines.push("### Injection scan", "");
+  } else lines.push(t("noValidity"), "");
+  if (q.markdown) lines.push(...englishOnly(markdownQaMarkdown(q.markdown)));
+  lines.push(...englishOnly(pageRenderQaMarkdown({ up })));
+  lines.push(`### ${t("injection")}`, "");
   const c = q.content;
   if (c) {
-    const by = c.reviewer ? `${c.reviewer.kind} ${code(c.reviewer.name)}${c.reviewedAt ? ` at ${code(c.reviewedAt)}` : ""}` : "nobody";
+    const by = c.reviewer ? `${c.reviewer.kind} ${code(c.reviewer.name)}${c.reviewedAt ? ` at ${code(c.reviewedAt)}` : ""}` : t("nobody");
     const state: Record<ContentQaVerdict["state"], string> = {
-      reviewed: "reviewed, no pattern hit and no open finding",
-      missing: "**not reviewed**: there is no review of these texts",
-      stale: "**not reviewed**: the review read other texts than these",
-      unusable: "the review file is not usable",
-      "open-findings": "the review holds open findings",
-      "pattern-hits": "texts break a pattern rule",
+      reviewed: t("stateReviewed"),
+      missing: t("stateMissing"),
+      stale: t("stateStale"),
+      unusable: t("stateUnusable"),
+      "open-findings": t("stateOpen"),
+      "pattern-hits": t("stateHits"),
     };
     lines.push(
-      `Every resource narrative, markdown field and IG page this site publishes (${c.items} text(s)) is checked for injection attempts before publication: a pattern scan, and an agent's review kept in the IG's ${code(CONTENT_QA_SIDECAR)}. The browser checks each narrative again before drawing it. [Verdict (JSON)](${up}${CONTENT_QA_PUBLISHED})`,
+      `${t("injectionIntro", { items: c.items, sidecar: code(CONTENT_QA_SIDECAR) })} [${t("verdictJson")}](${up}${CONTENT_QA_PUBLISHED})`,
       "",
-      "| field | value |",
+      `| ${t("field")} | ${t("value")} |`,
       "|---|---|",
-      `| state | ${state[c.state]}${c.accepted ? " — accepted for this local build only; a publish refuses it" : ""} |`,
-      `| content | ${code(c.contentDigest)} |`,
-      `| reviewed | ${c.reviewedDigest ? code(c.reviewedDigest) : "—"} by ${by} |`,
+      `| ${t("state")} | ${state[c.state]}${c.accepted ? ` — ${t("acceptedLocal")}` : ""} |`,
+      `| ${t("content")} | ${code(c.contentDigest)} |`,
+      `| ${t("reviewed")} | ${c.reviewedDigest ? code(c.reviewedDigest) : "—"} ${t("by")} ${by} |`,
       "",
     );
-  } else lines.push("This build ran no injection scan.", "");
+  } else lines.push(t("noInjection"), "");
   return lines;
 }
 
 /** The whole page: front matter, then both halves inside `{% raw %}` (entries are data, not Liquid). */
-export function renderQaPage(o: { title: string; fhir: FhirQa; kg: KgQaReport; up?: string }): string {
+export function renderQaPage(o: { title: string; fhir: FhirQa; kg: KgQaReport; up?: string; locale?: string; translated?: boolean; translationsDir?: string }): string {
+  const locale = o.locale ?? "en";
+  const t = qaStrings(locale, o.translationsDir);
+  const kg = kgQaMarkdown(o.kg, { assets: KG_QA_ASSETS, up: o.up, level: 3 });
   return [
     "---",
     `title: ${JSON.stringify(o.title)}`,
@@ -203,14 +215,15 @@ export function renderQaPage(o: { title: string; fhir: FhirQa; kg: KgQaReport; u
     "{% raw %}",
     `# ${o.title}`,
     "",
-    "Two halves: the FHIR QA of this implementation guide, and the knowledge graph's QA, the harness's checks over the instances this site is built from. A finding is a gap a check reports, not a failure of the build.",
+    t("intro"),
     "",
-    "## FHIR QA",
+    `## ${t("fhirQa")}`,
     "",
-    ...fhirQaMarkdown(o.fhir, { up: o.up }),
-    "## Knowledge-graph QA",
+    ...fhirQaMarkdown(o.fhir, { up: o.up, t, locale, ...(o.translated ? { translated: true } : {}), ...(o.translationsDir ? { translationsDir: o.translationsDir } : {}) }),
+    `## ${t("kgQa")}`,
     "",
-    ...kgQaMarkdown(o.kg, { assets: KG_QA_ASSETS, up: o.up, level: 3 }),
+    // The KG half is written by cat-harness-tools in English; said so, and marked as English for the reader's browser.
+    ...(locale === "en" ? kg : [`<div lang="en" dir="ltr" markdown="1">`, "", `*${t("englishOnly")}*`, "", ...kg, "", "</div>", ""]),
     "{% endraw %}",
     "",
   ].join("\n");
@@ -228,18 +241,61 @@ export function githubBlobBase(root: string): string | undefined {
   }
 }
 
-/** The page for the checkout at `root`: its text, and what it links that must be published beside it ({@link publishQaAssets}). */
-export function buildQaPage(o: { root: string; ast?: string; validity?: string; title?: string; content?: ContentQaVerdict }): { page: string; fhir: FhirQa; kg: KgQaReport } {
+/** One locale's translated messages, and how many came from where. */
+export type LocalisedQa = ReturnType<typeof translateMessages>;
+
+/** What the QA page needs to be drawn in other locales: the Publisher's bundles and this layer's catalogues. */
+export interface QaLocales {
+  /** The locales to write, besides English (an IG's page locales). */
+  locales: string[];
+  /** Where fetched Publisher bundles are kept (`<cache>/<core version>/`). */
+  cache: string;
+  /** This layer's catalogues; {@link HARNESS_TRANSLATIONS} by default. */
+  translationsDir?: string;
+}
+
+/** The QA page in each locale, keyed by locale (`en` is the source page). */
+export interface BuiltQa {
+  page: string;
+  pages: Record<string, string>;
+  fhir: FhirQa;
+  kg: KgQaReport;
+  /** Each locale's translated Publisher messages. */
+  localised: Map<string, LocalisedQa>;
+  /** What the build did about the Publisher's bundles, for the build log. */
+  i18n?: string;
+}
+
+/** The page for the checkout at `root`: its text in each locale, and what it links that must be published beside it ({@link publishQaAssets}). */
+export function buildQaPage(o: { root: string; ast?: string; validity?: string; title?: string; content?: ContentQaVerdict; i18n?: QaLocales }): BuiltQa {
   const root = resolve(o.root);
   const fhir: FhirQa = { ...readFhirQa(o.ast, o.validity), ...(o.content ? { content: o.content } : {}) };
   const sourceBase = githubBlobBase(root);
   if (sourceBase) fhir.sourceBase = sourceBase;
   const kg = kgQaReport(root, readDeclaration(root)?.name);
-  return { page: renderQaPage({ title: o.title ?? "QA Report", fhir, kg }), fhir, kg };
+  const page = renderQaPage({ title: o.title ?? qaStrings("en")("title"), fhir, kg });
+  const pages: Record<string, string> = { en: page };
+  const localised = new Map<string, LocalisedQa>();
+  let i18n: string | undefined;
+  const locales = (o.i18n?.locales ?? []).filter((l) => l !== "en");
+  if (o.i18n && locales.length) {
+    const translationsDir = o.i18n.translationsDir ?? HARNESS_TRANSLATIONS;
+    const core = String(((fhir.manifest?.toolchain ?? {}) as Json).core ?? "");
+    const fetched = fhir.messages ? (core ? fetchPublisherBundles(core, o.i18n.cache) : { dir: "", ok: false, why: "the AST records no core version" }) : undefined;
+    const publisher = fetched?.ok ? readBundle(fetched.dir, "Messages") : undefined;
+    for (const locale of locales) {
+      if (fhir.messages) localised.set(locale, translateMessages(fhir.messages as unknown as Parameters<typeof translateMessages>[0], { locale, ...(publisher ? { publisher } : {}), own: readOwnCatalogue(translationsDir, locale) }));
+      pages[locale] = renderQaPage({ title: qaStrings(locale, translationsDir)("title"), fhir, kg, up: "../", locale, translated: localised.has(locale), translationsDir });
+    }
+    i18n = fetched === undefined
+      ? "no Publisher messages to translate"
+      : `${fetched.ok ? `Publisher bundles of core ${core}` : `no Publisher bundles (${fetched.why})`}; ${[...localised].map(([l, r]) => `${l} ${r.counts.publisher}/${r.counts.machine}/${r.counts.source}${r.refused.length ? ` (${r.refused.length} Publisher template(s) refused)` : ""}`).join(", ")} (publisher/machine/English)`;
+  }
+  return { page, pages, fhir, kg, localised, ...(i18n ? { i18n } : {}) };
 }
 
 /** Publish what the page links under `site`: the Publisher's summary and the KG records. Returns how many KG records were copied. */
-export function publishQaAssets(r: { fhir: FhirQa; kg: KgQaReport }, site: string): number {
+export function publishQaAssets(r: { fhir: FhirQa; kg: KgQaReport; localised?: Map<string, LocalisedQa> }, site: string): number {
   if (r.fhir.publisher) {
     mkdirSync(join(site, FHIR_QA_ASSETS), { recursive: true });
     writeFileSync(join(site, FHIR_QA_ASSETS, PUBLISHER_QA_FILE), `${JSON.stringify(r.fhir.publisher, null, 2)}\n`);
@@ -247,6 +303,8 @@ export function publishQaAssets(r: { fhir: FhirQa; kg: KgQaReport }, site: strin
   if (r.fhir.publisher && r.fhir.messages) {
     writeFileSync(join(site, FHIR_QA_ASSETS, QA_MESSAGES_FILE), `${JSON.stringify(r.fhir.messages)}\n`);
     writeFileSync(join(site, FHIR_QA_ASSETS, QA_MESSAGES_SCRIPT), QA_MESSAGES_JS);
+    for (const [locale, l] of r.localised ?? []) writeFileSync(join(site, FHIR_QA_ASSETS, qaMessagesFile(locale)), `${JSON.stringify(l.messages)}\n`);
+    if (r.localised?.size) writeFileSync(join(site, FHIR_QA_ASSETS, QA_I18N_USAGE_FILE), `${JSON.stringify(usageReport(r.localised), null, 1)}\n`);
   }
   if (r.fhir.content) {
     mkdirSync(join(site, FHIR_QA_ASSETS), { recursive: true });
@@ -295,10 +353,35 @@ export const QA_MESSAGES_JS = String.raw`(function () {
       ".ig-qa-publisher table.grid td.plain{color:inherit}" +
       ".ig-qa-publisher .mid{font-size:8px;color:navy;display:none}" +
       ".ig-qa-publisher.show-ids .mid{display:inline}" +
+      ".ig-qa-publisher .en{display:none;font-weight:normal;font-size:.9em;color:#333}" +
+      ".ig-qa-publisher.show-en .en{display:block}" +
+      ".ig-qa-publisher .mt{font-size:.75em;font-weight:normal;color:#555;margin-inline-start:.5em}" +
+      ".ig-qa-publisher tr:target td{outline:2px solid #276749}" +
       ".ig-qa-publisher .grid-wrap{overflow-x:auto}";
     document.head.appendChild(css);
   }
   for (var i = 0; i < boxes.length; i++) run(boxes[i]);
+
+  /** The box's words, in the page's language (data-labels, ig-qa-page-i18n.ts), English otherwise. */
+  function labels(box) {
+    var EN = {
+      jsResultsFor: "Validation Results for {title}", jsThisIg: "this IG", jsGenerated: "Generated {date}, FHIR version {version} for ",
+      jsCanonical: " (canonical = ", jsQualityChecks: "Quality Checks", jsPublisherVersion: "Publisher Version:", jsSummary: "Summary:",
+      jsCounts: " errors = {errs}, warn = {warn}, info = {info}, broken links = {links}.  ", jsShowIds: "Show Message Ids", jsHideIds: "Hide Message Ids",
+      jsShowEnglish: "Show English", jsHideEnglish: "Hide English", jsFilename: "Filename", jsErrors: "Errors", jsWarnings: "Warnings", jsHints: "Hints",
+      jsBuildErrors: "Build Errors", jsPage: "(page)", jsSource: "(source)", jsUpFiles: "\u2191 files", jsGroupCounts: "  ({err} errors, {warn} warnings, {info} hints) ",
+      jsPath: "Path", jsSeverity: "Severity", jsMessage: "Message", jsNoMessages: "No messages: {why}.", jsNoneReported: "The Publisher reported no messages.",
+      jsCouldNotLoad: "Could not load the Publisher's messages ({error}).", jsMachine: "machine translation",
+      jsSevFatal: "fatal", jsSevError: "error", jsSevWarning: "warning", jsSevInformation: "information"
+    };
+    var given = {};
+    try { given = JSON.parse(box.getAttribute("data-labels") || "{}") || {}; } catch (e) { given = {}; }
+    return function (k, vars) {
+      var s = typeof given[k] === "string" ? given[k] : EN[k] || k;
+      return s.replace(/\{([A-Za-z]\w*)\}/g, function (m, n) { return vars && Object.prototype.hasOwnProperty.call(vars, n) ? String(vars[n]) : m; });
+    };
+  }
+  var SEV = { fatal: "jsSevFatal", error: "jsSevError", warning: "jsSevWarning", information: "jsSevInformation" };
 
   function el(tag, text, attrs) {
     var e = document.createElement(tag);
@@ -350,7 +433,7 @@ export const QA_MESSAGES_JS = String.raw`(function () {
         (Array.isArray(r[2]) ? r[2] : []).forEach(function (p) { pages[p] = true; });
         var q = r[0] || {};
         var canon = typeof q.url === "string" ? q.url.replace(/\/ImplementationGuide\/[^\/]+$/, "") : "";
-        draw(box, q, r[1] || {}, {
+        draw(box, q, r[1] || {}, labels(box), {
           pages: pages,
           artifacts: box.getAttribute("data-artifacts") || "artifact/",
           source: box.getAttribute("data-source") || "",
@@ -359,7 +442,7 @@ export const QA_MESSAGES_JS = String.raw`(function () {
       })
       .catch(function (e) {
         box.textContent = "";
-        box.appendChild(el("p", "Could not load the Publisher's messages (" + e.message + ")."));
+        box.appendChild(el("p", labels(box)("jsCouldNotLoad", { error: e.message })));
       });
   }
 
@@ -368,14 +451,14 @@ export const QA_MESSAGES_JS = String.raw`(function () {
     return L.pages[name + ".html"] ? L.artifacts + name + ".html" : null;
   }
   /** A message file: its artifact page on this site, and its source at the built commit when it is tracked (input/...). */
-  function fileCell(L, file, label) {
-    var span = el("span");
+  function fileCell(L, file, label, T) {
+    var span = el("span", null, file ? { dir: "ltr" } : null);
     var base = file ? file.replace(/^.*\//, "").replace(/\.(json|xml|fsh)$/, "") : "";
     var page = base && pageFor(L, base);
     span.appendChild(page ? el("a", label, { href: page }) : document.createTextNode(label));
     if (file && L.source && /^input\//.test(file)) {
       span.appendChild(document.createTextNode(" "));
-      span.appendChild(el("a", "(source)", { href: L.source + file.split("/").map(encodeURIComponent).join("/") }));
+      span.appendChild(el("a", T("jsSource"), { href: L.source + file.split("/").map(encodeURIComponent).join("/") }));
     }
     return span;
   }
@@ -400,17 +483,18 @@ export const QA_MESSAGES_JS = String.raw`(function () {
     return out;
   }
 
-  function draw(box, q, m, L) {
+  function draw(box, q, m, T, L) {
     box.textContent = "";
     var groups = Array.isArray(m.groups) ? m.groups : [];
-    box.appendChild(el("h4", "Validation Results for " + (q.title || q.name || "this IG")));
+    var hasEn = groups.some(function (g) { return g.messages.some(function (x) { return typeof x.en === "string"; }); });
+    box.appendChild(el("h4", T("jsResultsFor", { title: q.title || q.name || T("jsThisIg") })));
     var p = el("p");
-    p.appendChild(document.createTextNode("Generated " + (q.date || q.dateISO8601 || "?") + ", FHIR version " + (q.version || "?") + " for "));
+    p.appendChild(document.createTextNode(T("jsGenerated", { date: q.date || q.dateISO8601 || "?", version: q.version || "?" })));
     var igName = (q["package-id"] || "?") + "#" + (q["ig-ver"] || "?");
     var igPage = q["package-id"] && pageFor(L, "ImplementationGuide-" + q["package-id"]);
     p.appendChild(igPage ? el("a", igName, { href: igPage }) : document.createTextNode(igName));
     if (q.url) {
-      p.appendChild(document.createTextNode(" (canonical = "));
+      p.appendChild(document.createTextNode(T("jsCanonical")));
       var a = el("a", q.url, { href: q.url });
       p.appendChild(a);
       p.appendChild(document.createTextNode(")"));
@@ -421,60 +505,75 @@ export const QA_MESSAGES_JS = String.raw`(function () {
     var qc = el("table", null, { "class": "grid" });
     var head = el("tr");
     var th = el("td", null, { colspan: "2", "class": "plain" });
-    th.appendChild(el("b", "Quality Checks"));
+    th.appendChild(el("b", T("jsQualityChecks")));
     head.appendChild(th);
     qc.appendChild(head);
-    qc.appendChild(row(["Publisher Version:", q.tool || "?"]));
-    var btn = el("button", "Show Message Ids", { type: "button" });
-    btn.addEventListener("click", function () {
-      var on = box.className.indexOf("show-ids") < 0;
-      box.className = on ? box.className + " show-ids" : box.className.replace(/ ?show-ids/, "");
-      btn.textContent = on ? "Hide Message Ids" : "Show Message Ids";
-    });
+    qc.appendChild(row([T("jsPublisherVersion"), q.tool || "?"]));
+    function toggle(cls, on1, off1) {
+      var b = el("button", T(off1), { type: "button" });
+      b.addEventListener("click", function () {
+        var on = (" " + box.className + " ").indexOf(" " + cls + " ") < 0;
+        box.className = on ? box.className + " " + cls : box.className.replace(new RegExp(" ?" + cls + "\\b"), "");
+        b.textContent = T(on ? on1 : off1);
+      });
+      return b;
+    }
     var sum = el("span");
-    sum.appendChild(document.createTextNode(" errors = " + (q.errs != null ? q.errs : "?") + ", warn = " + (q.warnings != null ? q.warnings : "?") + ", info = " + (q.hints != null ? q.hints : "?") + ", broken links = " + (q["broken-links"] != null ? q["broken-links"] : "?") + ".  "));
-    sum.appendChild(btn);
-    qc.appendChild(row(["Summary:", sum]));
+    var na = function (v) { return v != null ? v : "?"; };
+    sum.appendChild(document.createTextNode(T("jsCounts", { errs: na(q.errs), warn: na(q.warnings), info: na(q.hints), links: na(q["broken-links"]) })));
+    sum.appendChild(toggle("show-ids", "jsHideIds", "jsShowIds"));
+    if (hasEn) {
+      sum.appendChild(document.createTextNode(" "));
+      sum.appendChild(toggle("show-en", "jsHideEnglish", "jsShowEnglish"));
+    }
+    qc.appendChild(row([T("jsSummary"), sum]));
     box.appendChild(wrap(qc));
 
     var files = el("table", null, { "class": "grid", id: "qa-files" });
-    files.appendChild(row(["Filename", "Errors", "Warnings", "Hints"], null, true));
+    files.appendChild(row([T("jsFilename"), T("jsErrors"), T("jsWarnings"), T("jsHints")], null, true));
     groups.forEach(function (g, i) {
       var c = counts(g);
       var b = el("b");
-      b.appendChild(el("a", g.file || "Build Errors", { href: "#qa-f" + i }));
+      b.appendChild(el("a", g.file || T("jsBuildErrors"), g.file ? { href: "#qa-f" + i, dir: "ltr" } : { href: "#qa-f" + i }));
       var base = g.file ? g.file.replace(/^.*\//, "").replace(/\.(json|xml|fsh)$/, "") : "";
       var page = base && pageFor(L, base);
       if (page) {
         b.appendChild(document.createTextNode(" "));
-        b.appendChild(el("a", "(page)", { href: page }));
+        b.appendChild(el("a", T("jsPage"), { href: page }));
       }
       files.appendChild(row([b, String(c.err), String(c.warn), String(c.info)], c.err ? COLOR.error : "#EFFFEF"));
     });
     box.appendChild(wrap(files));
-    if (!groups.length) box.appendChild(el("p", m.absent ? "No messages: " + m.absent + "." : "The Publisher reported no messages."));
+    if (!groups.length) box.appendChild(el("p", m.absent ? T("jsNoMessages", { why: m.absent }) : T("jsNoneReported")));
 
     groups.forEach(function (g, i) {
       box.appendChild(el("hr"));
       var c = counts(g);
       var h = el("h5", null, { id: "qa-f" + i });
-      h.appendChild(fileCell(L, g.file, g.file || "Build Errors"));
-      h.appendChild(document.createTextNode("  (" + c.err + " errors, " + c.warn + " warnings, " + c.info + " hints) "));
-      h.appendChild(el("a", "\u2191 files", { href: "#qa-files" }));
+      h.appendChild(fileCell(L, g.file, g.file || T("jsBuildErrors"), T));
+      h.appendChild(document.createTextNode(T("jsGroupCounts", { err: c.err, warn: c.warn, info: c.info })));
+      h.appendChild(el("a", T("jsUpFiles"), { href: "#qa-files" }));
       box.appendChild(h);
       var t = el("table", null, { "class": "grid" });
-      t.appendChild(row(["Path", "Severity", "Message"], null, true));
-      g.messages.forEach(function (msg) {
+      t.appendChild(row([T("jsPath"), T("jsSeverity"), T("jsMessage")], null, true));
+      g.messages.forEach(function (msg, j) {
         var where = (msg.path || "") + (msg.line > 0 ? " (l" + msg.line + "/c" + msg.col + ")" : "");
         var text = el("span");
         text.appendChild(linkText(L, msg.text));
+        if (msg.origin === "machine") text.appendChild(el("span", T("jsMachine"), { "class": "mt" }));
         if (msg.messageId) {
           text.appendChild(document.createTextNode(" "));
           text.appendChild(el("span", msg.messageId, { "class": "mid" }));
         }
-        var pw = el("b", where);
-        var sv = el("b", msg.severity);
-        t.appendChild(row([pw, sv, text], COLOR[msg.severity] || COLOR.information));
+        // The Publisher's own words, for a reader checking the translation ("Show English").
+        if (typeof msg.en === "string") text.appendChild(el("span", msg.en, { "class": "en", lang: "en", dir: "ltr" }));
+        // Paths and file names are Latin text: isolated left-to-right, so a right-to-left page does not flip their punctuation.
+        var pw = el("b", where, { dir: "ltr" });
+        var sv = el("b", SEV[msg.severity] ? T(SEV[msg.severity]) : msg.severity);
+        var tr = row([pw, sv, text], COLOR[msg.severity] || COLOR.information);
+        // Each row addressable, so a catalogue's "rendered at" link and the where-used report land on it.
+        tr.id = "qa-m" + i + "-" + j;
+        t.appendChild(tr);
       });
       box.appendChild(wrap(t));
     });

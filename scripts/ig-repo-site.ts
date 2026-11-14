@@ -170,6 +170,7 @@ import { AST_HISTORY_FILE, readAstHistory } from "./ig-ast-history.ts";
 import { copyDeclared, igReadScope, type IgReadScope } from "./ig-read-scope.ts";
 import { siteBuild, type SiteBuild, STAMP_FILE } from "./site-build-stamp.ts";
 import { buildQaPage, publishQaAssets } from "./ig-qa-page.ts";
+import { pageLocales } from "./ig-page-translations.ts";
 import { ACCEPT_UNREVIEWED_ENV, runGate, type ContentQaVerdict } from "./ig-content-qa.ts";
 import { annexesFor, artifactsFor, copyDocsInto, footerFor, githubEditBase, instanceNeeds, webpagePalette } from "./stage-ig-sites.ts";
 // The preview directories (cat-harness-tools `schemas/sdlc/preview-prefix.ts`):
@@ -733,7 +734,17 @@ export function compose(o: { docs: string; ig: string; baseurl: string; ast?: st
     const annexes = annexesFor(ig, log);
     // The QA report the footer's "QA Report" links: the FHIR QA the build
     // holds and the knowledge graph's, on one page (`ig-qa-page.ts`).
-    const qa = buildQaPage({ root: ig, ast, content, ...(o.work ? { validity: join(o.work, VALIDITY_FILE) } : {}) });
+    // In each locale the IG translates its pages into, the Publisher's messages
+    // in its own translations first, then this layer's (`ig-publisher-i18n.ts`).
+    const qaLocales = pageLocales(join(ig, "translations")).map((l) => l.locale);
+    const qa = buildQaPage({
+      root: ig,
+      ast,
+      content,
+      ...(o.work ? { validity: join(o.work, VALIDITY_FILE) } : {}),
+      ...(qaLocales.length ? { i18n: { locales: qaLocales, cache: join(homedir(), ".fhir", "publisher-i18n") } } : {}),
+    });
+    if (qa.i18n) log(`${name}: QA report languages — ${qa.i18n}`);
     const astRaw = astRawBase(o.work);
     const r = stageIgSite(src, site, {
       baseurl,
@@ -757,6 +768,7 @@ export function compose(o: { docs: string; ig: string; baseurl: string; ast?: st
       ...(igOpenapiGraph(ig) ? { reservedPaths: [{ prefix: `${OPENAPI_DIR}/`, by: "ig-site:openapi" }] } : {}),
       search: true,
       qaPage: qa.page,
+      qaPages: qa.pages,
     });
     log(`${name}:\n${describeStage(r)}`);
     if (r.qa === "written") {

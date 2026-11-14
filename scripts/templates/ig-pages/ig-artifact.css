@@ -69,6 +69,10 @@ body>#ig-footer{margin-top:0}
 .ig-main>.igi-contents,.fa-page-main>.igi-contents{float:right;width:18rem;margin:0 0 1rem 1.5rem}
 .ig-main>.igi-contents~h2,.fa-page-main>.igi-contents~h2{display:flow-root}
 @media (max-width:50rem){.ig-main>.igi-contents,.fa-page-main>.igi-contents{float:none;width:auto;margin:1rem 0}}
+.igi-contents li{flex-wrap:wrap}
+.igi-contents-sub{flex-basis:100%;margin:.15rem 0 .1rem 1rem!important}
+/* On paper the card is a plain block at the top of the page, not a float that a page break can split from its text. */
+@media print{.ig-main>.igi-contents,.fa-page-main>.igi-contents{float:none;width:auto;margin:0 0 1rem;box-shadow:none;break-inside:avoid}.igi-contents li>a{color:inherit}}
 /* /IG-CONTENTS-CARD */
 @media (max-width:50rem){.igi-head{display:block}.igi-head>.igi-guide{margin:0 0 1rem}}
 @media print{.igi-contents{box-shadow:none}}
