@@ -31,9 +31,9 @@ jobs:
     permissions:
       contents: read
       actions: read
-    uses: litlfred/cat-harness-tools/.github/workflows/layer-pr-checks.yml@18a26aae5fa87f64557405c5607e6d564e1614e1
+    uses: litlfred/cat-harness-tools/.github/workflows/layer-pr-checks.yml@48a3248531b5c9a23dc050ee29f5e88d13687521
     with:
-      tools-ref: 18a26aae5fa87f64557405c5607e6d564e1614e1
+      tools-ref: 48a3248531b5c9a23dc050ee29f5e88d13687521
       # On a draft PR: prepare and typecheck only; the full tier runs on ready_for_review.
       draft-fast-tier: true
       # The IG site imports cat-harness-tools' shared page layout by path (`scripts/page-layout.ts`), not by package name, so
@@ -50,7 +50,7 @@ jobs:
       contents: read
       issues: write
       actions: read
-    uses: litlfred/cat-harness-tools/.github/workflows/layer-main-qa.yml@18a26aae5fa87f64557405c5607e6d564e1614e1
+    uses: litlfred/cat-harness-tools/.github/workflows/layer-main-qa.yml@48a3248531b5c9a23dc050ee29f5e88d13687521
     with:
       verdict: ${{ needs.checks.outputs.main-verdict }}
       failures: ${{ needs.checks.outputs.main-failures }}
@@ -63,4 +63,4 @@ jobs:
     if: github.event_name == 'pull_request' && github.event.action == 'closed'
     permissions:
       actions: write
-    uses: litlfred/cat-harness-tools/.github/workflows/layer-cancel-on-close.yml@18a26aae5fa87f64557405c5607e6d564e1614e1
+    uses: litlfred/cat-harness-tools/.github/workflows/layer-cancel-on-close.yml@48a3248531b5c9a23dc050ee29f5e88d13687521
