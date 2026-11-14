@@ -132,6 +132,33 @@
       },
     });
   }
+  /* The IG Publisher's metadata table for a canonical resource: Official URL
+     and Version, then its status as of its date and its Computable Name. The
+     same cells as `igMetadataTable` (`ig-version-chrome.ts`), which draws the
+     IG's own row on its home page. No url, no table. */
+  function metadata(r) {
+    if (!r || typeof r.url !== "string" || !r.url) return null;
+    var str = function (v) {
+      return typeof v === "string" && v ? v : null;
+    };
+    var table = el("table", "ig-metadata");
+    var tb = el("tbody");
+    table.append(tb);
+    var row1 = el("tr");
+    var url = el("td", null, "Official URL: ");
+    url.append(el("code", "ig-metadata-url", r.url));
+    row1.append(url);
+    if (str(r.version)) row1.append(el("td", null, "Version: " + r.version));
+    tb.append(row1);
+    var status = str(r.status) ? r.status.charAt(0).toUpperCase() + r.status.slice(1) + (str(r.date) ? " as of " + r.date : "") : str(r.date) ? "As of " + r.date : null;
+    if (status || str(r.name)) {
+      var row2 = el("tr");
+      if (status) row2.append(el("td", null, status));
+      if (str(r.name)) row2.append(el("td", null, "Computable Name: " + r.name));
+      tb.append(row2);
+    }
+    return table;
+  }
   function begin() {
     loads().pending++;
   }
@@ -1398,6 +1425,9 @@
         return;
       }
       var frag = document.createDocumentFragment();
+      // The Publisher's metadata table, filled once the resource is read (owner, 2026-11-14).
+      var meta = el("div", "iga-metadata");
+      frag.append(meta);
       if (node["dcterms:title"] && node["dcterms:title"] !== document.querySelector(".iga h1").textContent) {
         frag.append(el("p", "iga-sub", node["dcterms:title"]));
       }
@@ -1418,6 +1448,8 @@
             return r.json();
           })
           .then(function (resource) {
+            var m = metadata(resource);
+            if (m) meta.append(m);
             var c = content(resource);
             if (c) holder.append(c);
           })
