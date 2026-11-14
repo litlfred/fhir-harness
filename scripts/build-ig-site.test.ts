@@ -522,13 +522,15 @@ describe("webpagePalette inherits along needs (bean `mftp`)", () => {
 describe("every IG site: the IG's top bar, and its TOC declared for the navbar", () => {
   const menu = { groups: [{ label: "Home", items: [{ label: "Summary", href: "overview.html" }] }, { label: "Indices", items: [{ label: "Artifact Index", href: "artifacts.html" }, { label: "Spec", href: "https://example.org/x" }] }] };
   test("tocNavDeclaration", () => {
-    const decl = igTocNav(menu, "/b/acme-ig", [{ label: "Table of Contents", href: "toc.html" }]);
+    const decl = igTocNav(menu, "/b/acme-ig", [{ label: "Releases", href: "releases.html" }], [{ label: "Table of Contents", href: "toc.html" }]);
     expect(decl.startsWith('<script type="application/json" data-fa-visualiser-nav>')).toBe(true);
     const rows = JSON.parse(decl.replace(/^<script[^>]*>/, "").replace(/<\/script>$/, ""));
+    // The table of contents leads, where the Publisher's breadcrumb starts (owner, 2026-11-14).
     expect(rows).toEqual([
+      { label: "Table of Contents", href: "/b/acme-ig/toc.html" },
       { label: "Home", items: [{ label: "Summary", href: "/b/acme-ig/overview.html" }] },
       { label: "Indices", items: [{ label: "Artifact Index", href: "/b/acme-ig/artifacts.html" }, { label: "Spec", href: "https://example.org/x" }] },
-      { label: "Table of Contents", href: "/b/acme-ig/toc.html" },
+      { label: "Releases", href: "/b/acme-ig/releases.html" },
     ]);
   });
   test("topBarDropdownNotFolioNav", () => {
@@ -1660,8 +1662,26 @@ describe("the Contents card on an IG's narrative pages (owner, 2026-11-10)", () 
     expect(full).toContain("float:right");
   });
   test("cardNeedsTwoHeadings", async () => {
-    const { IG_CONTENTS_JS } = await import("./build-ig-site.ts");
-    expect(IG_CONTENTS_JS).toContain("hs.length<2");
+    const { IG_CONTENTS_JS, igContentsRows } = await import("./build-ig-site.ts");
+    expect(igContentsRows([{ level: 3, i: 0 }])).toEqual([]);
+    expect(igContentsRows([])).toEqual([]);
+    // The browser runs the same function, and the script is Liquid-inert and parses.
+    expect(IG_CONTENTS_JS).toContain("function igContentsRows(");
     expect(IG_CONTENTS_JS).not.toMatch(/\{\{|\{%/);
+    expect(() => new Function(IG_CONTENTS_JS)).not.toThrow();
+  });
+  test("shallowestLevelWithOneNested", async () => {
+    const { igContentsRows } = await import("./build-ig-site.ts");
+    // A markdown IG page: sections at h3, subsections at h4, a deeper h5 left out.
+    const page = [3, 4, 4, 3, 4, 2 + 3].map((level, i) => ({ level, i }));
+    expect(igContentsRows(page)).toEqual([{ i: 0, sub: [1, 2] }, { i: 3, sub: [4] }]);
+    // Where the page has h2, h2 is the top level and h4 is not listed.
+    expect(igContentsRows([2, 3, 4, 2].map((level, i) => ({ level, i })))).toEqual([{ i: 0, sub: [1] }, { i: 3, sub: [] }]);
+    // A nested heading before any top-level one is listed at the top.
+    expect(igContentsRows([4, 3, 4].map((level, i) => ({ level, i })))).toEqual([{ i: 0, sub: [] }, { i: 1, sub: [2] }]);
+  });
+  test("cardPrintsAsABlock", () => {
+    const css = readFileSync(join(import.meta.dir, "templates", "ig-pages", "ig-artifact.css"), "utf-8");
+    expect(css).toMatch(/@media print\{\.ig-main>\.igi-contents[^}]*float:none/);
   });
 });

@@ -447,8 +447,14 @@ const escHtml = (s: string): string => s.replace(/&/g, "&amp;").replace(/</g, "&
  * level below — the depth the navbar allows, and the shape of the IG's own
  * menu. The rail lifts it into the folio-assistant LHS navbar.
  */
-export function igTocNav(menu: IgMenu, baseurl: string, extra: ReadonlyArray<{ label: string; href: string }> = []): string {
+export function igTocNav(
+  menu: IgMenu,
+  baseurl: string,
+  extra: ReadonlyArray<{ label: string; href: string }> = [],
+  lead: ReadonlyArray<{ label: string; href: string }> = [],
+): string {
   const rows = [
+    ...lead.map((e) => ({ label: e.label, href: siteHref(baseurl, e.href) })),
     ...menu.groups.map((g) => ({
       label: g.label,
       ...(g.items?.length
@@ -564,30 +570,67 @@ ${IG_SEARCH_CSS.trim()}
 `;
 
 /**
+ * Which headings the Contents card lists, from the page's headings in
+ * document order (`{ level, i }`, `level` 2–4, `i` the heading's index).
+ * The card lists the page's SHALLOWEST heading level with the next level
+ * nested one deep under it (owner, 2026-11-14, card: "Top level + one
+ * nested"): an IG page written in markdown starts its sections at `###`
+ * (h3), as the Publisher's own pages do, so a card that read only `<h2>`
+ * drew on none of them. Fewer than two rows: no card. Pure; embedded in
+ * {@link IG_CONTENTS_JS} by `toString()`, so the browser runs this code.
+ */
+export function igContentsRows(hs: ReadonlyArray<{ level: number; i: number }>): Array<{ i: number; sub: number[] }> {
+  let top = 0;
+  for (const h of hs) if (h.level >= 2 && h.level <= 4 && (top === 0 || h.level < top)) top = h.level;
+  if (top === 0) return [];
+  const rows: Array<{ i: number; sub: number[] }> = [];
+  let count = 0;
+  for (const h of hs) {
+    if (h.level === top) {
+      rows.push({ i: h.i, sub: [] });
+      count++;
+    } else if (h.level === top + 1) {
+      const last = rows[rows.length - 1];
+      if (last) last.sub.push(h.i);
+      else rows.push({ i: h.i, sub: [] });
+      count++;
+    }
+  }
+  return count < 2 ? [] : rows;
+}
+
+/**
  * The Contents card on an IG's narrative pages (owner, 2026-11-10: "make this
  * more akin to how IGs have TOC on RHS ... not yellow, but more like a card",
- * then "adopt that for other IG pages as well"). The Publisher draws a yellow
- * "Contents:" box at the top right of a page; this is the same box as a
- * neutral card, built in the browser from the page's own `<h2>` headings, so
- * it needs nothing from the IG's source. A page with fewer than two `<h2>`, or
- * one that already draws a card (`artifacts.html`), gets none.
+ * then "adopt that for other IG pages as well"; 2026-11-14: "each IG page
+ * should have a contents card in upper right", below any page banner). The
+ * Publisher draws a yellow "Contents:" box at the top right of a page; this
+ * is the same box as a neutral card, built in the browser from the page's
+ * own headings ({@link igContentsRows}), so it needs nothing from the IG's
+ * source. It is the first thing in `<main>` (after its `<h1>` or the IG's
+ * metadata table), so it sits below the bar and the version banner, which
+ * are outside `<main>`. A page with fewer than two listed headings, or one
+ * that already draws a card (`artifacts.html`), gets none.
  */
 export const IG_CONTENTS_JS = `(function(){
 var main=document.getElementById("main-content");
 if(!main||main.querySelector(".igi-contents"))return;
-var hs=Array.prototype.filter.call(main.querySelectorAll("h2"),function(h){return !h.closest(".igi-contents,#ig-footer,.ig-edit")&&h.textContent.trim();});
-if(hs.length<2)return;
+var rowsOf=${igContentsRows.toString()};
+var hs=Array.prototype.filter.call(main.querySelectorAll("h2,h3,h4"),function(h){return !h.closest(".igi-contents,#ig-footer,.ig-edit,.ig-metadata")&&h.textContent.trim();});
+var rows=rowsOf(hs.map(function(h,i){return {level:+h.tagName.charAt(1),i:i};}));
+if(!rows.length)return;
 var used={};
 function slug(t){var b=t.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^-|-$/g,"")||"section",s=b,i=1;while(used[s]||document.getElementById(s))s=b+"-"+(++i);used[s]=1;return s;}
+function item(h){if(!h.id)h.id=slug(h.textContent);var li=document.createElement("li"),a=document.createElement("a");a.href="#"+h.id;
+var c=h.cloneNode(true);Array.prototype.forEach.call(c.querySelectorAll(".anchor-heading,.fa-sec-box,svg,button"),function(n){n.remove();});
+a.textContent=c.textContent.replace(/\\s+/g," ").trim();li.appendChild(a);return li;}
 var nav=document.createElement("nav");nav.className="igi-contents";nav.setAttribute("aria-label","Contents");
 var t=document.createElement("p");t.className="igi-contents-title";t.textContent="Contents";nav.appendChild(t);
 var ul=document.createElement("ul");
-hs.forEach(function(h){if(!h.id)h.id=slug(h.textContent);var li=document.createElement("li"),a=document.createElement("a");a.href="#"+h.id;
-var c=h.cloneNode(true);Array.prototype.forEach.call(c.querySelectorAll(".anchor-heading,.fa-sec-box,svg,button"),function(n){n.remove();});
-a.textContent=c.textContent.replace(/\\s+/g," ").trim();li.appendChild(a);ul.appendChild(li);});
+rows.forEach(function(r){var li=item(hs[r.i]);if(r.sub.length){var sub=document.createElement("ul");sub.className="igi-contents-sub";r.sub.forEach(function(k){sub.appendChild(item(hs[k]));});li.appendChild(sub);}ul.appendChild(li);});
 nav.appendChild(ul);
-var h1=main.querySelector("h1");
-if(h1&&h1.parentNode===main)h1.insertAdjacentElement("afterend",nav);else main.insertBefore(nav,main.firstChild);
+var h1=main.querySelector("h1"),meta=main.querySelector(":scope > .ig-metadata");
+if(h1&&h1.parentNode===main)h1.insertAdjacentElement("afterend",nav);else if(meta)meta.insertAdjacentElement("afterend",nav);else main.insertBefore(nav,main.firstChild);
 })();`;
 
 /**
@@ -2418,9 +2461,12 @@ function stageDeclaredSource(igSrc: string, out: string, opts: StageOptions): St
   // navbar, with the IG's TOC declared as its section. Needs the IG's menu;
   // without one the site keeps just-the-docs' layout and says so.
   if (opts.menu) {
-    // The extra rows are the IG-level pages the Publisher links outside its
-    // menu: its own table of contents, and the releases page when written.
-    const extra = [{ label: "Table of Contents", href: "toc.html" }, ...(generated.includes("releases.md") ? [{ label: "Releases", href: "releases.html" }] : [])];
+    // The rows the Publisher links outside its menu: its table of contents
+    // FIRST, where its breadcrumb starts ("Table of Contents > Home"; owner,
+    // 2026-11-14, card: "First row, above Home"), and the releases page last
+    // when written.
+    const lead = [{ label: "Table of Contents", href: "toc.html" }];
+    const extra = generated.includes("releases.md") ? [{ label: "Releases", href: "releases.html" }] : [];
     // A menu item this build does not serve goes where the page links do
     // (`artifacts.html` with no artefact index: folio-assistant#2741, 50 dead
     // links from an immunization IG's top bar).
@@ -2445,7 +2491,7 @@ function stageDeclaredSource(igSrc: string, out: string, opts: StageOptions): St
         ...(ml.reviewed ? {} : { unreviewed: unreviewedLabel(ml.locale) }),
       };
     });
-    writeFileSync(join(out, "_layouts", "default.html"), harnessLayout(igTopBar(menu, baseurl, title, opts.search ? igSearchAt(baseurl) : undefined, bars), igTocNav(menu, baseurl, extra), title));
+    writeFileSync(join(out, "_layouts", "default.html"), harnessLayout(igTopBar(menu, baseurl, title, opts.search ? igSearchAt(baseurl) : undefined, bars), igTocNav(menu, baseurl, extra, lead), title));
   }
   writeFileSync(
     join(out, "_config.yml"),
