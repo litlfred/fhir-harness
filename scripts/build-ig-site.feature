@@ -649,6 +649,14 @@ Feature: Staging an IG as one just-the-docs site
     Then 2 links are relinked
     And the template assets point at the canonical and the page's own stylesheet is unchanged
 
+  @test:scripts/build-ig-site.test.ts::the_Publisher's_page_footer_on_the_IG_site's_own_pages_(#1901)::qaReportWrittenInEachLocaleWithTheNotice
+  Scenario: the QA report is written in each locale with the machine-translation notice and its text direction
+    Given the QA page in English, French and Arabic
+    When the site is staged
+    Then fr/qa.md and ar/qa.md are written, unverified and not reviewed, ltr and rtl
+    And the English page names every locale it is available in
+    And no layout reads Jekyll's own page.dir for the text direction
+
   @test:scripts/build-ig-site.test.ts::the_Publisher's_page_footer_on_the_IG_site's_own_pages_(#1901)::qaReportWrittenAsQaMd
   Scenario: the QA report: written as qa.md, linked as the Publisher's qa.html, and the AST's build day stands in for the package's
     Given an IG whose AST manifest was generated on 2026-11-05 and whose index page links the QA report as qa.html

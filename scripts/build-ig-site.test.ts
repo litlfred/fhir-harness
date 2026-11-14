@@ -671,6 +671,30 @@ describe("the Publisher's page footer on the IG site's own pages (#1901)", () =>
     rmSync(d, { recursive: true, force: true });
   });
 
+  test("qaReportWrittenInEachLocaleWithTheNotice", () => {
+    const d = mkdtempSync(join(tmpdir(), "ig-qa-locales-"));
+    const src = join(d, "src");
+    mkdirSync(join(src, "input", "pagecontent"), { recursive: true });
+    writeFileSync(join(src, "sushi-config.yaml"), sushi);
+    writeFileSync(join(src, "input", "pagecontent", "index.md"), "# index\n");
+    const page = "---\ntitle: QA Report\nnav_exclude: true\n---\nbody\n";
+    const r = stageIgSite(src, join(d, "out"), { menu, qaPage: page, qaPages: { en: page, fr: page.replace("QA Report", "Rapport"), ar: page } });
+    const out = join(d, "out");
+    expect(r.qa).toBe("written");
+    expect(r.translated).toEqual(["ar/qa.md", "fr/qa.md"]);
+    const fr = readFileSync(join(out, "fr", "qa.md"), "utf-8");
+    expect(fr).toContain('lang: "fr"');
+    expect(fr).toContain('translation_status: "unverified"');
+    expect(fr).toContain("translation_reviewed: false");
+    expect(fr).toContain('text_dir: "ltr"');
+    expect(fr).toContain("title: Rapport");
+    expect(readFileSync(join(out, "ar", "qa.md"), "utf-8")).toContain('text_dir: "rtl"');
+    expect(readFileSync(join(out, "qa.md"), "utf-8")).toContain('available_locales: ["en","fr","ar"]');
+    // Not Jekyll's own `page.dir` (the page's folder), which drew dir="/" on every page.
+    for (const f of readdirSync(join(out, "_layouts"))) expect({ f, dir: /page\.dir\b/.test(readFileSync(join(out, "_layouts", f), "utf-8")) }).toEqual({ f, dir: false });
+    rmSync(d, { recursive: true, force: true });
+  });
+
   test("igOwnQaPageWins", () => {
     const d = mkdtempSync(join(tmpdir(), "ig-footer-qa-"));
     const src = join(d, "src");

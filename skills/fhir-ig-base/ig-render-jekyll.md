@@ -198,6 +198,27 @@ harness's QA report (`ig-qa-page.ts`): the FHIR QA the build holds (the
 Publisher's `qa.json` carried with the AST, the AST's record and validity) and
 the knowledge graph's (cat-harness-tools `kg-qa-report.ts`).
 
+The QA report is written in every locale the IG translates its pages into, as
+`<locale>/qa.html` (owner, 2026-11-14: *"For this page why is there no
+translation?"*). Its own words come from this layer's catalogues
+(`translations/<locale>/generated-pages/ig-qa-page.po`, `ig-qa-page-i18n.ts`).
+The Publisher's messages come from the Publisher's own translations first:
+`ig-publisher-i18n.ts` fetches `Messages_<lang>.properties` from
+`org.hl7.fhir.utilities` at exactly the core version the AST recorded and
+translates each message by its `message-id`, refusing a Publisher template
+whose placeholders differ from the English. What the Publisher lacks comes from
+`translations/<locale>/publisher/messages.po`, an agent's machine translation;
+`ig-publisher-i18n.ts needs --merge --site <url>` appends what a build lacks,
+each entry with an example and links to the rows that print it. Every row is
+addressable (`qa.html#qa-m<group>-<row>`), and `assets/fhir-qa/i18n-usage.json`
+says, per locale, where each string is used and whether it is the Publisher's or
+a machine translation. A translated QA page is never reviewed by a person: it
+carries the machine-translation notice, "Show English" shows the Publisher's
+original beside each message, and the KG half (cat-harness-tools' English) is
+marked `lang="en"` and says it is English only. The page's text direction is
+front matter `text_dir`, never `dir`: Jekyll's own `page.dir` is the page's
+folder, which drew `dir="/"` on every page.
+
 ### Search and the language picker
 
 The folio rail replaces the theme's side menu (`#site-nav` is dropped;
