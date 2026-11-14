@@ -25,6 +25,7 @@
     "scripts/ig-release.ts",
     "scripts/ig-repo-site.ts",
     "scripts/ig-site-data.ts",
+    "scripts/ig-version-chrome.ts",
     "scripts/ingest-ig-chrome.ts",
     "scripts/ingest-ig-menu.ts",
     "scripts/stage-local-ig.ts"
