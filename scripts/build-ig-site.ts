@@ -845,7 +845,7 @@ export function thinIgLayout(assetsAt: string, tocNav = "", sectionLabel?: strin
   const asset = (f: string) => `{{ '${assetsAt}${f}' | relative_url }}`;
   return [
     "<!doctype html>",
-    '<html lang="{{ page.lang | default: site.lang | default: \'en\' }}"{% if page.dir %} dir="{{ page.dir }}"{% endif %}>',
+    '<html lang="{{ page.lang | default: site.lang | default: \'en\' }}"{% if page.text_dir %} dir="{{ page.text_dir }}"{% endif %}>',
     "<head>",
     '<meta charset="utf-8">',
     // The language picker's block, from the page's front matter, when the IG has translations of it (fhir-harness#382).
@@ -1402,6 +1402,13 @@ export interface StageOptions {
    * if its source holds one, wins and this is not written.
    */
   qaPage?: string;
+  /**
+   * The QA page in other locales, keyed by locale (`ig-qa-page.ts`
+   * buildQaPage): each is written to `<locale>/qa.md` with the language
+   * picker's front matter and the machine-translation notice, when
+   * {@link StageOptions.qaPage} is written.
+   */
+  qaPages?: Record<string, string>;
   /** The IG's FHIR AST; default `<src>/output-ast`. Its resources become `site.data` (see {@link astResourceData}). */
   ast?: string;
   /**
@@ -2086,7 +2093,8 @@ function stageDeclaredSource(igSrc: string, out: string, opts: StageOptions): St
       const data = {
         ...tr.data,
         ...localeFrontMatter({ lang: l.locale, available, status: reviewed ? "verified" : "unverified", source: `${name}.html`, reviewed }),
-        dir: dirFor(l.locale),
+        // Not `dir`: Jekyll's own `page.dir` is the page's folder, which drew `dir="/"` on every page.
+        text_dir: dirFor(l.locale),
         translated_spans: `${t.translated}/${t.total}`,
       };
       // Out of the menu: the picker, not the nav, leads to it.
@@ -2125,8 +2133,20 @@ function stageDeclaredSource(igSrc: string, out: string, opts: StageOptions): St
   if (opts.qaPage !== undefined) {
     if (pages.includes("qa.md")) qa = "the IG's source holds its own qa page";
     else {
-      writeFileSync(join(out, "qa.md"), opts.qaPage);
+      // The QA page's languages (owner, 2026-11-14: "For this page why is there no translation?").
+      // The page carries its own front matter; this is only writePage's fallback.
+      const QA_NAV: PageNav = { title: "QA Report", navOrder: 999, navExclude: true };
+      const qaLocales = Object.keys(opts.qaPages ?? {}).filter((l) => l !== SOURCE_LOCALE);
+      const available = [SOURCE_LOCALE, ...qaLocales];
+      if (qaLocales.length) writePage(join(out, "qa.md"), opts.qaPage, localeFrontMatter({ lang: SOURCE_LOCALE, available }), QA_NAV);
+      else writeFileSync(join(out, "qa.md"), opts.qaPage);
       generated.push("qa.md");
+      for (const l of qaLocales) {
+        // Never reviewed by a person: its words are the Publisher's and an agent's translations.
+        const data = { ...localeFrontMatter({ lang: l, available, status: "unverified", source: "qa.html", reviewed: false }), text_dir: dirFor(l) };
+        writePage(join(out, l, "qa.md"), opts.qaPages![l]!, data, QA_NAV);
+        translatedPages.push(`${l}/qa.md`);
+      }
       qa = "written";
     }
   }
