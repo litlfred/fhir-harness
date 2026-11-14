@@ -113,7 +113,11 @@ jobs:
         run: |
           set +e
           bun run cat-harness-tools/scripts/kg-audit.ts --instance "./$INSTANCE" | tail -25
-          n="$(find "${{ steps.home.outputs.home }}" "build/layers/${{ steps.home.outputs.home }}" -name '*.kg-qa.json' 2>/dev/null | wc -l)"
+          mkdir -p "${{ steps.home.outputs.home }}"
+          if [ -d "build/layers/${{ steps.home.outputs.home }}" ]; then
+            cp -R "build/layers/${{ steps.home.outputs.home }}/." "${{ steps.home.outputs.home }}/"
+          fi
+          n="$(find "${{ steps.home.outputs.home }}" -name '*.kg-qa.json' 2>/dev/null | wc -l)"
           set -e
           echo "kg-audit sidecars written: $n"
           [ "$n" -gt 0 ] || { echo "::error::kg-audit wrote no sidecar under ${{ steps.home.outputs.home }}: nothing to publish"; exit 1; }
