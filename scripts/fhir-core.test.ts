@@ -4,7 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { gzipSync } from "node:zlib";
 
-import { FhirCoreReleaseSchema, isCoreDefinition } from "../schemas/fhir-core.ts";
+import { FhirCorePinsKind, FhirCoreReleaseKind, FhirCoreReleaseSchema, isCoreDefinition } from "../schemas/fhir-core.ts";
 import { sha512Integrity } from "./fhir-cache-seed-npm.ts";
 import {
   checkCore,
@@ -188,6 +188,22 @@ describe("fhir-core", () => {
       await indexReleases(root, { fetcher: async () => tgz, log: quiet });
       writePins(root, gzipSync(Buffer.from("different")));
       expect(checkCore(root).errors.join("\n")).toContain("not the pin's");
+    });
+  });
+
+  describe("node kinds", () => {
+    test("the kinds the validators name judge the files as the schemas do", async () => {
+      await indexReleases(root, { fetcher: async () => tgz, log: quiet });
+      const read = JSON.parse(readFileSync(join(root, "fhir-core", "r4", "manifest.json"), "utf8"));
+      expect(FhirCoreReleaseKind.schema.safeParse(read).success).toBe(true);
+      expect(FhirCoreReleaseKind.schema.safeParse({ ...read, extra: 1 }).success).toBe(false);
+      const unread = { ...read, status: "unread", reason: "x" };
+      expect(FhirCoreReleaseKind.schema.safeParse(unread).success).toBe(false);
+      const { counts: _c, definitions: _d, ...head } = unread;
+      expect(FhirCoreReleaseKind.schema.safeParse(head).success).toBe(true);
+      const pins = JSON.parse(readFileSync(join(root, "fhir-core", "pins.json"), "utf8"));
+      expect(FhirCorePinsKind.schema.safeParse(pins).success).toBe(true);
+      expect(FhirCorePinsKind.schema.safeParse({ ...pins, releases: [...pins.releases, ...pins.releases] }).success).toBe(false);
     });
   });
 

@@ -61,6 +61,13 @@ Feature: The FHIR core definitions of each stable release, read from a pinned pa
     When it is checked
     Then it is an error naming the pin
 
+  @test:scripts/fhir-core.test.ts::fhir-core::node_kinds::the_kinds_the_validators_name_judge_the_files_as_the_schemas_do
+  Scenario: The node kinds judge as the schemas do
+    Given an indexed release and its pins
+    Then the release kind accepts the manifest and refuses an extra key
+    And it refuses an unread release that still lists definitions, and accepts one that lists none
+    And the pins kind accepts the pins and refuses a release pinned twice
+
   @test:scripts/fhir-core.test.ts::fhir-core::the_committed_graph::the_committed_pins_and_manifests_check_clean,_one_stable_release_each
   Scenario: The committed graph is R4, R4B and R5, and checks clean
     Given this layer's fhir-core directory

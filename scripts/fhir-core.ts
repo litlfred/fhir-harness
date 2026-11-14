@@ -45,10 +45,10 @@ import {
   type FhirCorePin,
   FhirCorePinsSchema,
   type FhirCoreReleaseManifest,
-  FhirCoreReleaseSchema,
-  type FhirRelease,
+    type FhirRelease,
   FhirReleaseSchema,
   isCoreDefinition,
+  parseRelease,
   RELEASE_DIR,
   SELECTION,
 } from "../schemas/fhir-core.ts";
@@ -114,7 +114,7 @@ export function manifestPath(root: string, release: FhirRelease): string {
 
 export function readManifest(root: string, release: FhirRelease): FhirCoreReleaseManifest | null {
   const p = manifestPath(root, release);
-  return existsSync(p) ? FhirCoreReleaseSchema.parse(JSON.parse(readFileSync(p, "utf8"))) : null;
+  return existsSync(p) ? parseRelease(JSON.parse(readFileSync(p, "utf8"))) : null;
 }
 
 /** The chosen definitions in a package, each with its bytes, sorted by canonical URL. */
@@ -156,7 +156,7 @@ export function selectDefinitions(
 export function readManifestFromPackage(pin: FhirCorePin, tgz: Buffer): FhirCoreReleaseManifest {
   const { definitions, excluded } = selectDefinitions(pin, tgzFiles(tgz));
   const count = (k: CoreDefinition["kind"]) => definitions.filter((d) => d.entry.kind === k).length;
-  return FhirCoreReleaseSchema.parse({
+  return parseRelease({
     $schema: FHIR_CORE_RELEASE_TAG,
     release: pin.release,
     fhirVersion: pin.fhirVersion,
@@ -169,7 +169,7 @@ export function readManifestFromPackage(pin: FhirCorePin, tgz: Buffer): FhirCore
 }
 
 export function unreadManifest(pin: FhirCorePin, reason: string): FhirCoreReleaseManifest {
-  return FhirCoreReleaseSchema.parse({
+  return parseRelease({
     $schema: FHIR_CORE_RELEASE_TAG,
     release: pin.release,
     fhirVersion: pin.fhirVersion,

@@ -30,6 +30,7 @@
  *
  * @graphNode schema
  */
+import { nodeKind } from "@litlfred/cat-harness-tools/schemas/kg/node-kind.ts";
 import { z } from "zod";
 
 export const FHIR_CORE_PINS_TAG = "folio-fhir-core-pins/v1" as const;
@@ -74,7 +75,7 @@ export const FhirCorePinSchema = z
   .refine((p) => p.package.version === p.fhirVersion, { message: "a core package's version is its FHIR version" });
 export type FhirCorePin = z.infer<typeof FhirCorePinSchema>;
 
-export const FhirCorePinsSchema = z
+export const FhirCorePinsObject = z
   .object({
     $schema: z.literal(FHIR_CORE_PINS_TAG),
     registry: z.literal("https://packages.fhir.org"),
@@ -82,14 +83,25 @@ export const FhirCorePinsSchema = z
     note: z.string().min(1),
     releases: z.array(FhirCorePinSchema).min(1),
   })
-  .strict()
-  .superRefine((d, ctx) => {
-    const seen = new Set<string>();
-    for (const [i, p] of d.releases.entries()) {
-      if (seen.has(p.release)) ctx.addIssue({ code: "custom", path: ["releases", i, "release"], message: `${p.release} is pinned twice` });
-      seen.add(p.release);
-    }
-  });
+  .strict();
+
+/** No release is pinned twice. */
+export function pinsAgree(d: z.infer<typeof FhirCorePinsObject>, ctx: z.RefinementCtx): void {
+  const seen = new Set<string>();
+  for (const [i, p] of d.releases.entries()) {
+    if (seen.has(p.release)) ctx.addIssue({ code: "custom", path: ["releases", i, "release"], message: `${p.release} is pinned twice` });
+    seen.add(p.release);
+  }
+}
+
+export const FhirCorePinsSchema = FhirCorePinsObject.superRefine(pinsAgree);
+
+export const FhirCorePinsKind = nodeKind("folio-fhir-core-pins", [], FhirCorePinsObject.shape, {
+  strict: true,
+  refine: pinsAgree,
+  term: "FHIR core pins",
+  summary: "Which hl7.fhir.<release>.core package each stable FHIR release is read from, by version, sha1 and sha512.",
+});
 export type FhirCorePins = z.infer<typeof FhirCorePinsSchema>;
 
 export const SdKindSchema = z.enum(["primitive-type", "complex-type", "resource"]);
@@ -119,53 +131,82 @@ export const CoreDefinitionSchema = z
   });
 export type CoreDefinition = z.infer<typeof CoreDefinitionSchema>;
 
-const ManifestHead = {
-  $schema: z.literal(FHIR_CORE_RELEASE_TAG),
-  release: FhirReleaseSchema,
-  fhirVersion: StableVersion,
-  package: FhirCorePackageSchema,
-  /** The rule {@link isCoreDefinition} applies, in words. */
-  selection: z.string().min(1),
-};
-
-export const FhirCoreReadSchema = z
+export const CountsSchema = z
   .object({
-    ...ManifestHead,
-    status: z.literal("read"),
-    counts: z
-      .object({
-        "primitive-type": z.number().int().nonnegative(),
-        "complex-type": z.number().int().nonnegative(),
-        resource: z.number().int().nonnegative(),
-        /** StructureDefinitions in the package the selection left out (profiles, extensions, logical models). */
-        excluded: z.number().int().nonnegative(),
-      })
-      .strict(),
-    definitions: z.array(CoreDefinitionSchema).min(1),
-  })
-  .strict()
-  .superRefine((m, ctx) => {
-    let prev = "";
-    for (const [i, d] of m.definitions.entries()) {
-      if (d.url <= prev) ctx.addIssue({ code: "custom", path: ["definitions", i, "url"], message: `${d.url} is out of order or repeated` });
-      prev = d.url;
-      if (d.version !== m.fhirVersion) ctx.addIssue({ code: "custom", path: ["definitions", i, "version"], message: `${d.id} is ${d.version}, not ${m.fhirVersion}` });
-    }
-    const counted = m.counts["primitive-type"] + m.counts["complex-type"] + m.counts.resource;
-    if (counted !== m.definitions.length) ctx.addIssue({ code: "custom", path: ["counts"], message: `counts sum to ${counted}, ${m.definitions.length} definitions listed` });
-  });
-
-/** A release that could not be read. No `definitions`: an unread graph is not an empty one. */
-export const FhirCoreUnreadSchema = z
-  .object({
-    ...ManifestHead,
-    status: z.literal("unread"),
-    reason: z.string().min(1),
+    "primitive-type": z.number().int().nonnegative(),
+    "complex-type": z.number().int().nonnegative(),
+    resource: z.number().int().nonnegative(),
+    /** StructureDefinitions in the package the selection left out (profiles, extensions, logical models). */
+    excluded: z.number().int().nonnegative(),
   })
   .strict();
 
-export const FhirCoreReleaseSchema = z.discriminatedUnion("status", [FhirCoreReadSchema, FhirCoreUnreadSchema]);
-export type FhirCoreReleaseManifest = z.infer<typeof FhirCoreReleaseSchema>;
+/**
+ * One object rather than a discriminated union, so the node kind can be made
+ * from its shape (`nodeKind` composes shapes); {@link releaseAgrees} holds the
+ * two statuses apart, and {@link FhirCoreReleaseManifest} is the union a reader
+ * narrows on `status`.
+ */
+export const FhirCoreReleaseObject = z
+  .object({
+    $schema: z.literal(FHIR_CORE_RELEASE_TAG),
+    release: FhirReleaseSchema,
+    fhirVersion: StableVersion,
+    package: FhirCorePackageSchema,
+    /** The rule {@link isCoreDefinition} applies, in words. */
+    selection: z.string().min(1),
+    status: z.enum(["read", "unread"]),
+    /** `unread` only: why the package could not be read. */
+    reason: z.string().min(1).optional(),
+    /** `read` only. */
+    counts: CountsSchema.optional(),
+    /** `read` only, and never empty. An `unread` release has NO `definitions`: unread is not empty. */
+    definitions: z.array(CoreDefinitionSchema).min(1).optional(),
+  })
+  .strict();
+
+/** What no field's own schema can say: which fields each status carries, order, versions and counts. */
+export function releaseAgrees(m: z.infer<typeof FhirCoreReleaseObject>, ctx: z.RefinementCtx): void {
+  if (m.status === "unread") {
+    if (m.reason === undefined) ctx.addIssue({ code: "custom", path: ["reason"], message: "an unread release says why" });
+    for (const k of ["counts", "definitions"] as const) {
+      if (m[k] !== undefined) ctx.addIssue({ code: "custom", path: [k], message: `an unread release has no ${k}: unread is not empty` });
+    }
+    return;
+  }
+  if (m.reason !== undefined) ctx.addIssue({ code: "custom", path: ["reason"], message: "a read release has no reason" });
+  if (m.counts === undefined || m.definitions === undefined) {
+    ctx.addIssue({ code: "custom", path: ["definitions"], message: "a read release lists its counts and definitions" });
+    return;
+  }
+  let prev = "";
+  for (const [i, d] of m.definitions.entries()) {
+    if (d.url <= prev) ctx.addIssue({ code: "custom", path: ["definitions", i, "url"], message: `${d.url} is out of order or repeated` });
+    prev = d.url;
+    if (d.version !== m.fhirVersion) ctx.addIssue({ code: "custom", path: ["definitions", i, "version"], message: `${d.id} is ${d.version}, not ${m.fhirVersion}` });
+  }
+  const counted = m.counts["primitive-type"] + m.counts["complex-type"] + m.counts.resource;
+  if (counted !== m.definitions.length) ctx.addIssue({ code: "custom", path: ["counts"], message: `counts sum to ${counted}, ${m.definitions.length} definitions listed` });
+}
+
+export const FhirCoreReleaseSchema = FhirCoreReleaseObject.superRefine(releaseAgrees);
+
+type ReleaseHead = Omit<z.infer<typeof FhirCoreReleaseObject>, "status" | "reason" | "counts" | "definitions">;
+export type FhirCoreRead = ReleaseHead & { status: "read"; counts: z.infer<typeof CountsSchema>; definitions: CoreDefinition[] };
+export type FhirCoreUnread = ReleaseHead & { status: "unread"; reason: string };
+export type FhirCoreReleaseManifest = FhirCoreRead | FhirCoreUnread;
+
+/** Parse a release manifest; the refinement guarantees the union's shape. */
+export function parseRelease(value: unknown): FhirCoreReleaseManifest {
+  return FhirCoreReleaseSchema.parse(value) as FhirCoreReleaseManifest;
+}
+
+export const FhirCoreReleaseKind = nodeKind("folio-fhir-core-release", [], FhirCoreReleaseObject.shape, {
+  strict: true,
+  refine: releaseAgrees,
+  term: "FHIR core release",
+  summary: "What was read from one stable FHIR release's core package: its pin, and every type and resource StructureDefinition by canonical URL, or why it could not be read.",
+});
 
 export const SELECTION =
   "StructureDefinitions whose url is http://hl7.org/fhir/StructureDefinition/<id>, whose kind is primitive-type, complex-type or resource, and whose derivation is specialization or absent (the root types). Constraint profiles, extension definitions and logical models are left out and counted as excluded.";
