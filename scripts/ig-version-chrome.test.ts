@@ -15,7 +15,7 @@ import {
   withIgVersionChrome,
 } from "./ig-version-chrome.ts";
 
-/** A non-WHO IG on purpose: this layer names no publisher. */
+/** A neutral example IG on purpose: this layer names no publisher. */
 const CFG = {
   id: "example.fhir.uv.demo",
   canonical: "http://example.org/fhir/demo/",

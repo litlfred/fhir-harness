@@ -1,7 +1,7 @@
 /**
  * The IG's version chrome on every page of its site: the three things the IG
- * Publisher's pages carry and ours did not (owner, 2026-11-14, from the
- * published smart-trust IG: "missing some chrome (versions, releases etc)").
+ * Publisher's pages carry and ours did not (owner, 2026-11-14, from a
+ * published IG: "missing some chrome (versions, releases etc)").
  *
  * 1. **The version beside the IG's title** in the page bar: `1.7.5 - ci-build`
  *    and the jurisdiction's flag ({@link igVersionTag}). Owner: "put version
