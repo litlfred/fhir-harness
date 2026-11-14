@@ -154,6 +154,7 @@ import { homedir, tmpdir } from "node:os";
 import { basename, dirname, join, relative, resolve, sep } from "node:path";
 
 import { parse as parseYaml } from "yaml";
+import { igVersionFacts, stampIgVersionChrome } from "./ig-version-chrome.ts";
 
 import { conceptOf, profilesOf } from "./ast-to-artifact-index.ts";
 import { astValidity, type AstValidity, buildKind, readAst } from "./ig-ast.ts";
@@ -1336,6 +1337,11 @@ export function publisherPages(o: { site: string; ast: string; work?: string; ig
     log(`publisher pages: the language picker's block (fa-translation-meta) written on ${stamped} page(s) that lacked one`);
     const barred = stampIgBar(o.site, igTitle(o.ig) ?? basename(resolve(o.ig)));
     log(`publisher pages: the IG's slim bar given to ${barred.pages} page(s) that had another or none, with the shared page layout`);
+    const facts = igVersionFacts(o.ig);
+    if (facts) {
+      const v = stampIgVersionChrome(o.site, facts);
+      log(`publisher pages: the IG's version (${facts.version ?? "none stated"}), its version banner and the home page's metadata table laid over ${v.pages} page(s)`);
+    } else log("publisher pages: no sushi-config.yaml in the read scope, so no version chrome");
     const tocd = stampIgTocNav(o.site);
     log(`publisher pages: the IG's TOC declared for the rail on ${tocd.pages} thin page(s) that lacked it`);
     const stamp = igSiteStamp(o.ig);
@@ -1369,10 +1375,13 @@ export function publisherPages(o: { site: string; ast: string; work?: string; ig
  * IG layers' artefact indexes the mount of served directories copied in
  * ({@link dropForeignIndexes}).
  */
-export function lateBar(site: string, ig: string): { lang: number; pages: number } {
+export function lateBar(site: string, ig: string): { lang: number; pages: number; versioned: number } {
   const lang = stampTranslationMeta(site, ig);
   const { pages } = stampIgBar(site, igTitle(ig) ?? basename(resolve(ig)));
-  return { lang, pages };
+  // The late pages get the version chrome too; a page that carries it is left as it was.
+  const facts = igVersionFacts(ig);
+  const versioned = facts ? stampIgVersionChrome(site, facts).pages : 0;
+  return { lang, pages, versioned };
 }
 
 /**
@@ -1435,7 +1444,7 @@ if (import.meta.main) {
       publisherPages({ site: resolve(target), ast: join(ig, AST_DIR), ...(work ? { work } : {}), ig, ...(cql ? { cql } : {}) });
     } else if (cmd === "bar" && target) {
       const r = lateBar(resolve(target), ig);
-      console.log(`bar: the language picker's block on ${r.lang} and the IG's slim bar on ${r.pages} page(s) the platform wrote after publisher-pages`);
+      console.log(`bar: the language picker's block on ${r.lang}, the IG's slim bar on ${r.pages} and its version chrome on ${r.versioned} page(s) the platform wrote after publisher-pages`);
       const dropped = dropForeignIndexes(resolve(target), ig);
       for (const d of dropped) console.log(`bar: ${d.route}/ left out (${(d.bytes / 1e6).toFixed(2)} MB), another IG layer's artefact index: that IG publishes it on its own site, and no page here reads it`);
     } else {
