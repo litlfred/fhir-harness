@@ -580,18 +580,18 @@ ${IG_SEARCH_CSS.trim()}
  * {@link IG_CONTENTS_JS} by `toString()`, so the browser runs this code.
  */
 export function igContentsRows(hs: ReadonlyArray<{ level: number; i: number }>): Array<{ i: number; sub: number[] }> {
-  var top = 0;
-  for (var k = 0; k < hs.length; k++) if (hs[k]!.level >= 2 && hs[k]!.level <= 4 && (top === 0 || hs[k]!.level < top)) top = hs[k]!.level;
+  let top = 0;
+  for (const h of hs) if (h.level >= 2 && h.level <= 4 && (top === 0 || h.level < top)) top = h.level;
   if (top === 0) return [];
-  var rows: Array<{ i: number; sub: number[] }> = [];
-  var count = 0;
-  for (var j = 0; j < hs.length; j++) {
-    var h = hs[j]!;
+  const rows: Array<{ i: number; sub: number[] }> = [];
+  let count = 0;
+  for (const h of hs) {
     if (h.level === top) {
       rows.push({ i: h.i, sub: [] });
       count++;
     } else if (h.level === top + 1) {
-      if (rows.length) rows[rows.length - 1]!.sub.push(h.i);
+      const last = rows[rows.length - 1];
+      if (last) last.sub.push(h.i);
       else rows.push({ i: h.i, sub: [] });
       count++;
     }
@@ -615,7 +615,7 @@ export function igContentsRows(hs: ReadonlyArray<{ level: number; i: number }>):
 export const IG_CONTENTS_JS = `(function(){
 var main=document.getElementById("main-content");
 if(!main||main.querySelector(".igi-contents"))return;
-var rowsOf=${igContentsRows.toString().replace(/!(?=[.)\]])/g, "")};
+var rowsOf=${igContentsRows.toString()};
 var hs=Array.prototype.filter.call(main.querySelectorAll("h2,h3,h4"),function(h){return !h.closest(".igi-contents,#ig-footer,.ig-edit,.ig-metadata")&&h.textContent.trim();});
 var rows=rowsOf(hs.map(function(h,i){return {level:+h.tagName.charAt(1),i:i};}));
 if(!rows.length)return;
