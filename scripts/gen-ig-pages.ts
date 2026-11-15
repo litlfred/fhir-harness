@@ -140,7 +140,7 @@ import { siteRootFrom, visualiserRoute } from "@litlfred/cat-harness-tools/schem
 import {
   declarationPathIn,
   directoriesForGraph,
-  instanceRootsIn,
+  layerRootsIn,
   checkoutRootFor,
   readDeclaration,
 } from "@litlfred/cat-harness-tools/schemas/kg/cat-harness.js";
@@ -432,7 +432,7 @@ function declaredName(root: string): string | undefined {
 function loadChrome(): IgChrome | undefined {
   if (CHROME_OWNER === undefined) return undefined;
   const file = chromeFileFor(checkoutRootFor(INSTANCE), CHROME_OWNER, {
-    instanceRootsIn,
+    layerRootsIn,
     declarationNameOf: declaredName,
     directoriesForGraph: (root, graph) => directoriesForGraph(root, graph),
     exists: existsSync,

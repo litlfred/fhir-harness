@@ -61,7 +61,7 @@ import { IG_CHROME_SCOPE, type IgFooterData } from "./ig-footer.ts";
 import { execFileSync } from "node:child_process";
 import { cpSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { basename, join, relative, resolve, sep } from "node:path";
-import { declarationPathIn, instanceRootsIn, readDeclaration } from "@litlfred/cat-harness-tools/schemas/kg/cat-harness.js";
+import { declarationPathIn, layerRootsIn, readDeclaration } from "@litlfred/cat-harness-tools/schemas/kg/cat-harness.js";
 import { instanceThemes } from "@litlfred/cat-harness-tools/schemas/ui/theme-by-ref.js";
 import { composeIgSite, dataOverwritesQa, describeStage, stageIgSite, type IgMenu, type IndexedArtifact, type SitePalette, type StageOptions } from "./build-ig-site";
 import { IgReleasesSchema, type IgReleases } from "../schemas/ig-releases.ts";
@@ -152,7 +152,7 @@ export function githubEditBase(repo: string): string | undefined {
 
 /** The layers `name` declares it `needs`, by name. */
 export function instanceNeeds(repoRoot: string, name: string): string[] {
-  const root = instanceRootsIn(repoRoot).find((r) => (readDeclaration(r)?.name ?? basename(r)) === name);
+  const root = layerRootsIn(repoRoot).find((r) => (readDeclaration(r)?.name ?? basename(r)) === name);
   return root ? (readDeclaration(root)?.needs ?? []) : [];
 }
 
@@ -439,7 +439,7 @@ export function declaredSource(root: string): { repository: string; ref: string 
 export function igsToBuild(repoRoot: string): { build: IgToBuild[]; skipped: string[] } {
   const build: IgToBuild[] = [];
   const skipped: string[] = [];
-  for (const root of instanceRootsIn(repoRoot)) {
+  for (const root of layerRootsIn(repoRoot)) {
     const menuPath = indexReadPath(root, "menu.json");
     if (!existsSync(menuPath)) continue;
     const m = JSON.parse(readFileSync(menuPath, "utf-8")) as MenuFile;

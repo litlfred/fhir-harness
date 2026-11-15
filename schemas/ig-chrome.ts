@@ -282,7 +282,7 @@ export function chromeFileFor(
   repoRoot: string,
   instanceName: string,
   deps: {
-    instanceRootsIn: (repo: string) => string[];
+    layerRootsIn: (repo: string) => string[];
     declarationNameOf: (root: string) => string | undefined;
     directoriesForGraph: (root: string, graph: string) => string[];
     exists: (p: string) => boolean;
@@ -291,12 +291,12 @@ export function chromeFileFor(
 ): string | undefined {
   // A PATH names the owning layer's root directly, relative to the repository
   // root (n3ni stage E). In a fork the platform is a submodule, so the chrome owner sits
-  // at `folio-assistant/<instance>`: two levels down, where `instanceRootsIn`
+  // at `folio-assistant/<instance>`: two levels down, where `layerRootsIn`
   // (one level, by design) cannot see it. Naming it by path keeps the choice
   // explicit, as above, rather than widening a walk until something matches.
   const roots = instanceName.includes("/")
     ? [deps.join(repoRoot, instanceName)].filter((r) => deps.declarationNameOf(r) !== undefined)
-    : deps.instanceRootsIn(repoRoot).filter((r) => deps.declarationNameOf(r) === instanceName);
+    : deps.layerRootsIn(repoRoot).filter((r) => deps.declarationNameOf(r) === instanceName);
   for (const root of roots) {
     // The chrome is the TEMPLATE's styling, so it ships with the harness that
     // carries the template's theme (plan Q4; rehearsed on the WHO SMART Base IG's repository,
