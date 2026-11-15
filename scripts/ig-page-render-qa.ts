@@ -11,7 +11,11 @@
  * the script that draws it into the QA report's "Page scan" panel. It reports
  * and never fails the build: a machine without a browser writes why.
  *
- *   bun run fhir-harness/scripts/ig-page-render-qa.ts <built site> [--limit <n>] [--concurrency <n>]
+ *   bun run fhir-harness/scripts/ig-page-render-qa.ts <built site> [--limit <n>] [--concurrency <n>] [--budget-min <n>]
+ *
+ * The scan stops at its time budget (`SCAN_BUDGET_MS`, 15 minutes) and counts
+ * the pages it did not reach, and each page has a hard limit, so the step
+ * cannot hold a publish.
  *
  * @module fhir-harness/scripts/ig-page-render-qa
  * @covers none — it judges how built pages read, not a declared graph
@@ -43,6 +47,8 @@ export interface PageRenderQa {
   scanned: number;
   /** Pages that did not finish drawing in time, or failed to load. */
   unfinished: string[];
+  /** Pages left unopened because the scan's time budget ran out. */
+  notReached?: number;
   findings: PageFinding[];
 }
 
@@ -145,7 +151,16 @@ async function launch(): Promise<{ browser: import("playwright").Browser } | { u
 }
 
 /** Scan the built site's pages. */
-export async function scanSite(site: string, o: { limit?: number; concurrency?: number; timeoutMs?: number } = {}): Promise<PageRenderQa> {
+/** The whole scan's budget: a QA step reports, so it may never hold the publish (smart-ccc run 43738657067 sat in it for 2 h). */
+export const SCAN_BUDGET_MS = 15 * 60_000;
+
+/** `p`, or `undefined` once `ms` has passed. */
+function within<T>(p: Promise<T>, ms: number): Promise<T | undefined> {
+  let t: ReturnType<typeof setTimeout> | undefined;
+  return Promise.race([p, new Promise<undefined>((ok) => (t = setTimeout(() => ok(undefined), ms)))]).finally(() => clearTimeout(t));
+}
+
+export async function scanSite(site: string, o: { limit?: number; concurrency?: number; timeoutMs?: number; budgetMs?: number } = {}): Promise<PageRenderQa> {
   const out: PageRenderQa = { $schema: PAGE_RENDER_SCHEMA, generatedAt: new Date().toISOString(), scanned: 0, unfinished: [], findings: [] };
   const pages = pagesOf(site).slice(0, o.limit ?? Infinity);
   if (!pages.length) return { ...out, unavailable: "the site has no pages to scan" };
@@ -157,31 +172,51 @@ export async function scanSite(site: string, o: { limit?: number; concurrency?: 
     // Only the site itself: the platform's rail and other hosts are not this IG's pages.
     await ctx.route("**/*", (r) => (r.request().url().startsWith(srv.url) || r.request().url().startsWith("blob:") || r.request().url().startsWith("data:") ? r.continue() : r.abort()));
     const queue = [...pages];
+    const timeout = o.timeoutMs ?? 15000;
+    const deadline = Date.now() + (o.budgetMs ?? SCAN_BUDGET_MS);
+    const scan = async (page: import("playwright").Page, p: string): Promise<void> => {
+      await page.goto(srv.url + p, { waitUntil: "load", timeout });
+      // An artefact page has drawn when its loading line is gone.
+      await page.waitForFunction(() => !document.querySelector(".iga-state, .ast-resource:not([data-state])"), null, { timeout }).catch(() => out.unfinished.push(p));
+      const blocks = (await page.evaluate(COLLECT)) as [string, string][];
+      out.scanned++;
+      for (const [tag, b] of blocks) {
+        const markup = blockLeftovers(b, tag);
+        if (markup.length) out.findings.push({ page: p, markup, excerpt: b.replace(/\s+/g, " ").slice(0, 120) });
+      }
+    };
     const worker = async () => {
-      const page = await ctx.newPage();
+      let page = await ctx.newPage();
       for (let p = queue.shift(); p !== undefined; p = queue.shift()) {
-        try {
-          await page.goto(srv.url + p, { waitUntil: "load", timeout: o.timeoutMs ?? 15000 });
-          // An artefact page has drawn when its loading line is gone.
-          await page.waitForFunction(() => !document.querySelector(".iga-state, .ast-resource:not([data-state])"), null, { timeout: o.timeoutMs ?? 15000 }).catch(() => out.unfinished.push(p!));
-          const blocks = (await page.evaluate(COLLECT)) as [string, string][];
-          out.scanned++;
-          for (const [tag, b] of blocks) {
-            const markup = blockLeftovers(b, tag);
-            if (markup.length) out.findings.push({ page: p, markup, excerpt: b.replace(/\s+/g, " ").slice(0, 120) });
-          }
-        } catch {
-          out.unfinished.push(p);
+        if (Date.now() >= deadline) {
+          queue.unshift(p);
+          break;
+        }
+        // Each page has a hard limit too: Playwright's own timeouts do not cover a
+        // page that never returns from `evaluate`. A page past it is closed, not reused.
+        const done = await within(
+          scan(page, p).then(
+            () => true,
+            () => false,
+          ),
+          2 * timeout + 5000,
+        );
+        if (done !== true) out.unfinished.push(p);
+        if (done === undefined) {
+          await within(page.close(), 5000).catch(() => {});
+          page = await ctx.newPage();
         }
       }
-      await page.close();
+      await within(page.close(), 5000).catch(() => {});
     };
     await Promise.all(Array.from({ length: Math.max(1, o.concurrency ?? 4) }, worker));
+    if (queue.length) out.notReached = queue.length;
   } finally {
     srv.stop();
     await l.browser.close();
   }
-  out.unfinished.sort();
+  // A page past its hard limit may also have been listed by its own wait.
+  out.unfinished = [...new Set(out.unfinished)].sort();
   out.findings.sort((a, b) => a.page.localeCompare(b.page));
   return out;
 }
@@ -195,7 +230,7 @@ export const PAGE_RENDER_JS = String.raw`(function () {
   fetch(box.getAttribute("data-src")).then(function (r) { if (!r.ok) throw new Error("HTTP " + r.status); return r.json(); }).then(function (q) {
     box.textContent = "";
     if (q.unavailable) { box.append(el("p", "Not scanned: " + q.unavailable + ".")); return; }
-    box.append(el("p", q.scanned + " page(s) scanned on " + q.generatedAt + ". Findings: " + (q.findings.length ? q.findings.length + " block(s) show markup as text." : "none.") + (q.unfinished.length ? " " + q.unfinished.length + " page(s) did not finish drawing." : "")));
+    box.append(el("p", q.scanned + " page(s) scanned on " + q.generatedAt + ". Findings: " + (q.findings.length ? q.findings.length + " block(s) show markup as text." : "none.") + (q.unfinished.length ? " " + q.unfinished.length + " page(s) did not finish drawing." : "") + (q.notReached ? " " + q.notReached + " page(s) not reached: the scan's time budget ran out." : "")));
     if (q.findings.length) {
       var t = el("table"), h = el("tr");
       ["page", "left as text", "text"].forEach(function (c) { h.append(el("th", c)); });
@@ -231,7 +266,7 @@ export function pageRenderQaMarkdown(o: { up?: string } = {}): string[] {
 async function main(): Promise<number> {
   const site = process.argv[2];
   if (!site || site.startsWith("--")) {
-    console.error("usage: ig-page-render-qa.ts <built site> [--limit <n>] [--concurrency <n>]");
+    console.error("usage: ig-page-render-qa.ts <built site> [--limit <n>] [--concurrency <n>] [--budget-min <n>]");
     return 2;
   }
   const num = (k: string) => {
@@ -240,11 +275,12 @@ async function main(): Promise<number> {
   };
   const limit = num("limit");
   const concurrency = num("concurrency");
-  const q = await scanSite(site, { ...(limit ? { limit } : {}), ...(concurrency ? { concurrency } : {}) });
+  const budgetMin = num("budget-min");
+  const q = await scanSite(site, { ...(limit ? { limit } : {}), ...(concurrency ? { concurrency } : {}), ...(budgetMin ? { budgetMs: budgetMin * 60_000 } : {}) });
   mkdirSync(join(site, "assets", "fhir-qa"), { recursive: true });
   writeFileSync(join(site, PAGE_RENDER_FILE), `${JSON.stringify(q, null, 1)}\n`);
   writeFileSync(join(site, PAGE_RENDER_SCRIPT), PAGE_RENDER_JS);
-  console.log(q.unavailable ? `page scan: not run — ${q.unavailable}` : `page scan: ${q.scanned} page(s), ${q.findings.length} finding(s), ${q.unfinished.length} unfinished`);
+  console.log(q.unavailable ? `page scan: not run — ${q.unavailable}` : `page scan: ${q.scanned} page(s), ${q.findings.length} finding(s), ${q.unfinished.length} unfinished${q.notReached ? `, ${q.notReached} not reached (time budget)` : ""}`);
   for (const f of q.findings.slice(0, 20)) console.log(`  ${f.page}: ${f.markup.join(", ")} — ${f.excerpt}`);
   return 0;
 }
