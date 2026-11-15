@@ -3,7 +3,7 @@
   "id": "fhir-core-release",
   "validates": {
     "kind": "fhir-core-definitions",
-    "family": "folio-fhir-core-release/v1"
+    "family": "folio-fhir-core-release/v2"
   },
   "schema": "fhir-harness:schemas/fhir-core.ts#FhirCoreReleaseKind"
 }

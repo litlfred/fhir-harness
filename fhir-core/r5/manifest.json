@@ -1,11 +1,12 @@
 {
-  "$schema": "folio-fhir-core-release/v1",
+  "$schema": "folio-fhir-core-release/v2",
   "release": "R5",
   "fhirVersion": "5.0.0",
+  "spec": "https://hl7.org/fhir/R5/",
   "package": {
     "name": "hl7.fhir.r5.core",
     "version": "5.0.0",
-    "tarball": "https://packages.fhir.org/hl7.fhir.r5.core/5.0.0",
+    "tarball": "https://hl7.org/fhir/R5/hl7.fhir.r5.core.tgz",
     "shasum": "9cf2c82eea74c336b68dc9f6558d51c5685ecc0e",
     "integrity": "sha512-LZYFA7ZtmhdiPjY0OEKfHsyka9yND5TfpN17WGjS8yhRfJabkb0N+TiYF2KfPDE7FRhqSdda7y9Gs/Tmj32/ug=="
   },
@@ -28,6 +29,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/account.profile.json",
       "file": "StructureDefinition-Account.json",
       "sha256": "93ff769f7845e974279672be635984b2cc41599c94c63bbf5235728aff5c4b6c"
     },
@@ -41,6 +43,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/activitydefinition.profile.json",
       "file": "StructureDefinition-ActivityDefinition.json",
       "sha256": "db1ef95cb36560a3bcd3f91537a47dd9b017c4ee5347a861ee83857f7bd309bd"
     },
@@ -54,6 +57,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/actordefinition.profile.json",
       "file": "StructureDefinition-ActorDefinition.json",
       "sha256": "efb77a08bad7b8bc2353b10e5fc892ce5732941aa153bcdc7e8b2edc9e293df7"
     },
@@ -67,6 +71,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DataType",
+      "published": "https://hl7.org/fhir/R5/address.profile.json",
       "file": "StructureDefinition-Address.json",
       "sha256": "36df383c3852fc73a844174aaefeeceec6e0eeadf1231cf3052d598eda546336"
     },
@@ -80,6 +85,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/administrableproductdefinition.profile.json",
       "file": "StructureDefinition-AdministrableProductDefinition.json",
       "sha256": "d413d90902757f582a8ca8f182450b4455daae32a2c315ed7c9fedd188d6d167"
     },
@@ -93,6 +99,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/adverseevent.profile.json",
       "file": "StructureDefinition-AdverseEvent.json",
       "sha256": "befee41e9eb0b40d19cefaead798c2ae2ec9277648db7cd2525979ee748efa54"
     },
@@ -106,6 +113,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/Quantity",
+      "published": "https://hl7.org/fhir/R5/age.profile.json",
       "file": "StructureDefinition-Age.json",
       "sha256": "645920ad105889806073c0e904ea8264931c613c050869944d78a60f6e63a905"
     },
@@ -119,6 +127,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/allergyintolerance.profile.json",
       "file": "StructureDefinition-AllergyIntolerance.json",
       "sha256": "1dd218cf64e4194dfec9efd87990e8d7a0c18f2dc664cc154f7dfa20e3a852db"
     },
@@ -132,6 +141,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DataType",
+      "published": "https://hl7.org/fhir/R5/annotation.profile.json",
       "file": "StructureDefinition-Annotation.json",
       "sha256": "3dbc4ff9269928de1e247d411c6e14971747568d4c23e0287a6b7cf718a52d4a"
     },
@@ -145,6 +155,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/appointment.profile.json",
       "file": "StructureDefinition-Appointment.json",
       "sha256": "76774cce4ba5ea482ebbc4b83900fa3be1624333606c36e3bf3d0fedaa434c55"
     },
@@ -158,6 +169,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/appointmentresponse.profile.json",
       "file": "StructureDefinition-AppointmentResponse.json",
       "sha256": "36a23375d31b39d9b9a9baf77a1b596a69e9a6c6ef8473a2c829e89a9fbd9cc2"
     },
@@ -171,6 +183,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/artifactassessment.profile.json",
       "file": "StructureDefinition-ArtifactAssessment.json",
       "sha256": "05e04c278a6bd4939dcecdd44f54e63d1346dd2527f47d0b49a8737a884b8e0b"
     },
@@ -184,6 +197,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DataType",
+      "published": "https://hl7.org/fhir/R5/attachment.profile.json",
       "file": "StructureDefinition-Attachment.json",
       "sha256": "af314d7291011c2457aecdc015576f31aaba99f939f383b3033ea95872d9afb5"
     },
@@ -197,6 +211,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/auditevent.profile.json",
       "file": "StructureDefinition-AuditEvent.json",
       "sha256": "d5913cbfe2afab299f647778c3ad3a53de6d7665a5b4d6fe55a4419a552895e8"
     },
@@ -210,6 +225,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DataType",
+      "published": "https://hl7.org/fhir/R5/availability.profile.json",
       "file": "StructureDefinition-Availability.json",
       "sha256": "115216d1f2cfe20d42c0fcc5d741b06e9267939c833c603bca9176de17b0d243"
     },
@@ -223,6 +239,7 @@
       "abstract": true,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/Element",
+      "published": "https://hl7.org/fhir/R5/backboneelement.profile.json",
       "file": "StructureDefinition-BackboneElement.json",
       "sha256": "d809e327799dd771e80396b4f35318a6a9ea4a1d59593da25f6a5eb8698f4c82"
     },
@@ -236,6 +253,7 @@
       "abstract": true,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DataType",
+      "published": "https://hl7.org/fhir/R5/backbonetype.profile.json",
       "file": "StructureDefinition-BackboneType.json",
       "sha256": "31b95d647b9fdf931cf3ec92f11f03094fac640179d6beed6231add2f7a03b49"
     },
@@ -247,6 +265,7 @@
       "kind": "complex-type",
       "type": "Base",
       "abstract": true,
+      "published": "https://hl7.org/fhir/R5/base.profile.json",
       "file": "StructureDefinition-Base.json",
       "sha256": "f7827442302b5f4f3ceb7aaf3ffe3e435c30dc15557f567fc40db6716965b24d"
     },
@@ -260,6 +279,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/basic.profile.json",
       "file": "StructureDefinition-Basic.json",
       "sha256": "f9b8f4b6d05017a91ef90f5409f2b139a0a1dc4e1fae7bf87613f75fca989a85"
     },
@@ -273,6 +293,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/Resource",
+      "published": "https://hl7.org/fhir/R5/binary.profile.json",
       "file": "StructureDefinition-Binary.json",
       "sha256": "15a37fb2a44292ec7719abec39471dff3752191c0773b6ad8e9a5bce9e72ef14"
     },
@@ -286,6 +307,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/biologicallyderivedproduct.profile.json",
       "file": "StructureDefinition-BiologicallyDerivedProduct.json",
       "sha256": "32f2fb31b841904745be613be508a784bea05f902af732a5c1b00e403282e10b"
     },
@@ -299,6 +321,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/biologicallyderivedproductdispense.profile.json",
       "file": "StructureDefinition-BiologicallyDerivedProductDispense.json",
       "sha256": "b7efdaf8ee1ddb21afb343ceed778aaf3edde62a5978dbe8c391685af11e403b"
     },
@@ -312,6 +335,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/bodystructure.profile.json",
       "file": "StructureDefinition-BodyStructure.json",
       "sha256": "23536b0b771effd5b4b9cd5ae09959144534883a696a37603f3684fb4cf187d7"
     },
@@ -325,6 +349,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/Resource",
+      "published": "https://hl7.org/fhir/R5/bundle.profile.json",
       "file": "StructureDefinition-Bundle.json",
       "sha256": "513d54f7a04d7d3e5bbf183201d9767131c0ad933e2a7c661c004711dec1fb99"
     },
@@ -338,6 +363,7 @@
       "abstract": true,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/canonicalresource.profile.json",
       "file": "StructureDefinition-CanonicalResource.json",
       "sha256": "1b6a969d9b6384725f2e329baf7ec313f5e1c9def4a81bed8f97ca5eba4abb9b"
     },
@@ -351,6 +377,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/capabilitystatement.profile.json",
       "file": "StructureDefinition-CapabilityStatement.json",
       "sha256": "e8dccc7ba1758af3a7766c33bd798cfbf336cd9a932d75ac55c2be627039ebf8"
     },
@@ -364,6 +391,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/careplan.profile.json",
       "file": "StructureDefinition-CarePlan.json",
       "sha256": "863d1790cfc811a474c72f00f949d2e5ae99147b51a207fd078c70036c682b0b"
     },
@@ -377,6 +405,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/careteam.profile.json",
       "file": "StructureDefinition-CareTeam.json",
       "sha256": "32598f51638faecba10aa9ed1e32c31e363c7a611d99ba3d093527f702383806"
     },
@@ -390,6 +419,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/chargeitem.profile.json",
       "file": "StructureDefinition-ChargeItem.json",
       "sha256": "694d3a906642c7d8220cea717f2ee84ec913e61cb781bcc6b084fdc2f92a2e18"
     },
@@ -403,6 +433,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/chargeitemdefinition.profile.json",
       "file": "StructureDefinition-ChargeItemDefinition.json",
       "sha256": "3544266d3e3fef6b36c34f025a0d168d5d076cf8b8dd281d48d9db2145f293f3"
     },
@@ -416,6 +447,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/citation.profile.json",
       "file": "StructureDefinition-Citation.json",
       "sha256": "e905a7f5c942381b0977fa3dcd4a31038ef8b854ea829a0607b60e01469b8d9f"
     },
@@ -429,6 +461,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/claim.profile.json",
       "file": "StructureDefinition-Claim.json",
       "sha256": "56e13f55a1334183113539ad69caa4d865c17fb4ce285efa07c2a5d0f9abfd47"
     },
@@ -442,6 +475,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/claimresponse.profile.json",
       "file": "StructureDefinition-ClaimResponse.json",
       "sha256": "3ffeaa98698ce40d1e110c8b5a28043beb40377b680fa3878209099aaeb0fbfa"
     },
@@ -455,6 +489,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/clinicalimpression.profile.json",
       "file": "StructureDefinition-ClinicalImpression.json",
       "sha256": "84551a31cab9323d05f8be8087e4f7e70ab19a35d4de5bb35739b3ea2dd1dec0"
     },
@@ -468,6 +503,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/clinicalusedefinition.profile.json",
       "file": "StructureDefinition-ClinicalUseDefinition.json",
       "sha256": "5cb29ac398703870709cf170b27e4e91a8a89fd2517c480a220d37cb6104817c"
     },
@@ -481,6 +517,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/codesystem.profile.json",
       "file": "StructureDefinition-CodeSystem.json",
       "sha256": "abe77a124730310d605458fd7b587e21326bfd41559fb61c04b8ce3bb64a4e44"
     },
@@ -494,6 +531,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DataType",
+      "published": "https://hl7.org/fhir/R5/codeableconcept.profile.json",
       "file": "StructureDefinition-CodeableConcept.json",
       "sha256": "669bef852734f1d63eb6c2bda492857151b3ef9f4c4c309fc05affb816ca489a"
     },
@@ -507,6 +545,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DataType",
+      "published": "https://hl7.org/fhir/R5/codeablereference.profile.json",
       "file": "StructureDefinition-CodeableReference.json",
       "sha256": "5c678c8fb286aae208bc3368be7884cdfba7c085f616592db7767a2d409f1bdd"
     },
@@ -520,6 +559,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DataType",
+      "published": "https://hl7.org/fhir/R5/coding.profile.json",
       "file": "StructureDefinition-Coding.json",
       "sha256": "547a72b19348688d448e522b9a2a7b909061ca6131075a44b9af435c407424ea"
     },
@@ -533,6 +573,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/communication.profile.json",
       "file": "StructureDefinition-Communication.json",
       "sha256": "e17a4ca9c4632301de722a791d0662c067dd579a006229b8b7411f800be9eed2"
     },
@@ -546,6 +587,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/communicationrequest.profile.json",
       "file": "StructureDefinition-CommunicationRequest.json",
       "sha256": "33a31b70ece98de54348610ba8674c29af168bf9a9a222bb7e993a09dcd7b4ca"
     },
@@ -559,6 +601,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/compartmentdefinition.profile.json",
       "file": "StructureDefinition-CompartmentDefinition.json",
       "sha256": "5e23daf3633614701f6cbe01a16b0911d17947de660c9746037c15bd8bc0af27"
     },
@@ -572,6 +615,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/composition.profile.json",
       "file": "StructureDefinition-Composition.json",
       "sha256": "fff8a4eff6754c668f4598e132798b8295674059beb7416210f539054c5ccbb7"
     },
@@ -585,6 +629,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/conceptmap.profile.json",
       "file": "StructureDefinition-ConceptMap.json",
       "sha256": "8bdfcee4f56c749322d9ff8baa326c402186b974608648f644200455268ffe20"
     },
@@ -598,6 +643,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/condition.profile.json",
       "file": "StructureDefinition-Condition.json",
       "sha256": "7e16e00c9eddf2ba1561f6898926f77395c5f1dffaf9f011ea8d84b086465dc1"
     },
@@ -611,6 +657,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/conditiondefinition.profile.json",
       "file": "StructureDefinition-ConditionDefinition.json",
       "sha256": "784b8a8972623da846aa85396aab0f3576f1d36f022f1580e82d0dae994328e2"
     },
@@ -624,6 +671,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/consent.profile.json",
       "file": "StructureDefinition-Consent.json",
       "sha256": "ade75b3f78c275f4b4085c02ea0439fb9453173c98feba454eaab52296502606"
     },
@@ -637,6 +685,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DataType",
+      "published": "https://hl7.org/fhir/R5/contactdetail.profile.json",
       "file": "StructureDefinition-ContactDetail.json",
       "sha256": "84c18e29ee0675fb365410cff6dc3a4ba381d828e3c9a42bc29dbda9627b6813"
     },
@@ -650,6 +699,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DataType",
+      "published": "https://hl7.org/fhir/R5/contactpoint.profile.json",
       "file": "StructureDefinition-ContactPoint.json",
       "sha256": "c6962dc4b95729c49c5cb80a59f03b0c237397df8acc83f83d04f49cb1f1e30d"
     },
@@ -663,6 +713,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/contract.profile.json",
       "file": "StructureDefinition-Contract.json",
       "sha256": "cda4a72c482161c6304fd0f0276a54e0f63a411816d486e4c341539170df5ff6"
     },
@@ -676,6 +727,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DataType",
+      "published": "https://hl7.org/fhir/R5/contributor.profile.json",
       "file": "StructureDefinition-Contributor.json",
       "sha256": "47d21a69d1def9982bb2f26327d879880f4f3f2c0024565b1ff0a9a1525fe0d6"
     },
@@ -689,6 +741,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/Quantity",
+      "published": "https://hl7.org/fhir/R5/count.profile.json",
       "file": "StructureDefinition-Count.json",
       "sha256": "66b0a57e5fefe1dd68abd233077701106422947b165291309b2c8b97f9a90065"
     },
@@ -702,6 +755,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/coverage.profile.json",
       "file": "StructureDefinition-Coverage.json",
       "sha256": "fc88f166b3532aa333181bad88ac2ef3a763ac5f831ee31775038f75595baf92"
     },
@@ -715,6 +769,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/coverageeligibilityrequest.profile.json",
       "file": "StructureDefinition-CoverageEligibilityRequest.json",
       "sha256": "195e79986621232278a70ef08299dfb5a422095569de616fc9349110f2f34116"
     },
@@ -728,6 +783,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/coverageeligibilityresponse.profile.json",
       "file": "StructureDefinition-CoverageEligibilityResponse.json",
       "sha256": "34290d27431b04023c8fd4495c8ca28782e2e15b01cbac25eedfa78d240b1eb6"
     },
@@ -741,6 +797,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DataType",
+      "published": "https://hl7.org/fhir/R5/datarequirement.profile.json",
       "file": "StructureDefinition-DataRequirement.json",
       "sha256": "738b3cba4e17cedb4eb4651fdb311dfa7b6188ba58df7978a850f5de1c8c761a"
     },
@@ -754,6 +811,7 @@
       "abstract": true,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/Element",
+      "published": "https://hl7.org/fhir/R5/datatype.profile.json",
       "file": "StructureDefinition-DataType.json",
       "sha256": "5c10702150bdf483c12ab51bcbea4ceb814a11ccaa150926818844ddc7b411db"
     },
@@ -767,6 +825,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/detectedissue.profile.json",
       "file": "StructureDefinition-DetectedIssue.json",
       "sha256": "75fb623bd0730dee05f78b516108e1b75f782890bafa5e0ad466c841d59483ba"
     },
@@ -780,6 +839,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/device.profile.json",
       "file": "StructureDefinition-Device.json",
       "sha256": "d81b60db06f96a247b52c8063b9c22656823138d30d2c9ae98f5cefe3cdae3f1"
     },
@@ -793,6 +853,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/deviceassociation.profile.json",
       "file": "StructureDefinition-DeviceAssociation.json",
       "sha256": "d34bb336d65eac52f25b7227e6faf27d13305ee57973092494ce2b2025e08f42"
     },
@@ -806,6 +867,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/devicedefinition.profile.json",
       "file": "StructureDefinition-DeviceDefinition.json",
       "sha256": "ad62d1ec16787fa210ea557207602f0bba04b85997ff9f01226da30d49423d2c"
     },
@@ -819,6 +881,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/devicedispense.profile.json",
       "file": "StructureDefinition-DeviceDispense.json",
       "sha256": "a62c3bb559978bb2d5a912101f82e5245bbc1df4954cccc5a0f1646e3dcd1966"
     },
@@ -832,6 +895,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/devicemetric.profile.json",
       "file": "StructureDefinition-DeviceMetric.json",
       "sha256": "c97877fab63422fbcde2eb6500321210150978898075350c11f29aa19d502011"
     },
@@ -845,6 +909,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/devicerequest.profile.json",
       "file": "StructureDefinition-DeviceRequest.json",
       "sha256": "f681ea8f19aa4f23e60d1e286303fc57511f113182ab6c79aef065d31145c614"
     },
@@ -858,6 +923,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/deviceusage.profile.json",
       "file": "StructureDefinition-DeviceUsage.json",
       "sha256": "069f655c00c7bc551bc1516a154d746351dabee8a466f150b591e4f76289d383"
     },
@@ -871,6 +937,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/diagnosticreport.profile.json",
       "file": "StructureDefinition-DiagnosticReport.json",
       "sha256": "d3d89fb3077b9a1b3ccc59784dc2db367aebb8d83cdfc1c4f1dc7d1a3c25c01c"
     },
@@ -884,6 +951,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/Quantity",
+      "published": "https://hl7.org/fhir/R5/distance.profile.json",
       "file": "StructureDefinition-Distance.json",
       "sha256": "eceff339aa2eef8648c3b956f22f623832bb34948eb442908c295bdc5b27ccab"
     },
@@ -897,6 +965,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/documentreference.profile.json",
       "file": "StructureDefinition-DocumentReference.json",
       "sha256": "c3ffc3a080f87306c92b9fb508dae33a964d3d17c33f0786548790ebac0835dc"
     },
@@ -910,6 +979,7 @@
       "abstract": true,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/Resource",
+      "published": "https://hl7.org/fhir/R5/domainresource.profile.json",
       "file": "StructureDefinition-DomainResource.json",
       "sha256": "398579914c0b963a40be1b4652dcdec7523e8491f24ad145c9883f5cb0313172"
     },
@@ -923,6 +993,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/BackboneType",
+      "published": "https://hl7.org/fhir/R5/dosage.profile.json",
       "file": "StructureDefinition-Dosage.json",
       "sha256": "085e08a898f076d5eea63b7e60b85ecc5c70855dadf35316336444be2191ebb0"
     },
@@ -936,6 +1007,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/Quantity",
+      "published": "https://hl7.org/fhir/R5/duration.profile.json",
       "file": "StructureDefinition-Duration.json",
       "sha256": "488a4ecea9cf500531f33fc8a1428180932e9d6840f8251e532659c9b14c404e"
     },
@@ -949,6 +1021,7 @@
       "abstract": true,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/Base",
+      "published": "https://hl7.org/fhir/R5/element.profile.json",
       "file": "StructureDefinition-Element.json",
       "sha256": "a88a707f3d34a901b3fe7fde455c278698ac7c9fdd6829a9394b3962a6fee530"
     },
@@ -962,6 +1035,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/BackboneType",
+      "published": "https://hl7.org/fhir/R5/elementdefinition.profile.json",
       "file": "StructureDefinition-ElementDefinition.json",
       "sha256": "302dce65a2aa1d34e76ce71a08b4bf141a11b6c5932720bd20f5851a3231047e"
     },
@@ -975,6 +1049,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/encounter.profile.json",
       "file": "StructureDefinition-Encounter.json",
       "sha256": "3a5dfdb3ffe727a8a8b91fc388e9e1b8df1eab568ce6535f8d666b213252e09c"
     },
@@ -988,6 +1063,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/encounterhistory.profile.json",
       "file": "StructureDefinition-EncounterHistory.json",
       "sha256": "7e024d872c2ed25be0388d9002f6003aa681b25c4621a49c48b6288be8369e27"
     },
@@ -1001,6 +1077,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/endpoint.profile.json",
       "file": "StructureDefinition-Endpoint.json",
       "sha256": "710575af44df5a01234496b32a970ab98932ecced5f4183986fe8e5fa1a4fe60"
     },
@@ -1014,6 +1091,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/enrollmentrequest.profile.json",
       "file": "StructureDefinition-EnrollmentRequest.json",
       "sha256": "9688e48d8f208ef59e201e127d300c827d5ee01dd798351a91ddb0996ef635ac"
     },
@@ -1027,6 +1105,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/enrollmentresponse.profile.json",
       "file": "StructureDefinition-EnrollmentResponse.json",
       "sha256": "76b66a3c350cc3cb1c837b4895d783327977cde4a27688a7ad926aa74b2312b2"
     },
@@ -1040,6 +1119,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/episodeofcare.profile.json",
       "file": "StructureDefinition-EpisodeOfCare.json",
       "sha256": "a00c0100759570bbea25bb24557d404e7351f84021d6c2e82ce476fa4041def6"
     },
@@ -1053,6 +1133,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/eventdefinition.profile.json",
       "file": "StructureDefinition-EventDefinition.json",
       "sha256": "e4314ebe37e59ad21e76917e5ecedd3aa570584fffbde8762054e6cd1c52b9bc"
     },
@@ -1066,6 +1147,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/evidence.profile.json",
       "file": "StructureDefinition-Evidence.json",
       "sha256": "92b4c46fda1884fb43aab49bfcbde2624998e89f39aaaa9f62afefa4ebfcb30b"
     },
@@ -1079,6 +1161,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/evidencereport.profile.json",
       "file": "StructureDefinition-EvidenceReport.json",
       "sha256": "7e9e40ba1c2b1ff196c9f5c4ba6b89325b4dd3006f9dbe38ecb28a38a1c6e98d"
     },
@@ -1092,6 +1175,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/evidencevariable.profile.json",
       "file": "StructureDefinition-EvidenceVariable.json",
       "sha256": "e5eace5a3c320e86f17135a91582c08d5182dcee31e57d7b55979f261c53c67c"
     },
@@ -1105,6 +1189,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/examplescenario.profile.json",
       "file": "StructureDefinition-ExampleScenario.json",
       "sha256": "9b08c8261ba978bbb62845e33c347d81b7971a8531dfe780a4d08d8b0f77bd05"
     },
@@ -1118,6 +1203,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/explanationofbenefit.profile.json",
       "file": "StructureDefinition-ExplanationOfBenefit.json",
       "sha256": "989de6043629dd9fff7bc0e3ba5637591a2c1500b7a16a116cd82a6ef1ba11c7"
     },
@@ -1131,6 +1217,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DataType",
+      "published": "https://hl7.org/fhir/R5/expression.profile.json",
       "file": "StructureDefinition-Expression.json",
       "sha256": "496281eeca0d14277d95325d3a620fa4c9533c1720bc9d9145f28fda8a04782f"
     },
@@ -1144,6 +1231,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DataType",
+      "published": "https://hl7.org/fhir/R5/extendedcontactdetail.profile.json",
       "file": "StructureDefinition-ExtendedContactDetail.json",
       "sha256": "f6ebc67c9c19ce062903afec0e1ec45e0f7a0e59e689019be0a5bbff24824c86"
     },
@@ -1157,6 +1245,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DataType",
+      "published": "https://hl7.org/fhir/R5/extension.profile.json",
       "file": "StructureDefinition-Extension.json",
       "sha256": "98195e4a4c2381b7fc6b41c77f6c99bd9da262152e0da8cad6e3f9d385c9dadd"
     },
@@ -1170,6 +1259,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/familymemberhistory.profile.json",
       "file": "StructureDefinition-FamilyMemberHistory.json",
       "sha256": "20038e5a6dd6a42e2872e812d505c85539d08ba843e9b2060daea2735b926395"
     },
@@ -1183,6 +1273,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/flag.profile.json",
       "file": "StructureDefinition-Flag.json",
       "sha256": "3d178cfcdcc6228c10997829a7cb2f36a86ddc192913093841edeb64e09fff11"
     },
@@ -1196,6 +1287,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/formularyitem.profile.json",
       "file": "StructureDefinition-FormularyItem.json",
       "sha256": "afa09b251ad9f921de3b368ae9c995d9da0d630b03d8c11186c529f9d73a25ef"
     },
@@ -1209,6 +1301,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/genomicstudy.profile.json",
       "file": "StructureDefinition-GenomicStudy.json",
       "sha256": "8c86f8d8fbfca6ff06c456d92aa3671d3d377aae13b8d12848953bb6736ae660"
     },
@@ -1222,6 +1315,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/goal.profile.json",
       "file": "StructureDefinition-Goal.json",
       "sha256": "d7f0317b364bf7608428b5f4d8d1e141dab2683558bbfb83ec0806328e83f499"
     },
@@ -1235,6 +1329,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/graphdefinition.profile.json",
       "file": "StructureDefinition-GraphDefinition.json",
       "sha256": "717f0aea74ae734c837fc6344196c80e7246db9dbfb49e16fb25c9cd5841c95d"
     },
@@ -1248,6 +1343,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/group.profile.json",
       "file": "StructureDefinition-Group.json",
       "sha256": "341095d452e86b15e26dcf205f3368284662161c38581249d18657514baab357"
     },
@@ -1261,6 +1357,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/guidanceresponse.profile.json",
       "file": "StructureDefinition-GuidanceResponse.json",
       "sha256": "559e446c8c0a7efd2182e2f388115675a3bef450bedff0c89f9a73586874ee77"
     },
@@ -1274,6 +1371,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/healthcareservice.profile.json",
       "file": "StructureDefinition-HealthcareService.json",
       "sha256": "ff04b65d3775c94860bd7f9f4867b6ce00a9971d2b053b079dbeed6ccf94ed1b"
     },
@@ -1287,6 +1385,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DataType",
+      "published": "https://hl7.org/fhir/R5/humanname.profile.json",
       "file": "StructureDefinition-HumanName.json",
       "sha256": "d179eb7c88b3a2be1446a6ac0e2a547fca9377f8d1c324565a1451d19977222a"
     },
@@ -1300,6 +1399,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DataType",
+      "published": "https://hl7.org/fhir/R5/identifier.profile.json",
       "file": "StructureDefinition-Identifier.json",
       "sha256": "d0bc72ee1761b337693fe87c0c8f367df2852b6bcc7e87f0dafb11f7e157a39f"
     },
@@ -1313,6 +1413,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/imagingselection.profile.json",
       "file": "StructureDefinition-ImagingSelection.json",
       "sha256": "98ffa9892dee8e865d981f87dd72582284efd2182784df86042dd80295859cb9"
     },
@@ -1326,6 +1427,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/imagingstudy.profile.json",
       "file": "StructureDefinition-ImagingStudy.json",
       "sha256": "4510ea119af6e7cddf46c62f1f6a573983085a04112b92cee79addd2bca44fbf"
     },
@@ -1339,6 +1441,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/immunization.profile.json",
       "file": "StructureDefinition-Immunization.json",
       "sha256": "b1cfe61d6643510758bbabbe9a6a21ceb14e9cdadbaa02d05dfd2fd96b3d9e43"
     },
@@ -1352,6 +1455,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/immunizationevaluation.profile.json",
       "file": "StructureDefinition-ImmunizationEvaluation.json",
       "sha256": "5afc088170ac4574321ca3cebb6fcae059c75447dc20dc1a329dc43c5e31b7c2"
     },
@@ -1365,6 +1469,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/immunizationrecommendation.profile.json",
       "file": "StructureDefinition-ImmunizationRecommendation.json",
       "sha256": "441e399426946ceca2f0d64d99861ac0d54d89fbc7ce19a80040b80f872f5083"
     },
@@ -1378,6 +1483,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/implementationguide.profile.json",
       "file": "StructureDefinition-ImplementationGuide.json",
       "sha256": "ec4a39eaf1c481855b99dab7c4b6b75db935b25b3905fae8360c4a4c138f23ce"
     },
@@ -1391,6 +1497,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/ingredient.profile.json",
       "file": "StructureDefinition-Ingredient.json",
       "sha256": "397b49e6c2618a85fbd8043b54400fc93f2e63f2279491b95f645d76c8f54204"
     },
@@ -1404,6 +1511,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/insuranceplan.profile.json",
       "file": "StructureDefinition-InsurancePlan.json",
       "sha256": "df5496e564b2694500c89ac2f4c0a33a71a6aeaa961fd0961d00fa34abe5db03"
     },
@@ -1417,6 +1525,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/inventoryitem.profile.json",
       "file": "StructureDefinition-InventoryItem.json",
       "sha256": "66b9555cb438dff87f95235a4fb570c345d61d4f05da309cb309d21c88c6d29d"
     },
@@ -1430,6 +1539,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/inventoryreport.profile.json",
       "file": "StructureDefinition-InventoryReport.json",
       "sha256": "838139fee05176fc2b56f5679f0d5565a4593a599f675f62e8b31df42f00521b"
     },
@@ -1443,6 +1553,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/invoice.profile.json",
       "file": "StructureDefinition-Invoice.json",
       "sha256": "ff1913bbd1932a12deff96319f4b0c07c53e2250e6172659da38ac8673343190"
     },
@@ -1456,6 +1567,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/library.profile.json",
       "file": "StructureDefinition-Library.json",
       "sha256": "1508a7607c136423864f5ab4846092d50a2caf1b6c06b9f81ec0aaa2f083ba0f"
     },
@@ -1469,6 +1581,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/linkage.profile.json",
       "file": "StructureDefinition-Linkage.json",
       "sha256": "9cbcaa6b7f0a641bcf0152373b0d2aef54c66684e334bdaed2031c010849c11a"
     },
@@ -1482,6 +1595,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/list.profile.json",
       "file": "StructureDefinition-List.json",
       "sha256": "aaa40c1438c987514b703ad7b70a3a874a6aff01bed121e10e8de3e8541803fd"
     },
@@ -1495,6 +1609,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/location.profile.json",
       "file": "StructureDefinition-Location.json",
       "sha256": "5cdbace9a349fffaed95c82f4327cbefae47b543a7d0a57e94381ecf2c64604a"
     },
@@ -1508,6 +1623,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/manufactureditemdefinition.profile.json",
       "file": "StructureDefinition-ManufacturedItemDefinition.json",
       "sha256": "ce72f22ddd2a039c4100fafbf4cc42f38d8b98ca26a8577f6ada3276568a9364"
     },
@@ -1521,6 +1637,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/BackboneType",
+      "published": "https://hl7.org/fhir/R5/marketingstatus.profile.json",
       "file": "StructureDefinition-MarketingStatus.json",
       "sha256": "8a4093dc0f89003a7e8f7db012058e8a7705140ddbd4c132ba11d1ea4c675589"
     },
@@ -1534,6 +1651,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/measure.profile.json",
       "file": "StructureDefinition-Measure.json",
       "sha256": "50fe5a619e4d33788805b86348b84795bcf1f04912930bec781f3c7a5026c90d"
     },
@@ -1547,6 +1665,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/measurereport.profile.json",
       "file": "StructureDefinition-MeasureReport.json",
       "sha256": "2e6315330237602905dcfb14a6bec3a64b457251ab99c28a6af42a3d64ef697b"
     },
@@ -1560,6 +1679,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/medication.profile.json",
       "file": "StructureDefinition-Medication.json",
       "sha256": "ee42d14c7549b19cf281ae75434bf9c13bdc561c4fd797ae643e626d6d9ae380"
     },
@@ -1573,6 +1693,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/medicationadministration.profile.json",
       "file": "StructureDefinition-MedicationAdministration.json",
       "sha256": "e72ee0b987dd12181c9f480d2a1d9adb9c38abe9797492570cb78977a7532c1b"
     },
@@ -1586,6 +1707,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/medicationdispense.profile.json",
       "file": "StructureDefinition-MedicationDispense.json",
       "sha256": "616bbacf446714f194d8d0e0d7569478ecc975617a3c350da104582e627d64aa"
     },
@@ -1599,6 +1721,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/medicationknowledge.profile.json",
       "file": "StructureDefinition-MedicationKnowledge.json",
       "sha256": "24ff3601a7bd298caea303787dd6cce6e5ed2c2f9596bba8e33c8dbd3ec94634"
     },
@@ -1612,6 +1735,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/medicationrequest.profile.json",
       "file": "StructureDefinition-MedicationRequest.json",
       "sha256": "9dce16a9de67c2de815a7e26e84c3c5d415feb9afb61ea39242802c3e73078d2"
     },
@@ -1625,6 +1749,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/medicationstatement.profile.json",
       "file": "StructureDefinition-MedicationStatement.json",
       "sha256": "6a52f25101c6660f1907c3f4c215dbd4d0cdeb6d912a0d6701d7c7a283cfa6ee"
     },
@@ -1638,6 +1763,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/medicinalproductdefinition.profile.json",
       "file": "StructureDefinition-MedicinalProductDefinition.json",
       "sha256": "45a01998496f0ee14b17e2ff7e14c16087c386b5244044ad1932f909701e2f2d"
     },
@@ -1651,6 +1777,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/messagedefinition.profile.json",
       "file": "StructureDefinition-MessageDefinition.json",
       "sha256": "5ef3d4bb60db9721655d69f9e98eb76d4ea16e9dea2cc939ba632213adca4ff3"
     },
@@ -1664,6 +1791,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/messageheader.profile.json",
       "file": "StructureDefinition-MessageHeader.json",
       "sha256": "8e7602dbfffc60b95579c840076e07e0d4f7cba0c7354746c02be7c160eb30d4"
     },
@@ -1677,6 +1805,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DataType",
+      "published": "https://hl7.org/fhir/R5/meta.profile.json",
       "file": "StructureDefinition-Meta.json",
       "sha256": "eeac9d14f20f583c084e42aae03c71e1d4a8de76eda6f14becebde84ed32fbdc"
     },
@@ -1690,6 +1819,7 @@
       "abstract": true,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/metadataresource.profile.json",
       "file": "StructureDefinition-MetadataResource.json",
       "sha256": "22a53dd191df7c3e13c452fe7c4e0c65b4e387f499d5e8cb3bcdf81ee3d97776"
     },
@@ -1703,6 +1833,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/molecularsequence.profile.json",
       "file": "StructureDefinition-MolecularSequence.json",
       "sha256": "89ec5050299725712a66906a79cdf5e1156ca850fa94424c8b2326e0d20e3851"
     },
@@ -1716,6 +1847,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DataType",
+      "published": "https://hl7.org/fhir/R5/monetarycomponent.profile.json",
       "file": "StructureDefinition-MonetaryComponent.json",
       "sha256": "8a7a94e72004d806c2f70982c04c5ac6fc85d8b9e577b66f03f48e7e290490ba"
     },
@@ -1729,6 +1861,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DataType",
+      "published": "https://hl7.org/fhir/R5/money.profile.json",
       "file": "StructureDefinition-Money.json",
       "sha256": "5cbc2a0e5a12161056bcceff3eeb470d0427cc9c3a5dee709b9cce290d99bcad"
     },
@@ -1742,6 +1875,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/namingsystem.profile.json",
       "file": "StructureDefinition-NamingSystem.json",
       "sha256": "88faf793f2a5186cad610555f445ce8a4f4e7ba58266a4ff0cc8b317c0c12886"
     },
@@ -1755,6 +1889,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DataType",
+      "published": "https://hl7.org/fhir/R5/narrative.profile.json",
       "file": "StructureDefinition-Narrative.json",
       "sha256": "fd9e07882b57cc2375618228b232a1d7bf7ddf4bd9320610b5fcc9c5f028bccc"
     },
@@ -1768,6 +1903,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/nutritionintake.profile.json",
       "file": "StructureDefinition-NutritionIntake.json",
       "sha256": "2be734dbbad538ed4f108591115f62294a8edd7fd789851ab01afb98837c0750"
     },
@@ -1781,6 +1917,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/nutritionorder.profile.json",
       "file": "StructureDefinition-NutritionOrder.json",
       "sha256": "80f51c57344ea43e06d1ab38cee08119999ab9645684a83aaf9725fe9ba93e56"
     },
@@ -1794,6 +1931,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/nutritionproduct.profile.json",
       "file": "StructureDefinition-NutritionProduct.json",
       "sha256": "8ce8f72bba6d82c0c7d9c57c3c23dbaacbcb2f8bbc3a1976f3fe5279e2c43b3f"
     },
@@ -1807,6 +1945,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/observation.profile.json",
       "file": "StructureDefinition-Observation.json",
       "sha256": "85b6247cd470f20df2be7eadf26a6a5ea490aa2cbf0f83f1d316456d50518e5a"
     },
@@ -1820,6 +1959,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/observationdefinition.profile.json",
       "file": "StructureDefinition-ObservationDefinition.json",
       "sha256": "cd2b65f79b186954b6bf2342a75d25b08d0a62e93b9de1079c5b10d639a95115"
     },
@@ -1833,6 +1973,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/operationdefinition.profile.json",
       "file": "StructureDefinition-OperationDefinition.json",
       "sha256": "2ed198536eed5b2acfc2c0479cd249db0b37ab01eaa9d32298ab14b6fe3acd39"
     },
@@ -1846,6 +1987,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/operationoutcome.profile.json",
       "file": "StructureDefinition-OperationOutcome.json",
       "sha256": "747947e719ec88e4eb1f14732ad273400eb937e078338733c1114a7ccd7eeec0"
     },
@@ -1859,6 +2001,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/organization.profile.json",
       "file": "StructureDefinition-Organization.json",
       "sha256": "6f2fa4fc767795f6452ecb7017f30b24dfb3a3528780754d7487c2a7adc1f920"
     },
@@ -1872,6 +2015,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/organizationaffiliation.profile.json",
       "file": "StructureDefinition-OrganizationAffiliation.json",
       "sha256": "343a48347c427a3145b3c29a212136ac620d775833e38640c7323fcb9cc6548e"
     },
@@ -1885,6 +2029,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/packagedproductdefinition.profile.json",
       "file": "StructureDefinition-PackagedProductDefinition.json",
       "sha256": "c8a76326fe6402b1510e01e139eb7b0fc85c6009d299fedf010f36ca3bb86fce"
     },
@@ -1898,6 +2043,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DataType",
+      "published": "https://hl7.org/fhir/R5/parameterdefinition.profile.json",
       "file": "StructureDefinition-ParameterDefinition.json",
       "sha256": "0b862753a72f1e8475829eb008b12d00d66c63f7a09693f16f878a79706a3ba9"
     },
@@ -1911,6 +2057,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/Resource",
+      "published": "https://hl7.org/fhir/R5/parameters.profile.json",
       "file": "StructureDefinition-Parameters.json",
       "sha256": "b609d6aa90f837f69a6f9019cd79cc7f05954847d9dee6d0a34e8c78748ef5db"
     },
@@ -1924,6 +2071,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/patient.profile.json",
       "file": "StructureDefinition-Patient.json",
       "sha256": "bd1c87cdcbe3310fe8c93b01481ce407f1462ac5fe9bd1efa8dd7e4301d7a628"
     },
@@ -1937,6 +2085,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/paymentnotice.profile.json",
       "file": "StructureDefinition-PaymentNotice.json",
       "sha256": "9341f31b2304ec9d06d8c102a13c9a19015c8c6487aa1eaf7cb5cbfaeb918604"
     },
@@ -1950,6 +2099,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/paymentreconciliation.profile.json",
       "file": "StructureDefinition-PaymentReconciliation.json",
       "sha256": "8e07d0fa96ab4df0b555bc5d9170e5a45a1d9ae557e333ffb1b3c047bf500d8d"
     },
@@ -1963,6 +2113,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DataType",
+      "published": "https://hl7.org/fhir/R5/period.profile.json",
       "file": "StructureDefinition-Period.json",
       "sha256": "ccb911cc8dbc77eb8c20709f54b6473ab1f38a501f4e753f48bd1ef81950d0e6"
     },
@@ -1976,6 +2127,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/permission.profile.json",
       "file": "StructureDefinition-Permission.json",
       "sha256": "0cc441c07ab08634edaccd590e991278292fd65cb4f6fd8a230812d7cc83fa25"
     },
@@ -1989,6 +2141,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/person.profile.json",
       "file": "StructureDefinition-Person.json",
       "sha256": "93467407551543058537fd8e2463a4194c98239ba30636bfb6d2b5fbfb5e5923"
     },
@@ -2002,6 +2155,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/plandefinition.profile.json",
       "file": "StructureDefinition-PlanDefinition.json",
       "sha256": "2104d07e2f324826c49731cdbf40cf0c2561fcaf2afe1978c101438fb45529cd"
     },
@@ -2015,6 +2169,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/practitioner.profile.json",
       "file": "StructureDefinition-Practitioner.json",
       "sha256": "7295fdd8d78308a06ef9fda250ed58a3ef96df768196602a54732831839f07c0"
     },
@@ -2028,6 +2183,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/practitionerrole.profile.json",
       "file": "StructureDefinition-PractitionerRole.json",
       "sha256": "5684c19b945e3c68de61cbbc78fbbe695ff29ae39a14c078092d8f9e9b0283f6"
     },
@@ -2041,6 +2197,7 @@
       "abstract": true,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DataType",
+      "published": "https://hl7.org/fhir/R5/primitivetype.profile.json",
       "file": "StructureDefinition-PrimitiveType.json",
       "sha256": "5b8c45cf89721ec78223a20a4f3031fa5f66ca0a5a99e6e107796dbecef9b86c"
     },
@@ -2054,6 +2211,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/procedure.profile.json",
       "file": "StructureDefinition-Procedure.json",
       "sha256": "57022412e83d62c4f255c3690d910f4852b4d03d375c2cf674db7a97b44df24d"
     },
@@ -2067,6 +2225,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/BackboneType",
+      "published": "https://hl7.org/fhir/R5/productshelflife.profile.json",
       "file": "StructureDefinition-ProductShelfLife.json",
       "sha256": "f6f523fae938de12e1342e857314c1ff23eaef074c0cf255554748125229929c"
     },
@@ -2080,6 +2239,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/provenance.profile.json",
       "file": "StructureDefinition-Provenance.json",
       "sha256": "3408775af53156bee23f75e6aed0bf2811d358cfd07828be9985f632c2bfb094"
     },
@@ -2093,6 +2253,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DataType",
+      "published": "https://hl7.org/fhir/R5/quantity.profile.json",
       "file": "StructureDefinition-Quantity.json",
       "sha256": "033735c7fbb69f88fece7f26195d3c41dab9d20a2a72ead93b73cd5231b065ce"
     },
@@ -2106,6 +2267,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/questionnaire.profile.json",
       "file": "StructureDefinition-Questionnaire.json",
       "sha256": "d7b5c37d4fd43c36ad59151a60b9da45177df041b37c49c6fb5150def4daee11"
     },
@@ -2119,6 +2281,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/questionnaireresponse.profile.json",
       "file": "StructureDefinition-QuestionnaireResponse.json",
       "sha256": "8c9fa8ce32988935be07887c10f9543fbfcabd69edf17cdf212411b6f700f57c"
     },
@@ -2132,6 +2295,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DataType",
+      "published": "https://hl7.org/fhir/R5/range.profile.json",
       "file": "StructureDefinition-Range.json",
       "sha256": "e00a8746fcb913aff9c4511a0ca2ff34c23adf43543b507b85cccb4d2bfe95f2"
     },
@@ -2145,6 +2309,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DataType",
+      "published": "https://hl7.org/fhir/R5/ratio.profile.json",
       "file": "StructureDefinition-Ratio.json",
       "sha256": "51ca381c437366acf081dbd484ad8127a289f2a50c9e69e99d2c5548a2255282"
     },
@@ -2158,6 +2323,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DataType",
+      "published": "https://hl7.org/fhir/R5/ratiorange.profile.json",
       "file": "StructureDefinition-RatioRange.json",
       "sha256": "7191ba7cc38ddbad28190fab976c266b9fa69b245c34dc5d33e34bd8337961a4"
     },
@@ -2171,6 +2337,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DataType",
+      "published": "https://hl7.org/fhir/R5/reference.profile.json",
       "file": "StructureDefinition-Reference.json",
       "sha256": "6c5e489f76634072f5a82f4f99e200fc8a5d46e94460dd06d78773e1e8f78a1c"
     },
@@ -2184,6 +2351,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/regulatedauthorization.profile.json",
       "file": "StructureDefinition-RegulatedAuthorization.json",
       "sha256": "e995a005230f4d0cd2fdda0a8ae7c4e37463a2877d162a342c6b9d2b4e2fdf4c"
     },
@@ -2197,6 +2365,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DataType",
+      "published": "https://hl7.org/fhir/R5/relatedartifact.profile.json",
       "file": "StructureDefinition-RelatedArtifact.json",
       "sha256": "dceab11c13891334420cdc19cc5c2e6dd5b021e7407b73b4aa8dab29334900b8"
     },
@@ -2210,6 +2379,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/relatedperson.profile.json",
       "file": "StructureDefinition-RelatedPerson.json",
       "sha256": "33453fdd7bec591beaa6cf309eae9fad2e58a10259fc0181039474b361898156"
     },
@@ -2223,6 +2393,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/requestorchestration.profile.json",
       "file": "StructureDefinition-RequestOrchestration.json",
       "sha256": "be91d4c304f90fc52ae2559978ba50bba2dbc71e24ef0cd58988ef05267bc55b"
     },
@@ -2236,6 +2407,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/requirements.profile.json",
       "file": "StructureDefinition-Requirements.json",
       "sha256": "3a6af39e1ad6df081baa01e62e0c091a785b7dc504ce0077b600f07cdff56e63"
     },
@@ -2249,6 +2421,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/researchstudy.profile.json",
       "file": "StructureDefinition-ResearchStudy.json",
       "sha256": "695d2ca3ac231d0e847e866b1aac501fc9fb52a1611e88de79dbf128d15129a9"
     },
@@ -2262,6 +2435,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/researchsubject.profile.json",
       "file": "StructureDefinition-ResearchSubject.json",
       "sha256": "b703444205948c4bfca9587dd43bb3fa345411cab1dc399ecdf1692b19cf76c0"
     },
@@ -2275,6 +2449,7 @@
       "abstract": true,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/Base",
+      "published": "https://hl7.org/fhir/R5/resource.profile.json",
       "file": "StructureDefinition-Resource.json",
       "sha256": "ce92bdaa71c637e3e9cb34470cf9b3847c56681de55058f88abc3dd81ba4efc7"
     },
@@ -2288,6 +2463,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/riskassessment.profile.json",
       "file": "StructureDefinition-RiskAssessment.json",
       "sha256": "7a9486fbafdd8afee7ce76141084359f11e063e87289786114b96caca7d8e2c7"
     },
@@ -2301,6 +2477,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DataType",
+      "published": "https://hl7.org/fhir/R5/sampleddata.profile.json",
       "file": "StructureDefinition-SampledData.json",
       "sha256": "02715e2ddde6291efcd79027a0e08072149d56abf548a3a8c328b5a2f09ed74b"
     },
@@ -2314,6 +2491,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/schedule.profile.json",
       "file": "StructureDefinition-Schedule.json",
       "sha256": "2cb9e3196c97ff5eb482507a87e1d655d0fcb25dfd0c4dd07ce872452813d72b"
     },
@@ -2327,6 +2505,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/searchparameter.profile.json",
       "file": "StructureDefinition-SearchParameter.json",
       "sha256": "38f36f36254a0b66b1bf85b266f602f0c34a2ded8eb92f760898954b31711e51"
     },
@@ -2340,6 +2519,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/servicerequest.profile.json",
       "file": "StructureDefinition-ServiceRequest.json",
       "sha256": "2446b7fe1e76cac36ef25e904661f84795babe78c5dd21c6ef4db781b6482f4a"
     },
@@ -2353,6 +2533,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DataType",
+      "published": "https://hl7.org/fhir/R5/signature.profile.json",
       "file": "StructureDefinition-Signature.json",
       "sha256": "477b806421b0ab775b96999344cd10a152755cb24e074ef156e63d3c8c009bf6"
     },
@@ -2366,6 +2547,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/slot.profile.json",
       "file": "StructureDefinition-Slot.json",
       "sha256": "dbdf30c0ca89db518e26df8621c5d92711b2c28655c7b6fa1d8e4f7298808b1a"
     },
@@ -2379,6 +2561,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/specimen.profile.json",
       "file": "StructureDefinition-Specimen.json",
       "sha256": "97ac7ec8f54bebcd51f2ce7b760ef641e01786f5ab26bba1f9fd8db864af6a0a"
     },
@@ -2392,6 +2575,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/specimendefinition.profile.json",
       "file": "StructureDefinition-SpecimenDefinition.json",
       "sha256": "f35e6d4d0205cd3b2b2ccfefa9367429bda40f594b38fb002ecc100b0b673e87"
     },
@@ -2405,6 +2589,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/structuredefinition.profile.json",
       "file": "StructureDefinition-StructureDefinition.json",
       "sha256": "f7809d258d3638231b1db2d65b160105f8a8cdb14bc67520846ec6a620290615"
     },
@@ -2418,6 +2603,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/structuremap.profile.json",
       "file": "StructureDefinition-StructureMap.json",
       "sha256": "09d7b412cde6850783ed57fd66f0ea7e2030cef07dcae00b878f5911a557eab6"
     },
@@ -2431,6 +2617,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/subscription.profile.json",
       "file": "StructureDefinition-Subscription.json",
       "sha256": "7deae99427247f83ec9ac043d42df5f742d69506167caa1e40a19716100206b7"
     },
@@ -2444,6 +2631,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/subscriptionstatus.profile.json",
       "file": "StructureDefinition-SubscriptionStatus.json",
       "sha256": "767ddcb5f23e6558cf26f3e95689a5a4badbc55c6487e7da032e1ace1b7902c7"
     },
@@ -2457,6 +2645,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/subscriptiontopic.profile.json",
       "file": "StructureDefinition-SubscriptionTopic.json",
       "sha256": "2036d27e498fd14fd62fb0cd494e02198850163c262c78fdfb7bf035c2b96d9d"
     },
@@ -2470,6 +2659,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/substance.profile.json",
       "file": "StructureDefinition-Substance.json",
       "sha256": "6a27459bee55c6247e1c9612f0261f774679f5048f8500611a3b082a8e6e1280"
     },
@@ -2483,6 +2673,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/substancedefinition.profile.json",
       "file": "StructureDefinition-SubstanceDefinition.json",
       "sha256": "737ed5f27685755621a76481a4893f31106cae731618550e84ff246707dcc8be"
     },
@@ -2496,6 +2687,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/substancenucleicacid.profile.json",
       "file": "StructureDefinition-SubstanceNucleicAcid.json",
       "sha256": "37bbc3dd8af8bc6bd6babd2bbb89c1a7934788f05e2e62932d64634f335ad9a4"
     },
@@ -2509,6 +2701,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/substancepolymer.profile.json",
       "file": "StructureDefinition-SubstancePolymer.json",
       "sha256": "ee0c8e390cd941f42f53281ffc3b4a64d1402a5c76b223f5f627c5e44ed740dc"
     },
@@ -2522,6 +2715,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/substanceprotein.profile.json",
       "file": "StructureDefinition-SubstanceProtein.json",
       "sha256": "3c8a39e99bbdd3c17061f763d103ba13a70175b58b1639317f7c0ab3c8189680"
     },
@@ -2535,6 +2729,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/substancereferenceinformation.profile.json",
       "file": "StructureDefinition-SubstanceReferenceInformation.json",
       "sha256": "b342fdc96c4181454c94e22b61e2c471ae8107ba1026ed91c127ed9d0d93382b"
     },
@@ -2548,6 +2743,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/substancesourcematerial.profile.json",
       "file": "StructureDefinition-SubstanceSourceMaterial.json",
       "sha256": "ff9109df7f99a042ee7a25abf71e88822d26a5fcca4b02f1b82a6d3aefa4b92f"
     },
@@ -2561,6 +2757,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/supplydelivery.profile.json",
       "file": "StructureDefinition-SupplyDelivery.json",
       "sha256": "4bd432fb94bc53bbc7f69742b3ec8857a2004a635bdb93c3487d0578888b7b6e"
     },
@@ -2574,6 +2771,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/supplyrequest.profile.json",
       "file": "StructureDefinition-SupplyRequest.json",
       "sha256": "659623f2a85d94551af09087776970f7f11a6deac46a97d21660d0c7f6f502a9"
     },
@@ -2587,6 +2785,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/task.profile.json",
       "file": "StructureDefinition-Task.json",
       "sha256": "f729c0fe952b58dba6bdd1ea03c5e2e090493f2cfdff7955150ebe7f46399526"
     },
@@ -2600,6 +2799,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/terminologycapabilities.profile.json",
       "file": "StructureDefinition-TerminologyCapabilities.json",
       "sha256": "8730a8476c62c1454552e0f972e2f1ab5486dc602c81fd804555094e73dad179"
     },
@@ -2613,6 +2813,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/testplan.profile.json",
       "file": "StructureDefinition-TestPlan.json",
       "sha256": "d8908bd0a01642770c2da19689497168739bbdf671f9ea96d901b3b5094c3fcd"
     },
@@ -2626,6 +2827,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/testreport.profile.json",
       "file": "StructureDefinition-TestReport.json",
       "sha256": "8e1171b8aabfd6dd32378a509554bb8653253d9bf01b7dd3f61ce40ce022211b"
     },
@@ -2639,6 +2841,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/testscript.profile.json",
       "file": "StructureDefinition-TestScript.json",
       "sha256": "e1023759981c649c92a1c160b37ac901f3f71158ab9f75c6ed07671a4599a2f2"
     },
@@ -2652,6 +2855,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/BackboneType",
+      "published": "https://hl7.org/fhir/R5/timing.profile.json",
       "file": "StructureDefinition-Timing.json",
       "sha256": "c7877f8cd7f1f9693c68506f9d662d8737f0dbe78665acdc2d69bb3a0ecc42da"
     },
@@ -2665,6 +2869,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/transport.profile.json",
       "file": "StructureDefinition-Transport.json",
       "sha256": "1b92b65ebde9050bfc76da01e0d72a909ad64c192fc5747e21d179c62274f1b1"
     },
@@ -2678,6 +2883,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DataType",
+      "published": "https://hl7.org/fhir/R5/triggerdefinition.profile.json",
       "file": "StructureDefinition-TriggerDefinition.json",
       "sha256": "9748aac98f6755b9f49244807446e1253baba05f4b5f6a8507463e2707f6ef16"
     },
@@ -2691,6 +2897,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DataType",
+      "published": "https://hl7.org/fhir/R5/usagecontext.profile.json",
       "file": "StructureDefinition-UsageContext.json",
       "sha256": "c70a74dad5fcd30f0273d60aa8e5884302ac5f77b73aa19f0e2c2e87c90f7eb9"
     },
@@ -2704,6 +2911,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/valueset.profile.json",
       "file": "StructureDefinition-ValueSet.json",
       "sha256": "5bcd656424f99ee173468e51d607c537b4156647eb23b105901df90b3510d7a5"
     },
@@ -2717,6 +2925,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/verificationresult.profile.json",
       "file": "StructureDefinition-VerificationResult.json",
       "sha256": "d3ace3c10ba5cfdd0bde2e1378a0ee7756874046516f3c009274f4f1645850d2"
     },
@@ -2730,6 +2939,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DataType",
+      "published": "https://hl7.org/fhir/R5/virtualservicedetail.profile.json",
       "file": "StructureDefinition-VirtualServiceDetail.json",
       "sha256": "8f38146eea80160d4cd4270be9fd3baf3f71e8b0e53b6ec55910e6cd5ad6c6d0"
     },
@@ -2743,6 +2953,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/DomainResource",
+      "published": "https://hl7.org/fhir/R5/visionprescription.profile.json",
       "file": "StructureDefinition-VisionPrescription.json",
       "sha256": "136b31ba1af8bcf6b603e7d0423fa8e9d6fca0dcbad8381023ba77d5a85a33a5"
     },
@@ -2756,6 +2967,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/PrimitiveType",
+      "published": "https://hl7.org/fhir/R5/base64binary.profile.json",
       "file": "StructureDefinition-base64Binary.json",
       "sha256": "4c331ca626317fc3e2b5d2863f59d37146b33bdc4f08dff8acff7715bb676730"
     },
@@ -2769,6 +2981,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/PrimitiveType",
+      "published": "https://hl7.org/fhir/R5/boolean.profile.json",
       "file": "StructureDefinition-boolean.json",
       "sha256": "db724c7aa8fbaf327c74e1fec4b88d13f76bdc4f3f374400db577fffb0e21b93"
     },
@@ -2782,6 +2995,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/uri",
+      "published": "https://hl7.org/fhir/R5/canonical.profile.json",
       "file": "StructureDefinition-canonical.json",
       "sha256": "027d9c28f08154c1d37dd6a70839342a45b72ae2f15a8fe38288323d2b480684"
     },
@@ -2795,6 +3009,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/string",
+      "published": "https://hl7.org/fhir/R5/code.profile.json",
       "file": "StructureDefinition-code.json",
       "sha256": "a819636f9826eb8adc9038e7a708f1bc1b4e179c79da3ef4047f7b1c88b9920e"
     },
@@ -2808,6 +3023,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/PrimitiveType",
+      "published": "https://hl7.org/fhir/R5/date.profile.json",
       "file": "StructureDefinition-date.json",
       "sha256": "0abcb59901acce07d3fdbee3ba8a5c92ba7d5398f83267f6d0ddd4e71d08406d"
     },
@@ -2821,6 +3037,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/PrimitiveType",
+      "published": "https://hl7.org/fhir/R5/datetime.profile.json",
       "file": "StructureDefinition-dateTime.json",
       "sha256": "18a63cd74c707ede3bbe8d45137422786e1f080de88a08bb579c002f4b667f28"
     },
@@ -2834,6 +3051,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/PrimitiveType",
+      "published": "https://hl7.org/fhir/R5/decimal.profile.json",
       "file": "StructureDefinition-decimal.json",
       "sha256": "5e410a93273cedb5f2ed27814e7c4562748b29ca97452591bb741540a97e1a0a"
     },
@@ -2847,6 +3065,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/string",
+      "published": "https://hl7.org/fhir/R5/id.profile.json",
       "file": "StructureDefinition-id.json",
       "sha256": "afd0f8d409841b9372562996f2392e0709ad6ffae6e094f534bfacc8eeb03ce8"
     },
@@ -2860,6 +3079,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/PrimitiveType",
+      "published": "https://hl7.org/fhir/R5/instant.profile.json",
       "file": "StructureDefinition-instant.json",
       "sha256": "0272f59fa2612d8cacec90c3a7b805dee5b5c5cedbefd8070651dd2a88f58bfd"
     },
@@ -2873,6 +3093,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/PrimitiveType",
+      "published": "https://hl7.org/fhir/R5/integer.profile.json",
       "file": "StructureDefinition-integer.json",
       "sha256": "d4e90a4b5aa968e200c1febf81d59a277ac07f532e169af4be6d1cd010c5d3a4"
     },
@@ -2886,6 +3107,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/PrimitiveType",
+      "published": "https://hl7.org/fhir/R5/integer64.profile.json",
       "file": "StructureDefinition-integer64.json",
       "sha256": "f4f25aa547de1752d4d07b4eca5d4462917ba835ac5999c4dd8cc8db1d74663b"
     },
@@ -2899,6 +3121,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/string",
+      "published": "https://hl7.org/fhir/R5/markdown.profile.json",
       "file": "StructureDefinition-markdown.json",
       "sha256": "000bc891bd294cb2bdbf0e52fe20b1c39fd4179bdbf9e37459668a4cf2617524"
     },
@@ -2912,6 +3135,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/uri",
+      "published": "https://hl7.org/fhir/R5/oid.profile.json",
       "file": "StructureDefinition-oid.json",
       "sha256": "b76c2f27192f2894aa931518ed15573091a0650d2e4b11f64b7e78640ef7eac7"
     },
@@ -2925,6 +3149,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/integer",
+      "published": "https://hl7.org/fhir/R5/positiveint.profile.json",
       "file": "StructureDefinition-positiveInt.json",
       "sha256": "59dd532749b071a94e0276189b6a2fc2d3c6a4daeae67e09a0e3e2c0f6d88383"
     },
@@ -2938,6 +3163,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/PrimitiveType",
+      "published": "https://hl7.org/fhir/R5/string.profile.json",
       "file": "StructureDefinition-string.json",
       "sha256": "9646d29723ed137219b8255ecc83c133b5c93dfe4e495a20df2ef19a75dcd8ac"
     },
@@ -2951,6 +3177,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/PrimitiveType",
+      "published": "https://hl7.org/fhir/R5/time.profile.json",
       "file": "StructureDefinition-time.json",
       "sha256": "ddb59a94ba1fe4a97a58c2500bf5c731a0e828b55a5d9f83cfffb1e78f6d096b"
     },
@@ -2964,6 +3191,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/integer",
+      "published": "https://hl7.org/fhir/R5/unsignedint.profile.json",
       "file": "StructureDefinition-unsignedInt.json",
       "sha256": "7e5ddd5270ca58b05f60568048a43871dfa85ff2611bca7eb1400b5c9de7c729"
     },
@@ -2977,6 +3205,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/PrimitiveType",
+      "published": "https://hl7.org/fhir/R5/uri.profile.json",
       "file": "StructureDefinition-uri.json",
       "sha256": "59912dd95b921cb2aed3abfe65a9815448dac47e009f9e5a7923e1bcf88ce4be"
     },
@@ -2990,6 +3219,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/uri",
+      "published": "https://hl7.org/fhir/R5/url.profile.json",
       "file": "StructureDefinition-url.json",
       "sha256": "8dffa7c956d96439dafef00a9f5d31936e596934cc6b2b26fd28824cfa360621"
     },
@@ -3003,6 +3233,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/uri",
+      "published": "https://hl7.org/fhir/R5/uuid.profile.json",
       "file": "StructureDefinition-uuid.json",
       "sha256": "38d2351e2674e8032e4a199b11f0a76cb82febbf1a613033e364328db76dbf00"
     },
@@ -3016,6 +3247,7 @@
       "abstract": false,
       "derivation": "specialization",
       "baseDefinition": "http://hl7.org/fhir/StructureDefinition/Element",
+      "published": "https://hl7.org/fhir/R5/xhtml.profile.json",
       "file": "StructureDefinition-xhtml.json",
       "sha256": "670671926e9c937f42a40cd2530048d6c8fbfdcecf1ca11f75ccdfcabaa156ae"
     }

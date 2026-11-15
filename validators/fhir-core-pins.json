@@ -3,7 +3,7 @@
   "id": "fhir-core-pins",
   "validates": {
     "kind": "fhir-core-definitions",
-    "family": "folio-fhir-core-pins/v1"
+    "family": "folio-fhir-core-pins/v2"
   },
   "schema": "fhir-harness:schemas/fhir-core.ts#FhirCorePinsKind"
 }
