@@ -1,0 +1,252 @@
+{
+  "$schema": "kg-qa/v1",
+  "subject": {
+    "kind": "process",
+    "id": "Process_IgAstCache",
+    "path": "processes/content/ig-ast-cache.bpmn"
+  },
+  "source_hash": "sha256:c3428c752a3688fec5e51457bc927221ce96af73170b79e9088a971153644746",
+  "criteria": {
+    "raci-role-resolves": {
+      "result": "n/a",
+      "findings": []
+    },
+    "raci-single-accountable": {
+      "result": "n/a",
+      "findings": []
+    },
+    "raci-accountable-not-consulted": {
+      "result": "n/a",
+      "findings": []
+    },
+    "convention-ref-resolves": {
+      "result": "n/a",
+      "findings": []
+    },
+    "skill-ref-resolves": {
+      "result": "pass",
+      "findings": []
+    },
+    "skill-servable": {
+      "result": "pass",
+      "findings": []
+    },
+    "activity-skill-has-tool": {
+      "result": "fail",
+      "findings": [
+        {
+          "where": "Task_BuildSite",
+          "detail": "names skill \"ig-render-jekyll\", which no Tool declares `satisfies` for — the step's mechanism is still prose."
+        },
+        {
+          "where": "Task_SizeReview",
+          "detail": "names skill \"ig-publication\", which no Tool declares `satisfies` for — the step's mechanism is still prose."
+        }
+      ]
+    },
+    "decision-ref-resolves": {
+      "result": "n/a",
+      "findings": []
+    },
+    "role-ref-resolves": {
+      "result": "pass",
+      "findings": []
+    },
+    "activity-in-lane": {
+      "result": "pass",
+      "findings": []
+    },
+    "lane-binds-role": {
+      "result": "pass",
+      "findings": []
+    },
+    "variable-performer-declared-alone": {
+      "result": "n/a",
+      "findings": []
+    },
+    "role-carries-activity-skill": {
+      "result": "fail",
+      "findings": [
+        {
+          "where": "Task_Export",
+          "detail": "needs skill \"ig-publisher-fork\", but its lane's role \"ig-publisher-service\" does not carry it."
+        },
+        {
+          "where": "Task_Seed",
+          "detail": "needs skill \"compiled-artefact-cache\", but its lane's role \"ig-publisher-service\" does not carry it."
+        }
+      ]
+    },
+    "lane-role-legacy-binding": {
+      "result": "fail",
+      "findings": [
+        {
+          "where": "Lane_PubMgr",
+          "detail": "lane \"Lane_PubMgr\" binds role \"publication-manager\" with the deprecated <bootstrap.processes:role ref>; declare <bpmn:resource id=\"publication-manager\"/> and set partitionElementRef=\"publication-manager\" on the lane."
+        },
+        {
+          "where": "Lane_Site",
+          "detail": "lane \"Lane_Site\" binds role \"build-pipeline\" with the deprecated <bootstrap.processes:role ref>; declare <bpmn:resource id=\"build-pipeline\"/> and set partitionElementRef=\"build-pipeline\" on the lane."
+        },
+        {
+          "where": "Lane_Runner",
+          "detail": "lane \"Lane_Runner\" binds role \"ig-publisher-service\" with the deprecated <bootstrap.processes:role ref>; declare <bpmn:resource id=\"ig-publisher-service\"/> and set partitionElementRef=\"ig-publisher-service\" on the lane."
+        }
+      ]
+    },
+    "task-skill-outside-lane-role": {
+      "result": "fail",
+      "findings": [
+        {
+          "where": "Task_Export",
+          "detail": "task \"Build the IG with the AST exporter\" requires skill \"ig-publisher-fork\", which role \"ig-publisher-service\" (named by lane \"AST refresh (GitHub runner: IG Publisher with the AST exporter)\") does not list, directly or through `inherits`."
+        },
+        {
+          "where": "Task_Seed",
+          "detail": "task \"Seed the cache branch\" requires skill \"compiled-artefact-cache\", which role \"ig-publisher-service\" (named by lane \"AST refresh (GitHub runner: IG Publisher with the AST exporter)\") does not list, directly or through `inherits`."
+        }
+      ]
+    },
+    "activity-names-skill": {
+      "result": "pass",
+      "findings": []
+    },
+    "activity-fulfilment-kind": {
+      "result": "pass",
+      "findings": []
+    },
+    "call-activity-resolves": {
+      "result": "n/a",
+      "findings": []
+    },
+    "process-diagram-published": {
+      "result": "fail",
+      "findings": [
+        {
+          "where": "Process_IgAstCache",
+          "detail": "no rendered diagram at ig-ast-cache.svg — run `bun run cat render:bpmn`."
+        }
+      ]
+    },
+    "activity-documented": {
+      "result": "pass",
+      "findings": []
+    },
+    "activity-calls-skill-process": {
+      "result": "pass",
+      "findings": []
+    },
+    "gateway-documented": {
+      "result": "pass",
+      "findings": []
+    },
+    "gateway-branches-named": {
+      "result": "pass",
+      "findings": []
+    },
+    "node-reachable": {
+      "result": "pass",
+      "findings": []
+    },
+    "node-has-exit": {
+      "result": "pass",
+      "findings": []
+    },
+    "activity-implicit-split": {
+      "result": "pass",
+      "findings": []
+    },
+    "gateway-mixed": {
+      "result": "pass",
+      "findings": []
+    },
+    "process-size": {
+      "result": "pass",
+      "findings": []
+    },
+    "process-decompose": {
+      "result": "pass",
+      "findings": []
+    },
+    "process-single-start": {
+      "result": "pass",
+      "findings": []
+    },
+    "decision-label-question": {
+      "result": "pass",
+      "findings": []
+    },
+    "activity-label-verb-first": {
+      "result": "pass",
+      "findings": []
+    },
+    "edge-rectilinear": {
+      "result": "pass",
+      "findings": []
+    },
+    "edge-crossing": {
+      "result": "fail",
+      "findings": [
+        {
+          "where": "Flow_6×Flow_9",
+          "detail": "flows Flow_6 and Flow_9 cross."
+        }
+      ]
+    },
+    "edge-through-node": {
+      "result": "pass",
+      "findings": []
+    },
+    "diagram-too-wide": {
+      "result": "pass",
+      "findings": []
+    },
+    "diagram-too-tall": {
+      "result": "pass",
+      "findings": []
+    },
+    "label-overlap": {
+      "result": "pass",
+      "findings": []
+    },
+    "label-on-edge": {
+      "result": "pass",
+      "findings": []
+    },
+    "label-on-shape": {
+      "result": "fail",
+      "findings": [
+        {
+          "where": "Flow_4/Task_Dispatch",
+          "detail": "label \"no — refused:&#10;stale, cannot tell, miss\" covers \"Dispatch AST refresh\"."
+        }
+      ]
+    },
+    "label-on-lane-line": {
+      "result": "pass",
+      "findings": []
+    },
+    "shape-overlap": {
+      "result": "pass",
+      "findings": []
+    },
+    "lane-order": {
+      "result": "pass",
+      "findings": []
+    },
+    "prose-reviewed-since-code-changed": {
+      "result": "n/a",
+      "findings": []
+    },
+    "prose-claims-resolve": {
+      "result": "n/a",
+      "findings": []
+    }
+  },
+  "totals": {
+    "pass": 29,
+    "fail": 7,
+    "n/a": 9,
+    "unknown": 0
+  }
+}
