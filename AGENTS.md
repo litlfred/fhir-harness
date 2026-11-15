@@ -55,12 +55,16 @@ The directories this layer declares are listed in `fhir-harness.json`:
 - `pipeline/` and `pipeline-plugins/`: the `site-publisher-ig` slot.
 - `docs/`: this layer's pages on the platform's site (authored under
   `docs/source/`), plus the `ig-ast` wireframe.
-- `fhir-core/`: the FHIR core StructureDefinitions of each stable release
-  (R4, R4B, R5), keyed by canonical URL. `pins.json` pins each
-  `hl7.fhir.<r>.core` package by sha1 and sha512, and `<r>/manifest.json` is
-  committed. The bodies are not committed: `scripts/fhir-core.ts materialise`
-  writes them byte for byte. A release that could not be read is `unread`,
-  never empty.
+- `fhir-core/`: the FHIR core definitions of each stable release (R4, R4B,
+  R5), keyed by canonical URL, with **HL7's publication as the authority**.
+  `pins.json` pins HL7's own `hl7.fhir.<r>.core` package at its hl7.org URL by
+  sha1 and sha512; `<r>/manifest.json` sends a reader to HL7's published JSON
+  for each definition; `<r>/class-model.json` is the UML class model derived
+  from HL7's package, which HL7 publishes only as pictures. Never restate or
+  imply authority over a core definition here: derive only what HL7 does not
+  publish. Local copies of the bodies are a labelled cache (`<r>/cache/`,
+  written by `scripts/fhir-core.ts materialise`), never committed. A release
+  that could not be read is `unread`, never empty.
 - `library/`, `libraries/`, `translations/`, `glossary/`: source documents,
   outside libraries, gettext templates and the generated glossary.
 
