@@ -4,6 +4,8 @@
  * each stable release as a declared graph (`fhir-core/`, typology
  * `fhir-core-definitions`; schema `schemas/fhir-core.ts`).
  *
+ * @covers fhir-core-definitions — `check` judges the pins, every manifest and every materialised body
+ *
  * Usage (from the checkout root, or `--root` the layer):
  *   bun run fhir-harness/scripts/fhir-core.ts index       [--root DIR] [--release R4] [--tgz-dir DIR]
  *   bun run fhir-harness/scripts/fhir-core.ts materialise [--root DIR] [--release R4] [--tgz-dir DIR]
