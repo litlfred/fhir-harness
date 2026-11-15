@@ -126,6 +126,7 @@ import { realPathWithin, safeSegment } from "../../cat-harness-tools/src/core/sa
 import { astPinsIn, IG_AST_LOCK_FILE, type IgAstPin } from "../schemas/ig-ast-lock.ts";
 import type { PublishedLayout } from "./ast-to-artifact-index.ts";
 import { indexReadPath, indexWritePath } from "./lib/ig-index-at.ts";
+import { checkoutOwner, checkoutRepository, resolveRepository, SAME_OWNER_NAME } from "./lib/checkout-repository.ts";
 
 const HERE = import.meta.dir;
 
@@ -197,9 +198,13 @@ export function lockedMounts(checkout: string): Map<string, LockedMount> {
   const out = new Map<string, LockedMount>();
   try {
     const lock = JSON.parse(readFileSync(join(checkout, "index.lock.json"), "utf-8")) as { instances?: { instance?: unknown; repository?: unknown; sha?: unknown }[] };
+    // A same-owner entry (a bare name) is the checkout owner's (cat-harness-tools#2337).
+    let owner: string | undefined | null = null;
     for (const i of lock.instances ?? []) {
-      if (typeof i.instance === "string" && typeof i.repository === "string" && OWNER_REPO.test(i.repository)) {
-        out.set(i.instance, { repository: i.repository, ...(typeof i.sha === "string" && SHA.test(i.sha) ? { sha: i.sha } : {}) });
+      if (typeof i.instance !== "string" || typeof i.repository !== "string") continue;
+      const repository = SAME_OWNER_NAME.test(i.repository) ? resolveRepository(i.repository, owner === null ? (owner = checkoutOwner(checkout)) : owner) : i.repository;
+      if (repository !== undefined && OWNER_REPO.test(repository)) {
+        out.set(i.instance, { repository, ...(typeof i.sha === "string" && SHA.test(i.sha) ? { sha: i.sha } : {}) });
       }
     }
   } catch {
@@ -213,16 +218,22 @@ export function lockedRepositories(checkout: string): Map<string, string> {
   return new Map([...lockedMounts(checkout)].map(([k, v]) => [k, v.repository]));
 }
 
-/** The checkout's layers, as the inheritance needs them, with their roots. The repository is the mounted one, else the declared one. */
+/**
+ * The checkout's layers, as the inheritance needs them, with their roots. The
+ * repository is the mounted one; for a layer the lock does not mount, the
+ * checkout's own (from its origin: the owner is derived, so a fork and its
+ * upstream each name themselves); else the declared one.
+ */
 export function instancesIn(checkout: string): (InstanceFacts & { root: string; declaredRepository?: string; sha?: string })[] {
   const out: (InstanceFacts & { root: string; declaredRepository?: string; sha?: string })[] = [];
   const locked = lockedMounts(checkout);
+  let own: string | undefined | null = null;
   for (const root of instanceRootsIn(checkout)) {
     const d = declarationOf(root);
     const name = typeof d?.["name"] === "string" ? (d["name"] as string) : basename(root);
     const declared = typeof d?.["repository"] === "string" ? (d["repository"] as string) : undefined;
     const mount = locked.get(name);
-    const mounted = mount?.repository;
+    const mounted = mount?.repository ?? (own === null ? (own = checkoutRepository(checkout)) : own);
     const repository = mounted ?? declared;
     const needs = Array.isArray(d?.["needs"]) ? (d!["needs"] as unknown[]).filter((x): x is string => typeof x === "string") : [];
     out.push({ name, root, needs, ...(repository ? { repository } : {}), ...(declared && mounted && declared !== mounted ? { declaredRepository: declared } : {}), ...(mount?.sha ? { sha: mount.sha } : {}) });
