@@ -11,10 +11,6 @@
     },
     {
       "typology": "fhir-artifact-index",
-      "family": "folio-ig-identity/v1"
-    },
-    {
-      "typology": "fhir-artifact-index",
       "family": "folio-ig-menu/v1"
     },
     {

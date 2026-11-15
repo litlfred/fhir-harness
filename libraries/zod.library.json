@@ -22,7 +22,6 @@
     "schemas/ig-ast-lock.ts",
     "schemas/ig-ast.ts",
     "schemas/ig-chrome.ts",
-    "schemas/ig-identity.ts",
     "schemas/ig-menu.ts",
     "schemas/ig-metadata-index.ts",
     "schemas/ig-releases.ts",

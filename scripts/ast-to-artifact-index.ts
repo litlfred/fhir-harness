@@ -59,6 +59,7 @@ interface ResourceJson {
   id?: string;
   url?: string;
   version?: string;
+  status?: string;
   name?: string;
   title?: string;
   description?: string;
@@ -338,6 +339,7 @@ export function astToArtifactIndex(ast: Ast, opts: AstIndexOptions): AstIndexRes
     title: `${packageId ?? opts.instanceId} — artefact index (from the IG Publisher AST cache)`,
     ...(packageId ? { packageId } : {}),
     ...(nonEmpty(ig?.version) ? { version: ig!.version } : {}),
+    ...(nonEmpty(ig?.status) ? { status: ig!.status } : {}),
     ...(canonicalBase ? { canonicalBase } : {}),
     source: {
       kind: "output",

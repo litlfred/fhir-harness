@@ -7,26 +7,26 @@ Feature: Populating site.data.fhir for an IG site
     Then the package id defaults to the id, and the ImplementationGuide's id, url, name, title, version, status, publisher and FHIR versions are set
     And nothing is undetermined
 
-  @test:scripts/ig-site-data.test.ts::from_published_IGs'_artifact_indexes::an_index_with_no_identity_file::indexFieldsFromIndex
+  @test:scripts/ig-site-data.test.ts::from_published_IGs'_artifact_indexes::an_index_that_records_no_status::indexFieldsFromIndex
   Scenario: writes what the index carries, from the index
-    Given a published IG's artifact index with no identity file
+    Given a published IG's artifact index that records no status
     Then the package id, canonical, version and FHIR version come from the index, and the version's provenance names the index
 
-  @test:scripts/ig-site-data.test.ts::from_published_IGs'_artifact_indexes::an_index_with_no_identity_file::listsUnsourcedFields
+  @test:scripts/ig-site-data.test.ts::from_published_IGs'_artifact_indexes::an_index_that_records_no_status::listsUnsourcedFields
   Scenario: lists what it could not source instead of writing empty strings
-    Given a published IG's artifact index with no identity file
+    Given a published IG's artifact index that records no status
     Then the id, name and publisher are undetermined
     And no empty string is written
 
-  @test:scripts/ig-site-data.test.ts::from_published_IGs'_artifact_indexes::an_index_with_no_identity_file::noIdentityNoStatus
-  Scenario: states no status: there is no ig-identity.json, and a chrome states none
-    Given a published IG's artifact index with no identity file
+  @test:scripts/ig-site-data.test.ts::from_published_IGs'_artifact_indexes::an_index_that_records_no_status::noStatusInIndexNoStatus
+  Scenario: states no status: the index records none, and a chrome states none
+    Given a published IG's artifact index that records no status
     Then no status is stated and nothing is refused
 
-  @test:scripts/ig-site-data.test.ts::from_published_IGs'_artifact_indexes::an_index_beside_its_own_ig-identity.json::statusFromIdentityFile
-  Scenario: status comes from the IG's own identity file
-    Given an artifact index beside its own identity file
-    Then the status is "active", from the identity file
+  @test:scripts/ig-site-data.test.ts::from_published_IGs'_artifact_indexes::an_index_that_records_its_status::statusFromIndex
+  Scenario: status comes from the IG's own index
+    Given an artifact index that records the IG's status
+    Then the status is "active", from the index
 
   @test:scripts/ig-site-data.test.ts::noSourceIsError
   Scenario: no source at all is an error, not an empty site.data.fhir
