@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createHash } from "node:crypto";
-import { dirFor, fragmentFor, hasTranslation, localeFrontMatter, localesFor, pageLocales, pageReview, relinkForLocale, resolveLangFragments, signedOff, translatePage, translateWithIncludes, UN_LOCALES, UNREVIEWED_BLOCK_CLASS, UNREVIEWED_NOTICE, UNREVIEWED_NOTICE_CSS, unreviewedLabel, unreviewedNoticeLiquid } from "./ig-page-translations.ts";
+import { catalogueAliases, dirFor, fragmentFor, hasTranslation, localeFrontMatter, localesFor, pageLocales, pageReview, relinkForLocale, resolveLangFragments, signedOff, translatePage, translateWithIncludes, UN_LOCALES, UNREVIEWED_BLOCK_CLASS, UNREVIEWED_NOTICE, UNREVIEWED_NOTICE_CSS, unreviewedLabel, unreviewedNoticeLiquid } from "./ig-page-translations.ts";
 
 const po = (pairs: [string, string][]) => pairs.map(([i, s]) => `msgid "${i}"\nmsgstr "${s}"`).join("\n\n") + "\n";
 
@@ -25,6 +25,19 @@ describe("ig-page-translations (fhir-harness#382)", () => {
     expect(locs[0]!.status).toBe("unverified");
     expect(localesFor("index", locs)).toEqual(["en", "fr"]);
     expect(localesFor("other", locs)).toEqual(["en"]);
+  });
+
+  test("a page that names another catalogue is translated from it, and reviewed against its record", () => {
+    const d = fixture();
+    writeFileSync(join(d, "fr", "journeys.po"), po([["Born abroad.", "Né à l'étranger."]]));
+    const pages: Record<string, string> = { journeys: "<!-- translations: journeys -->\n\nBorn abroad.\n", escape: "<!-- translations: ../secret -->\n", index: "Hello world.\n" };
+    const aliases = catalogueAliases(Object.keys(pages), (s) => pages[s]);
+    expect([...aliases]).toEqual([["journeys", "journeys"]]);
+    const [fr] = pageLocales(d, aliases);
+    expect(translatePage(pages.journeys!, fr!.catalogues.get("journeys")!).md).toContain("Né à l'étranger.");
+    expect(fr!.catalogueRel?.get("journeys")).toBe("journeys");
+    expect(fr!.catalogues.get("index")).toBeDefined();
+    expect(pageReview(fr!, "journeys", pages.journeys).reviewed).toBe(false);
   });
 
   test("no translations directory: no locales", () => {
