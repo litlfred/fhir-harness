@@ -40,6 +40,11 @@ Feature: A translated IG page's top bar reads in the page's language, and its un
     And an English page renders the English labels with no mark
     And the bar is still one block that a composed layout can lift whole
 
+  @test:scripts/ig-menu-translations.test.ts::menu_translations_(fhir-harness#417)::the_site's_labels_add_every_page_title_and_the_generated_pages',_each_once,_so_a_page's_title_and_its_menu_item_are_one_string
+  Scenario: page titles share the menu's catalogue
+    Given a menu and sushi-config pages with titles
+    Then the site's labels are the menu's, then each page title and the generated pages' titles, each once
+
   @test:scripts/ig-menu-translations.test.ts::menu_translations_(fhir-harness#417)::an_unreviewed_menu_makes_every_translated_page_in_its_locale_not_reviewed
   Scenario: a signed-off page under an unreviewed menu is still not reviewed
     Given a French page whose own translation is signed off, under a French menu nobody reviewed

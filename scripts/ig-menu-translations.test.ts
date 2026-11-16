@@ -5,7 +5,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { Liquid } from "liquidjs";
 import { IG_TOPBAR_RE, igTopBar, stageIgSite, UNREVIEWED_MENU_CLASS } from "./build-ig-site.ts";
-import { localiseMenu, menuLabels, menuLocales, menuPot, menuSource, writeMenuPots } from "./ig-menu-translations.ts";
+import { localiseMenu, menuLabels, menuLocales, menuPot, menuSource, pageTitles, siteLabels, writeMenuPots } from "./ig-menu-translations.ts";
 
 const MENU = {
   groups: [
@@ -30,6 +30,13 @@ describe("menu translations (fhir-harness#417)", () => {
   test("the labels are the title, then each group and its items, each once", () => {
     expect(LABELS).toEqual(["ACME IG", "Home", "Business Requirements", "Concepts", "Use Cases"]);
     expect(menuPot(LABELS)).toContain('msgid "Business Requirements"\nmsgstr ""');
+  });
+
+  test("the site's labels add every page title and the generated pages', each once, so a page's title and its menu item are one string", () => {
+    const pages = { "index.md": { title: "Home", "faq.md": { title: "Frequently Asked Questions" } }, "concepts.md": { title: "Concepts" } };
+    expect(pageTitles(pages)).toEqual(["Home", "Frequently Asked Questions", "Concepts"]);
+    expect(siteLabels(MENU, "ACME IG", pages)).toEqual([...LABELS, "Frequently Asked Questions", "Table of Contents", "Artifacts Summary"]);
+    expect(siteLabels(undefined, undefined, pages)).toEqual(["Home", "Frequently Asked Questions", "Concepts", "Table of Contents", "Artifacts Summary"]);
   });
 
   test("a menu catalogue with no review record is not reviewed", () => {
@@ -77,7 +84,7 @@ describe("menu translations (fhir-harness#417)", () => {
     const d = mkdtempSync(join(tmpdir(), "ig-menu-stage-"));
     const src = join(d, "src");
     mkdirSync(join(src, "input", "pagecontent"), { recursive: true });
-    writeFileSync(join(src, "sushi-config.yaml"), "id: x.ig\ntitle: ACME IG\n");
+    writeFileSync(join(src, "sushi-config.yaml"), "id: x.ig\ntitle: ACME IG\npages:\n  index.md:\n    title: Home\n");
     const SRC = "# Hi\n\nHello world.\n";
     writeFileSync(join(src, "input", "pagecontent", "index.md"), SRC);
     mkdirSync(join(src, "translations", "fr", "pagecontent"), { recursive: true });
@@ -89,6 +96,8 @@ describe("menu translations (fhir-harness#417)", () => {
     stageIgSite(src, join(d, "out"), { menu: MENU, baseurl: "/b" });
     const page = readFileSync(join(d, "out", "fr", "index.md"), "utf-8");
     expect(page).toContain("translation_reviewed: false");
+    // Its title is the menu catalogue's translation of the page's title.
+    expect(page).toMatch(/^title: "?Accueil"?$/m);
     expect(readFileSync(join(d, "out", "_layouts", "default.html"), "utf-8")).toContain('{% when "fr" %}');
   });
 

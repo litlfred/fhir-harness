@@ -8,7 +8,7 @@
  *
  * - **a catalogue per locale**, `translations/<locale>/menu/menu.po`, made
  *   from the template `menu/menu.pot` this module writes from the menu's
- *   labels and the IG's title (`pot` below; `--check` fails on a stale one);
+ *   labels, the IG's title and its pages' titles ({@link siteLabels}) (`pot` below; `--check` fails on a stale one);
  * - **a localised menu** per locale: a label with no entry stays in the
  *   source language, and a link points at the locale's copy of a page when
  *   that page is translated into it;
@@ -52,6 +52,39 @@ export function menuLabels(menu: MenuLike, title?: string): string[] {
     add(g.label);
     for (const it of g.items ?? []) add(it.label);
   }
+  return out;
+}
+
+/** The titles of the pages the build writes itself, which the rail lists like any page. */
+export const GENERATED_PAGE_TITLES = ["Table of Contents", "Artifacts Summary"] as const;
+
+/** Every page title `sushi-config.yaml` `pages:` declares, in order, nested pages after their parent. */
+export function pageTitles(pages: unknown): string[] {
+  const out: string[] = [];
+  const walk = (node: unknown) => {
+    if (!node || typeof node !== "object") return;
+    for (const [file, spec] of Object.entries(node as Record<string, unknown>)) {
+      if (file === "title" || file === "generation" || !spec || typeof spec !== "object") continue;
+      const t = (spec as Record<string, unknown>).title;
+      if (typeof t === "string") out.push(t);
+      walk(spec);
+    }
+  };
+  walk(pages);
+  return out;
+}
+
+/**
+ * Every label the site's chrome shows, each once: the menu's ({@link menuLabels}),
+ * then each page's title and the generated pages' titles. One catalogue,
+ * `menu/menu.po`, so a page's title, its menu item and its rail entry are the
+ * same words in every language (owner, 2026-11-16: "navbar menu items = page
+ * titles"); the rail reads the same catalogue (cat-harness-tools
+ * `navbar-strings.ts`).
+ */
+export function siteLabels(menu: MenuLike | undefined, title: string | undefined, pages: unknown): string[] {
+  const out = menuLabels(menu ?? { groups: [] }, title);
+  for (const t of [...pageTitles(pages), ...GENERATED_PAGE_TITLES]) if (t.trim() && !out.includes(t)) out.push(t);
   return out;
 }
 
@@ -123,10 +156,10 @@ export function localiseMenu<M extends MenuLike>(menu: M, l: Pick<MenuLocale, "l
   };
 }
 
-/** The IG's menu and title, read from its `sushi-config.yaml`. */
-export function sushiMenu(igRoot: string, groups: (menu: unknown) => MenuLike["groups"]): { menu: MenuLike; title?: string } {
+/** The IG's menu, title and pages, read from its `sushi-config.yaml`. */
+export function sushiMenu(igRoot: string, groups: (menu: unknown) => MenuLike["groups"]): { menu: MenuLike; title?: string; pages?: unknown } {
   const raw = parseYaml(readFileSync(join(igRoot, "sushi-config.yaml"), "utf-8")) as Record<string, unknown>;
-  return { menu: { groups: groups(raw.menu) }, title: typeof raw.title === "string" ? raw.title : undefined };
+  return { menu: { groups: groups(raw.menu) }, title: typeof raw.title === "string" ? raw.title : undefined, pages: raw.pages };
 }
 
 /**
@@ -160,9 +193,9 @@ if (import.meta.main) {
     process.exit(2);
   }
   const { groupsFromSushiMenu } = await import("./ingest-ig-menu.ts");
-  const { menu, title } = sushiMenu(root, groupsFromSushiMenu);
+  const { menu, title, pages } = sushiMenu(root, groupsFromSushiMenu);
   const check = rest.includes("--check");
-  const paths = writeMenuPots(root, menuLabels(menu, title), check);
+  const paths = writeMenuPots(root, siteLabels(menu, title, pages), check);
   if (check && paths.length) {
     console.error(`menu templates stale (${paths.length}); run: bun fhir-harness/scripts/ig-menu-translations.ts pot ${root}`);
     for (const p of paths) console.error(`  ${p}`);

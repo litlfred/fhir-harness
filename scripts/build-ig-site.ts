@@ -57,7 +57,7 @@ import { wrapRaw } from "../../cat-harness-tools/scripts/lib/liquid-raw.ts";
 import type { IgReleases } from "../schemas/ig-releases.ts";
 import { astFooterData, IG_QA_PAGE, igSiteFooter, sushiFooterData, type IgFooterData, type IgSiteFooter } from "./ig-footer.ts";
 import { thinIndexPage } from "./ig-thin-pages.ts";
-import { localiseMenu, menuLabels, menuLocales, type MenuLocale } from "./ig-menu-translations.ts";
+import { localiseMenu, menuLocales, type MenuLocale, siteLabels } from "./ig-menu-translations.ts";
 import { dirFor, hasTranslation, localeFrontMatter, localizeIncludes, pageLocales, pageReview, relinkForLocale, resolveLangFragments, SOURCE_LOCALE, translateWithIncludes, TRANSLATION_META_LIQUID, unreviewedLabel, unreviewedNoticeLiquid } from "./ig-page-translations.ts";
 import { IG_SEARCH_CSS, IG_SEARCH_INDEX_FILE, IG_SEARCH_SCRIPT_FILE, igSearchBox, igSearchScript, type IgSearchRef } from "./ig-search.ts";
 import { withRenderedBy } from "../../cat-harness-tools/scripts/viewer-declarations.js";
@@ -2059,7 +2059,8 @@ function stageDeclaredSource(igSrc: string, out: string, opts: StageOptions): St
   // labels are on every page, so a locale whose menu no person reviewed makes
   // every page in that locale "not reviewed" (fail closed).
   const igTitle = typeof sushi.title === "string" ? sushi.title : String(sushi.id ?? "IG");
-  const menuLocs: Map<string, MenuLocale> = opts.menu ? menuLocales(join(src, "translations"), menuLabels(opts.menu, igTitle)) : new Map();
+  // The menu's labels and every page's title: one catalogue, so a translated page's title is its menu item's words.
+  const menuLocs: Map<string, MenuLocale> = menuLocales(join(src, "translations"), siteLabels(opts.menu, igTitle, sushi.pages));
   const translatedHere = (locale: string): Set<string> => {
     const l = pageLocs.find((x) => x.locale === locale);
     return new Set(l ? [...pageStems].filter((k) => hasTranslation(k, l, sourceOf, pageStems)).map((k) => `${k}.html`) : []);
@@ -2156,7 +2157,8 @@ function stageDeclaredSource(igSrc: string, out: string, opts: StageOptions): St
         ...(inc.total ? { translated_include_segments: `${inc.translated}/${inc.total}` } : {}),
       };
       // Out of the menu: the picker, not the nav, leads to it.
-      writePage(join(out, l.locale, f), body, { ...data, nav_exclude: true }, { title: n.title, navOrder: n.navOrder });
+      // Its title in the locale, from the same catalogue as the menu and the rail (owner, 2026-11-16: "navbar menu items = page titles").
+      writePage(join(out, l.locale, f), body, { ...data, nav_exclude: true }, { title: menuLocs.get(l.locale)?.labels.get(n.title) ?? n.title, navOrder: n.navOrder });
       translatedPages.push(`${l.locale}/${f}`);
     }
   }
