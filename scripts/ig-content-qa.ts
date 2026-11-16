@@ -19,15 +19,22 @@
  *    agent that reads the site, hidden text, a link whose words name one
  *    place and whose target is another. How: skill `ig-content-qa`.
  * 2. **The publish gate** ({@link contentGate}), run by `ig-site:compose`
- *    before anything is staged. It refuses when the sidecar is missing, when
- *    its digest is not the digest of the content being published (stale),
- *    when it holds an open finding, or when the pattern scan
+ *    before anything is staged. It refuses when the sidecar is missing or
+ *    unusable, when it holds an open finding, or when the pattern scan
  *    ({@link scanText}) finds anything. A pattern hit is refused whatever the
  *    sidecar says: it is the deterministic floor, never cleared by a review.
- *    A missing or stale review refuses every publish, previews included
- *    (owner, card Q-INJ-1 "B"); `IG_CONTENT_QA_ACCEPT_UNREVIEWED=1` accepts
- *    one for a local build, and its QA page says so. Nothing accepts a
- *    pattern hit or an open finding.
+ *    A missing review refuses every publish, previews included (owner, card
+ *    Q-INJ-1 "B"); `IG_CONTENT_QA_ACCEPT_UNREVIEWED=1` accepts one for a
+ *    local build, and its QA page says so. A STALE review (its digest is not
+ *    the digest of the content being published) WARNS and the publish goes
+ *    ahead (owner, card 2026-11-16 "Warn on stale", superseding Q-INJ-1 "B"
+ *    for this case only): every content merge staled the review and broke the
+ *    publish until somebody re-recorded it. The warning, the verdict and the
+ *    run's step summary name each text the review did not read
+ *    ({@link ContentQaVerdict.unreviewed}), from the per-text SHAs a review
+ *    records ({@link ContentQaSidecar.texts}); a review recorded before
+ *    those were kept cannot say which, and says so. Nothing accepts a pattern
+ *    hit or an open finding.
  * 3. **The browser** (`templates/ig-pages/ast-resource.js`) scans a fetched
  *    narrative with the same rules ({@link INJECTION_RULES}; a test holds the
  *    two lists equal) and shows a flagged one as text with a warning, never
@@ -51,7 +58,7 @@
  * @covers none — a publish gate over an IG's texts; it judges no declared graph
  */
 import { createHash } from "node:crypto";
-import { existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 
 import { trustedSvgProblem, trustedScriptProblem } from "../schemas/ig-trusted-scripts.ts";
@@ -354,6 +361,12 @@ export interface ContentQaSidecar {
   reviewedAt: string;
   reviewer: { kind: "agent" | "person"; name: string; session?: string };
   findings: ReviewFinding[];
+  /**
+   * The SHA-256 of each text the review read (hex, sorted), so a stale review
+   * can name the texts it did not read. Optional: reviews recorded before
+   * 2026-11-16 have none.
+   */
+  texts?: string[];
 }
 
 /** Why a sidecar is not a usable review, or nothing when it is. */
@@ -365,6 +378,7 @@ export function sidecarProblems(v: unknown): string[] {
   if (typeof s.contentDigest !== "string" || !s.contentDigest.startsWith("sha256:")) p.push("contentDigest is not a sha256: digest");
   const rv = s.reviewer as Record<string, unknown> | undefined;
   if (!rv || (rv.kind !== "agent" && rv.kind !== "person") || typeof rv.name !== "string" || !rv.name) p.push("reviewer needs kind (agent|person) and name");
+  if (s.texts !== undefined && (!Array.isArray(s.texts) || s.texts.some((x) => typeof x !== "string" || !x))) p.push("texts is not a list of text SHAs");
   if (!Array.isArray(s.findings)) p.push("findings is not a list");
   else
     s.findings.forEach((f: unknown, i: number) => {
@@ -385,6 +399,7 @@ export function makeSidecar(o: { items: readonly ContentItem[]; reviewer: Conten
     reviewedAt: (o.now ?? new Date()).toISOString(),
     reviewer: o.reviewer,
     findings: o.findings ?? [],
+    texts: [...new Set(o.items.map((i) => i.sha))].sort(),
   };
   const p = sidecarProblems(s);
   if (p.length) throw new Error(`the review is not usable: ${p.join("; ")}`);
@@ -429,8 +444,14 @@ export interface ContentQaVerdict {
   ok: boolean;
   /** `reviewed`, `missing`, `stale`, `unusable`, `open-findings` or `pattern-hits`: the first reason it refused, or `reviewed`. */
   state: "reviewed" | "missing" | "stale" | "unusable" | "open-findings" | "pattern-hits";
-  /** The review was missing or stale and a local build accepted it. */
+  /** The review was missing and a local build accepted it. */
   accepted?: boolean;
+  /**
+   * State `stale` only: the texts to be published that the review did not
+   * read (their text changed, or they are new). Absent when the review
+   * records no per-text SHAs, so which ones cannot be told.
+   */
+  unreviewed?: { where: string; field: string }[];
   items: number;
   contentDigest: string;
   reviewedDigest?: string;
@@ -475,8 +496,16 @@ export function contentGate(o: { items: readonly ContentItem[]; sidecar: unknown
     return o.acceptUnreviewed ? { ...base, ok: true, accepted: true, state: "missing", openFindings, said: `${said} — accepted for this build` } : { ...base, ok: false, state: "missing", openFindings, said };
   }
   if (s.contentDigest !== digest) {
-    const said = `the review in ${CONTENT_QA_SIDECAR} is stale: it read ${s.contentDigest} (${s.items} text(s)), the site would publish ${digest} (${o.items.length}); ${how}`;
-    return o.acceptUnreviewed ? { ...base, ...reviewed, ok: true, accepted: true, state: "stale", openFindings, said: `${said} — accepted for this build` } : { ...base, ...reviewed, ok: false, state: "stale", openFindings, said };
+    // Owner, card 2026-11-16 "Warn on stale": the publish goes ahead and the
+    // texts nobody reviewed are named. The pattern scan above still ran on
+    // every one of them.
+    const read = s.texts ? new Set(s.texts) : undefined;
+    const unreviewed = read ? o.items.filter((i) => !read.has(i.sha)).map((i) => ({ where: i.where, field: i.field })) : undefined;
+    const which = unreviewed
+      ? `${unreviewed.length} text(s) not reviewed${unreviewed.length ? `:\n  ${unreviewed.slice(0, 20).map((u) => `${u.where} ${u.field}`).join("\n  ")}${unreviewed.length > 20 ? `\n  … and ${unreviewed.length - 20} more (the verdict lists every one)` : ""}` : ""}`
+      : "which texts were not reviewed cannot be told: the review records no per-text SHAs (recorded before 2026-11-16)";
+    const said = `WARNING: the review in ${CONTENT_QA_SIDECAR} is stale: it read ${s.contentDigest} (${s.items} text(s)), the site publishes ${digest} (${o.items.length}); published anyway, with no pattern hit; ${which}; ${how}`;
+    return { ...base, ...reviewed, ok: true, state: "stale", openFindings, ...(unreviewed ? { unreviewed } : {}), said };
   }
   return { ...base, ...reviewed, ok: true, state: "reviewed", openFindings, said: `${o.items.length} text(s) reviewed by ${s.reviewer.kind} ${s.reviewer.name} at ${s.reviewedAt}; no pattern hit, no open finding` };
 }
@@ -506,7 +535,35 @@ export function runGate(o: { ig: string; ast: string; scope?: ReadScope; acceptU
   }
   if (!v.ok) throw new Error(`injection QA refused the publish: ${v.said}`);
   log(`injection QA: ${v.said}`);
+  if (v.state === "stale") writeStepSummary(v);
   return v;
+}
+
+/** A stale review's warning, with every unreviewed text, in the GitHub Actions run summary when there is one. */
+export function staleSummary(v: ContentQaVerdict): string {
+  const rows = v.unreviewed?.map((u) => `| \`${u.where}\` | \`${u.field}\` |`) ?? [];
+  return [
+    "### ⚠️ Injection QA: the content review is stale — published anyway",
+    "",
+    `The review in \`${CONTENT_QA_SIDECAR}\` read \`${v.reviewedDigest ?? "?"}\`; this site publishes \`${v.contentDigest}\` (${v.items} text(s)). The pattern scan found nothing. Re-record the review (skill \`ig-content-qa\`).`,
+    "",
+    ...(v.unreviewed
+      ? v.unreviewed.length
+        ? [`**${v.unreviewed.length} text(s) not reviewed:**`, "", "| where | field |", "|---|---|", ...rows]
+        : ["Every text was reviewed: only removals changed the digest."]
+      : ["Which texts were not reviewed cannot be told: the review records no per-text SHAs (recorded before 2026-11-16)."]),
+    "",
+  ].join("\n");
+}
+
+function writeStepSummary(v: ContentQaVerdict): void {
+  const f = process.env.GITHUB_STEP_SUMMARY;
+  if (!f) return;
+  try {
+    appendFileSync(f, `${staleSummary(v)}\n`);
+  } catch {
+    // A summary that cannot be written does not stop the publish; the log line above said it.
+  }
 }
 
 /** Under the site build's work directory: the gate's verdict, for the QA page. */

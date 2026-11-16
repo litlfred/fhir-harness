@@ -115,3 +115,10 @@ Feature: An IG's narrative pages in the locales its translation catalogues fill
   @test:scripts/ig-page-translations.test.ts::a_translated_page's_HTML_and_SVG_includes_are_in_its_language::an_include_with_no_catalogue_is_still_relinked_for_the_locale_folder
   Scenario: an include with no catalogue is still relinked
     Then its locale copy keeps its English words and its relative links climb one level
+
+  @test:scripts/ig-page-translations.test.ts::ig-page-translations_(fhir-harness#382)::a_page_that_names_another_catalogue_is_translated_from_it,_and_reviewed_against_its_record
+  Scenario: a page that is a copy of a translated source is read from that source's catalogue
+    Given a French catalogue journeys.po and a page carrying "<!-- translations: journeys -->"
+    And a page naming "../secret", which leaves the locale's directory
+    Then only the first page has an alias, and it is translated from journeys.po
+    And its review is read from journeys.json, so with no record it is not reviewed

@@ -674,12 +674,14 @@ export function copyIgSource(ig: string, src: string, scope: IgReadScope = igRea
 }
 
 /**
- * The injection gate for one compose (`ig-content-qa.ts`). A missing or stale
- * review refuses every publish, previews included (owner, 2026-11-10, card
- * Q-INJ-1 "B: previews refuse too"). `IG_CONTENT_QA_ACCEPT_UNREVIEWED=1`
- * accepts one for a local build only (`stage-local-ig`), and the QA page says
- * so. Nothing accepts a pattern hit or an open finding. Throws on a refusal,
- * naming each text.
+ * The injection gate for one compose (`ig-content-qa.ts`). A missing review
+ * refuses every publish, previews included (owner, 2026-11-10, card Q-INJ-1
+ * "B: previews refuse too"); `IG_CONTENT_QA_ACCEPT_UNREVIEWED=1` accepts one
+ * for a local build only (`stage-local-ig`), and the QA page says so. A stale
+ * review warns and the publish goes ahead, naming the unreviewed texts in the
+ * log and the run summary (owner, 2026-11-16, card "Warn on stale"). Nothing
+ * accepts a pattern hit or an open finding. Throws on a refusal, naming each
+ * text.
  */
 export function contentQaGate(o: { ig: string; ast: string; scope: IgReadScope; work?: string; env?: Record<string, string | undefined>; log: (s: string) => void }): ContentQaVerdict {
   const accept = (o.env ?? process.env)[ACCEPT_UNREVIEWED_ENV] === "1";

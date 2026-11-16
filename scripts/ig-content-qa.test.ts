@@ -18,6 +18,7 @@ import {
   resourceItems,
   runGate,
   scanText,
+  staleSummary,
   scannedHits,
   sidecarProblems,
   trustedSvgHits,
@@ -112,12 +113,38 @@ describe("contentGate", () => {
     expect(v.state).toBe("reviewed");
   });
 
-  test("missing and stale refuse, unless a preview accepts them", () => {
+  test("missing refuses, unless a preview accepts it", () => {
     expect(contentGate({ items, sidecar: undefined })).toMatchObject({ ok: false, state: "missing" });
-    const old = makeSidecar({ items: items.slice(1), reviewer });
-    expect(contentGate({ items, sidecar: old })).toMatchObject({ ok: false, state: "stale" });
-    expect(contentGate({ items, sidecar: old, acceptUnreviewed: true })).toMatchObject({ ok: true, accepted: true, state: "stale" });
     expect(contentGate({ items, sidecar: undefined, acceptUnreviewed: true })).toMatchObject({ ok: true, accepted: true, state: "missing" });
+  });
+
+  test("stale warns and passes, naming the texts the review did not read", () => {
+    const old = makeSidecar({ items: items.slice(1), reviewer });
+    expect(old.texts).toEqual([...new Set(items.slice(1).map((i) => i.sha))].sort());
+    const v = contentGate({ items, sidecar: old });
+    expect(v).toMatchObject({ ok: true, state: "stale" });
+    expect(v.accepted).toBeUndefined();
+    expect(v.unreviewed).toEqual([{ where: items[0]!.where, field: items[0]!.field }]);
+    expect(v.said).toMatch(/^WARNING: .* stale/);
+    expect(v.said).toContain(`${items[0]!.where} ${items[0]!.field}`);
+    expect(staleSummary(v)).toContain(`| \`${items[0]!.where}\` | \`${items[0]!.field}\` |`);
+  });
+
+  test("a stale review recorded without per-text SHAs warns that it cannot name the texts", () => {
+    const { texts: _dropped, ...legacy } = makeSidecar({ items: items.slice(1), reviewer });
+    const v = contentGate({ items, sidecar: legacy });
+    expect(v).toMatchObject({ ok: true, state: "stale" });
+    expect(v.unreviewed).toBeUndefined();
+    expect(v.said).toContain("cannot be told");
+    expect(staleSummary(v)).toContain("cannot be told");
+  });
+
+  test("a stale review never lets a pattern hit or an open finding through", () => {
+    const f = { where: "X/1", field: "description", kind: "prompt-injection", note: "x", status: "open" as const };
+    const openOld = makeSidecar({ items: items.slice(1), reviewer, findings: [f] });
+    expect(contentGate({ items, sidecar: openOld })).toMatchObject({ ok: false, state: "open-findings" });
+    const bad = resourceItems({ resourceType: "X", id: "2", description: "[x](javascript:alert(1))" });
+    expect(contentGate({ items: [...items, ...bad], sidecar: makeSidecar({ items, reviewer }) })).toMatchObject({ ok: false, state: "pattern-hits" });
   });
 
   test("an open finding refuses, even on a preview; a cleared one with a reason passes", () => {
@@ -154,7 +181,7 @@ describe("a checkout", () => {
     return ig;
   }
 
-  test("collects the AST's texts and the IG's pages; record then gate passes, an edit makes it stale", () => {
+  test("collects the AST's texts and the IG's pages; record then gate passes, an edit makes it stale and names the edited text", () => {
     const ig = igWith("fine");
     const ast = join(ig, "output-ast");
     expect(collectItems({ ig, ast }).map((i) => `${i.where} ${i.field}`)).toEqual(["X/1 description", "input/pagecontent/index.md page"]);
@@ -165,7 +192,9 @@ describe("a checkout", () => {
     expect(runGate({ ig, ast, work, log: () => {} }).state).toBe("reviewed");
     expect(JSON.parse(readFileSync(join(work, "ig-content-qa-verdict.json"), "utf-8")).ok).toBe(true);
     writeFileSync(join(ig, "input", "pagecontent", "index.md"), "# Home, edited\n");
-    expect(() => runGate({ ig, ast, log: () => {} })).toThrow(/stale/);
+    const stale = runGate({ ig, ast, log: () => {} });
+    expect(stale).toMatchObject({ ok: true, state: "stale" });
+    expect(stale.unreviewed).toEqual([{ where: "input/pagecontent/index.md", field: "page" }]);
   });
 
   test("a review outside the declared read scope is refused, not silently skipped", () => {
