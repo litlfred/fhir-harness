@@ -37,11 +37,28 @@ Feature: An IG's narratives, markdown fields and pages are reviewed for injectio
     Given a review recorded over the current items
     Then the gate passes, as reviewed
 
-  @test:scripts/ig-content-qa.test.ts::contentGate::missing_and_stale_refuse,_unless_a_preview_accepts_them
-  Scenario: a missing or stale review refuses, unless a preview accepts it
+  @test:scripts/ig-content-qa.test.ts::contentGate::missing_refuses,_unless_a_preview_accepts_it
+  Scenario: a missing review refuses, unless a preview accepts it
     Then with no review the gate refuses as missing
-    And with a review over other items the gate refuses as stale
-    And on a preview that accepts unreviewed content, a stale or missing review passes, marked accepted
+    And on a preview that accepts unreviewed content, a missing review passes, marked accepted
+
+  @test:scripts/ig-content-qa.test.ts::contentGate::stale_warns_and_passes,_naming_the_texts_the_review_did_not_read
+  Scenario: a stale review warns and the publish goes ahead, naming each text it did not read
+    Given a review recorded over all but one of the items, with the SHA of each text it read
+    Then the gate passes as stale, not marked accepted
+    And the verdict names the one unreviewed text, and the warning says so
+    And the run summary lists it in a table
+
+  @test:scripts/ig-content-qa.test.ts::contentGate::a_stale_review_recorded_without_per-text_SHAs_warns_that_it_cannot_name_the_texts
+  Scenario: a stale review recorded before per-text SHAs were kept says it cannot name the texts
+    Given a review over other items that records no per-text SHAs
+    Then the gate passes as stale with no list of unreviewed texts
+    And the warning and the run summary say which texts cannot be told
+
+  @test:scripts/ig-content-qa.test.ts::contentGate::a_stale_review_never_lets_a_pattern_hit_or_an_open_finding_through
+  Scenario: a stale review never lets a pattern hit or an open finding through
+    Then a stale review holding an open finding refuses on open findings
+    And a stale review over texts one of which holds a javascript: link refuses on pattern hits
 
   @test:scripts/ig-content-qa.test.ts::contentGate::an_open_finding_refuses,_even_on_a_preview;_a_cleared_one_with_a_reason_passes
   Scenario: an open finding refuses even on a preview, and a finding cleared with a reason passes
@@ -59,15 +76,15 @@ Feature: An IG's narratives, markdown fields and pages are reviewed for injectio
     Then a review with another schema has problems
     And the gate refuses an unparsable review as unusable
 
-  @test:scripts/ig-content-qa.test.ts::a_checkout::collects_the_AST's_texts_and_the_IG's_pages;_record_then_gate_passes,_an_edit_makes_it_stale
-  Scenario: a checkout's AST texts and pages are collected; a recorded review passes until an edit makes it stale
+  @test:scripts/ig-content-qa.test.ts::a_checkout::collects_the_AST's_texts_and_the_IG's_pages;_record_then_gate_passes,_an_edit_makes_it_stale_and_names_the_edited_text
+  Scenario: a checkout's AST texts and pages are collected; a recorded review passes, and an edit makes it stale, which warns and names the edited text
     Given an IG checkout with an AST resource, a markdown page and an image
     Then the items are the resource's description and the markdown page
     And the gate refuses with no review
     When a review is recorded over the items
     Then the gate passes as reviewed and writes an ok verdict into the work directory
     When the page is edited
-    Then the gate refuses as stale
+    Then the gate passes as stale, warning, and names the edited page as unreviewed
 
   @test:scripts/ig-content-qa.test.ts::a_checkout::a_review_outside_the_declared_read_scope_is_refused,_not_silently_skipped
   Scenario: a review outside the declared read scope is refused, not silently skipped

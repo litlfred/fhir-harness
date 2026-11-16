@@ -24,15 +24,24 @@ gate"*.
 | line | where | refuses |
 |---|---|---|
 | agent review | `qa/ig-content-qa.json` in the IG, written by `ig-content-qa.ts record` | — (it records) |
-| publish gate | `ig-site:compose` (`ig-repo-site.ts` `contentQaGate`), and `check:ig-content-qa` | a pattern hit; an open finding; an unusable, missing or stale review |
+| publish gate | `ig-site:compose` (`ig-repo-site.ts` `contentQaGate`), and `check:ig-content-qa` | a pattern hit; an open finding; an unusable or missing review (a stale one warns) |
 | browser | `templates/ig-pages/ast-resource.js` | draws a flagged narrative as text under a warning, never as HTML |
 
 A **pattern hit** is refused whatever the review says: the rules
 (`INJECTION_RULES` in `scripts/ig-content-qa.ts`) are the floor, and a review
-cannot clear one. Fix the text. A **missing or stale** review refuses every
+cannot clear one. Fix the text. A **missing** review refuses every
 publish, previews included (owner, 2026-11-10, card Q-INJ-1 "B: previews
 refuse too"). `IG_CONTENT_QA_ACCEPT_UNREVIEWED=1` accepts one for a local
 build only, and its QA page says so.
+
+A **stale** review (one that read other texts than those published) WARNS,
+and the publish goes ahead (owner, 2026-11-16, card "Warn on stale"): every
+content merge staled it and broke the publish until somebody re-recorded it.
+The log, the verdict (`unreviewed`) and the run's step summary name each text
+the review did not read, from the per-text SHAs `record` now keeps (`texts`).
+A review recorded before 2026-11-16 keeps none, so the warning says which
+texts it cannot name. Re-record the review after a content change all the
+same: a warning is not a review.
 
 **Scripts an IG trusts** (owner, 2026-11-12, cards Q-TRP-3 and Q-RAIL-2). An
 IG whose own pages load a same-site script lists it in its `index.config.json`
