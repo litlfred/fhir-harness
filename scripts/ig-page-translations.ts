@@ -43,6 +43,28 @@ export interface PageLocale {
   status: "verified" | "unverified";
   /** Page stem (`concepts`) to its parsed catalogue. Only catalogues with at least one translated entry. */
   catalogues: Map<string, Map<string, string>>;
+  /** Page stem to its catalogue's path under `dir`, without `.po`, when it is not `pagecontent/<stem>` ({@link catalogueAliases}). */
+  catalogueRel?: Map<string, string>;
+}
+
+/**
+ * The comment a page carries when its words are another file's and so is its
+ * catalogue: `<!-- translations: journeys -->` reads the page from
+ * `translations/<locale>/journeys.po`. A page that is a generated copy of a
+ * source the layer already translates (a docs page an IG also publishes)
+ * says so, and is translated from that one catalogue rather than a second
+ * copy that would drift from it.
+ */
+export const CATALOGUE_ALIAS_RE = /<!--\s*translations:\s*([A-Za-z0-9._\/-]+?)(?:\.pot?)?\s*-->/;
+
+/** Each page that names its catalogue ({@link CATALOGUE_ALIAS_RE}), stem to path; a path that leaves the locale's directory is ignored. */
+export function catalogueAliases(stems: Iterable<string>, sourceOf: (stem: string) => string | undefined): Map<string, string> {
+  const out = new Map<string, string>();
+  for (const stem of stems) {
+    const m = CATALOGUE_ALIAS_RE.exec(sourceOf(stem) ?? "");
+    if (m && !m[1]!.split("/").includes("..") && !m[1]!.startsWith("/")) out.set(stem, m[1]!);
+  }
+  return out;
 }
 
 /** Whether `translations/<locale>/status.json` records a sign-off. */
@@ -97,9 +119,9 @@ export interface PageReview {
  * sign-off that names no source file does not cover every page, because it
  * cannot show which page's words it saw.
  */
-export function pageReview(l: Pick<PageLocale, "dir">, stem: string, sourceMd: string | undefined): PageReview {
+export function pageReview(l: Pick<PageLocale, "dir" | "catalogueRel">, stem: string, sourceMd: string | undefined): PageReview {
   if (sourceMd === undefined) return { reviewed: false, why: "no source page to check a sign-off against" };
-  return catalogueReview(l.dir, `pagecontent/${stem}`, sourceMd, `input/pagecontent/${stem}.md`);
+  return catalogueReview(l.dir, l.catalogueRel?.get(stem) ?? `pagecontent/${stem}`, sourceMd, `input/pagecontent/${stem}.md`);
 }
 
 /**
@@ -135,20 +157,36 @@ export function catalogueReview(dir: string, rel: string, sourceText: string, so
  * source locale is never one. A catalogue that translates nothing is left
  * out, so a page never claims a language it has no words in.
  */
-export function pageLocales(translationsDir: string | undefined): PageLocale[] {
+export function pageLocales(translationsDir: string | undefined, aliases: ReadonlyMap<string, string> = new Map()): PageLocale[] {
   if (!translationsDir || !existsSync(translationsDir)) return [];
   const out: PageLocale[] = [];
   for (const locale of readdirSync(translationsDir).sort()) {
     if (locale === SOURCE_LOCALE || !/^[a-z]{2,3}(-[A-Za-z0-9]+)*$/.test(locale)) continue;
     const dir = join(translationsDir, locale);
+    if (!statSync(dir).isDirectory()) continue;
     const pc = join(dir, "pagecontent");
-    if (!statSync(dir).isDirectory() || !existsSync(pc)) continue;
     const catalogues = new Map<string, Map<string, string>>();
-    for (const f of readdirSync(pc).filter((n) => n.endsWith(".po")).sort()) {
-      const po = parsePo(readFileSync(join(pc, f), "utf-8"));
-      if ([...po.values()].some((v) => v.trim() !== "")) catalogues.set(f.replace(/\.po$/, ""), po);
+    const read = (p: string): Map<string, string> | undefined => {
+      const po = parsePo(readFileSync(p, "utf-8"));
+      return [...po.values()].some((v) => v.trim() !== "") ? po : undefined;
+    };
+    if (existsSync(pc)) {
+      for (const f of readdirSync(pc).filter((n) => n.endsWith(".po")).sort()) {
+        const po = read(join(pc, f));
+        if (po) catalogues.set(f.replace(/\.po$/, ""), po);
+      }
     }
-    if (catalogues.size) out.push({ locale, dir, status: signedOff(dir) ? "verified" : "unverified", catalogues });
+    // A page that names another catalogue (`<!-- translations: … -->`) and has none of its own.
+    const catalogueRel = new Map<string, string>();
+    for (const [stem, rel] of aliases) {
+      const p = join(dir, `${rel}.po`);
+      if (catalogues.has(stem) || !existsSync(p)) continue;
+      const po = read(p);
+      if (!po) continue;
+      catalogues.set(stem, po);
+      catalogueRel.set(stem, rel);
+    }
+    if (catalogues.size) out.push({ locale, dir, status: signedOff(dir) ? "verified" : "unverified", catalogues, ...(catalogueRel.size ? { catalogueRel } : {}) });
   }
   return out;
 }

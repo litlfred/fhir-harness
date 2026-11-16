@@ -58,7 +58,7 @@ import type { IgReleases } from "../schemas/ig-releases.ts";
 import { astFooterData, IG_QA_PAGE, igSiteFooter, sushiFooterData, type IgFooterData, type IgSiteFooter } from "./ig-footer.ts";
 import { thinIndexPage } from "./ig-thin-pages.ts";
 import { localiseMenu, menuLabels, menuLocales, type MenuLocale } from "./ig-menu-translations.ts";
-import { dirFor, hasTranslation, localeFrontMatter, pageLocales, pageReview, relinkForLocale, resolveLangFragments, SOURCE_LOCALE, translateWithIncludes, TRANSLATION_META_LIQUID, unreviewedLabel, unreviewedNoticeLiquid } from "./ig-page-translations.ts";
+import { catalogueAliases, dirFor, hasTranslation, localeFrontMatter, pageLocales, pageReview, relinkForLocale, resolveLangFragments, SOURCE_LOCALE, translateWithIncludes, TRANSLATION_META_LIQUID, unreviewedLabel, unreviewedNoticeLiquid } from "./ig-page-translations.ts";
 import { IG_SEARCH_CSS, IG_SEARCH_INDEX_FILE, IG_SEARCH_SCRIPT_FILE, igSearchBox, igSearchScript, type IgSearchRef } from "./ig-search.ts";
 import { withRenderedBy } from "../../cat-harness-tools/scripts/viewer-declarations.js";
 import { NAVBAR_LINKED } from "../../cat-harness-tools/scripts/lib/harness-rail.ts";
@@ -2038,10 +2038,11 @@ function stageDeclaredSource(igSrc: string, out: string, opts: StageOptions): St
   // The IG's page catalogues (fhir-harness#382): `translations/` when the IG
   // declares it in `contentTypes.ig.include`, read from the staged copy so
   // the read scope holds.
-  const pageLocs = pageLocales(join(src, "translations"));
   const translatedPages: string[] = [];
   const pageStems = new Set(files(pagecontent).filter((f) => f.endsWith(".md")).map((f) => basename(f, ".md")));
   const sourceOf = (stem: string): string | undefined => (pageStems.has(stem) ? readFileSync(join(pagecontent, `${stem}.md`), "utf-8") : undefined);
+  // A page that is a copy of a source the IG translates names that catalogue (`<!-- translations: … -->`).
+  const pageLocs = pageLocales(join(src, "translations"), catalogueAliases(pageStems, sourceOf));
   const localesOf = (stem: string): string[] => [SOURCE_LOCALE, ...pageLocs.filter((l) => hasTranslation(stem, l, sourceOf, pageStems)).map((l) => l.locale)];
   // The IG's menu in each locale that translates it (fhir-harness#417). Its
   // labels are on every page, so a locale whose menu no person reviewed makes
