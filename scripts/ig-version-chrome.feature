@@ -18,6 +18,15 @@ Feature: The IG's version chrome on every page of its site
     Then it names the IG, this build's version and label, the FHIR version it is based on, and the Directory of published versions at the canonical
     And a CI build says it is not a published version, and a release does not
 
+  @test:scripts/ig-version-chrome.test.ts::the_three_pieces::bannerAndTableInThePageLanguage
+  Scenario: the banner and the metadata table in the page's language
+    Then given French, Arabic or Chinese the banner reads in that language, an unknown language reads English, and the table's words are Spanish for Spanish
+
+  @test:scripts/ig-version-chrome.test.ts::the_three_pieces::aTranslatedPageGetsItsLanguage
+  Scenario: a translated page's chrome follows its html lang
+    Given a home page whose html element says lang="ru"
+    Then its banner and metadata table read in Russian
+
   @test:scripts/ig-version-chrome.test.ts::the_three_pieces::metadataTableAsThePublisherWritesIt
   Scenario: the metadata table
     Then it shows Official URL, Version, status as of date, and Computable Name, and a resource with no URL gets no table

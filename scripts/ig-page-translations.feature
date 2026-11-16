@@ -101,3 +101,17 @@ Feature: An IG's narrative pages in the locales its translation catalogues fill
     Then the notice reads "Traduction automatique" and "Machine translation" and links to the source-language page
     And a page in a language with no notice text falls back to English
     And a reviewed page, or a source-language page, shows no notice
+
+  @test:scripts/ig-page-translations.test.ts::a_translated_page's_HTML_and_SVG_includes_are_in_its_language::each_include_becomes_a_locale_copy,_translated_and_relinked,_its_own_includes_too
+  Scenario: an HTML or SVG include becomes a locale copy, translated and relinked
+    Given a page including an HTML figure that includes an SVG drawing, with French catalogues for both
+    When its includes are localized for French
+    Then the page includes the French copies, whose words, labels and tooltips are French and whose relative links climb one level
+
+  @test:scripts/ig-page-translations.test.ts::a_translated_page's_HTML_and_SVG_includes_are_in_its_language::the_IG's_own_locale_file_wins,_and_an_include_the_IG_does_not_hold_is_left_alone
+  Scenario: the IG's own locale file wins, and a generated include is left alone
+    Then an include with its own x-fr.html uses it, and one the IG does not hold, or a page include, is unchanged
+
+  @test:scripts/ig-page-translations.test.ts::a_translated_page's_HTML_and_SVG_includes_are_in_its_language::an_include_with_no_catalogue_is_still_relinked_for_the_locale_folder
+  Scenario: an include with no catalogue is still relinked
+    Then its locale copy keeps its English words and its relative links climb one level

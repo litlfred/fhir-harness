@@ -58,7 +58,7 @@ import type { IgReleases } from "../schemas/ig-releases.ts";
 import { astFooterData, IG_QA_PAGE, igSiteFooter, sushiFooterData, type IgFooterData, type IgSiteFooter } from "./ig-footer.ts";
 import { thinIndexPage } from "./ig-thin-pages.ts";
 import { localiseMenu, menuLabels, menuLocales, type MenuLocale } from "./ig-menu-translations.ts";
-import { dirFor, hasTranslation, localeFrontMatter, pageLocales, pageReview, relinkForLocale, resolveLangFragments, SOURCE_LOCALE, translateWithIncludes, TRANSLATION_META_LIQUID, unreviewedLabel, unreviewedNoticeLiquid } from "./ig-page-translations.ts";
+import { dirFor, hasTranslation, localeFrontMatter, localizeIncludes, pageLocales, pageReview, relinkForLocale, resolveLangFragments, SOURCE_LOCALE, translateWithIncludes, TRANSLATION_META_LIQUID, unreviewedLabel, unreviewedNoticeLiquid } from "./ig-page-translations.ts";
 import { IG_SEARCH_CSS, IG_SEARCH_INDEX_FILE, IG_SEARCH_SCRIPT_FILE, igSearchBox, igSearchScript, type IgSearchRef } from "./ig-search.ts";
 import { withRenderedBy } from "../../cat-harness-tools/scripts/viewer-declarations.js";
 import { NAVBAR_LINKED } from "../../cat-harness-tools/scripts/lib/harness-rail.ts";
@@ -2039,6 +2039,18 @@ function stageDeclaredSource(igSrc: string, out: string, opts: StageOptions): St
   // declares it in `contentTypes.ig.include`, read from the staged copy so
   // the read scope holds.
   const pageLocs = pageLocales(join(src, "translations"));
+  // Where a translated page's HTML and SVG includes are read from, and their locale copies written (localizeIncludes).
+  const includeDirs = [join(src, "input", "includes"), pagecontent, join(src, "input", "images")];
+  const includeFile = (n: string): string | undefined => (isSafeIncludeName(n) ? includeDirs.map((d) => join(d, n)).find((p) => existsSync(p)) : undefined);
+  const includeStore = {
+    read: (n: string) => {
+      const p = includeFile(n);
+      return p ? readFileSync(p, "utf-8") : undefined;
+    },
+    has: (n: string) => includeFile(n) !== undefined,
+    write: (n: string, text: string) => writeFileSync(join(out, "_includes", n), n.endsWith(".html") ? rubyLiquidStrings(text).text : text),
+  };
+  const includeCopies = new Map<string, Map<string, { translated: number; total: number }>>();
   const translatedPages: string[] = [];
   const pageStems = new Set(files(pagecontent).filter((f) => f.endsWith(".md")).map((f) => basename(f, ".md")));
   const sourceOf = (stem: string): string | undefined => (pageStems.has(stem) ? readFileSync(join(pagecontent, `${stem}.md`), "utf-8") : undefined);
@@ -2132,13 +2144,16 @@ function stageDeclaredSource(igSrc: string, out: string, opts: StageOptions): St
       const reviewed = t.contributors.length > 0 && t.contributors.every((c) => !unreviewed(c)) && (menuLocs.get(l.locale)?.reviewed ?? true);
       const here = new Set([...pageStems].filter((k) => hasTranslation(k, l, sourceOf, pageStems)).map((k) => `${k}.html`));
       const tr = render(t.md, false, l.locale);
-      const body = relinkForLocale(tr.body, here);
+      // The page's HTML and SVG includes (a computable figure) in its language, their links one level up.
+      const inc = localizeIncludes(relinkForLocale(tr.body, here), l, includeStore, here, includeCopies.get(l.locale) ?? includeCopies.set(l.locale, new Map()).get(l.locale)!);
+      const body = inc.md;
       const data = {
         ...tr.data,
         ...localeFrontMatter({ lang: l.locale, available, status: reviewed ? "verified" : "unverified", source: `${name}.html`, reviewed }),
         // Not `dir`: Jekyll's own `page.dir` is the page's folder, which drew `dir="/"` on every page.
         text_dir: dirFor(l.locale),
         translated_spans: `${t.translated}/${t.total}`,
+        ...(inc.total ? { translated_include_segments: `${inc.translated}/${inc.total}` } : {}),
       };
       // Out of the menu: the picker, not the nav, leads to it.
       writePage(join(out, l.locale, f), body, { ...data, nav_exclude: true }, { title: n.title, navOrder: n.navOrder });

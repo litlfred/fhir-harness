@@ -3,7 +3,7 @@ import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { createHash } from "node:crypto";
-import { dirFor, fragmentFor, hasTranslation, localeFrontMatter, localesFor, pageLocales, pageReview, relinkForLocale, resolveLangFragments, signedOff, translatePage, translateWithIncludes, UN_LOCALES, UNREVIEWED_BLOCK_CLASS, UNREVIEWED_NOTICE, UNREVIEWED_NOTICE_CSS, unreviewedLabel, unreviewedNoticeLiquid } from "./ig-page-translations.ts";
+import { dirFor, fragmentFor, localizeIncludes, hasTranslation, localeFrontMatter, localesFor, pageLocales, pageReview, relinkForLocale, resolveLangFragments, signedOff, translatePage, translateWithIncludes, UN_LOCALES, UNREVIEWED_BLOCK_CLASS, UNREVIEWED_NOTICE, UNREVIEWED_NOTICE_CSS, unreviewedLabel, unreviewedNoticeLiquid } from "./ig-page-translations.ts";
 
 const po = (pairs: [string, string][]) => pairs.map(([i, s]) => `msgid "${i}"\nmsgstr "${s}"`).join("\n\n") + "\n";
 
@@ -93,6 +93,51 @@ describe("lang-fragment: a translated page reads its locale's own fragment", () 
     const t = translatePage(md, new Map([["This guide supports pilgrims.", "Ce guide aide les pèlerins."]]));
     expect(t.md).toContain("{% lang-fragment journey-hero.html %}");
     expect(t.md).toContain("Ce guide aide les pèlerins.");
+  });
+});
+
+describe("a translated page's HTML and SVG includes are in its language", () => {
+  const files: Record<string, string> = {
+    "fig.html": `<div><label>As drawn</label></div><div><a href="model.html"><img src="v.svg" alt="The view"/></a></div>\n<div>{% include fig.svg %}</div>`,
+    "fig.svg": `<svg><a href="https://x/a.html"><title>Trust Anchor: the root.</title><text font-size="18" text-anchor="middle"><tspan x="50" y="20">Trust Anchor</tspan></text></a></svg>`,
+    "own-fr.html": "<p>Mine</p>",
+    "own.html": "<p>Mine</p>",
+  };
+  const store = (written: Map<string, string>) => ({
+    read: (n: string) => files[n],
+    has: (n: string) => n in files,
+    write: (n: string, t: string) => void written.set(n, t),
+  });
+  const fr = { locale: "fr", includes: new Map([["fig.html", new Map([["As drawn", "Tel que dessiné"], ["The view", "La vue"]])], ["fig.svg", new Map([["Trust Anchor", "Ancre"], ["Trust Anchor: the root.", "Ancre : la racine."]])]]) };
+
+  test("each include becomes a locale copy, translated and relinked, its own includes too", () => {
+    const written = new Map<string, string>();
+    const r = localizeIncludes("Intro\n\n{% include fig.html %}\n", fr, store(written), new Set());
+    expect(r.md).toBe("Intro\n\n{% include fig-fr.html %}\n");
+    const html = written.get("fig-fr.html")!;
+    expect(html).toContain("Tel que dessiné");
+    expect(html).toContain('alt="La vue"');
+    expect(html).toContain('href="../model.html"');
+    expect(html).toContain("{% include fig-fr.svg %}");
+    const svg = written.get("fig-fr.svg")!;
+    expect(svg).toContain(">Ancre</tspan>");
+    expect(svg).toContain("<title>Ancre : la racine.</title>");
+    expect(svg).toContain('href="https://x/a.html"');
+    expect(r.translated).toBe(4);
+  });
+
+  test("the IG's own locale file wins, and an include the IG does not hold is left alone", () => {
+    const written = new Map<string, string>();
+    const r = localizeIncludes("{% include own.html %} {% include made.svg %} {% include page.md %}", fr, store(written), new Set());
+    expect(r.md).toBe("{% include own-fr.html %} {% include made.svg %} {% include page.md %}");
+    expect(written.size).toBe(0);
+  });
+
+  test("an include with no catalogue is still relinked for the locale folder", () => {
+    const written = new Map<string, string>();
+    localizeIncludes("{% include fig.html %}", { locale: "ar", includes: new Map() }, store(written), new Set());
+    expect(written.get("fig-ar.html")).toContain('href="../model.html"');
+    expect(written.get("fig-ar.html")).toContain("As drawn");
   });
 });
 

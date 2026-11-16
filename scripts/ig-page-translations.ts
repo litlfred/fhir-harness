@@ -26,6 +26,7 @@
 import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
+import { INCLUDE_EXT_RE, injectInclude } from "../../cat-harness-tools/pipeline/include-po.ts";
 import { injectMarkdown, parsePo } from "../../cat-harness-tools/pipeline/po-inject.ts";
 
 /** The language picker's default list: the six UN languages, as `translation-meta.ts` declares them. */
@@ -43,6 +44,12 @@ export interface PageLocale {
   status: "verified" | "unverified";
   /** Page stem (`concepts`) to its parsed catalogue. Only catalogues with at least one translated entry. */
   catalogues: Map<string, Map<string, string>>;
+  /**
+   * An HTML or SVG include's file name (`trust-network.svg`) to its catalogue,
+   * `translations/<locale>/includes/<file>.po`. Only catalogues with at least
+   * one translated entry. See {@link localizeIncludes}.
+   */
+  includes: Map<string, Map<string, string>>;
 }
 
 /** Whether `translations/<locale>/status.json` records a sign-off. */
@@ -148,7 +155,13 @@ export function pageLocales(translationsDir: string | undefined): PageLocale[] {
       const po = parsePo(readFileSync(join(pc, f), "utf-8"));
       if ([...po.values()].some((v) => v.trim() !== "")) catalogues.set(f.replace(/\.po$/, ""), po);
     }
-    if (catalogues.size) out.push({ locale, dir, status: signedOff(dir) ? "verified" : "unverified", catalogues });
+    const includes = new Map<string, Map<string, string>>();
+    const inc = join(dir, "includes");
+    for (const f of existsSync(inc) ? readdirSync(inc).filter((n) => n.endsWith(".po")).sort() : []) {
+      const po = parsePo(readFileSync(join(inc, f), "utf-8"));
+      if ([...po.values()].some((v) => v.trim() !== "")) includes.set(f.replace(/\.po$/, ""), po);
+    }
+    if (catalogues.size) out.push({ locale, dir, status: signedOff(dir) ? "verified" : "unverified", catalogues, includes });
   }
   return out;
 }
@@ -328,6 +341,65 @@ export function unreviewedNoticeLiquid(o: { inlineStyle?: boolean } = {}): strin
     "</div>",
     "{% endif %}",
   ].join("");
+}
+
+/** Where {@link localizeIncludes} reads an include and writes its locale copy. */
+export interface IncludeStore {
+  /** The include's source text, or undefined when the IG holds no such file (a generated include). */
+  read(name: string): string | undefined;
+  /** Whether the IG holds a file of this name itself (its own `x-<locale>.html`, which wins). */
+  has(name: string): boolean;
+  /** Write the locale copy under `_includes/`. */
+  write(name: string, text: string): void;
+}
+
+/**
+ * A translated page's HTML and SVG includes in its language (owner,
+ * 2026-11-16: "why computable images not translated?"). Each
+ * `{% include x.html %}` or `{% include x.svg %}` the page (or an include of
+ * it) names becomes `{% include x-<locale>.html %}`, a copy written beside it:
+ *
+ * - its words, labels and tooltips from `translations/<locale>/includes/x.html.po`
+ *   (cat-harness-tools `include-po.ts`), the rest English;
+ * - its relative links one level up, as {@link relinkForLocale} does for the
+ *   page, since it now renders at `<locale>/<page>`;
+ * - its own includes localized the same way.
+ *
+ * An IG's own `x-<locale>.html` (the Publisher's `lang-fragment` name) is used
+ * as it is. An include the IG does not hold (one the build generates) is left
+ * as it was. Same name, same copy: written once per locale and name.
+ */
+export function localizeIncludes(
+  md: string,
+  l: Pick<PageLocale, "locale" | "includes">,
+  store: IncludeStore,
+  translatedHere: ReadonlySet<string>,
+  done = new Map<string, { translated: number; total: number }>(),
+  depth = 0,
+): { md: string; translated: number; total: number } {
+  let translated = 0;
+  let total = 0;
+  const out = md.replace(INCLUDE_RE, (whole, name: string) => {
+    if (!INCLUDE_EXT_RE.test(name) || depth >= 4) return whole;
+    const local = fragmentFor(name, l.locale);
+    if (store.has(local)) return `{% include ${local} %}`;
+    let seen = done.get(name);
+    if (!seen) {
+      const src = store.read(name);
+      if (src === undefined) return whole;
+      const inner = localizeIncludes(src, l, store, translatedHere, done, depth + 1);
+      const cat = l.includes.get(name);
+      const r = cat ? injectInclude(inner.md, name, cat, l.locale) : undefined;
+      const text = relinkForLocale(r?.text ?? inner.md, translatedHere);
+      store.write(local, text);
+      seen = { translated: inner.translated + (r?.translated ?? 0), total: inner.total + (r ? r.translated + r.untranslated.length : 0) };
+      done.set(name, seen);
+    }
+    translated += seen.translated;
+    total += seen.total;
+    return `{% include ${local} %}`;
+  });
+  return { md: out, translated, total };
 }
 
 const LANG_FRAGMENT_RE = /\{%-?\s*lang-fragment\s+([^\s%]+)\s*-?%\}/g;
