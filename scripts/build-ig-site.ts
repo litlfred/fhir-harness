@@ -600,6 +600,23 @@ export function igContentsRows(hs: ReadonlyArray<{ level: number; i: number }>):
 }
 
 /**
+ * Whether an element before a page's first heading is a banner (a hero) that the
+ * Contents card goes below rather than beside (owner, 2026-11-16: "on pages
+ * with banners put TOC card below banners"). A banner is a block drawn on a
+ * gradient or picture (`background-image`), as a landing page's hero written
+ * inline in its markdown usually is, or one that names itself `hero` or
+ * `banner`. A plain
+ * coloured note box is not one, so a page's opening note keeps the card
+ * beside it. Headings are never banners. Pure; embedded in
+ * {@link IG_CONTENTS_JS} by `toString()`.
+ */
+export function igIsBanner(e: { tag: string; cls: string; bgImage: string; display: string }): boolean {
+  if (e.display === "none" || /^(H[1-6]|SCRIPT|STYLE|NAV)$/i.test(e.tag)) return false;
+  if (/(^|[\s_-])(hero|banner)([\s_-]|$)/i.test(e.cls)) return true;
+  return !!e.bgImage && e.bgImage !== "none";
+}
+
+/**
  * The Contents card on an IG's narrative pages (owner, 2026-11-10: "make this
  * more akin to how IGs have TOC on RHS ... not yellow, but more like a card",
  * then "adopt that for other IG pages as well"; 2026-11-14: "each IG page
@@ -609,8 +626,10 @@ export function igContentsRows(hs: ReadonlyArray<{ level: number; i: number }>):
  * own headings ({@link igContentsRows}), so it needs nothing from the IG's
  * source. It is the first thing in `<main>` (after its `<h1>` or the IG's
  * metadata table), so it sits below the bar and the version banner, which
- * are outside `<main>`. A page with fewer than two listed headings, or one
- * that already draws a card (`artifacts.html`), gets none.
+ * are outside `<main>`, and below any banner that opens the page's own
+ * text before its first heading ({@link igIsBanner}), so it never covers
+ * one. A page with fewer than two listed headings, or one that already
+ * draws a card (`artifacts.html`), gets none.
  */
 export const IG_CONTENTS_JS = `(function(){
 var main=document.getElementById("main-content");
@@ -630,7 +649,13 @@ var ul=document.createElement("ul");
 rows.forEach(function(r){var li=item(hs[r.i]);if(r.sub.length){var sub=document.createElement("ul");sub.className="igi-contents-sub";r.sub.forEach(function(k){sub.appendChild(item(hs[k]));});li.appendChild(sub);}ul.appendChild(li);});
 nav.appendChild(ul);
 var h1=main.querySelector("h1"),meta=main.querySelector(":scope > .ig-metadata");
-if(h1&&h1.parentNode===main)h1.insertAdjacentElement("afterend",nav);else if(meta)meta.insertAdjacentElement("afterend",nav);else main.insertBefore(nav,main.firstChild);
+var at=h1&&h1.parentNode===main?h1:meta||null;
+var bannerOf=${igIsBanner.toString()};
+var b=null,first=hs[0];
+for(var n=main.firstElementChild;n&&n!==first&&!n.contains(first);n=n.nextElementSibling){var cs=getComputedStyle(n);
+if(bannerOf({tag:n.tagName,cls:n.getAttribute("class")||"",bgImage:cs.backgroundImage,display:cs.display}))b=n;}
+if(b&&(!at||at.compareDocumentPosition(b)&4))at=b;
+if(at)at.insertAdjacentElement("afterend",nav);else main.insertBefore(nav,main.firstChild);
 })();`;
 
 /**

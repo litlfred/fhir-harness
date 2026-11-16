@@ -1680,6 +1680,22 @@ describe("the Contents card on an IG's narrative pages (owner, 2026-11-10)", () 
     // A nested heading before any top-level one is listed at the top.
     expect(igContentsRows([4, 3, 4].map((level, i) => ({ level, i })))).toEqual([{ i: 0, sub: [] }, { i: 1, sub: [2] }]);
   });
+  test("bannerOpeningThePageGoesAboveTheCard", async () => {
+    const { IG_CONTENTS_JS, igIsBanner } = await import("./build-ig-site.ts");
+    // owner, 2026-11-16: "on pages with banners put TOC card below banners".
+    const el = (o: Partial<{ tag: string; cls: string; bgImage: string; display: string }>) => ({ tag: "DIV", cls: "", bgImage: "none", display: "block", ...o });
+    // A landing page's hero drawn inline on a gradient.
+    expect(igIsBanner(el({ bgImage: "linear-gradient(135deg, rgb(15, 23, 42), rgb(30, 58, 95))" }))).toBe(true);
+    expect(igIsBanner(el({ cls: "page-hero wide" }))).toBe(true);
+    expect(igIsBanner(el({ cls: "site_banner" }))).toBe(true);
+    // A plain note box, a heading, a hidden stamp: not banners.
+    expect(igIsBanner(el({ cls: "stu-note" }))).toBe(false);
+    expect(igIsBanner(el({ cls: "bannerless" }))).toBe(false);
+    expect(igIsBanner(el({ tag: "H2", bgImage: "url(x.png)" }))).toBe(false);
+    expect(igIsBanner(el({ display: "none", bgImage: "url(x.png)" }))).toBe(false);
+    expect(IG_CONTENTS_JS).toContain("function igIsBanner(");
+    expect(() => new Function(IG_CONTENTS_JS)).not.toThrow();
+  });
   test("cardPrintsAsABlock", () => {
     const css = readFileSync(join(import.meta.dir, "templates", "ig-pages", "ig-artifact.css"), "utf-8");
     expect(css).toMatch(/@media print\{\.ig-main>\.igi-contents[^}]*float:none/);
