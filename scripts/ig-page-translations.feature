@@ -98,8 +98,8 @@ Feature: An IG's narrative pages in the locales its translation catalogues fill
   @test:scripts/ig-page-translations.test.ts::unreviewed_translations_are_announced_(fail_closed)::the_notice_renders_in_the_page_language_and_English,_linking_to_the_source,_and_only_when_unreviewed
   Scenario: the full-width notice is in the page's language and English, and links to the source page
     Given an unreviewed French page
-    Then the notice reads "Traduction automatique" and "Machine translation" and links to the source-language page
-    And a page in a language with no notice text falls back to English
+    Then the notice reads "Traduction automatique" in full, with one short English "Machine translation" line, and links to the source-language page
+    And a page in a language with no notice text gets the full English notice
     And a reviewed page, or a source-language page, shows no notice
 
   @test:scripts/ig-page-translations.test.ts::a_translated_page's_HTML_and_SVG_includes_are_in_its_language::each_include_becomes_a_locale_copy,_translated_and_relinked,_its_own_includes_too

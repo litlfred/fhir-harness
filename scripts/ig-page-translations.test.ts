@@ -204,10 +204,13 @@ describe("unreviewed translations are announced (fail closed)", () => {
     const fr = await liquid.parseAndRender(tpl, { page: { lang: "fr", translation_source: "index.html" } });
     expect(fr).toContain("Traduction automatique");
     expect(fr).toContain("Machine translation");
+    // English is one short line under the French notice, not the whole notice again.
+    expect(fr).toContain('class="ig-tr-notice__en" lang="en"');
+    expect(fr).not.toContain("This page was translated automatically");
     expect(fr).toContain('href="../index.html"');
     expect(fr).toContain("fa-translation-warning");
     const other = await liquid.parseAndRender(tpl, { page: { lang: "de", translation_source: "index.html" } });
-    expect(other).toContain("Machine translation");
+    expect(other).toContain("This page was translated automatically");
     expect(other).not.toContain("Traduction automatique");
     expect(await liquid.parseAndRender(tpl, { page: { lang: "fr", translation_source: "index.html", translation_reviewed: true } })).not.toContain("ig-tr-notice");
     expect(await liquid.parseAndRender(tpl, { page: { lang: "en" } })).not.toContain("ig-tr-notice");

@@ -308,6 +308,12 @@ export function unreviewedLabel(locale: string): string {
   return (UNREVIEWED_NOTICE[locale] ?? UNREVIEWED_NOTICE[SOURCE_LOCALE]!).block;
 }
 
+/** The one English line under a notice in another language: what it is, and the way to the source. */
+function englishLine(href: string): string {
+  const n = UNREVIEWED_NOTICE[SOURCE_LOCALE]!;
+  return `<p class="ig-tr-notice__en" lang="en" dir="ltr">${n.title}. <a class="ig-tr-notice__source" href="${href}">${n.link}</a></p>`;
+}
+
 function noticeHtml(locale: string, href: string): string {
   const n = UNREVIEWED_NOTICE[locale]!;
   return [
@@ -321,8 +327,10 @@ function noticeHtml(locale: string, href: string): string {
 /**
  * The full-width notice the thin layout puts at the top of every translated
  * page that has words no person reviewed (`page.translation_reviewed` is not
- * `true`: absent counts as unreviewed). In the page's language, then in
- * English, linking to the source page. It carries `fa-translation-warning` so
+ * `true`: absent counts as unreviewed). In the page's language, with one short
+ * English line under it (owner card, 2026-11-16: the full English notice
+ * repeated under the Arabic one), linking to the source page; in full English
+ * when the page's language has no notice text. It carries `fa-translation-warning` so
  * `docs-ui.js` does not add its one-line notice beside it.
  */
 export function unreviewedNoticeLiquid(o: { inlineStyle?: boolean } = {}): string {
@@ -335,9 +343,9 @@ export function unreviewedNoticeLiquid(o: { inlineStyle?: boolean } = {}): strin
     ...(o.inlineStyle === false ? [] : [`<style>${UNREVIEWED_NOTICE_CSS}</style>`]),
     '<div class="ig-tr-notice fa-translation-warning" role="note" aria-label="Machine translation, not reviewed by a person">',
     "{% case page.lang %}",
-    ...others.map((k) => `{% when "${k}" %}${noticeHtml(k, href)}`),
+    ...others.map((k) => `{% when "${k}" %}${noticeHtml(k, href)}${englishLine(href)}`),
+    `{% else %}${noticeHtml(SOURCE_LOCALE, href)}`,
     "{% endcase %}",
-    noticeHtml(SOURCE_LOCALE, href),
     "</div>",
     "{% endif %}",
   ].join("");
@@ -505,6 +513,7 @@ export const UNREVIEWED_NOTICE_CSS = [
   ".ig-tr-notice__title{font-size:1.25rem}",
   ".ig-tr-notice__lang+.ig-tr-notice__lang{margin-top:.75rem;padding-top:.75rem;border-top:1px solid #b45309;font-size:.95rem}",
   ".ig-tr-notice__source{color:#7c2d12;font-weight:700;text-decoration:underline}",
+  ".ig-tr-notice__en{margin:.5rem 0 0;font-size:.85rem}",
   `.${UNREVIEWED_BLOCK_CLASS}{border-inline-start:4px dashed #b45309;padding-inline-start:.85rem;margin:1rem 0}`,
   `.${UNREVIEWED_BLOCK_CLASS}::before{content:"\\26A0\\FE0F  " attr(data-tr-label);display:inline-block;margin-bottom:.4rem;padding:.1rem .5rem;`,
   "font-size:.8rem;font-weight:700;background:#fff3cd;color:#3b2a00;border:1px solid #b45309;border-radius:4px}",
