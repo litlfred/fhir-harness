@@ -101,3 +101,10 @@ Feature: An IG's narrative pages in the locales its translation catalogues fill
     Then the notice reads "Traduction automatique" and "Machine translation" and links to the source-language page
     And a page in a language with no notice text falls back to English
     And a reviewed page, or a source-language page, shows no notice
+
+  @test:scripts/ig-page-translations.test.ts::ig-page-translations_(fhir-harness#382)::a_page_that_names_another_catalogue_is_translated_from_it,_and_reviewed_against_its_record
+  Scenario: a page that is a copy of a translated source is read from that source's catalogue
+    Given a French catalogue journeys.po and a page carrying "<!-- translations: journeys -->"
+    And a page naming "../secret", which leaves the locale's directory
+    Then only the first page has an alias, and it is translated from journeys.po
+    And its review is read from journeys.json, so with no record it is not reviewed
