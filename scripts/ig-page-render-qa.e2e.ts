@@ -19,3 +19,23 @@ test("ig-page-render-qa: scans the drawn pages in a browser", async () => {
     { page: "artifact/ActorDefinition-a.html", markup: ["image"], excerpt: "and ![Bo]" },
   ]);
 });
+
+test("ig-page-render-qa: a page that never returns cannot hold the scan", async () => {
+  test.setTimeout(60_000);
+  const { mkdtempSync, writeFileSync } = await import("node:fs");
+  const { tmpdir } = await import("node:os");
+  const { join } = await import("node:path");
+  const site = mkdtempSync(join(tmpdir(), "page-scan-spin-"));
+  // smart-ccc run 43738657067 sat in this step for 2 h: a page whose script never yields.
+  writeFileSync(join(site, "a-spin.html"), `<html><body><main><p>spins</p></main><script>addEventListener("load", () => setTimeout(() => { for (;;) {} }, 0))</script></body></html>`);
+  for (const n of ["b", "c", "d"]) writeFileSync(join(site, `${n}.html`), `<html><body><main><p>page ${n}</p></main></body></html>`);
+  const started = Date.now();
+  const q = await scanSite(site, { timeoutMs: 2000, concurrency: 1 });
+  expect(Date.now() - started).toBeLessThan(30_000);
+  expect(q.unfinished).toEqual(["a-spin.html"]);
+  expect(q.scanned).toBe(3);
+
+  const none = await scanSite(site, { timeoutMs: 2000, concurrency: 1, budgetMs: 0 });
+  expect(none.scanned).toBe(0);
+  expect(none.notReached).toBe(4);
+});

@@ -29,7 +29,6 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { IG_CHROME_SCHEMA_TAG, type IgChrome } from "../../schemas/ig-chrome";
-import { IG_IDENTITY_SCHEMA_TAG, type IgIdentity } from "../../schemas/ig-identity";
 
 export const IPS = {
   packageId: "hl7.fhir.uv.ips",
@@ -51,7 +50,8 @@ export const IPA = {
 type Ig = typeof IPS | typeof IPA;
 
 /** A `folio-fhir-artifact-index/v2` with one referenced profile. */
-export function artifactIndex(ig: Ig, id: string): Record<string, unknown> {
+/** `status` is the IG's own ImplementationGuide status, as the index records it; `active` is what makes a watermark class appear. */
+export function artifactIndex(ig: Ig, id: string, status?: string): Record<string, unknown> {
   const page = `${ig.published}/StructureDefinition-Composition-uv-ips`;
   return {
     $schema: "folio-fhir-artifact-index/v2",
@@ -59,6 +59,7 @@ export function artifactIndex(ig: Ig, id: string): Record<string, unknown> {
     title: `${ig.packageId} — artefact index`,
     packageId: ig.packageId,
     version: ig.version,
+    ...(status ? { status } : {}),
     fhirVersion: [...ig.fhirVersion],
     canonicalBase: ig.canonical,
     builtAt: "20260101000000",
@@ -89,17 +90,6 @@ export function artifactIndex(ig: Ig, id: string): Record<string, unknown> {
   };
 }
 
-/** IPS's own identity file; `active` is what makes a watermark class appear. */
-export const IPS_IDENTITY: IgIdentity = {
-  $schema: IG_IDENTITY_SCHEMA_TAG,
-  id: IPS.packageId,
-  canonical: IPS.canonical,
-  status: "active",
-  version: IPS.version,
-  readFrom: "https://github.com/HL7/fhir-ips sushi-config.yaml",
-  readAt: "2026-10-03",
-};
-
 /** A template chrome naming no publisher, with the one token the banner reads. */
 export const NEUTRAL_CHROME: IgChrome = {
   $schema: IG_CHROME_SCHEMA_TAG,
@@ -124,7 +114,6 @@ export interface ScratchInstance {
   /** The layer root: its basename is the layer name. */
   dir: string;
   index: Record<string, unknown>;
-  identity?: IgIdentity;
 }
 
 /**
@@ -138,7 +127,7 @@ export function scratchRepo(instances: Record<string, Omit<ScratchInstance, "dir
   for (const [name, inst] of Object.entries(instances)) {
     const ix = join(root, name, "fhir-artifact-index");
     mkdirSync(ix, { recursive: true });
-    // Declared, because the identity is found through the declaration's
+    // Declared, because the index is found through the declaration's
     // `fhir-artifact-index` graph rather than at a composed path.
     writeFileSync(
       join(root, name, `${name}.json`),
@@ -150,7 +139,6 @@ export function scratchRepo(instances: Record<string, Omit<ScratchInstance, "dir
       }),
     );
     writeFileSync(join(ix, "index.json"), JSON.stringify(inst.index, null, 2));
-    if (inst.identity) writeFileSync(join(ix, "ig-identity.json"), JSON.stringify(inst.identity, null, 2));
   }
   const owner = join(root, "chrome-owner");
   mkdirSync(join(owner, "themes"), { recursive: true });

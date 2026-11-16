@@ -9,7 +9,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { igSiteData } from "./ig-site-data";
-import { IPA, IPS, IPS_IDENTITY, artifactIndex, scratchRepo } from "../test/support/ig-fixture";
+import { IPA, IPS, artifactIndex, scratchRepo } from "../test/support/ig-fixture";
 
 const made: string[] = [];
 afterAll(() => {
@@ -54,15 +54,15 @@ describe("from sushi-config.yaml (what the IG Publisher reads)", () => {
 });
 
 describe("from published IGs' artifact indexes", () => {
-  // Two IGs, one with its own ig-identity.json. The committed WHO layers
+  // Two IGs, one whose index records its status. The committed WHO layers
   // are checked in `smart-base/scripts/ig-pages-committed.test.ts`.
   const repo = scratchRepo({
     ipa: { index: artifactIndex(IPA, "ipa") },
-    ips: { index: artifactIndex(IPS, "ips"), identity: IPS_IDENTITY },
+    ips: { index: artifactIndex(IPS, "ips", "active") },
   });
   made.push(repo);
 
-  describe("an index with no identity file", () => {
+  describe("an index that records no status", () => {
     const r = igSiteData(join(repo, "ipa"));
 
     test("indexFieldsFromIndex", () => {
@@ -78,18 +78,18 @@ describe("from published IGs' artifact indexes", () => {
       expect(JSON.stringify(r.data)).not.toContain('""');
     });
 
-    test("noIdentityNoStatus", () => {
+    test("noStatusInIndexNoStatus", () => {
       expect(r.data.ig.status).toBeUndefined();
       expect(r.refused).toEqual([]);
     });
   });
 
-  describe("an index beside its own ig-identity.json", () => {
+  describe("an index that records its status", () => {
     const r = igSiteData(join(repo, "ips"));
 
-    test("statusFromIdentityFile", () => {
+    test("statusFromIndex", () => {
       expect(r.data.ig.status).toBe("active");
-      expect(r.provenance["ig.status"]).toBe("fhir-artifact-index/ig-identity.json");
+      expect(r.provenance["ig.status"]).toBe("fhir-artifact-index/index.json");
     });
   });
 });
