@@ -114,7 +114,7 @@ import { parse as parseYaml } from "yaml";
 import { tmpdir } from "node:os";
 import { basename, join, resolve } from "node:path";
 
-import { checkoutRootFor, declarationPathIn, instanceRootsIn } from "@litlfred/cat-harness-tools/schemas/kg/cat-harness.js";
+import { checkoutRootFor, declarationPathIn, layerRootsIn } from "@litlfred/cat-harness-tools/schemas/kg/cat-harness.js";
 import { scriptTable } from "@litlfred/cat-harness-tools/schemas/sdlc/script-table.ts";
 import { IG_API_DESCRIPTOR, IG_API_WORK } from "./ig-repo-site.ts";
 import { igApiHubPageOf } from "./ig-api-hub.ts";
@@ -228,7 +228,7 @@ export function instancesIn(checkout: string): (InstanceFacts & { root: string; 
   const out: (InstanceFacts & { root: string; declaredRepository?: string; sha?: string })[] = [];
   const locked = lockedMounts(checkout);
   let own: string | undefined | null = null;
-  for (const root of instanceRootsIn(checkout)) {
+  for (const root of layerRootsIn(checkout)) {
     const d = declarationOf(root);
     const name = typeof d?.["name"] === "string" ? (d["name"] as string) : basename(root);
     const declared = typeof d?.["repository"] === "string" ? (d["repository"] as string) : undefined;

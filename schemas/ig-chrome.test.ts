@@ -135,7 +135,7 @@ describe("tokenOf", () => {
 
 describe("chromeFileFor", () => {
   const deps = (roots: string[], names: Record<string, string>, dirs: Record<string, string[]>, files: string[]) => ({
-    instanceRootsIn: () => roots,
+    layerRootsIn: () => roots,
     declarationNameOf: (r: string) => names[r],
     directoriesForGraph: (r: string) => dirs[r] ?? [],
     exists: (p: string) => files.includes(p),
