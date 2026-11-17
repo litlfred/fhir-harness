@@ -59,6 +59,25 @@ describe("the three pieces", () => {
     expect(release).toContain("(v1.2.3: release)");
     expect(release).not.toContain("not a published version");
   });
+  it("bannerAndTableInThePageLanguage", () => {
+    const fr = igVersionBanner(F, "fr");
+    expect(fr).toContain("Cette page fait partie du guide Demo IG (v1.2.3: ci-build), fondé sur");
+    expect(fr).toContain(">Répertoire des versions publiées</a>");
+    expect(fr).toContain("pas une version publiée");
+    expect(igVersionBanner(F, "ar")).toContain("دليل الإصدارات المنشورة");
+    expect(igVersionBanner(F, "zh-Hans")).toContain("已发布版本目录");
+    expect(igVersionBanner(F, "xx")).toBe(igVersionBanner(F));
+    const t = igOwnMetadataTable(F, "es");
+    expect(t).toContain("URL oficial: ");
+    expect(t).toContain("Borrador a fecha de 2026-10-12");
+    expect(t).toContain("Nombre computable: Demo");
+  });
+  it("aTranslatedPageGetsItsLanguage", () => {
+    const page = PAGE(FULL_BAR).replace("<html>", '<html lang="ru" dir="ltr">');
+    const out = withIgVersionChrome(page, F, { home: true });
+    expect(out).toContain("Эта страница входит в Demo IG");
+    expect(out).toContain("Официальный URL: ");
+  });
   it("metadataTableAsThePublisherWritesIt", () => {
     const t = igOwnMetadataTable(F);
     expect(t).toContain("Official URL: <code class=\"ig-metadata-url\">http://example.org/fhir/demo/ImplementationGuide/example.fhir.uv.demo</code>");
