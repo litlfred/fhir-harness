@@ -256,16 +256,17 @@ const fill = (t: string, v: Record<string, string>): string => t.replace(/\{(\w+
 /**
  * The version banner: the Publisher's sentence, stating THIS build's own
  * version and label, in the page's language when given. Empty when the config
- * states no version.
+ * states no version. With `homeHref` (see {@link igHomeHref}) the IG's title
+ * links to the IG's home page.
  */
-export function igVersionBanner(f: IgVersionFacts, lang?: string): string {
+export function igVersionBanner(f: IgVersionFacts, lang?: string, homeHref?: string): string {
   if (!f.version) return "";
   const w = chromeWords(lang);
   const label = f.releaseLabel ?? f.status;
   const spec = fhirSpecUrl(f.fhirVersion);
   const fhirName = f.fhirVersion ? `FHIR (HL7® FHIR® Standard) v${esc(f.fhirVersion)}` : "";
   const basedOn = f.fhirVersion ? fill(w.basedOn, { fhir: spec ? `<a href="${esc(spec)}">${fhirName}</a>` : fhirName }) : "";
-  const part = fill(w.partOf, { title: esc(f.title), version: `v${esc(f.version)}${label ? `: ${esc(label)}` : ""}`, basedOn });
+  const part = fill(w.partOf, { title: homeHref ? `<a href="${esc(homeHref)}">${esc(f.title)}</a>` : esc(f.title), version: `v${esc(f.version)}${label ? `: ${esc(label)}` : ""}`, basedOn });
   const which = isCi(f) ? ` ${w.ci}` : "";
   const history = f.canonical ? ` ${fill(w.history, { link: `<a href="${esc(`${f.canonical}/history.html`)}">${w.directory}</a>` })}` : "";
   return `<p class="${IG_VERSION_BANNER_CLASS}" role="note">${part}${which}${history}</p>`;
@@ -351,20 +352,36 @@ function barStart(html: string, anchorAt: number): number | undefined {
 /** Is this the site's home page, or a language's (`index.html`, `<lang>/index.html`)? */
 export const isHomePage = (rel: string): boolean => /^(?:[a-z]{2,3}(?:-[A-Za-z]{2,4})?\/)?index\.html$/.test(rel);
 
+/** A language directory's name: `fr`, `ar`, `zh-Hans`, `pt-BR`. */
+const LOCALE_DIR = /^[a-z]{2,3}(?:-[A-Za-z]{2,4})?$/;
+
+/**
+ * The href, relative to the page at `rel` (a path relative to the site root),
+ * of the IG's home page: the page's language's own `index.html` when the page
+ * sits in a language directory that has one (`isLocaleHome`), else the site
+ * root's. Relative, so it holds wherever the site is served: the ci-build, a
+ * branch preview under `branches/<slug>/`, a published version.
+ */
+export function igHomeHref(rel: string, isLocaleHome: (dir: string) => boolean = () => false): string {
+  const dirs = rel.split("/").slice(0, -1);
+  const inLocale = dirs.length > 0 && LOCALE_DIR.test(dirs[0]!) && isLocaleHome(dirs[0]!);
+  return `${"../".repeat(dirs.length - (inLocale ? 1 : 0))}index.html`;
+}
+
 /**
  * One page with the version chrome: the version after the IG's title, the
  * banner after the bar, and on a home page the IG's metadata table at the top
- * of `<main>`. A page with no IG bar, or that already carries the chrome, is
+ * of `<main>`. The banner's IG title links to `o.homeHref` when given. A page with no IG bar, or that already carries the chrome, is
  * returned as it was. Pure.
  */
-export function withIgVersionChrome(html: string, f: IgVersionFacts, o: { home: boolean }): string {
+export function withIgVersionChrome(html: string, f: IgVersionFacts, o: { home: boolean; homeHref?: string }): string {
   if (html.includes(`class="${IG_VERSION_BANNER_CLASS}"`) || html.includes(`class="${IG_VERSION_TAG_CLASS}"`)) return html;
   const a = TITLE_ANCHOR.exec(html);
   if (!a) return html;
   const tag = igVersionTag(f);
   // The page's own language (a translated page's `<html lang>`), so the banner and table read in it.
   const lang = /<html\b[^>]*\slang="([^"]+)"/i.exec(html)?.[1];
-  const banner = igVersionBanner(f, lang);
+  const banner = igVersionBanner(f, lang, o.homeHref);
   if (!tag && !banner) return html;
   const start = barStart(html, a.index);
   const end = start === undefined ? undefined : barEnd(html, start);
@@ -412,7 +429,8 @@ export function stampIgVersionChrome(site: string, f: IgVersionFacts): { pages: 
     const abs = join(site, rel);
     const html = readFileSync(abs, "utf-8");
     if (isRedirect(html)) continue;
-    const after = withIgVersionChrome(html, f, { home: isHomePage(rel) });
+    const homeHref = igHomeHref(rel, (dir) => existsSync(join(site, dir, "index.html")));
+    const after = withIgVersionChrome(html, f, { home: isHomePage(rel), homeHref });
     if (after !== html) {
       writeFileSync(abs, after);
       n++;

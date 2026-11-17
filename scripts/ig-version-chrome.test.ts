@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import {
+  igHomeHref,
   igMetadataTable,
   igOwnMetadataTable,
   igVersionBanner,
@@ -139,5 +140,42 @@ describe("stampIgVersionChrome", () => {
     expect(readFileSync(join(site, "qa.html"), "utf-8")).not.toContain('class="ig-metadata"');
     expect(readFileSync(join(site, "assets", "vendor.html"), "utf-8")).not.toContain("ig-version-banner");
     expect(stampIgVersionChrome(site, F).pages).toBe(0);
+  });
+});
+
+describe("the banner's IG title links home", () => {
+  it("hrefIsRelativeToThePageDepth", () => {
+    const hasFr = (d: string): boolean => d === "fr" || d === "ar";
+    expect(igHomeHref("index.html", hasFr)).toBe("index.html");
+    expect(igHomeHref("StructureDefinition-x.html", hasFr)).toBe("index.html");
+    expect(igHomeHref("journeys/j1/step.html", hasFr)).toBe("../../index.html");
+    expect(igHomeHref("fr/index.html", hasFr)).toBe("index.html");
+    expect(igHomeHref("ar/journeys/step.html", hasFr)).toBe("../index.html");
+    // A directory that looks like a language but has no home of its own is just a directory.
+    expect(igHomeHref("ig/page.html", hasFr)).toBe("../index.html");
+  });
+  it("titleIsEscapedInsideTheLink", () => {
+    const b = igVersionBanner({ ...F, title: "A <b> & C" }, undefined, "../index.html");
+    expect(b).toContain('This page is part of the <a href="../index.html">A &lt;b&gt; &amp; C</a> (v1.2.3: ci-build)');
+    expect(igVersionBanner(F)).not.toContain('<a href="index.html">');
+  });
+  it("rootNestedAndLocalePages", () => {
+    const site = mkdtempSync(join(tmpdir(), "ig-version-home-"));
+    try {
+      mkdirSync(join(site, "fr", "journeys"), { recursive: true });
+      mkdirSync(join(site, "journeys"), { recursive: true });
+      writeFileSync(join(site, "index.html"), PAGE(FULL_BAR));
+      writeFileSync(join(site, "journeys", "j1.html"), PAGE(SLIM_BAR));
+      writeFileSync(join(site, "fr", "index.html"), PAGE(FULL_BAR).replace("<html>", '<html lang="fr">'));
+      writeFileSync(join(site, "fr", "journeys", "j1.html"), PAGE(SLIM_BAR).replace("<html>", '<html lang="fr">'));
+      expect(stampIgVersionChrome(site, F).pages).toBe(4);
+      const read = (r: string): string => readFileSync(join(site, r), "utf-8");
+      expect(read("index.html")).toContain('part of the <a href="index.html">Demo IG</a> (v1.2.3');
+      expect(read("journeys/j1.html")).toContain('part of the <a href="../index.html">Demo IG</a> (v1.2.3');
+      expect(read("fr/index.html")).toContain('du guide <a href="index.html">Demo IG</a> (v1.2.3');
+      expect(read("fr/journeys/j1.html")).toContain('du guide <a href="../index.html">Demo IG</a> (v1.2.3');
+    } finally {
+      rmSync(site, { recursive: true, force: true });
+    }
   });
 });
