@@ -275,6 +275,15 @@ export function igVersionBanner(f: IgVersionFacts, lang?: string, homeHref?: str
 /** A FHIR status code as the Publisher's table writes it: `active` → `Active`. */
 const statusWord = (s: string): string => s.charAt(0).toUpperCase() + s.slice(1);
 
+/**
+ * A page's opt-out of the version banner: `<meta name="ig-version-banner" content="none">`.
+ * A page whose generator says it needs no banner (the journeys viewer's pages,
+ * owner, 2026-11-17: "not needed") keeps the version after the IG's title but
+ * gets no banner. Keyed on what the page says, never on its name.
+ */
+export const IG_VERSION_BANNER_OPT_OUT = '<meta name="ig-version-banner" content="none">';
+const OPTS_OUT = /<meta\s+name=["']ig-version-banner["']\s+content=["']none["']\s*\/?>/i;
+
 /** The class of a metadata table, and the marker that it is there. */
 export const IG_METADATA_CLASS = "ig-metadata";
 
@@ -381,7 +390,7 @@ export function withIgVersionChrome(html: string, f: IgVersionFacts, o: { home: 
   const tag = igVersionTag(f);
   // The page's own language (a translated page's `<html lang>`), so the banner and table read in it.
   const lang = /<html\b[^>]*\slang="([^"]+)"/i.exec(html)?.[1];
-  const banner = igVersionBanner(f, lang, o.homeHref);
+  const banner = OPTS_OUT.test(html.slice(0, Math.max(0, html.search(/<\/head>/i)))) ? "" : igVersionBanner(f, lang, o.homeHref);
   if (!tag && !banner) return html;
   const start = barStart(html, a.index);
   const end = start === undefined ? undefined : barEnd(html, start);
