@@ -59,6 +59,11 @@ msgstr "IG Publisher 对生成此 AST 的那次运行给出的质量保证摘要
 
 #. origin: machine translation (agent, 2026-11-14); no person has reviewed it
 #. rendered at: <locale>/qa.html
+#: fhir-harness/scripts/ig-qa-page-i18n.ts QA_PAGE_STRINGS.carriedSummary
+msgctxt "carriedSummary"
+msgid "This AST was updated by an incremental build, which runs no full Publisher QA: the summary and messages here are those of the last full Publisher run{run}."
+msgstr "此 AST 由增量构建更新，增量构建不运行完整的 IG Publisher 质量检查：此处的摘要和消息来自最近一次完整的 IG Publisher 运行{run}。"
+
 #: fhir-harness/scripts/ig-qa-page-i18n.ts QA_PAGE_STRINGS.summaryJson
 msgctxt "summaryJson"
 msgid "Summary (JSON)"

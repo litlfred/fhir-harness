@@ -15,6 +15,13 @@ Feature: The IG's quality checks page
     Then a "Markdown rendering" section lists the ValueSet, its description field and "heading"
     And an AST with no resources gets no such section
 
+  @test:scripts/ig-qa-page.test.ts::ig-qa-page::aCarriedSummarySaysWhichFullRunItCameFrom
+  Scenario: FHIR QA: a summary an incremental build carried says which full run it came from
+    Given an AST holding a QA summary and a qa-origin.json naming the full Publisher run it came from
+    When the FHIR QA section is written
+    Then it says the AST was updated by an incremental build and names that run's revision and time
+    And it still shows the summary's counts, and an AST with no origin says nothing of an incremental build
+
   @test:scripts/ig-qa-page.test.ts::ig-qa-page::fhirQaWithoutSummarySaysSo
   Scenario: FHIR QA: an AST without the summary says so, never zeros
     Given an AST with a manifest but no QA summary, and a validity record saying the AST is stale because the inputs changed

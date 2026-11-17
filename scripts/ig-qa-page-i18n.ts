@@ -36,6 +36,7 @@ export const QA_PAGE_STRINGS = {
   englishOnly: "This part of the report is in English only.",
   publisher: "IG Publisher",
   publisherSummary: "The Publisher's own QA summary for the run this AST came from{run}.",
+  carriedSummary: "This AST was updated by an incremental build, which runs no full Publisher QA: the summary and messages here are those of the last full Publisher run{run}.",
   summaryJson: "Summary (JSON)",
   messagesIntro: "Every message the Publisher reported, laid out as its own `qa.html` lays them out.",
   messagesJson: "Messages (JSON)",

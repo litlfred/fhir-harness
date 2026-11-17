@@ -41,7 +41,7 @@ import { join, resolve } from "node:path";
 import { copyKgQaRecords, kgQaMarkdown, kgQaReport, type KgQaReport } from "../../cat-harness-tools/scripts/kg-qa-report.ts";
 import { readDeclaration } from "../../cat-harness-tools/schemas/kg/cat-harness.ts";
 import { CONTENT_QA_PUBLISHED, CONTENT_QA_SIDECAR, type ContentQaVerdict } from "./ig-content-qa.ts";
-import { QA_MESSAGES_FILE, QA_MESSAGES_SCHEMA } from "./ig-qa-messages.ts";
+import { QA_MESSAGES_FILE, QA_MESSAGES_SCHEMA, QA_ORIGIN_FILE, QA_ORIGIN_SCHEMA } from "./ig-qa-messages.ts";
 import { markdownQaMarkdown, scanDir, type MarkdownFinding } from "./ig-markdown-qa.ts";
 import { pageRenderQaMarkdown } from "./ig-page-render-qa.ts";
 import { fetchPublisherBundles, readBundle, readOwnCatalogue, translateMessages, usageReport } from "./ig-publisher-i18n.ts";
@@ -70,6 +70,8 @@ export interface FhirQa {
   publisher?: Json;
   /** The Publisher's full message list (`ig-qa-messages.ts`), as the AST carries it. */
   messages?: Json;
+  /** The full Publisher run the QA files came from, when an incremental build carried them (`ig-qa-messages.ts` carryQa). */
+  origin?: { sourceRevision?: string; generatedAt?: string };
   /** Where the IG's tracked files are, at the commit this site is built from (`https://github.com/<o>/<r>/blob/<sha>/`), for the messages' file links. */
   sourceBase?: string;
   /** The AST's `manifest.json`. */
@@ -99,9 +101,11 @@ export function readFhirQa(ast: string | undefined, validityFile?: string): Fhir
   const validity = readJson(validityFile) as FhirQa["validity"];
   const read = ast ? readJson(join(ast, QA_MESSAGES_FILE)) : undefined;
   const messages = read && read.$schema === QA_MESSAGES_SCHEMA && Array.isArray(read.groups) && read.groups.length > 0 ? read : undefined;
+  const o = publisher && ast ? readJson(join(ast, QA_ORIGIN_FILE)) : undefined;
+  const origin = o && o.$schema === QA_ORIGIN_SCHEMA ? (o as FhirQa["origin"]) : undefined;
   const scan = ast && existsSync(ast) ? scanDir(ast) : undefined;
   const markdown = scan && scan.scanned > 0 ? scan : undefined;
-  return { ...(publisher ? { publisher } : {}), ...(messages ? { messages } : {}), ...(manifest ? { manifest } : {}), ...(validity ? { validity } : {}), ...(markdown ? { markdown } : {}) };
+  return { ...(publisher ? { publisher } : {}), ...(messages ? { messages } : {}), ...(origin ? { origin } : {}), ...(manifest ? { manifest } : {}), ...(validity ? { validity } : {}), ...(markdown ? { markdown } : {}) };
 }
 
 const escHtml = (s: string): string => s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
@@ -127,6 +131,10 @@ export function fhirQaMarkdown(q: FhirQa, o: { up?: string; t?: Tr; locale?: str
       [t("suppressedHints"), num(p["suppressed-hints"])],
     ];
     const run = [p.tool ? `IG Publisher ${String(p.tool)}` : undefined, p.version ? `FHIR ${String(p.version)}` : undefined, p.date ?? p.dateISO8601 ? `on ${String(p.date ?? p.dateISO8601)}` : undefined].filter(Boolean);
+    if (q.origin) {
+      const from = [typeof q.origin.sourceRevision === "string" ? code(q.origin.sourceRevision.slice(0, 12)) : undefined, typeof q.origin.generatedAt === "string" ? String(q.origin.generatedAt) : undefined].filter(Boolean);
+      lines.push(t("carriedSummary", { run: from.length ? ` (${from.join(", ")})` : "" }), "");
+    }
     lines.push(`${t("publisherSummary", { run: run.length ? ` (${run.join(", ")})` : "" })} [${t("summaryJson")}](${up}${FHIR_QA_ASSETS}/${PUBLISHER_QA_FILE})`, "");
     const held = rows.filter(([, n]) => n !== undefined);
     if (q.messages) {

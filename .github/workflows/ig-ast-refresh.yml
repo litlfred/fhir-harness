@@ -186,7 +186,9 @@ jobs:
           # (older than 7468adf5, 2026-11-06), and a valid cache is never
           # rebuilt, so the site's QA report would never get it. Rebuild it
           # once, in full, on the default branch, where the new AST is seeded.
-          # An incremental AST has no full Publisher QA: it is left as it is.
+          # An incremental AST has no full Publisher QA of its own: it carries
+          # its base's (ig-qa-messages.ts carry). One seeded before that carried
+          # none (2026-11-17) is rebuilt once in full here as well.
           # The same once more for the Publisher's full message list
           # (qa-messages.json, the qa.html layout's data), when the lock's
           # fhir-harness can write one: a build whose Publisher wrote no
@@ -196,9 +198,8 @@ jobs:
           [ -z "$missing" ] && [ -f fhir-harness/scripts/ig-qa-messages.ts ] && [ ! -f output-ast/qa-messages.json ] \
             && missing="qa-messages.json (the Publisher's message list)"
           if [ "$rebuild" = false ] && [ -f output-ast/manifest.json ] && [ -n "$missing" ]; then
-            kind=$(bun run fhir-harness/scripts/ig-ast.ts build-kind output-ast 2>/dev/null || echo full)
             git fetch -q origin "refs/heads/${DEFAULT_BRANCH:-main}" 2>/dev/null || true
-            if [ "$kind" = full ] && [ "$(git rev-parse HEAD)" = "$(git rev-parse -q --verify FETCH_HEAD)" ]; then
+            if [ "$(git rev-parse HEAD)" = "$(git rev-parse -q --verify FETCH_HEAD)" ]; then
               rebuild=true
               echo "::notice::the cached AST is valid but carries no $missing: rebuilding it once in full"
             fi
@@ -429,6 +430,17 @@ jobs:
               # `build-kind`; this branch only runs on IncrementalBuildCli's AST.
               kind=$(bun run fhir-harness/scripts/ig-ast.ts build-kind output-ast 2>/dev/null || echo incremental)
               tail -n 20 "$RUNNER_TEMP/ast-build.log"
+              # The Publisher's QA goes with this AST as with a full one: from
+              # this run when its Publisher wrote any, otherwise carried from the
+              # base AST with the full run it came from (qa-origin.json). This
+              # branch exits before the full build's copy below, and an AST
+              # seeded without them leaves the site's QA report with no summary
+              # (owner report, 2026-11-17).
+              [ -f output/qa.json ] && [ ! -f output-ast/qa.json ] && cp output/qa.json output-ast/qa.json
+              if [ -f output/qa.xml ] && [ ! -f output-ast/qa-messages.json ]; then
+                bun run fhir-harness/scripts/ig-qa-messages.ts output/qa.xml output-ast/qa-messages.json || true
+              fi
+              bun run fhir-harness/scripts/ig-qa-messages.ts carry "$RUNNER_TEMP/base-ast" output-ast || true
               if [ "$kind" = incremental ]; then
                 bun run fhir-harness/scripts/ig-ast.ts cache-line output-ast --ig . --warm 2>/dev/null || true
               fi
