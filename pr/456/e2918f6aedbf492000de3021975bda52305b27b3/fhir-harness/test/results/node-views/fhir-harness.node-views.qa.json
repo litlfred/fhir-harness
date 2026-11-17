@@ -1,0 +1,5018 @@
+{
+  "$schema": "node-view-coverage/v1",
+  "layer": "fhir-harness",
+  "site": {
+    "kind": "url",
+    "at": "https://litlfred.github.io/fhir-harness/"
+  },
+  "generatedAt": "2026-11-17T12:24:05.048Z",
+  "totals": {
+    "rows": 23,
+    "nodes": "unknown",
+    "ok": 0,
+    "missing": 416,
+    "unknown": 0,
+    "deadLinks": 0
+  },
+  "rows": [
+    {
+      "layer": "fhir-harness",
+      "directory": "scenarios",
+      "path": "scenarios/",
+      "kind": "scenarios",
+      "viewer": {
+        "state": "declared",
+        "id": "cat-harness/scenarios"
+      },
+      "folderPage": "en/cat-harness/scenarios/fhir-harness/",
+      "folderPageFound": false,
+      "census": "files .json .jsonld",
+      "declared": 9,
+      "withIri": 0,
+      "withJsonld": 0,
+      "withJson": 0,
+      "withPage": 0,
+      "listed": 0,
+      "deadLinks": [],
+      "rawRepoLinks": 0,
+      "nodes": [
+        {
+          "id": "actors/fhir-modeller",
+          "path": "scenarios/actors/fhir-modeller.json",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "actors/ig-publisher-service",
+          "path": "scenarios/actors/ig-publisher-service.json",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "actors/publication-manager",
+          "path": "scenarios/actors/publication-manager.json",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "actors/qc-reviewer",
+          "path": "scenarios/actors/qc-reviewer.json",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "capabilities/fhir-validator",
+          "path": "scenarios/capabilities/fhir-validator.json",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "capabilities/ig-publisher",
+          "path": "scenarios/capabilities/ig-publisher.json",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "capabilities/sushi-compiler",
+          "path": "scenarios/capabilities/sushi-compiler.json",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "roles",
+          "path": "scenarios/roles.json",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "stories",
+          "path": "scenarios/stories.json",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        }
+      ]
+    },
+    {
+      "layer": "fhir-harness",
+      "directory": "library",
+      "path": "library/",
+      "kind": "library",
+      "viewer": {
+        "state": "declared",
+        "id": "cat-harness/library"
+      },
+      "folderPage": "en/cat-harness/library/fhir-harness/",
+      "folderPageFound": false,
+      "census": "entries",
+      "declared": 3,
+      "withIri": 0,
+      "withJsonld": 0,
+      "withPage": 0,
+      "listed": 0,
+      "deadLinks": [],
+      "rawRepoLinks": 0,
+      "nodes": [
+        {
+          "id": "cucumber-2024-gherkin-reference",
+          "path": "library/cucumber-2024-gherkin-reference/",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "hl7-2023-fhir-r5-testplan",
+          "path": "library/hl7-2023-fhir-r5-testplan/",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "isaitb-2026-interoperability-test-bed-readme",
+          "path": "library/isaitb-2026-interoperability-test-bed-readme/",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        }
+      ]
+    },
+    {
+      "layer": "fhir-harness",
+      "directory": "qa",
+      "path": "test/results/",
+      "kind": "qa",
+      "viewer": {
+        "state": "declared",
+        "id": "cat-harness/qa"
+      },
+      "folderPage": "en/cat-harness/qa/fhir-harness/",
+      "folderPageFound": "unknown",
+      "census": "unknown",
+      "declared": "unknown",
+      "withIri": "unknown",
+      "withJsonld": "unknown",
+      "withPage": "unknown",
+      "listed": "unknown",
+      "deadLinks": [],
+      "rawRepoLinks": "unknown",
+      "reason": "test/results/ is not in this checkout (kept on a branch, or not committed)",
+      "nodes": []
+    },
+    {
+      "layer": "fhir-harness",
+      "directory": "glossary",
+      "path": "glossary/",
+      "kind": "glossary",
+      "viewer": {
+        "state": "declared",
+        "id": "folio-assistant-core/glossary"
+      },
+      "folderPage": "en/folio-assistant-core/glossary/instance/fhir-harness/",
+      "folderPageFound": false,
+      "census": "files .glossary.json",
+      "declared": 4,
+      "withIri": 0,
+      "withJsonld": 0,
+      "withJson": 0,
+      "withPage": 0,
+      "listed": 0,
+      "deadLinks": [],
+      "rawRepoLinks": 0,
+      "nodes": [
+        {
+          "id": "generated/fhir-harness/kg-bpmn-activities",
+          "path": "glossary/generated/fhir-harness/kg-bpmn-activities.glossary.json",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "generated/fhir-harness/kg-schema-fields",
+          "path": "glossary/generated/fhir-harness/kg-schema-fields.glossary.json",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "generated/fhir-harness/kg-skills",
+          "path": "glossary/generated/fhir-harness/kg-skills.glossary.json",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "generated/fhir-harness/kg-tools",
+          "path": "glossary/generated/fhir-harness/kg-tools.glossary.json",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        }
+      ]
+    },
+    {
+      "layer": "fhir-harness",
+      "directory": "fhir-harness-translations",
+      "path": "translations/",
+      "kind": "translation-sources",
+      "viewer": {
+        "state": "declared",
+        "id": "cat-harness/translation-status"
+      },
+      "folderPage": "en/cat-harness/translation-status/fhir-harness/",
+      "folderPageFound": false,
+      "census": "files .po .pot",
+      "declared": 45,
+      "withIri": 45,
+      "withJsonld": 45,
+      "withPage": 0,
+      "listed": 0,
+      "deadLinks": [],
+      "rawRepoLinks": 0,
+      "nodes": [
+        {
+          "id": "ar/generated-pages/ig-qa-page",
+          "path": "translations/ar/generated-pages/ig-qa-page.po",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/translationSource/ar/generated-pages/ig-qa-page.po",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "ar/processes/ig-ast-cache",
+          "path": "translations/ar/processes/ig-ast-cache.pot",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/translationSource/ar/processes/ig-ast-cache.pot",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "ar/processes/ig-ast-delta-review",
+          "path": "translations/ar/processes/ig-ast-delta-review.pot",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/translationSource/ar/processes/ig-ast-delta-review.pot",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "ar/processes/ig-docs-site-compose",
+          "path": "translations/ar/processes/ig-docs-site-compose.pot",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/translationSource/ar/processes/ig-docs-site-compose.pot",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "ar/processes/ig-incremental-build",
+          "path": "translations/ar/processes/ig-incremental-build.pot",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/translationSource/ar/processes/ig-incremental-build.pot",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "ar/processes/ig-release",
+          "path": "translations/ar/processes/ig-release.pot",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/translationSource/ar/processes/ig-release.pot",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "ar/processes/l3-fhir-pipeline",
+          "path": "translations/ar/processes/l3-fhir-pipeline.pot",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/translationSource/ar/processes/l3-fhir-pipeline.pot",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "ar/processes/questionnaire-wireframe-review",
+          "path": "translations/ar/processes/questionnaire-wireframe-review.pot",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/translationSource/ar/processes/questionnaire-wireframe-review.pot",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "ar/publisher/messages",
+          "path": "translations/ar/publisher/messages.po",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/translationSource/ar/publisher/messages.po",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "es/generated-pages/ig-qa-page",
+          "path": "translations/es/generated-pages/ig-qa-page.po",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/translationSource/es/generated-pages/ig-qa-page.po",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "es/processes/ig-ast-cache",
+          "path": "translations/es/processes/ig-ast-cache.pot",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/translationSource/es/processes/ig-ast-cache.pot",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "es/processes/ig-ast-delta-review",
+          "path": "translations/es/processes/ig-ast-delta-review.pot",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/translationSource/es/processes/ig-ast-delta-review.pot",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "es/processes/ig-docs-site-compose",
+          "path": "translations/es/processes/ig-docs-site-compose.pot",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/translationSource/es/processes/ig-docs-site-compose.pot",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "es/processes/ig-incremental-build",
+          "path": "translations/es/processes/ig-incremental-build.pot",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/translationSource/es/processes/ig-incremental-build.pot",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "es/processes/ig-release",
+          "path": "translations/es/processes/ig-release.pot",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/translationSource/es/processes/ig-release.pot",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "es/processes/l3-fhir-pipeline",
+          "path": "translations/es/processes/l3-fhir-pipeline.pot",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/translationSource/es/processes/l3-fhir-pipeline.pot",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "es/processes/questionnaire-wireframe-review",
+          "path": "translations/es/processes/questionnaire-wireframe-review.pot",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/translationSource/es/processes/questionnaire-wireframe-review.pot",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "es/publisher/messages",
+          "path": "translations/es/publisher/messages.po",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/translationSource/es/publisher/messages.po",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "fr/generated-pages/ig-qa-page",
+          "path": "translations/fr/generated-pages/ig-qa-page.po",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/translationSource/fr/generated-pages/ig-qa-page.po",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "fr/processes/ig-ast-cache",
+          "path": "translations/fr/processes/ig-ast-cache.pot",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/translationSource/fr/processes/ig-ast-cache.pot",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "fr/processes/ig-ast-delta-review",
+          "path": "translations/fr/processes/ig-ast-delta-review.pot",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/translationSource/fr/processes/ig-ast-delta-review.pot",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "fr/processes/ig-docs-site-compose",
+          "path": "translations/fr/processes/ig-docs-site-compose.pot",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/translationSource/fr/processes/ig-docs-site-compose.pot",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "fr/processes/ig-incremental-build",
+          "path": "translations/fr/processes/ig-incremental-build.pot",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/translationSource/fr/processes/ig-incremental-build.pot",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "fr/processes/ig-release",
+          "path": "translations/fr/processes/ig-release.pot",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/translationSource/fr/processes/ig-release.pot",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "fr/processes/l3-fhir-pipeline",
+          "path": "translations/fr/processes/l3-fhir-pipeline.pot",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/translationSource/fr/processes/l3-fhir-pipeline.pot",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "fr/processes/questionnaire-wireframe-review",
+          "path": "translations/fr/processes/questionnaire-wireframe-review.pot",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/translationSource/fr/processes/questionnaire-wireframe-review.pot",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "fr/publisher/messages",
+          "path": "translations/fr/publisher/messages.po",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/translationSource/fr/publisher/messages.po",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "ru/generated-pages/ig-qa-page",
+          "path": "translations/ru/generated-pages/ig-qa-page.po",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/translationSource/ru/generated-pages/ig-qa-page.po",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "ru/processes/ig-ast-cache",
+          "path": "translations/ru/processes/ig-ast-cache.pot",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/translationSource/ru/processes/ig-ast-cache.pot",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "ru/processes/ig-ast-delta-review",
+          "path": "translations/ru/processes/ig-ast-delta-review.pot",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/translationSource/ru/processes/ig-ast-delta-review.pot",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "ru/processes/ig-docs-site-compose",
+          "path": "translations/ru/processes/ig-docs-site-compose.pot",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/translationSource/ru/processes/ig-docs-site-compose.pot",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "ru/processes/ig-incremental-build",
+          "path": "translations/ru/processes/ig-incremental-build.pot",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/translationSource/ru/processes/ig-incremental-build.pot",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "ru/processes/ig-release",
+          "path": "translations/ru/processes/ig-release.pot",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/translationSource/ru/processes/ig-release.pot",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "ru/processes/l3-fhir-pipeline",
+          "path": "translations/ru/processes/l3-fhir-pipeline.pot",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/translationSource/ru/processes/l3-fhir-pipeline.pot",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "ru/processes/questionnaire-wireframe-review",
+          "path": "translations/ru/processes/questionnaire-wireframe-review.pot",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/translationSource/ru/processes/questionnaire-wireframe-review.pot",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "ru/publisher/messages",
+          "path": "translations/ru/publisher/messages.po",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/translationSource/ru/publisher/messages.po",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "zh/generated-pages/ig-qa-page",
+          "path": "translations/zh/generated-pages/ig-qa-page.po",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/translationSource/zh/generated-pages/ig-qa-page.po",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "zh/processes/ig-ast-cache",
+          "path": "translations/zh/processes/ig-ast-cache.pot",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/translationSource/zh/processes/ig-ast-cache.pot",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "zh/processes/ig-ast-delta-review",
+          "path": "translations/zh/processes/ig-ast-delta-review.pot",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/translationSource/zh/processes/ig-ast-delta-review.pot",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "zh/processes/ig-docs-site-compose",
+          "path": "translations/zh/processes/ig-docs-site-compose.pot",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/translationSource/zh/processes/ig-docs-site-compose.pot",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "zh/processes/ig-incremental-build",
+          "path": "translations/zh/processes/ig-incremental-build.pot",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/translationSource/zh/processes/ig-incremental-build.pot",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "zh/processes/ig-release",
+          "path": "translations/zh/processes/ig-release.pot",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/translationSource/zh/processes/ig-release.pot",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "zh/processes/l3-fhir-pipeline",
+          "path": "translations/zh/processes/l3-fhir-pipeline.pot",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/translationSource/zh/processes/l3-fhir-pipeline.pot",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "zh/processes/questionnaire-wireframe-review",
+          "path": "translations/zh/processes/questionnaire-wireframe-review.pot",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/translationSource/zh/processes/questionnaire-wireframe-review.pot",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "zh/publisher/messages",
+          "path": "translations/zh/publisher/messages.po",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/translationSource/zh/publisher/messages.po",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        }
+      ]
+    },
+    {
+      "layer": "fhir-harness",
+      "directory": "fhir-harness-validators",
+      "path": "validators/",
+      "kind": "validators",
+      "viewer": {
+        "state": "declared",
+        "id": "cat-harness/validators"
+      },
+      "folderPage": "en/cat-harness/validators/fhir-harness/",
+      "folderPageFound": false,
+      "census": "files .json .jsonld",
+      "declared": 14,
+      "withIri": 0,
+      "withJsonld": 0,
+      "withJson": 0,
+      "withPage": 0,
+      "listed": 0,
+      "deadLinks": [],
+      "rawRepoLinks": 0,
+      "nodes": [
+        {
+          "id": "ast-dependencies",
+          "path": "validators/ast-dependencies.json",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ast-manifest",
+          "path": "validators/ast-manifest.json",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ast-plan",
+          "path": "validators/ast-plan.json",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "fhir-artifact-index",
+          "path": "validators/fhir-artifact-index.json",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "fhir-core-class-model",
+          "path": "validators/fhir-core-class-model.json",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "fhir-core-pins",
+          "path": "validators/fhir-core-pins.json",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "fhir-core-release",
+          "path": "validators/fhir-core-release.json",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-annexes",
+          "path": "validators/ig-annexes.json",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-artifact-index-jsonld",
+          "path": "validators/ig-artifact-index-jsonld.json",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-artifact-jsonld",
+          "path": "validators/ig-artifact-jsonld.json",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-chrome",
+          "path": "validators/ig-chrome.json",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-menu",
+          "path": "validators/ig-menu.json",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-metadata-index",
+          "path": "validators/ig-metadata-index.json",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-releases",
+          "path": "validators/ig-releases.json",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        }
+      ]
+    },
+    {
+      "layer": "fhir-harness",
+      "directory": "fhir-harness-typologies",
+      "path": "typologies/",
+      "kind": "typologies",
+      "viewer": {
+        "state": "declared",
+        "id": "cat-harness/graph-typologies"
+      },
+      "folderPage": "en/cat-harness/graph-typologies/fhir-harness/",
+      "folderPageFound": false,
+      "census": "files .json .jsonld",
+      "declared": 7,
+      "withIri": 0,
+      "withJsonld": 0,
+      "withJson": 0,
+      "withPage": 0,
+      "listed": 0,
+      "deadLinks": [],
+      "rawRepoLinks": 0,
+      "nodes": [
+        {
+          "id": "fhir-artifact-index",
+          "path": "typologies/fhir-artifact-index.json",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "fhir-core-definitions",
+          "path": "typologies/fhir-core-definitions.json",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-annex",
+          "path": "typologies/ig-annex.json",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-artifact-jsonld",
+          "path": "typologies/ig-artifact-jsonld.json",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-ast",
+          "path": "typologies/ig-ast.json",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-metadata-index",
+          "path": "typologies/ig-metadata-index.json",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-pages",
+          "path": "typologies/ig-pages.json",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        }
+      ]
+    },
+    {
+      "layer": "fhir-harness",
+      "directory": "fhir-ig-skills",
+      "path": "skills/",
+      "kind": "skills",
+      "viewer": {
+        "state": "declared",
+        "id": "cat-harness/auto-docs"
+      },
+      "folderPage": "en/cat-harness/auto-docs/index/skills/fhir-ig-skills/",
+      "folderPageFound": false,
+      "census": "export",
+      "declared": 19,
+      "withIri": 19,
+      "withJsonld": 19,
+      "withPage": 0,
+      "listed": 0,
+      "deadLinks": [],
+      "rawRepoLinks": 0,
+      "nodes": [
+        {
+          "id": "terminology-management",
+          "path": "skills/content/fhir-ig-authoring/terminology-management.md",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/skill/terminology-management",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "pcf-consent",
+          "path": "skills/content/fhir-ig-authoring/pcf-consent.md",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/skill/pcf-consent",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "l3-fhir-authoring",
+          "path": "skills/content/fhir-ig-authoring/l3-fhir-authoring.md",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/skill/l3-fhir-authoring",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "fhir-questionnaire-wireframe",
+          "path": "skills/content/fhir-ig-authoring/fhir-questionnaire-wireframe.md",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/skill/fhir-questionnaire-wireframe",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "ig-publication",
+          "path": "skills/content/fhir-ig-authoring/ig-publication.md",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/skill/ig-publication",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "ig-publisher-service-contract",
+          "path": "skills/content/fhir-ig-authoring/ig-publisher-service-contract.md",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/skill/ig-publisher-service-contract",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "fhir-validation",
+          "path": "skills/content/fhir-ig-authoring/fhir-validation.md",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/skill/fhir-validation",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "fhir-client-operations",
+          "path": "skills/fhir-client/fhir-client-operations.md",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/skill/fhir-client-operations",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "smart-launch",
+          "path": "skills/fhir-client/smart-launch.md",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/skill/smart-launch",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "ig-site-links",
+          "path": "skills/fhir-ig-base/ig-site-links.md",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/skill/ig-site-links",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "ig-ast-delta",
+          "path": "skills/fhir-ig-base/ig-ast-delta.md",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/skill/ig-ast-delta",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "ig-binary-artefacts",
+          "path": "skills/fhir-ig-base/ig-binary-artefacts.md",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/skill/ig-binary-artefacts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "ig-site-theme",
+          "path": "skills/fhir-ig-base/ig-site-theme.md",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/skill/ig-site-theme",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "ig-build-pipeline",
+          "path": "skills/fhir-ig-base/ig-build-pipeline.md",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/skill/ig-build-pipeline",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "ig-render-jekyll",
+          "path": "skills/fhir-ig-base/ig-render-jekyll.md",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/skill/ig-render-jekyll",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "fhir-ig-create",
+          "path": "skills/fhir-ig-base/fhir-ig-create.md",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/skill/fhir-ig-create",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "ig-publisher-reduction",
+          "path": "skills/fhir-ig-base/ig-publisher-reduction.md",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/skill/ig-publisher-reduction",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "ig-publisher-fork",
+          "path": "skills/fhir-ig-base/ig-publisher-fork.md",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/skill/ig-publisher-fork",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "ig-content-qa",
+          "path": "skills/fhir-ig-base/ig-content-qa.md",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/skill/ig-content-qa",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        }
+      ]
+    },
+    {
+      "layer": "fhir-harness",
+      "directory": "fhir-ig-tools",
+      "path": "tools/",
+      "kind": "tools",
+      "viewer": {
+        "state": "declared",
+        "id": "cat-harness/tools"
+      },
+      "folderPage": "en/cat-harness/tools/fhir-harness/",
+      "folderPageFound": false,
+      "census": "entries",
+      "declared": 39,
+      "withIri": 39,
+      "withJsonld": 39,
+      "withPage": 0,
+      "listed": 0,
+      "deadLinks": [],
+      "rawRepoLinks": 0,
+      "nodes": [
+        {
+          "id": "build-ig-site",
+          "path": "tools/build-ig-site/",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/tools/build-ig-site.jsonld",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri-extension"
+          ]
+        },
+        {
+          "id": "check-translation-supplements",
+          "path": "tools/check-translation-supplements/",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/tools/check-translation-supplements.jsonld",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri-extension"
+          ]
+        },
+        {
+          "id": "check-wireframe-questionnaire",
+          "path": "tools/check-wireframe-questionnaire/",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/tools/check-wireframe-questionnaire.jsonld",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri-extension"
+          ]
+        },
+        {
+          "id": "fhir-cache-seed-npm",
+          "path": "tools/fhir-cache-seed-npm/",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/tools/fhir-cache-seed-npm.jsonld",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri-extension"
+          ]
+        },
+        {
+          "id": "fhir-core",
+          "path": "tools/fhir-core/",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/tools/fhir-core.jsonld",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri-extension"
+          ]
+        },
+        {
+          "id": "fhir-package-mirror",
+          "path": "tools/fhir-package-mirror/",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/tools/fhir-package-mirror.jsonld",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri-extension"
+          ]
+        },
+        {
+          "id": "fsh-cone",
+          "path": "tools/fsh-cone/",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/tools/fsh-cone.jsonld",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri-extension"
+          ]
+        },
+        {
+          "id": "ig-artifact-jsonld",
+          "path": "tools/ig-artifact-jsonld/",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/tools/ig-artifact-jsonld.jsonld",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri-extension"
+          ]
+        },
+        {
+          "id": "ig-ast-diff",
+          "path": "tools/ig-ast-diff/",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/tools/ig-ast-diff.jsonld",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri-extension"
+          ]
+        },
+        {
+          "id": "ig-ast-export",
+          "path": "tools/ig-ast-export/",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/tools/ig-ast-export.jsonld",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri-extension"
+          ]
+        },
+        {
+          "id": "ig-ast-incremental-build",
+          "path": "tools/ig-ast-incremental-build/",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/tools/ig-ast-incremental-build.jsonld",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri-extension"
+          ]
+        },
+        {
+          "id": "ig-ast-jsonld",
+          "path": "tools/ig-ast-jsonld/",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/tools/ig-ast-jsonld.jsonld",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri-extension"
+          ]
+        },
+        {
+          "id": "ig-ast-list",
+          "path": "tools/ig-ast-list/",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/tools/ig-ast-list.jsonld",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri-extension"
+          ]
+        },
+        {
+          "id": "ig-ast-measure-real-igs",
+          "path": "tools/ig-ast-measure-real-igs/",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/tools/ig-ast-measure-real-igs.jsonld",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri-extension"
+          ]
+        },
+        {
+          "id": "ig-ast-pages",
+          "path": "tools/ig-ast-pages/",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/tools/ig-ast-pages.jsonld",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri-extension"
+          ]
+        },
+        {
+          "id": "ig-ast-plan",
+          "path": "tools/ig-ast-plan/",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/tools/ig-ast-plan.jsonld",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri-extension"
+          ]
+        },
+        {
+          "id": "ig-ast-refresh",
+          "path": "tools/ig-ast-refresh/",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/tools/ig-ast-refresh.jsonld",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri-extension"
+          ]
+        },
+        {
+          "id": "ig-ast-render",
+          "path": "tools/ig-ast-render/",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/tools/ig-ast-render.jsonld",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri-extension"
+          ]
+        },
+        {
+          "id": "ig-ast-validity",
+          "path": "tools/ig-ast-validity/",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/tools/ig-ast-validity.jsonld",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri-extension"
+          ]
+        },
+        {
+          "id": "ig-binary-audit",
+          "path": "tools/ig-binary-audit/",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/tools/ig-binary-audit.jsonld",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri-extension"
+          ]
+        },
+        {
+          "id": "ig-cache",
+          "path": "tools/ig-cache/",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/tools/ig-cache.jsonld",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri-extension"
+          ]
+        },
+        {
+          "id": "ig-index-build",
+          "path": "tools/ig-index-build/",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/tools/ig-index-build.jsonld",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri-extension"
+          ]
+        },
+        {
+          "id": "ig-page-render-qa",
+          "path": "tools/ig-page-render-qa/",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/tools/ig-page-render-qa.jsonld",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri-extension"
+          ]
+        },
+        {
+          "id": "ig-pages",
+          "path": "tools/ig-pages/",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/tools/ig-pages.jsonld",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri-extension"
+          ]
+        },
+        {
+          "id": "ig-publisher-i18n",
+          "path": "tools/ig-publisher-i18n/",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/tools/ig-publisher-i18n.jsonld",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri-extension"
+          ]
+        },
+        {
+          "id": "ig-release",
+          "path": "tools/ig-release/",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/tools/ig-release.jsonld",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri-extension"
+          ]
+        },
+        {
+          "id": "ig-repo-site",
+          "path": "tools/ig-repo-site/",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/tools/ig-repo-site.jsonld",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri-extension"
+          ]
+        },
+        {
+          "id": "ig-site-data",
+          "path": "tools/ig-site-data/",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/tools/ig-site-data.jsonld",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri-extension"
+          ]
+        },
+        {
+          "id": "ingest-ig-menu",
+          "path": "tools/ingest-ig-menu/",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/tools/ingest-ig-menu.jsonld",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri-extension"
+          ]
+        },
+        {
+          "id": "ingest-ig-releases",
+          "path": "tools/ingest-ig-releases/",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/tools/ingest-ig-releases.jsonld",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri-extension"
+          ]
+        },
+        {
+          "id": "jsonld-vocabularies",
+          "path": "tools/jsonld-vocabularies/",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/tools/jsonld-vocabularies.jsonld",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri-extension"
+          ]
+        },
+        {
+          "id": "logical-model-schemas",
+          "path": "tools/logical-model-schemas/",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/tools/logical-model-schemas.jsonld",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri-extension"
+          ]
+        },
+        {
+          "id": "pin-ig-terminology",
+          "path": "tools/pin-ig-terminology/",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/tools/pin-ig-terminology.jsonld",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri-extension"
+          ]
+        },
+        {
+          "id": "sdc-checks",
+          "path": "tools/sdc-checks/",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/tools/sdc-checks.jsonld",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri-extension"
+          ]
+        },
+        {
+          "id": "stage-ig-sites",
+          "path": "tools/stage-ig-sites/",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/tools/stage-ig-sites.jsonld",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri-extension"
+          ]
+        },
+        {
+          "id": "strip-library-binaries",
+          "path": "tools/strip-library-binaries/",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/tools/strip-library-binaries.jsonld",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri-extension"
+          ]
+        },
+        {
+          "id": "strip-library-content",
+          "path": "tools/strip-library-content/",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/tools/strip-library-content.jsonld",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri-extension"
+          ]
+        },
+        {
+          "id": "terminology-index",
+          "path": "tools/terminology-index/",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/tools/terminology-index.jsonld",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri-extension"
+          ]
+        },
+        {
+          "id": "valueset-schemas",
+          "path": "tools/valueset-schemas/",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/tools/valueset-schemas.jsonld",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri-extension"
+          ]
+        }
+      ]
+    },
+    {
+      "layer": "fhir-harness",
+      "directory": "fhir-ig-scripts",
+      "path": "scripts/",
+      "kind": "code",
+      "viewer": {
+        "state": "declared",
+        "id": "cat-harness/code"
+      },
+      "folderPage": "en/cat-harness/code/fhir-harness/",
+      "folderPageFound": false,
+      "census": "files .ts .tsx .js .mjs .cjs .py .sh .rb .go",
+      "declared": 199,
+      "withIri": 0,
+      "withJsonld": 0,
+      "withPage": 0,
+      "listed": 0,
+      "deadLinks": [],
+      "rawRepoLinks": 0,
+      "nodes": [
+        {
+          "id": "assets/vendor/formbuilder-lhcforms/12.9.0/main.dd0ec5f4ab3ef14c",
+          "path": "scripts/assets/vendor/formbuilder-lhcforms/12.9.0/main.dd0ec5f4ab3ef14c.js",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "assets/vendor/formbuilder-lhcforms/12.9.0/polyfills.741ec81967e9c9c3",
+          "path": "scripts/assets/vendor/formbuilder-lhcforms/12.9.0/polyfills.741ec81967e9c9c3.js",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "assets/vendor/formbuilder-lhcforms/12.9.0/runtime.821ff28674267dd4",
+          "path": "scripts/assets/vendor/formbuilder-lhcforms/12.9.0/runtime.821ff28674267dd4.js",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "assets/vendor/formbuilder-lhcforms/12.9.0/scripts.5c83cbb4dbb11a83",
+          "path": "scripts/assets/vendor/formbuilder-lhcforms/12.9.0/scripts.5c83cbb4dbb11a83.js",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/bundles/webcomponents-ce",
+          "path": "scripts/assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/bundles/webcomponents-ce.js",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/bundles/webcomponents-pf_dom",
+          "path": "scripts/assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/bundles/webcomponents-pf_dom.js",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/bundles/webcomponents-pf_js",
+          "path": "scripts/assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/bundles/webcomponents-pf_js.js",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/bundles/webcomponents-sd",
+          "path": "scripts/assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/bundles/webcomponents-sd.js",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/bundles/webcomponents-sd-ce",
+          "path": "scripts/assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/bundles/webcomponents-sd-ce.js",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/bundles/webcomponents-sd-ce-pf",
+          "path": "scripts/assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/bundles/webcomponents-sd-ce-pf.js",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/custom-elements-es5-adapter",
+          "path": "scripts/assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/custom-elements-es5-adapter.js",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/src/entrypoints/custom-elements-es5-adapter-index",
+          "path": "scripts/assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/src/entrypoints/custom-elements-es5-adapter-index.js",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/src/entrypoints/webcomponents-bundle-index",
+          "path": "scripts/assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/src/entrypoints/webcomponents-bundle-index.js",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/src/entrypoints/webcomponents-ce-index",
+          "path": "scripts/assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/src/entrypoints/webcomponents-ce-index.js",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/src/entrypoints/webcomponents-pf_dom-index",
+          "path": "scripts/assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/src/entrypoints/webcomponents-pf_dom-index.js",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/src/entrypoints/webcomponents-pf_js-index",
+          "path": "scripts/assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/src/entrypoints/webcomponents-pf_js-index.js",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/src/entrypoints/webcomponents-sd-ce-index",
+          "path": "scripts/assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/src/entrypoints/webcomponents-sd-ce-index.js",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/src/entrypoints/webcomponents-sd-ce-pf-index",
+          "path": "scripts/assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/src/entrypoints/webcomponents-sd-ce-pf-index.js",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/src/entrypoints/webcomponents-sd-index",
+          "path": "scripts/assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/src/entrypoints/webcomponents-sd-index.js",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/src/flag-parser",
+          "path": "scripts/assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/src/flag-parser.js",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/src/platform/baseuri",
+          "path": "scripts/assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/src/platform/baseuri.js",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/src/platform/child-node/after",
+          "path": "scripts/assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/src/platform/child-node/after.js",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/src/platform/child-node/before",
+          "path": "scripts/assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/src/platform/child-node/before.js",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/src/platform/child-node/index",
+          "path": "scripts/assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/src/platform/child-node/index.js",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/src/platform/child-node/remove",
+          "path": "scripts/assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/src/platform/child-node/remove.js",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/src/platform/child-node/replace-with",
+          "path": "scripts/assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/src/platform/child-node/replace-with.js",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/src/platform/custom-event",
+          "path": "scripts/assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/src/platform/custom-event.js",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/src/platform/es6-misc",
+          "path": "scripts/assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/src/platform/es6-misc.js",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/src/platform/event-listener-options",
+          "path": "scripts/assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/src/platform/event-listener-options.js",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/src/platform/get-attribute-names",
+          "path": "scripts/assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/src/platform/get-attribute-names.js",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/src/platform/matches",
+          "path": "scripts/assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/src/platform/matches.js",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/src/platform/parent-node/append",
+          "path": "scripts/assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/src/platform/parent-node/append.js",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/src/platform/parent-node/index",
+          "path": "scripts/assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/src/platform/parent-node/index.js",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/src/platform/parent-node/prepend",
+          "path": "scripts/assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/src/platform/parent-node/prepend.js",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/src/platform/parent-node/replace-children",
+          "path": "scripts/assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/src/platform/parent-node/replace-children.js",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/src/platform/promise",
+          "path": "scripts/assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/src/platform/promise.js",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/src/platform/svg-element-class-list",
+          "path": "scripts/assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/src/platform/svg-element-class-list.js",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/src/platform/symbol",
+          "path": "scripts/assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/src/platform/symbol.js",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/src/platform/toggle-attribute",
+          "path": "scripts/assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/src/platform/toggle-attribute.js",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/src/unresolved",
+          "path": "scripts/assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/src/unresolved.js",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/webcomponents-bundle",
+          "path": "scripts/assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/webcomponents-bundle.js",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/webcomponents-loader",
+          "path": "scripts/assets/vendor/formbuilder-lhcforms/12.9.0/webcomponents/webcomponents-loader.js",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "assets/vendor/jquery/3.6.0/jquery.min",
+          "path": "scripts/assets/vendor/jquery/3.6.0/jquery.min.js",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "assets/vendor/lhc-forms/44.1.0/fhir/lformsFHIRAll.min",
+          "path": "scripts/assets/vendor/lhc-forms/44.1.0/fhir/lformsFHIRAll.min.js",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "assets/vendor/lhc-forms/44.1.0/webcomponent/assets/lib/zone.min",
+          "path": "scripts/assets/vendor/lhc-forms/44.1.0/webcomponent/assets/lib/zone.min.js",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "assets/vendor/lhc-forms/44.1.0/webcomponent/lhc-forms",
+          "path": "scripts/assets/vendor/lhc-forms/44.1.0/webcomponent/lhc-forms.js",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "assets/vendor/lhc-forms/44.1.0/webcomponent/main",
+          "path": "scripts/assets/vendor/lhc-forms/44.1.0/webcomponent/main.js",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "assets/vendor/lhc-forms/44.1.0/webcomponent/polyfills",
+          "path": "scripts/assets/vendor/lhc-forms/44.1.0/webcomponent/polyfills.js",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "assets/vendor/lhc-forms/44.1.0/webcomponent/runtime",
+          "path": "scripts/assets/vendor/lhc-forms/44.1.0/webcomponent/runtime.js",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ast-to-artifact-index",
+          "path": "scripts/ast-to-artifact-index.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ast-to-artifact-index.test",
+          "path": "scripts/ast-to-artifact-index.test.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "build-ig-indexes",
+          "path": "scripts/build-ig-indexes.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "build-ig-indexes.test",
+          "path": "scripts/build-ig-indexes.test.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "build-ig-site",
+          "path": "scripts/build-ig-site.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "build-ig-site.test",
+          "path": "scripts/build-ig-site.test.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "check-artifact-index",
+          "path": "scripts/check-artifact-index.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "check-ig-annex-links",
+          "path": "scripts/check-ig-annex-links.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "check-ig-annex-links.test",
+          "path": "scripts/check-ig-annex-links.test.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "check-translation-supplements",
+          "path": "scripts/check-translation-supplements.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "check-translation-supplements.test",
+          "path": "scripts/check-translation-supplements.test.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "check-wireframe-questionnaire",
+          "path": "scripts/check-wireframe-questionnaire.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "check-wireframe-questionnaire.test",
+          "path": "scripts/check-wireframe-questionnaire.test.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "fhir-cache-seed-npm",
+          "path": "scripts/fhir-cache-seed-npm.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "fhir-cache-seed-npm.test",
+          "path": "scripts/fhir-cache-seed-npm.test.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "fhir-core",
+          "path": "scripts/fhir-core.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "fhir-core.test",
+          "path": "scripts/fhir-core.test.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "fsh-cone",
+          "path": "scripts/fsh-cone.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "fsh-cone.test",
+          "path": "scripts/fsh-cone.test.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "gen-ig-ast-pages",
+          "path": "scripts/gen-ig-ast-pages.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "gen-ig-ast-pages.test",
+          "path": "scripts/gen-ig-ast-pages.test.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "gen-ig-pages",
+          "path": "scripts/gen-ig-pages.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "gen-ig-pages.test",
+          "path": "scripts/gen-ig-pages.test.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-annex-judge",
+          "path": "scripts/ig-annex-judge.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-annex-judge.test",
+          "path": "scripts/ig-annex-judge.test.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-api-cache",
+          "path": "scripts/ig-api-cache.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-api-cache.test",
+          "path": "scripts/ig-api-cache.test.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-api-gen",
+          "path": "scripts/ig-api-gen.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-api-gen.test",
+          "path": "scripts/ig-api-gen.test.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-api-hub",
+          "path": "scripts/ig-api-hub.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-api-hub.test",
+          "path": "scripts/ig-api-hub.test.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-api-views",
+          "path": "scripts/ig-api-views.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-api-views.test",
+          "path": "scripts/ig-api-views.test.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-artifact-jsonld",
+          "path": "scripts/ig-artifact-jsonld.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-ast",
+          "path": "scripts/ig-ast.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-ast-build",
+          "path": "scripts/ig-ast-build.sh",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-ast-history",
+          "path": "scripts/ig-ast-history.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-ast-history.test",
+          "path": "scripts/ig-ast-history.test.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-ast-pin",
+          "path": "scripts/ig-ast-pin.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-ast-site",
+          "path": "scripts/ig-ast-site.sh",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-ast.test",
+          "path": "scripts/ig-ast.test.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-binary-audit",
+          "path": "scripts/ig-binary-audit.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-binary-audit.test",
+          "path": "scripts/ig-binary-audit.test.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-cache",
+          "path": "scripts/ig-cache.sh",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-chrome-fixture",
+          "path": "scripts/ig-chrome-fixture.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-content-qa",
+          "path": "scripts/ig-content-qa.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-content-qa.test",
+          "path": "scripts/ig-content-qa.test.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-dependencies",
+          "path": "scripts/ig-dependencies.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-dependencies.test",
+          "path": "scripts/ig-dependencies.test.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-footer",
+          "path": "scripts/ig-footer.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-footer-parity.test",
+          "path": "scripts/ig-footer-parity.test.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-footer.test",
+          "path": "scripts/ig-footer.test.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-globals",
+          "path": "scripts/ig-globals.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-globals.test",
+          "path": "scripts/ig-globals.test.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-index-cache",
+          "path": "scripts/ig-index-cache.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-index-cache.test",
+          "path": "scripts/ig-index-cache.test.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-instantiate",
+          "path": "scripts/ig-instantiate.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-instantiate.test",
+          "path": "scripts/ig-instantiate.test.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-markdown-qa",
+          "path": "scripts/ig-markdown-qa.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-markdown-qa.test",
+          "path": "scripts/ig-markdown-qa.test.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-menu-translations",
+          "path": "scripts/ig-menu-translations.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-menu-translations.test",
+          "path": "scripts/ig-menu-translations.test.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-nav-diff",
+          "path": "scripts/ig-nav-diff.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-nav-diff.test",
+          "path": "scripts/ig-nav-diff.test.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-page-render-qa",
+          "path": "scripts/ig-page-render-qa.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-page-render-qa-fixture",
+          "path": "scripts/ig-page-render-qa-fixture.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-page-render-qa.e2e",
+          "path": "scripts/ig-page-render-qa.e2e.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-page-render-qa.test",
+          "path": "scripts/ig-page-render-qa.test.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-page-translations",
+          "path": "scripts/ig-page-translations.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-page-translations.test",
+          "path": "scripts/ig-page-translations.test.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-publisher",
+          "path": "scripts/ig-publisher.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-publisher-i18n",
+          "path": "scripts/ig-publisher-i18n.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-publisher-i18n.test",
+          "path": "scripts/ig-publisher-i18n.test.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-qa-messages",
+          "path": "scripts/ig-qa-messages.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-qa-messages.test",
+          "path": "scripts/ig-qa-messages.test.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-qa-page",
+          "path": "scripts/ig-qa-page.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-qa-page-i18n",
+          "path": "scripts/ig-qa-page-i18n.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-qa-page-i18n.test",
+          "path": "scripts/ig-qa-page-i18n.test.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-qa-page.test",
+          "path": "scripts/ig-qa-page.test.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-read-scope",
+          "path": "scripts/ig-read-scope.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-read-scope.test",
+          "path": "scripts/ig-read-scope.test.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-release",
+          "path": "scripts/ig-release.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-release.test",
+          "path": "scripts/ig-release.test.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-rendered-impact",
+          "path": "scripts/ig-rendered-impact.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-rendered-impact.test",
+          "path": "scripts/ig-rendered-impact.test.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-repo-site",
+          "path": "scripts/ig-repo-site.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-repo-site.test",
+          "path": "scripts/ig-repo-site.test.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-review-data",
+          "path": "scripts/ig-review-data.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-review-data.test",
+          "path": "scripts/ig-review-data.test.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-search",
+          "path": "scripts/ig-search.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-search.test",
+          "path": "scripts/ig-search.test.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-site-data",
+          "path": "scripts/ig-site-data.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-site-data.test",
+          "path": "scripts/ig-site-data.test.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-tab-views.test",
+          "path": "scripts/ig-tab-views.test.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-thin-pages",
+          "path": "scripts/ig-thin-pages.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-thin-pages.test",
+          "path": "scripts/ig-thin-pages.test.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-version-chrome",
+          "path": "scripts/ig-version-chrome.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-version-chrome.test",
+          "path": "scripts/ig-version-chrome.test.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ingest-ig-chrome",
+          "path": "scripts/ingest-ig-chrome.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ingest-ig-menu",
+          "path": "scripts/ingest-ig-menu.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ingest-ig-releases",
+          "path": "scripts/ingest-ig-releases.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "lib/checkout-repository",
+          "path": "scripts/lib/checkout-repository.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "lib/checkout-repository.test",
+          "path": "scripts/lib/checkout-repository.test.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "lib/ig-index-at",
+          "path": "scripts/lib/ig-index-at.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "lib/ig-index-at.test",
+          "path": "scripts/lib/ig-index-at.test.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "library-strip/library-strip.test",
+          "path": "scripts/library-strip/library-strip.test.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "library-strip/strip_library_binaries",
+          "path": "scripts/library-strip/strip_library_binaries.py",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "library-strip/strip_library_content",
+          "path": "scripts/library-strip/strip_library_content.py",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "measure-logic-layer-edges",
+          "path": "scripts/measure-logic-layer-edges.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "measure-logic-layer-edges.test",
+          "path": "scripts/measure-logic-layer-edges.test.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "p2-refusals",
+          "path": "scripts/p2-refusals.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "p2-refusals.test",
+          "path": "scripts/p2-refusals.test.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "pin-ig-terminology",
+          "path": "scripts/pin-ig-terminology.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "publish-served",
+          "path": "scripts/publish-served.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "publish-served.test",
+          "path": "scripts/publish-served.test.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "questionnaire-form",
+          "path": "scripts/questionnaire-form.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "questionnaire-form.test",
+          "path": "scripts/questionnaire-form.test.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "questionnaire-mode",
+          "path": "scripts/questionnaire-mode.js",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "questionnaire-mode.test",
+          "path": "scripts/questionnaire-mode.test.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "resource-tabs.test",
+          "path": "scripts/resource-tabs.test.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "resource-views",
+          "path": "scripts/resource-views.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "resource-views.test",
+          "path": "scripts/resource-views.test.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "sdc-checks",
+          "path": "scripts/sdc-checks.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "sdc-checks.test",
+          "path": "scripts/sdc-checks.test.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "site-build-stamp",
+          "path": "scripts/site-build-stamp.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "site-build-stamp.test",
+          "path": "scripts/site-build-stamp.test.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "stage-ast-sites",
+          "path": "scripts/stage-ast-sites.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "stage-ig-sites",
+          "path": "scripts/stage-ig-sites.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "stage-ig-sites.test",
+          "path": "scripts/stage-ig-sites.test.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "stage-local-ig",
+          "path": "scripts/stage-local-ig.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "stage-local-ig-chrome.test",
+          "path": "scripts/stage-local-ig-chrome.test.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "stage-local-ig.test",
+          "path": "scripts/stage-local-ig.test.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "svg-minify",
+          "path": "scripts/svg-minify.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "svg-minify.test",
+          "path": "scripts/svg-minify.test.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "templates/ig-pages/ast-resource",
+          "path": "scripts/templates/ig-pages/ast-resource.js",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "templates/ig-pages/ig-api-hub-node",
+          "path": "scripts/templates/ig-pages/ig-api-hub-node.js",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "templates/ig-pages/ig-api-openapi",
+          "path": "scripts/templates/ig-pages/ig-api-openapi.js",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "templates/ig-pages/ig-api-view",
+          "path": "scripts/templates/ig-pages/ig-api-view.js",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "templates/ig-pages/ig-artifact",
+          "path": "scripts/templates/ig-pages/ig-artifact.js",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "templates/ig-pages/ig-footer",
+          "path": "scripts/templates/ig-pages/ig-footer.js",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "templates/ig-pages/ig-search",
+          "path": "scripts/templates/ig-pages/ig-search.js",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "templates/ig-pages/questionnaire-form",
+          "path": "scripts/templates/ig-pages/questionnaire-form.js",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "templates/ig-pages/resource-json",
+          "path": "scripts/templates/ig-pages/resource-json.js",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "templates/ig-site/ig-annex",
+          "path": "scripts/templates/ig-site/ig-annex.js",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "terminology-index",
+          "path": "scripts/terminology-index.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "terminology-index.test",
+          "path": "scripts/terminology-index.test.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "terminology-map",
+          "path": "scripts/terminology-map.js",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "terminology-map.test",
+          "path": "scripts/terminology-map.test.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "terminology-sw",
+          "path": "scripts/terminology-sw.js",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "tests/ingest-ig-chrome.test",
+          "path": "scripts/tests/ingest-ig-chrome.test.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        }
+      ]
+    },
+    {
+      "layer": "fhir-harness",
+      "directory": "fhir-harness-pipeline-plugins",
+      "path": "pipeline-plugins/",
+      "kind": "pipeline-plugins",
+      "viewer": {
+        "state": "declared",
+        "id": "cat-harness/pipeline-plugins"
+      },
+      "folderPage": "en/cat-harness/pipeline-plugins/fhir-harness/",
+      "folderPageFound": false,
+      "census": "files .json .jsonld",
+      "declared": 1,
+      "withIri": 0,
+      "withJsonld": 0,
+      "withJson": 0,
+      "withPage": 0,
+      "listed": 0,
+      "deadLinks": [],
+      "rawRepoLinks": 0,
+      "nodes": [
+        {
+          "id": "site-publisher-ig",
+          "path": "pipeline-plugins/site-publisher-ig.json",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        }
+      ]
+    },
+    {
+      "layer": "fhir-harness",
+      "directory": "fhir-harness-plugin-slots",
+      "path": "pipeline/",
+      "kind": "code",
+      "viewer": {
+        "state": "declared",
+        "id": "cat-harness/code"
+      },
+      "folderPage": "en/cat-harness/code/fhir-harness/",
+      "folderPageFound": false,
+      "census": "files .ts .tsx .js .mjs .cjs .py .sh .rb .go",
+      "declared": 2,
+      "withIri": 0,
+      "withJsonld": 0,
+      "withPage": 0,
+      "listed": 0,
+      "deadLinks": [],
+      "rawRepoLinks": 0,
+      "nodes": [
+        {
+          "id": "plugin-slots",
+          "path": "pipeline/plugin-slots.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "plugin-slots.test",
+          "path": "pipeline/plugin-slots.test.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        }
+      ]
+    },
+    {
+      "layer": "fhir-harness",
+      "directory": "fhir-harness-processes",
+      "path": "processes/",
+      "kind": "processes",
+      "viewer": {
+        "state": "declared",
+        "id": "cat-harness/processes"
+      },
+      "folderPage": "en/cat-harness/processes/fhir-harness/",
+      "folderPageFound": false,
+      "census": "files .bpmn .dmn",
+      "declared": 4,
+      "withIri": 4,
+      "withJsonld": 4,
+      "withPage": 0,
+      "listed": 0,
+      "deadLinks": [],
+      "rawRepoLinks": 0,
+      "nodes": [
+        {
+          "id": "content/ig-ast-cache",
+          "path": "processes/content/ig-ast-cache.bpmn",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/process/Process_IgAstCache",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "content/ig-release",
+          "path": "processes/content/ig-release.bpmn",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/process/Process_IgRelease",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "content/questionnaire-wireframe-review",
+          "path": "processes/content/questionnaire-wireframe-review.bpmn",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/process/Process_QuestionnaireWireframeReview",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "tools/ig-docs-site-compose",
+          "path": "processes/tools/ig-docs-site-compose.bpmn",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/process/Process_IgDocsSiteCompose",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        }
+      ]
+    },
+    {
+      "layer": "fhir-harness",
+      "directory": "fhir-harness-docs",
+      "path": "docs/",
+      "kind": "docs",
+      "viewer": {
+        "state": "declared",
+        "id": "cat-harness/auto-docs"
+      },
+      "folderPage": "en/cat-harness/auto-docs/index/docs/fhir-harness-docs/",
+      "folderPageFound": false,
+      "census": "files .md .html",
+      "declared": 4,
+      "withIri": 0,
+      "withJsonld": 0,
+      "withPage": 0,
+      "listed": 0,
+      "deadLinks": [],
+      "rawRepoLinks": 0,
+      "nodes": [
+        {
+          "id": "fhir/fhir-content",
+          "path": "docs/fhir/fhir-content.md",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "fhir/ig-publisher",
+          "path": "docs/fhir/ig-publisher.md",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "fhir/publishing",
+          "path": "docs/fhir/publishing.md",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "fhir/run-locally",
+          "path": "docs/fhir/run-locally.md",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        }
+      ]
+    },
+    {
+      "layer": "fhir-harness",
+      "directory": "fhir-harness-libraries",
+      "path": "libraries/",
+      "kind": "software-library",
+      "viewer": {
+        "state": "none",
+        "reason": "no declared visualiser covers this kind"
+      },
+      "folderPageFound": false,
+      "census": "files .library.json .json",
+      "declared": 13,
+      "withIri": 13,
+      "withJsonld": 13,
+      "withJson": 0,
+      "withPage": 0,
+      "listed": 0,
+      "deadLinks": [],
+      "rawRepoLinks": 0,
+      "nodes": [
+        {
+          "id": "aehrc__sdc-assemble",
+          "path": "libraries/aehrc__sdc-assemble.library.json",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/softwareLibrary/aehrc__sdc-assemble",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "json"
+          ]
+        },
+        {
+          "id": "aehrc__sdc-populate",
+          "path": "libraries/aehrc__sdc-populate.library.json",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/softwareLibrary/aehrc__sdc-populate",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "json"
+          ]
+        },
+        {
+          "id": "aehrc__sdc-template-extract",
+          "path": "libraries/aehrc__sdc-template-extract.library.json",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/softwareLibrary/aehrc__sdc-template-extract",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "json"
+          ]
+        },
+        {
+          "id": "ajv",
+          "path": "libraries/ajv.library.json",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/softwareLibrary/ajv",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "json"
+          ]
+        },
+        {
+          "id": "formbuilder-lhcforms-12.9.0.vendored",
+          "path": "libraries/formbuilder-lhcforms-12.9.0.vendored.library.json",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/softwareLibrary/formbuilder-lhcforms-12.9.0.vendored",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "json"
+          ]
+        },
+        {
+          "id": "jquery-3.6.0.vendored",
+          "path": "libraries/jquery-3.6.0.vendored.library.json",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/softwareLibrary/jquery-3.6.0.vendored",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "json"
+          ]
+        },
+        {
+          "id": "lforms-44.1.0.vendored",
+          "path": "libraries/lforms-44.1.0.vendored.library.json",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/softwareLibrary/lforms-44.1.0.vendored",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "json"
+          ]
+        },
+        {
+          "id": "lhncbc__ucum-lhc-8.0.0.vendored",
+          "path": "libraries/lhncbc__ucum-lhc-8.0.0.vendored.library.json",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/softwareLibrary/lhncbc__ucum-lhc-8.0.0.vendored",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "json"
+          ]
+        },
+        {
+          "id": "liquidjs",
+          "path": "libraries/liquidjs.library.json",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/softwareLibrary/liquidjs",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "json"
+          ]
+        },
+        {
+          "id": "playwright",
+          "path": "libraries/playwright.library.json",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/softwareLibrary/playwright",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "json"
+          ]
+        },
+        {
+          "id": "types__fhir",
+          "path": "libraries/types__fhir.library.json",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/softwareLibrary/types__fhir",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "json"
+          ]
+        },
+        {
+          "id": "yaml",
+          "path": "libraries/yaml.library.json",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/softwareLibrary/yaml",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "json"
+          ]
+        },
+        {
+          "id": "zod",
+          "path": "libraries/zod.library.json",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/softwareLibrary/zod",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "json"
+          ]
+        }
+      ]
+    },
+    {
+      "layer": "fhir-harness",
+      "directory": "fhir-core-definitions",
+      "path": "fhir-core/",
+      "kind": "fhir-core-definitions",
+      "viewer": {
+        "state": "none",
+        "reason": "no declared visualiser covers this kind"
+      },
+      "folderPageFound": false,
+      "census": "files .json .jsonld",
+      "declared": 7,
+      "withIri": 0,
+      "withJsonld": 0,
+      "withJson": 0,
+      "withPage": 0,
+      "listed": 0,
+      "deadLinks": [],
+      "rawRepoLinks": 0,
+      "nodes": [
+        {
+          "id": "pins",
+          "path": "fhir-core/pins.json",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "r4/class-model",
+          "path": "fhir-core/r4/class-model.json",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "r4/manifest",
+          "path": "fhir-core/r4/manifest.json",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "r4b/class-model",
+          "path": "fhir-core/r4b/class-model.json",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "r4b/manifest",
+          "path": "fhir-core/r4b/manifest.json",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "r5/class-model",
+          "path": "fhir-core/r5/class-model.json",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "r5/manifest",
+          "path": "fhir-core/r5/manifest.json",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        }
+      ]
+    },
+    {
+      "layer": "fhir-harness",
+      "directory": "collab-processes",
+      "path": "collab/processes/",
+      "kind": "processes",
+      "viewer": {
+        "state": "declared",
+        "id": "cat-harness/processes"
+      },
+      "folderPage": "en/cat-harness/processes/fhir-harness/",
+      "folderPageFound": false,
+      "census": "files .bpmn .dmn",
+      "declared": 3,
+      "withIri": 3,
+      "withJsonld": 3,
+      "withPage": 0,
+      "listed": 0,
+      "deadLinks": [],
+      "rawRepoLinks": 0,
+      "nodes": [
+        {
+          "id": "content/ig-ast-delta-review",
+          "path": "collab/processes/content/ig-ast-delta-review.bpmn",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/process/Process_IgAstDeltaReview",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "content/ig-incremental-build",
+          "path": "collab/processes/content/ig-incremental-build.bpmn",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/process/Process_IgIncremental",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "content/l3-fhir-pipeline",
+          "path": "collab/processes/content/l3-fhir-pipeline.bpmn",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/process/Process_L3Fhir",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        }
+      ]
+    },
+    {
+      "layer": "fhir-harness",
+      "directory": "schemas",
+      "path": "schemas/",
+      "kind": "schemas",
+      "viewer": {
+        "state": "declared",
+        "id": "cat-harness/schemas"
+      },
+      "folderPage": "en/cat-harness/schemas/fhir-harness/",
+      "folderPageFound": false,
+      "census": "export",
+      "declared": 15,
+      "withIri": 15,
+      "withJsonld": 15,
+      "withPage": 0,
+      "listed": 0,
+      "deadLinks": [],
+      "rawRepoLinks": 0,
+      "nodes": [
+        {
+          "id": "fhir-artifact-index",
+          "path": "schemas/fhir-artifact-index.ts",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/schema/fhir-artifact-index",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "fhir-core",
+          "path": "schemas/fhir-core.ts",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/schema/fhir-core",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "ig-annexes",
+          "path": "schemas/ig-annexes.ts",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/schema/ig-annexes",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "ig-artifact-jsonld",
+          "path": "schemas/ig-artifact-jsonld.ts",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/schema/ig-artifact-jsonld",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "ig-ast-lock",
+          "path": "schemas/ig-ast-lock.ts",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/schema/ig-ast-lock",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "ig-ast",
+          "path": "schemas/ig-ast.ts",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/schema/ig-ast",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "ig-chrome",
+          "path": "schemas/ig-chrome.ts",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/schema/ig-chrome",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "ig-content-type",
+          "path": "schemas/ig-content-type.ts",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/schema/ig-content-type",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "ig-menu",
+          "path": "schemas/ig-menu.ts",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/schema/ig-menu",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "ig-metadata-index",
+          "path": "schemas/ig-metadata-index.ts",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/schema/ig-metadata-index",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "ig-releases",
+          "path": "schemas/ig-releases.ts",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/schema/ig-releases",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "iti-108-consent-client",
+          "path": "schemas/iti-108-consent-client.ts",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/schema/iti-108-consent-client",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "odrl-to-fhir-r5-permission",
+          "path": "schemas/odrl-to-fhir-r5-permission.ts",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/schema/odrl-to-fhir-r5-permission",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "pcf-consent",
+          "path": "schemas/pcf-consent.ts",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/schema/pcf-consent",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        },
+        {
+          "id": "vocab-mapping-fhir",
+          "path": "schemas/vocab-mapping-fhir.ts",
+          "iri": "https://litlfred.github.io/folio-assistant/fhir-harness/schema/vocab-mapping-fhir",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed"
+          ]
+        }
+      ]
+    },
+    {
+      "layer": "fhir-harness",
+      "directory": "policies",
+      "path": "policies/",
+      "kind": "policies",
+      "viewer": {
+        "state": "declared",
+        "id": "cat-harness/policies"
+      },
+      "folderPage": "en/cat-harness/policies/fhir-harness/",
+      "folderPageFound": false,
+      "census": "files .json .jsonld",
+      "declared": 1,
+      "withIri": 0,
+      "withJsonld": 0,
+      "withPage": 0,
+      "listed": 0,
+      "deadLinks": [],
+      "rawRepoLinks": 0,
+      "nodes": [
+        {
+          "id": "ig-publisher-service",
+          "path": "policies/ig-publisher-service.jsonld",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        }
+      ]
+    },
+    {
+      "layer": "fhir-harness",
+      "directory": "cat-harness-tools-tests",
+      "path": "test/",
+      "kind": "code",
+      "viewer": {
+        "state": "declared",
+        "id": "cat-harness/code"
+      },
+      "folderPage": "en/cat-harness/code/fhir-harness/",
+      "folderPageFound": false,
+      "census": "files .ts .tsx .js .mjs .cjs .py .sh .rb .go",
+      "declared": 1,
+      "withIri": 0,
+      "withJsonld": 0,
+      "withPage": 0,
+      "listed": 0,
+      "deadLinks": [],
+      "rawRepoLinks": 0,
+      "nodes": [
+        {
+          "id": "support/ig-fixture",
+          "path": "test/support/ig-fixture.ts",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        }
+      ]
+    },
+    {
+      "layer": "fhir-harness",
+      "directory": "folio-templates",
+      "path": "templates/",
+      "kind": "code",
+      "viewer": {
+        "state": "declared",
+        "id": "cat-harness/code"
+      },
+      "folderPage": "en/cat-harness/code/fhir-harness/",
+      "folderPageFound": false,
+      "census": "files .ts .tsx .js .mjs .cjs .py .sh .rb .go",
+      "declared": 0,
+      "withIri": 0,
+      "withJsonld": 0,
+      "withPage": 0,
+      "listed": 0,
+      "deadLinks": [],
+      "rawRepoLinks": 0,
+      "nodes": []
+    },
+    {
+      "layer": "fhir-harness",
+      "directory": "wireframes",
+      "path": "docs/wireframes/",
+      "kind": "doc-group",
+      "viewer": {
+        "state": "none",
+        "reason": "no declared visualiser covers this kind"
+      },
+      "folderPageFound": false,
+      "census": "files .md .html",
+      "declared": 2,
+      "withIri": 0,
+      "withJsonld": 0,
+      "withPage": 0,
+      "listed": 0,
+      "deadLinks": [],
+      "rawRepoLinks": 0,
+      "nodes": [
+        {
+          "id": "ig-ast/as-is",
+          "path": "docs/wireframes/ig-ast/as-is.html",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "ig-ast/intent",
+          "path": "docs/wireframes/ig-ast/intent.md",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        }
+      ]
+    },
+    {
+      "layer": "fhir-harness",
+      "directory": "docs-source",
+      "path": "docs/source/",
+      "kind": "docs",
+      "viewer": {
+        "state": "declared",
+        "id": "cat-harness/auto-docs"
+      },
+      "folderPage": "en/cat-harness/auto-docs/index/docs/docs-source/",
+      "folderPageFound": false,
+      "census": "files .md .html",
+      "declared": 24,
+      "withIri": 0,
+      "withJsonld": 0,
+      "withPage": 0,
+      "listed": 0,
+      "deadLinks": [],
+      "rawRepoLinks": 0,
+      "nodes": [
+        {
+          "id": "fhir-fhir-content/overview",
+          "path": "docs/source/fhir-fhir-content/overview.md",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "fhir-fhir-content/representations",
+          "path": "docs/source/fhir-fhir-content/representations.md",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "fhir-fhir-content/the-artefact-index",
+          "path": "docs/source/fhir-fhir-content/the-artefact-index.md",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "fhir-fhir-content/where-the-rules-live",
+          "path": "docs/source/fhir-fhir-content/where-the-rules-live.md",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "fhir-ig-publisher/how-the-harness-runs-it",
+          "path": "docs/source/fhir-ig-publisher/how-the-harness-runs-it.md",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "fhir-ig-publisher/overview",
+          "path": "docs/source/fhir-ig-publisher/overview.md",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "fhir-ig-publisher/the-version-floats",
+          "path": "docs/source/fhir-ig-publisher/the-version-floats.md",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "fhir-ig-publisher/what-it-cannot-be-asked-for",
+          "path": "docs/source/fhir-ig-publisher/what-it-cannot-be-asked-for.md",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "fhir-ig-publisher/what-it-emits",
+          "path": "docs/source/fhir-ig-publisher/what-it-emits.md",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "fhir-ig-publisher/what-only-it-can-do",
+          "path": "docs/source/fhir-ig-publisher/what-only-it-can-do.md",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "fhir-ig-publisher/where-the-rules-live",
+          "path": "docs/source/fhir-ig-publisher/where-the-rules-live.md",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "fhir-publishing/deployment-targets",
+          "path": "docs/source/fhir-publishing/deployment-targets.md",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "fhir-publishing/overview",
+          "path": "docs/source/fhir-publishing/overview.md",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "fhir-publishing/releasing",
+          "path": "docs/source/fhir-publishing/releasing.md",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "fhir-publishing/the-pipeline",
+          "path": "docs/source/fhir-publishing/the-pipeline.md",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "fhir-publishing/what-is-published",
+          "path": "docs/source/fhir-publishing/what-is-published.md",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "fhir-publishing/where-it-lands",
+          "path": "docs/source/fhir-publishing/where-it-lands.md",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "fhir-run-locally/overview",
+          "path": "docs/source/fhir-run-locally/overview.md",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "fhir-run-locally/prerequisites",
+          "path": "docs/source/fhir-run-locally/prerequisites.md",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "fhir-run-locally/settings",
+          "path": "docs/source/fhir-run-locally/settings.md",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "fhir-run-locally/step-by-step",
+          "path": "docs/source/fhir-run-locally/step-by-step.md",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "fhir-run-locally/the-one-command",
+          "path": "docs/source/fhir-run-locally/the-one-command.md",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "fhir-run-locally/two-routes",
+          "path": "docs/source/fhir-run-locally/two-routes.md",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        },
+        {
+          "id": "fhir-run-locally/when-it-refuses",
+          "path": "docs/source/fhir-run-locally/when-it-refuses.md",
+          "verdict": "missing",
+          "missing": [
+            "page",
+            "listed",
+            "iri",
+            "jsonld"
+          ]
+        }
+      ]
+    }
+  ]
+}
