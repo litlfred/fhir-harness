@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import {
+  IG_VERSION_BANNER_OPT_OUT,
   igHomeHref,
   igMetadataTable,
   igOwnMetadataTable,
@@ -108,6 +109,15 @@ describe("withIgVersionChrome", () => {
     expect(out).not.toContain("ig-topbar-head\"");
     expect(out).toContain('</header><p class="ig-version-banner"');
     expect(out).toContain('<main class="ig-main fa-page-main"><table class="ig-metadata">');
+  });
+  it("aPageThatOptsOutGetsTheVersionButNoBanner", () => {
+    const page = PAGE(SLIM_BAR).replace("<title>x</title>", `<title>x</title>${IG_VERSION_BANNER_OPT_OUT}`);
+    const out = withIgVersionChrome(page, F, { home: false });
+    expect(out).toContain('Demo IG</a><span class="ig-topbar-ver">');
+    expect(out).not.toContain('class="ig-version-banner"');
+    expect(withIgVersionChrome(out, F, { home: false })).toBe(out);
+    const quoted = PAGE(SLIM_BAR, `<pre>${IG_VERSION_BANNER_OPT_OUT}</pre>`);
+    expect(withIgVersionChrome(quoted, F, { home: false })).toContain('class="ig-version-banner"');
   });
   it("idempotentAndLeavesBarlessPages", () => {
     const once = withIgVersionChrome(PAGE(FULL_BAR), F, { home: true });
