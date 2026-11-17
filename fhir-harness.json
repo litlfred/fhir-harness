@@ -214,6 +214,27 @@
   "enableSubgraphs": [
     "fhir-harness.collab"
   ],
+  "_remoteGraphs_comment": "Graphs this layer knows and does not hold (cat-harness RemoteGraph: referenced, never materialised). cqf-skills is the litlfred fork of cqframework/cqf-skills harnessed as a knowledge graph (owner, 2026-11-17: 'in fhir harness reference it as external subgraph'); both URLs are pinned to the same commit, so a re-pin moves them together.",
+  "remoteGraphs": [
+    {
+      "id": "cqf-skills",
+      "url": "https://github.com/litlfred/cqf-skills/tree/14a05213b83eb10fe94522bf6a00e88debdbda16/harness/skills",
+      "graphTypologies": [
+        "skills"
+      ],
+      "title": "CQF Skills: skills for CQL, FHIR, Clinical Reasoning and content IGs",
+      "description": "The cqframework Agent Skills (cql, cql-ig, us-cql-ig, cms-qmd, vscode-cql, madie, fhir, fhir-extensions, uscore, usqualitycore, terminology, crmi, cpg, plan-definition, questionnaire, measure, fsh, ig-publisher, and the fork's further skills) as the litlfred/cqf-skills fork lays them out for the graph: one package per marketplace plugin under harness/skills/, each node pointing at its skills/<name>/SKILL.md. Pinned to a commit. Referenced, never held: this layer's own fhir-ig-authoring and fhir-ig-base skills stay the pipeline's; these are where an IG author goes for the CQL, Measure, PlanDefinition, Questionnaire, FSH and IG Publisher detail."
+    },
+    {
+      "id": "cqf-skills-processes",
+      "url": "https://github.com/litlfred/cqf-skills/tree/14a05213b83eb10fe94522bf6a00e88debdbda16/processes",
+      "graphTypologies": [
+        "processes"
+      ],
+      "title": "CQF Skills: knowledge-artifact processes",
+      "description": "BPMN of the fork's processes whose tasks name the cqf-skills skills: authoring a CQL library, developing a quality measure, building and publishing a content IG, turning guideline content into computable artifacts, and adding a skill. Lanes are the roles in its scenarios/roles.json. Referenced, never held."
+    }
+  ],
   "liquid": {
     "prefix": "site.data",
     "passThrough": true
