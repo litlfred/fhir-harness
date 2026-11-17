@@ -1,8 +1,8 @@
 import { describe, expect, test } from "bun:test";
-import { mkdtempSync, readFileSync } from "node:fs";
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { qaMessagesFromXml, writeQaMessages } from "./ig-qa-messages.ts";
+import { carryQa, qaMessagesFromXml, QA_ORIGIN_FILE, writeQaMessages } from "./ig-qa-messages.ts";
 
 /** The shape ValidationPresenter writes as qa.xml: the build's own messages, then one OperationOutcome per input file. */
 const QA_XML = `<?xml version="1.0" encoding="UTF-8"?>
@@ -69,5 +69,32 @@ describe("ig-qa-messages", () => {
     const r = JSON.parse(readFileSync(join(d, "out.json"), "utf-8"));
     expect(r.groups).toEqual([]);
     expect(r.absent).toContain("no qa.xml");
+  });
+
+  test("anIncrementalAstCarriesItsBasesPublisherQaAndSaysWhichRunItCameFrom", () => {
+    const base = mkdtempSync(join(tmpdir(), "qa-base-"));
+    const out = mkdtempSync(join(tmpdir(), "qa-out-"));
+    writeFileSync(join(base, "qa.json"), '{"errs":1}');
+    writeFileSync(join(base, "qa-messages.json"), '{"$schema":"ig-qa-messages/v1","groups":[]}');
+    writeFileSync(join(base, "manifest.json"), JSON.stringify({ generatedAt: "2026-11-17T11:59:18Z", inputs: { sourceRevision: "2f4f04df6ed8" } }));
+    expect(carryQa(base, out)).toEqual(["qa.json", "qa-messages.json", QA_ORIGIN_FILE]);
+    expect(readFileSync(join(out, "qa.json"), "utf-8")).toBe('{"errs":1}');
+    expect(JSON.parse(readFileSync(join(out, QA_ORIGIN_FILE), "utf-8"))).toEqual({ $schema: "ig-qa-origin/v1", sourceRevision: "2f4f04df6ed8", generatedAt: "2026-11-17T11:59:18Z" });
+    // A chain of incremental builds keeps the first full run as the origin.
+    const next = mkdtempSync(join(tmpdir(), "qa-next-"));
+    writeFileSync(join(out, "manifest.json"), JSON.stringify({ generatedAt: "2026-11-17T13:04:29Z", inputs: { sourceRevision: "6833cd15ae5e" } }));
+    carryQa(out, next);
+    expect(JSON.parse(readFileSync(join(next, QA_ORIGIN_FILE), "utf-8")).sourceRevision).toBe("2f4f04df6ed8");
+  });
+
+  test("carryNeverOverwritesTheNewAstsOwnQaAndWritesNothingWithNothingToCarry", () => {
+    const base = mkdtempSync(join(tmpdir(), "qa-base-"));
+    const out = mkdtempSync(join(tmpdir(), "qa-out-"));
+    expect(carryQa(base, out)).toEqual([]);
+    expect(existsSync(join(out, QA_ORIGIN_FILE))).toBe(false);
+    writeFileSync(join(base, "qa.json"), '{"errs":1}');
+    writeFileSync(join(out, "qa.json"), '{"errs":0}');
+    expect(carryQa(base, out)).toEqual([]);
+    expect(readFileSync(join(out, "qa.json"), "utf-8")).toBe('{"errs":0}');
   });
 });

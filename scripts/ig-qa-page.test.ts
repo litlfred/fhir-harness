@@ -55,6 +55,18 @@ describe("ig-qa-page", () => {
     expect(fhirQaMarkdown(readFhirQa(dirWith({ "manifest.json": JSON.stringify(MANIFEST) }))).join("\n")).not.toContain("### Markdown rendering");
   });
 
+  test("aCarriedSummarySaysWhichFullRunItCameFrom", () => {
+    const ast = dirWith({
+      "manifest.json": JSON.stringify(MANIFEST),
+      "qa.json": JSON.stringify({ errs: 0, warnings: 2, hints: 1 }),
+      "qa-origin.json": JSON.stringify({ $schema: "ig-qa-origin/v1", sourceRevision: "2f4f04df6ed8944889b6", generatedAt: "2026-11-17T11:59:18Z" }),
+    });
+    const md = fhirQaMarkdown(readFhirQa(ast)).join("\n");
+    expect(md).toContain("last full Publisher run (`2f4f04df6ed8`, 2026-11-17T11:59:18Z).");
+    expect(md).toContain("| warnings | 2 |");
+    expect(fhirQaMarkdown(readFhirQa(dirWith({ "qa.json": "{}" }))).join("\n")).not.toContain("incremental build");
+  });
+
   test("fhirQaWithoutSummarySaysSo", () => {
     const ast = dirWith({ "manifest.json": JSON.stringify(MANIFEST) });
     const validity = join(dirWith({ "v.json": JSON.stringify({ verdict: "stale", detail: { verdict: "stale", why: "the inputs changed" }, recorded: { inputDigest: "a" }, current: { inputDigest: "b" } }) }), "v.json");

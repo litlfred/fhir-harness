@@ -17,11 +17,17 @@
  * that never writes one must not rebuild it every run.
  *
  *   bun run fhir-harness/scripts/ig-qa-messages.ts <qa.xml> <out.json>
+ *   bun run fhir-harness/scripts/ig-qa-messages.ts carry <base-ast> <out-ast>
+ *
+ * `carry` is for the incremental build, which runs no full Publisher QA: it
+ * keeps the base AST's QA files, and says which full run they came from
+ * ({@link carryQa}).
  *
  * @module fhir-harness/scripts/ig-qa-messages
  * @covers none — it reshapes the Publisher's messages, and judges nothing
  */
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { copyFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
 
 export const QA_MESSAGES_SCHEMA = "ig-qa-messages/v1";
 /** The file the AST carries and the site publishes beside `qa.json`. */
@@ -139,7 +145,67 @@ export function writeQaMessages(qaXml: string, out: string): QaMessages {
   return r;
 }
 
-if (import.meta.main) {
+/** The Publisher's QA summary, as the AST carries it (`ig-qa-page.ts` PUBLISHER_QA_FILE). */
+const QA_SUMMARY_FILE = "qa.json";
+/** Which full Publisher run an AST's QA files came from, when an incremental build carried them. */
+export const QA_ORIGIN_FILE = "qa-origin.json";
+export const QA_ORIGIN_SCHEMA = "ig-qa-origin/v1";
+
+export interface QaOrigin {
+  $schema: typeof QA_ORIGIN_SCHEMA;
+  /** The source commit of the full Publisher run the QA files came from. */
+  sourceRevision?: string;
+  /** When that run generated its AST. */
+  generatedAt?: string;
+}
+
+/**
+ * Carry the base AST's Publisher QA (`qa.json`, `qa-messages.json`) into an
+ * AST an incremental build wrote over it. An incremental build runs no full
+ * Publisher QA, and without this the AST it seeds holds none, so the site's
+ * QA report loses the summary it had (owner report, 2026-11-17). What is
+ * carried says which full run it came from (`qa-origin.json`), kept as it
+ * was through a chain of incremental builds. A file the new AST already
+ * holds is never overwritten; with nothing to carry, nothing is written.
+ */
+export function carryQa(base: string, out: string): string[] {
+  const carried: string[] = [];
+  for (const f of [QA_SUMMARY_FILE, QA_MESSAGES_FILE]) {
+    if (existsSync(join(base, f)) && !existsSync(join(out, f))) {
+      copyFileSync(join(base, f), join(out, f));
+      carried.push(f);
+    }
+  }
+  if (!carried.length || existsSync(join(out, QA_ORIGIN_FILE))) return carried;
+  if (existsSync(join(base, QA_ORIGIN_FILE))) {
+    copyFileSync(join(base, QA_ORIGIN_FILE), join(out, QA_ORIGIN_FILE));
+  } else {
+    let m: { generatedAt?: unknown; inputs?: { sourceRevision?: unknown } } = {};
+    try {
+      m = JSON.parse(readFileSync(join(base, "manifest.json"), "utf-8"));
+    } catch {
+      /* an origin without a revision is still an origin */
+    }
+    const origin: QaOrigin = {
+      $schema: QA_ORIGIN_SCHEMA,
+      ...(typeof m.inputs?.sourceRevision === "string" ? { sourceRevision: m.inputs.sourceRevision } : {}),
+      ...(typeof m.generatedAt === "string" ? { generatedAt: m.generatedAt } : {}),
+    };
+    writeFileSync(join(out, QA_ORIGIN_FILE), `${JSON.stringify(origin)}\n`);
+  }
+  carried.push(QA_ORIGIN_FILE);
+  return carried;
+}
+
+if (import.meta.main && process.argv[2] === "carry") {
+  const [base, out] = process.argv.slice(3);
+  if (!base || !out) {
+    console.error("usage: ig-qa-messages.ts carry <base-ast> <out-ast>");
+    process.exit(2);
+  }
+  const c = carryQa(base, out);
+  console.log(`${out}: ${c.length ? `carried ${c.join(", ")} from ${base}` : "no Publisher QA to carry"}`);
+} else if (import.meta.main) {
   const [qaXml, out] = process.argv.slice(2);
   if (!qaXml || !out) {
     console.error("usage: ig-qa-messages.ts <qa.xml> <out.json>");

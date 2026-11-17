@@ -59,6 +59,11 @@ msgstr "Le résumé d’assurance qualité de l’IG Publisher pour l’exécuti
 
 #. origin: machine translation (agent, 2026-11-14); no person has reviewed it
 #. rendered at: <locale>/qa.html
+#: fhir-harness/scripts/ig-qa-page-i18n.ts QA_PAGE_STRINGS.carriedSummary
+msgctxt "carriedSummary"
+msgid "This AST was updated by an incremental build, which runs no full Publisher QA: the summary and messages here are those of the last full Publisher run{run}."
+msgstr "Cet AST a été mis à jour par une construction incrémentale, qui n’exécute pas l’assurance qualité complète de l’IG Publisher : le résumé et les messages ci-dessous sont ceux de la dernière exécution complète de l’IG Publisher{run}."
+
 #: fhir-harness/scripts/ig-qa-page-i18n.ts QA_PAGE_STRINGS.summaryJson
 msgctxt "summaryJson"
 msgid "Summary (JSON)"
