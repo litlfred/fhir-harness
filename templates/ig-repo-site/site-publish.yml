@@ -21,11 +21,11 @@
 #
 #   index.config.json   mounts the harness the IG is built on (and its
 #                       closure), and names it as the site's landing:
-#                         "site": { "landing": "<that harness>",
-#                                   "publishAfter": ["ig-ast-refresh.yml"] }
-#                       `publishAfter` makes the publish wait for this
-#                       commit's AST refresh (below), so the site is built
-#                       from a current AST. A repository that also declares
+#                         "site": { "landing": "<that harness>" }
+#                       The publish waits for this commit's AST refresh
+#                       (below) without being told: the IG publisher
+#                       declares `after: ["ig-ast-refresh.yml"]`, so the
+#                       site is built from a current AST. A repository that also declares
 #                       a folio `site.build` recipe adds "publisher": "ig".
 #                       The site's TITLE is the IG's own, from
 #                       sushi-config.yaml `title`.
@@ -34,7 +34,7 @@
 #                       `fhirbuild.yml` beside one): `stage-local.ts` reads
 #                       from it that this repository is an IG.
 #   ig-ast-refresh.yml  this directory's template: it seeds the AST cache on
-#                       the push that changes the IG's inputs. The publish
+#                       the push that changes the IG's inputs or adds it. The publish
 #                       restores the AST from that cache and judges it
 #                       (`ig-site:ast`); no IG Publisher runs in the publish.
 #

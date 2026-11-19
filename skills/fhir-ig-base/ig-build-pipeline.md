@@ -201,13 +201,17 @@ Terms:
 
 **Who writes the cache: one workflow, here.**
 [`.github/workflows/ig-ast-refresh.yml`](../../.github/workflows/ig-ast-refresh.yml)
-(`workflow_call`) is the only writer. The IG repository's `site-publish.yml`
-(the [template](../../templates/ig-repo-site/site-publish.yml)) calls it as its
-first job, `ast`, so a publish refreshes the cache before it builds: a no-op
-when the cache is valid for the commit. No IG repository carries a workflow of
-its own for it. A repository that wants the cache refreshed on every push to
-its IG sources may add the optional caller
-[`templates/ig-repo-site/ig-ast-refresh.yml`](../../templates/ig-repo-site/ig-ast-refresh.yml). One run:
+(`workflow_call`) is the only writer. The IG repository calls it from
+[`templates/ig-repo-site/ig-ast-refresh.yml`](../../templates/ig-repo-site/ig-ast-refresh.yml),
+copied unchanged, which runs on a push to the default branch that changes the
+IG's inputs or that file, and by hand. The repository's `site-publish.yml`
+(the [template](../../templates/ig-repo-site/site-publish.yml)) does not
+seed the cache: it waits for this commit's refresh, because the IG publisher
+declares `after: ["ig-ast-refresh.yml"]` (`scripts/ig-publisher.ts`;
+cat-harness-tools `site-publish-after.ts`), and then restores the cache. The
+push that adds the caller runs it, so a repository's first publish has an
+AST; when the cache branch is still missing, `ig-site:ast` refuses and says to
+dispatch the refresh once. One run:
 
 1. mounts the layers the IG repository's `index.lock.json` pins;
 2. restores and judges the cache for `ref` (default `main`);

@@ -22,6 +22,7 @@
     "scripts/ig-footer-parity.test.ts",
     "scripts/ig-menu-translations.ts",
     "scripts/ig-nav-diff.ts",
+    "scripts/ig-publisher.test.ts",
     "scripts/ig-release.ts",
     "scripts/ig-repo-site.ts",
     "scripts/ig-site-data.ts",

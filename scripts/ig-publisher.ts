@@ -23,6 +23,14 @@ import type { SitePublisher } from "../../cat-harness-tools/scripts/stage-local.
 export const IG_WORKFLOWS = ["fhirbuild.yml", "ghbuild.yml"] as const;
 /** Where an IG workflow with no deploy step finds its Pages build: the sibling beside it. */
 export const PAGES_SIBLING = "ghbuild.yml";
+/**
+ * The reusable workflows that seed what the IG site is built from: the AST
+ * cache branch, whose one writer is `ig-ast-refresh.yml`. A Site publish
+ * waits for this commit's run of every workflow that calls it, so it never
+ * reads the cache before the refresh on the same push has written it
+ * (cat-harness-tools `site-publish-after.ts`, 2026-11-19).
+ */
+export const IG_SEEDERS = ["ig-ast-refresh.yml"] as const;
 
 /**
  * The FHIR-IG site publisher: what `site-publisher-ig` holds. Its kind is the
@@ -32,6 +40,7 @@ export const IG_PUBLISHER: SitePublisher = {
   kind: "ig",
   workflows: IG_WORKFLOWS,
   preferred: PAGES_SIBLING,
+  after: IG_SEEDERS,
   stage: async (run, host) => {
     // input-site: traced #d101a054 — loads the publisher's work only when a publish stages; no check stages
     inputSiteReached("ig publisher: stage");

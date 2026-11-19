@@ -33,6 +33,13 @@ Feature: Building an IG repository's own site from its AST
     Then a stale AST is accepted for a preview when stale is accepted
     And for the root it is refused, saying it is for a preview only and naming ig-ast-build.sh
 
+  @test:scripts/ig-repo-site.test.ts::the_AST_gate_(ig-build-pipeline_rule_2)::noCacheNamesTheRefresh
+  Scenario: with no cache branch the refusal names the IG AST refresh, not the Site publish
+    When ig-cache.sh restore exits 1
+    Then the refusal says there is no AST, names ig-ast-refresh.yml and says to dispatch it once
+    And it no longer says the Site publish's ast job seeds the cache
+    And another exit status names the status and no cache branch
+
   @test:scripts/ig-repo-site.test.ts::the_AST_gate_(ig-build-pipeline_rule_2)::previewAcceptsStaleByDefault
   Scenario: a preview accepts a stale AST by default; SITE_ACCEPT_STALE_AST=0 refuses it
     Then accepting stale is on when the variable is unset or "1" and off when it is "0"
