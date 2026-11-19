@@ -504,6 +504,22 @@ export function isPreviewBase(baseurl: string | undefined): boolean {
 }
 
 /**
+ * Why `ast` refuses when `ig-cache.sh restore` fails. Exit 1 is a missing
+ * cache branch. Its one writer is the IG's IG AST refresh (the caller of this
+ * layer's `ig-ast-refresh.yml`), which seeds it on a push to the default
+ * branch that changes the IG's inputs or the caller itself, and by hand. The
+ * Site publish waits for that run (`IG_PUBLISHER.after`); it does not seed
+ * the cache. Pure.
+ */
+export function noAstMessage(status: number | null): string {
+  const why =
+    status === 1
+      ? " (no cache branch for this IG: its IG AST refresh, .github/workflows/ig-ast-refresh.yml, seeds it on a push to the default branch that changes the IG's inputs; when none has run, dispatch it once on the default branch, then publish again)"
+      : "";
+  return `no AST to build from: ig-cache.sh restore exited ${status}${why}. The site is never built from the Publisher's HTML`;
+}
+
+/**
  * `ast`: restore the IG's AST from its cache branch into the checkout, and
  * judge it. Throws, saying why, when there is no cache or the gate refuses.
  */
@@ -519,7 +535,7 @@ export function restoreAst(o: { ig: string; work?: string; acceptStale: boolean;
     if (record) rmSync(record, { force: true });
     const r = spawnSync("bash", [join(import.meta.dir, "ig-cache.sh"), "restore", "--ig-root", ig, ...(record ? ["--record", record] : [])], { cwd: ig, stdio: ["ignore", "inherit", "inherit"] });
     if (r.status !== 0) {
-      throw new Error(`no AST to build from: ig-cache.sh restore exited ${r.status}${r.status === 1 ? " (no cache branch for this IG; run its Site publish, whose `ast` job seeds it)" : ""}. The site is never built from the Publisher's HTML`);
+      throw new Error(noAstMessage(r.status));
     }
     return astValidity(readAst(join(ig, AST_DIR)), ig);
   };

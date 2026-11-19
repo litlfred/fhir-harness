@@ -21,11 +21,12 @@
 # AST export and records the AST against the clean commit. Write it in this
 # file, never as a dispatch input. Without one, nothing is run.
 #
-# It runs on every push to main that changes the IG's inputs, and by hand
+# It runs on every push to main that changes the IG's inputs or this file, and by hand
 # (owner, 2026-11-11: "i want that it publishes once merge to main",
 # litlfred/cat-harness-tools#1879; it replaces the by-hand rule of
-# 2026-10-06). The site publish on the same push waits for it
-# (`site.publishAfter`), so the site is built from the new AST. A push that
+# 2026-10-06). The site publish on the same push waits for it (the IG
+# publisher declares `after: ["ig-ast-refresh.yml"]`), so the site is built
+# from the new AST. A push that
 # changes no input leaves the cache valid (`ig-ast.ts` `sameSourceAs`), so
 # nothing runs.
 name: IG AST refresh
@@ -37,6 +38,10 @@ on:
       - sushi-config.yaml
       - ig.ini
       - "input/**"
+      # This file too: the push that adds it seeds the cache, so a
+      # repository's first Site publish has an AST even when that push
+      # changes none of the IG's inputs.
+      - .github/workflows/ig-ast-refresh.yml
   workflow_dispatch:
     inputs:
       ref:

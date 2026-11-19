@@ -27,6 +27,7 @@ import {
   INDEX_REF_FILE,
   indexRef,
   locateArtefactIndex,
+  noAstMessage,
   readIgApiDir,
   rebaseSwaggerSpecs,
   siteIgApi,
@@ -135,6 +136,16 @@ describe("the AST gate (ig-build-pipeline rule 2)", () => {
     const refused = astGate("stale-inputs", { acceptStale: acceptStaleFromEnv("0"), preview: true });
     expect(refused.ok).toBe(false);
     expect(refused.said).toContain("=0");
+  });
+  test("noCacheNamesTheRefresh", () => {
+    const m = noAstMessage(1);
+    expect(m).toContain("no AST to build from");
+    expect(m).toContain("ig-ast-refresh.yml");
+    expect(m).toContain("dispatch it once");
+    expect(m).not.toContain("`ast` job");
+    expect(m).not.toContain("run its Site publish");
+    expect(noAstMessage(2)).not.toContain("no cache branch");
+    expect(noAstMessage(2)).toContain("exited 2");
   });
   test("previewIsStagingBase", () => {
     expect(isPreviewBase("/smart-x/STAGING/claude-a")).toBe(true);
