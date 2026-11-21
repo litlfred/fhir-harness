@@ -64,7 +64,7 @@ import { withRenderedBy } from "../../cat-harness-tools/scripts/viewer-declarati
 import { NAVBAR_LINKED } from "../../cat-harness-tools/scripts/lib/harness-rail.ts";
 import { MARKER as FOLIO_MOUNT_MARKER } from "../../cat-harness-tools/scripts/folio-mount.ts";
 import { DEFAULT_ICON } from "../../cat-harness-tools/scripts/thin-page.ts";
-import { PAGE_BAR_CLASS, PAGE_LAYOUT_CSS_FILE, PAGE_LAYOUT_CSS_SOURCE, PAGE_LAYOUT_JS_FILE, PAGE_LAYOUT_JS_SOURCE, PAGE_LAYOUT_MARK, PAGE_MAIN_CLASS } from "../../cat-harness-tools/scripts/page-layout.ts";
+import { DRAFT_BANNER_JS_FILE, DRAFT_BANNER_JS_SOURCE, DRAFT_BANNER_NOSCRIPT_CSS_FILE, DRAFT_BANNER_NOSCRIPT_CSS_SOURCE, PAGE_BAR_CLASS, PAGE_LAYOUT_CSS_FILE, PAGE_LAYOUT_CSS_SOURCE, PAGE_LAYOUT_JS_FILE, PAGE_LAYOUT_JS_SOURCE, PAGE_LAYOUT_MARK, PAGE_MAIN_CLASS } from "../../cat-harness-tools/scripts/page-layout.ts";
 import { indexReadPath } from "./lib/ig-index-at.ts";
 
 /** One page's navigation, from `sushi-config.yaml` `pages:`. */
@@ -1090,7 +1090,14 @@ export function composeIgSite(
     // The thin layout links `ig-artifact.css` too; an IG whose layer has no
     // artefact pages (an IG with no docs of its own, folio-assistant#2738) had none, so
     // its pages lost their styling.
-    for (const [rel, src] of [[PAGE_LAYOUT_CSS_FILE, PAGE_LAYOUT_CSS_SOURCE], [PAGE_LAYOUT_JS_FILE, PAGE_LAYOUT_JS_SOURCE], [IG_THIN_CSS_FILE, IG_THIN_CSS_SOURCE]] as const) {
+    for (const [rel, src] of [
+      [PAGE_LAYOUT_CSS_FILE, PAGE_LAYOUT_CSS_SOURCE],
+      [PAGE_LAYOUT_JS_FILE, PAGE_LAYOUT_JS_SOURCE],
+      // The layout's tags link the DRAFT banner too (cat-harness-tools#2400).
+      [DRAFT_BANNER_JS_FILE, DRAFT_BANNER_JS_SOURCE],
+      [DRAFT_BANNER_NOSCRIPT_CSS_FILE, DRAFT_BANNER_NOSCRIPT_CSS_SOURCE],
+      [IG_THIN_CSS_FILE, IG_THIN_CSS_SOURCE],
+    ] as const) {
       if (!existsSync(join(staged, rel))) put(join(dest, rel), readFileSync(src));
     }
     put(join(dest, IG_SOURCE_LINKS_FILE), `${EDIT_LINKS_RUNTIME}\n`);
