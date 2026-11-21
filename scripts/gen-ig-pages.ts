@@ -121,7 +121,16 @@ import { JSON_VIEW_SCRIPT, VIEW_PAGE, examplesPage, hasJsonView, historyPage, js
 import { isDirectoryReadme } from "@litlfred/cat-harness-tools/schemas/kg/kg-node.js";
 import { ARTIFACT_INDEX_FILE, artifactJsonLdFiles, localResourceHref } from "./ig-artifact-jsonld.ts";
 import { THIN_PAGE_RENDERER, THIN_PAGE_SCRIPT, THIN_PAGE_STYLE, artifactTabs, thinArtifactPath, thinArtifactView, thinViewRedirect, type SidecarView } from "./ig-thin-pages.ts";
-import { PAGE_LAYOUT_CSS_FILE, PAGE_LAYOUT_CSS_SOURCE, PAGE_LAYOUT_JS_FILE, PAGE_LAYOUT_JS_SOURCE } from "../../cat-harness-tools/scripts/page-layout.ts";
+import {
+  DRAFT_BANNER_JS_FILE,
+  DRAFT_BANNER_JS_SOURCE,
+  DRAFT_BANNER_NOSCRIPT_CSS_FILE,
+  DRAFT_BANNER_NOSCRIPT_CSS_SOURCE,
+  PAGE_LAYOUT_CSS_FILE,
+  PAGE_LAYOUT_CSS_SOURCE,
+  PAGE_LAYOUT_JS_FILE,
+  PAGE_LAYOUT_JS_SOURCE,
+} from "../../cat-harness-tools/scripts/page-layout.ts";
 import { kgRenderScript } from "../../cat-harness-tools/scripts/thin-page.ts";
 import { IG_SEARCH_INDEX_FILE, IG_SEARCH_SCRIPT_FILE } from "./ig-search.ts";
 
@@ -1716,6 +1725,10 @@ if (existsSync(MENU)) {
     // (cat-harness-tools `page-layout.ts`): one width, one bar, one scroll.
     pages.set(PAGE_LAYOUT_CSS_FILE, readFileSync(PAGE_LAYOUT_CSS_SOURCE, "utf8"));
     pages.set(PAGE_LAYOUT_JS_FILE, readFileSync(PAGE_LAYOUT_JS_SOURCE, "utf8"));
+    // The layout's tags also link the DRAFT banner (cat-harness-tools#2400), so
+    // its two files are written with it, or every thin page links two dead files.
+    pages.set(DRAFT_BANNER_JS_FILE, readFileSync(DRAFT_BANNER_JS_SOURCE, "utf8"));
+    pages.set(DRAFT_BANNER_NOSCRIPT_CSS_FILE, readFileSync(DRAFT_BANNER_NOSCRIPT_CSS_SOURCE, "utf8"));
   }
 }
 
